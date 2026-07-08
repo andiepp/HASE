@@ -1,0 +1,21 @@
+## Visual Studio
+.vs/
+bin/
+obj/
+
+## User files
+*.user
+*.suo
+
+## Rider
+.idea/
+
+## ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+## Test Results
+TestResults/
+
+## Logs
+*.log
