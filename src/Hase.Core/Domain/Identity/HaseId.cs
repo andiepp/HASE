@@ -1,4 +1,4 @@
-﻿namespace Hase.Core.Domain;
+﻿namespace Hase.Core.Domain.Identity;
 
 /// <summary>
 /// Represents a stable, non-empty identifier used by HASE domain objects.

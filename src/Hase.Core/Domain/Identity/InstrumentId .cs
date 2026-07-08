@@ -1,4 +1,4 @@
-﻿namespace Hase.Core.Domain;
+﻿namespace Hase.Core.Domain.Identity;
 
 public sealed record InstrumentId : HaseId
 {
