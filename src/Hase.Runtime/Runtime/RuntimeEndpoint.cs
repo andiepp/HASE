@@ -3,13 +3,10 @@ using Hase.Core.Domain.Identity;
 
 namespace Hase.Runtime.Runtime;
 
-/// <summary>
-/// Runtime representation of an endpoint.
-/// It references the immutable endpoint descriptor.
-/// </summary>
-public sealed class RuntimeEndpoint
+public sealed class RuntimeEndpoint : IPropertyValueObserver
 {
     private readonly List<RuntimeInstrument> _instruments = [];
+    private readonly List<IPropertyValueObserver> _observers = [];
 
     public RuntimeEndpoint(RuntimeContext context, EndpointDescriptor descriptor)
     {
@@ -18,20 +15,16 @@ public sealed class RuntimeEndpoint
 
         foreach (var instrument in descriptor.Instruments)
         {
-            _instruments.Add(new RuntimeInstrument(this, instrument));
+            var runtimeInstrument = new RuntimeInstrument(this, instrument);
+            runtimeInstrument.Subscribe(this);
+            _instruments.Add(runtimeInstrument);
         }
     }
 
-    /// <summary>
-    /// Static descriptor of this endpoint.
-    /// </summary>
-    public EndpointDescriptor Descriptor { get; }
-
     public RuntimeContext Context { get; }
 
-    /// <summary>
-    /// Runtime instruments belonging to this endpoint.
-    /// </summary>
+    public EndpointDescriptor Descriptor { get; }
+
     public IReadOnlyList<RuntimeInstrument> Instruments => _instruments;
 
     public RuntimeInstrument? FindInstrument(InstrumentId id)
@@ -42,4 +35,28 @@ public sealed class RuntimeEndpoint
             instrument => instrument.Descriptor.Id == id);
     }
 
+    public void Subscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+
+    public void Unsubscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        _observers.Remove(observer);
+    }
+
+    public void OnPropertyValueChanged(PropertyValueChanged change)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnPropertyValueChanged(change);
+        }
+    }
 }
