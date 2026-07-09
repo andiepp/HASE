@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
 
 namespace Hase.Runtime.Runtime;
 
@@ -30,4 +31,13 @@ public sealed class RuntimeEndpoint
     /// Runtime instruments belonging to this endpoint.
     /// </summary>
     public IReadOnlyList<RuntimeInstrument> Instruments => _instruments;
+
+    public RuntimeInstrument? FindInstrument(InstrumentId id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        return _instruments.FirstOrDefault(
+            instrument => instrument.Descriptor.Id == id);
+    }
+
 }
