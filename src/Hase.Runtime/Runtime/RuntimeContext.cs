@@ -3,9 +3,14 @@ using Hase.Core.Domain.Identity;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeContext
+/// <summary>
+/// Root object of a HASE runtime instance.
+/// It maintains the live engineering model for one application.
+/// </summary>
+public sealed class RuntimeContext : IPropertyValueObserver
 {
     private readonly List<RuntimeEndpoint> _endpoints = [];
+    private readonly List<IPropertyValueObserver> _observers = [];
 
     public IReadOnlyList<RuntimeEndpoint> Endpoints => _endpoints;
 
@@ -20,6 +25,9 @@ public sealed class RuntimeContext
         }
 
         var endpoint = new RuntimeEndpoint(this, descriptor);
+
+        endpoint.Subscribe(this);
+
         _endpoints.Add(endpoint);
 
         return endpoint;
@@ -28,6 +36,8 @@ public sealed class RuntimeContext
     public bool RemoveEndpoint(RuntimeEndpoint endpoint)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
+
+        endpoint.Unsubscribe(this);
 
         return _endpoints.Remove(endpoint);
     }
@@ -38,5 +48,30 @@ public sealed class RuntimeContext
 
         return _endpoints.FirstOrDefault(
             endpoint => endpoint.Descriptor.Id == id);
+    }
+
+    public void Subscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+
+    public void Unsubscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        _observers.Remove(observer);
+    }
+
+    public void OnPropertyValueChanged(PropertyValueChanged change)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnPropertyValueChanged(change);
+        }
     }
 }
