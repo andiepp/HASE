@@ -6,37 +6,37 @@
 /// </summary>
 public sealed class RuntimeContext
 {
-    private readonly List<RuntimeInstrument> _instruments = [];
+    private readonly List<RuntimeEndpoint> _endpoints = [];
 
     /// <summary>
-    /// Gets the runtime instruments currently known to this context.
+    /// Gets the runtime endpoints currently known to this context.
     /// </summary>
-    public IReadOnlyList<RuntimeInstrument> Instruments => _instruments;
+    public IReadOnlyList<RuntimeEndpoint> Endpoints => _endpoints;
 
     /// <summary>
-    /// Adds a runtime instrument to this context.
+    /// Adds an endpoint to the runtime.
     /// </summary>
-    public void AddInstrument(RuntimeInstrument instrument)
+    public void AddEndpoint(RuntimeEndpoint endpoint)
     {
-        ArgumentNullException.ThrowIfNull(instrument);
+        ArgumentNullException.ThrowIfNull(endpoint);
 
-        if (_instruments.Any(existing =>
-                existing.Descriptor.Id == instrument.Descriptor.Id))
+        if (_endpoints.Any(e =>
+                e.Descriptor.Id == endpoint.Descriptor.Id))
         {
             throw new InvalidOperationException(
-                $"An instrument with id '{instrument.Descriptor.Id}' already exists in this runtime context.");
+                $"An endpoint with id '{endpoint.Descriptor.Id}' already exists.");
         }
 
-        _instruments.Add(instrument);
+        _endpoints.Add(endpoint);
     }
 
     /// <summary>
-    /// Removes a runtime instrument from this context.
+    /// Removes an endpoint from the runtime.
     /// </summary>
-    public bool RemoveInstrument(RuntimeInstrument instrument)
+    public bool RemoveEndpoint(RuntimeEndpoint endpoint)
     {
-        ArgumentNullException.ThrowIfNull(instrument);
+        ArgumentNullException.ThrowIfNull(endpoint);
 
-        return _instruments.Remove(instrument);
+        return _endpoints.Remove(endpoint);
     }
 }
