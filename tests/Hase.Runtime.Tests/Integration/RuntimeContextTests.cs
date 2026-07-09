@@ -84,6 +84,61 @@ public class RuntimeContextTests
         Assert.Null(observer.LastChange.PreviousValue);
     }
 
+    [Fact]
+    public void RuntimeGraph_ShouldHaveExpectedHierarchy()
+    {
+        // Arrange
+        var propertyDescriptor = new PropertyDescriptor(
+            new PropertyId("DDS.Frequency"),
+            DescriptorPath.Parse("DDS.Frequency"),
+            "Frequency",
+            new NumericDataDescriptor(
+                Quantities.Frequency,
+                Units.Hertz));
+
+        var instrumentDescriptor = new InstrumentDescriptor(
+            new InstrumentId("DDS"),
+            "DDS Generator",
+            new InstrumentKind("FrequencyGenerator"))
+        {
+            Interface = new InstrumentInterface(
+                properties: new[] { propertyDescriptor })
+        };
+
+        var endpointDescriptor = new EndpointDescriptor(
+            new EndpointId("Endpoint1"),
+            new[] { instrumentDescriptor });
+
+        var context = new RuntimeContext();
+
+        // Act
+        var endpoint = context.AddEndpoint(endpointDescriptor);
+
+        // Assert hierarchy
+
+        Assert.Single(context.Children);
+
+        var runtimeEndpoint = Assert.IsType<RuntimeEndpoint>(
+            context.Children.Single());
+
+        Assert.Same(context, runtimeEndpoint.Parent);
+
+        Assert.Single(runtimeEndpoint.Children);
+
+        var runtimeInstrument = Assert.IsType<RuntimeInstrument>(
+            runtimeEndpoint.Children.Single());
+
+        Assert.Same(runtimeEndpoint, runtimeInstrument.Parent);
+
+        Assert.Single(runtimeInstrument.Properties);
+
+        var runtimeProperty = runtimeInstrument.Properties.Single();
+
+        Assert.Same(runtimeInstrument, runtimeProperty.Parent);
+
+        Assert.Empty(runtimeProperty.Children);
+    }
+
     private sealed class TestObserver : IPropertyValueObserver
     {
         public int NotificationCount { get; private set; }
