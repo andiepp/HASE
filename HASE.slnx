@@ -2,5 +2,6 @@
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
   </Folder>
+  <Project Path="Hase.Runtime/Hase.Runtime.csproj" Id="d9fac421-4c35-42c6-933f-3a11c09a7e46" />
   <Project Path="src/Hase.Core/Hase.Core.csproj" />
 </Solution>
