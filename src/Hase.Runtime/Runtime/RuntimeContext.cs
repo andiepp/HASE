@@ -1,4 +1,6 @@
-﻿namespace Hase.Runtime.Runtime;
+﻿using Hase.Core.Domain.Identity;
+
+namespace Hase.Runtime.Runtime;
 
 /// <summary>
 /// Root object of a HASE runtime instance.
@@ -39,4 +41,13 @@ public sealed class RuntimeContext
 
         return _endpoints.Remove(endpoint);
     }
+
+    public RuntimeEndpoint? FindEndpoint(EndpointId id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        return _endpoints.FirstOrDefault(
+            endpoint => endpoint.Descriptor.Id == id);
+    }
+
 }
