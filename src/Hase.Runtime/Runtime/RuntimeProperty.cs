@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Properties;
+using System.Diagnostics.Metrics;
 
 namespace Hase.Runtime.Runtime;
 
@@ -8,8 +9,9 @@ namespace Hase.Runtime.Runtime;
 /// </summary>
 public sealed class RuntimeProperty
 {
-    public RuntimeProperty(PropertyDescriptor descriptor)
+    public RuntimeProperty(RuntimeInstrument instrument, PropertyDescriptor descriptor)
     {
+        Instrument = instrument ?? throw new ArgumentNullException(nameof(instrument));
         Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
     }
 
@@ -17,6 +19,8 @@ public sealed class RuntimeProperty
     /// Static descriptor of this property.
     /// </summary>
     public PropertyDescriptor Descriptor { get; }
+
+    public RuntimeInstrument Instrument { get; }
 
     /// <summary>
     /// Latest known value of the property.

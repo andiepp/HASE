@@ -1,7 +1,8 @@
-﻿using Hase.Core.Domain.Instruments;
-using Hase.Core.Domain.Properties;
-using Hase.Core.Domain.Commands;
+﻿using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Events;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
+using System.Net;
 
 namespace Hase.Runtime.Runtime;
 
@@ -9,27 +10,30 @@ public sealed class RuntimeInstrument
 {
     private readonly List<RuntimeProperty> _properties = [];
 
-    public RuntimeInstrument(InstrumentDescriptor descriptor)
+    public RuntimeInstrument(RuntimeEndpoint endpoint, InstrumentDescriptor descriptor)
     {
+        Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
         Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
 
         foreach (var property in descriptor.Interface.Properties)
         {
-            _properties.Add(new RuntimeProperty(property));
+            _properties.Add(new RuntimeProperty(this, property));
         }
 
         foreach (var command in descriptor.Interface.Commands)
         {
-            _commands.Add(new RuntimeCommand(command));
+            _commands.Add(new RuntimeCommand(this, command));
         }
 
         foreach (var eventDescriptor in descriptor.Interface.Events)
         {
-            _events.Add(new RuntimeEvent(eventDescriptor));
+            _events.Add(new RuntimeEvent(this, eventDescriptor));
         }
     }
 
     public InstrumentDescriptor Descriptor { get; }
+
+    public RuntimeEndpoint Endpoint { get; }
 
     public IReadOnlyList<RuntimeProperty> Properties => _properties;
 
