@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Hase.Core\Hase.Core.csproj" />
+    <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
   </ItemGroup>
 
 </Project>
