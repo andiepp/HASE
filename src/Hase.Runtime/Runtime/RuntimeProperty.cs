@@ -7,7 +7,7 @@ namespace Hase.Runtime.Runtime;
 /// Runtime representation of a property.
 /// It references the immutable property descriptor and holds the latest value.
 /// </summary>
-public sealed class RuntimeProperty
+public sealed class RuntimeProperty : IRuntimeNode
 {
     public RuntimeProperty(RuntimeInstrument instrument, PropertyDescriptor descriptor)
     {
@@ -29,6 +29,11 @@ public sealed class RuntimeProperty
     public PropertyValue? CurrentValue { get; private set; }
 
     private readonly List<IPropertyValueObserver> _observers = [];
+
+    public IRuntimeNode Parent => Instrument;
+
+    public IReadOnlyList<IRuntimeNode> Children =>
+        Array.Empty<IRuntimeNode>();
 
     /// <summary>
     /// Updates the current value.

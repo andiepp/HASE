@@ -7,12 +7,17 @@ namespace Hase.Runtime.Runtime;
 /// Root object of a HASE runtime instance.
 /// It maintains the live engineering model for one application.
 /// </summary>
-public sealed class RuntimeContext : IPropertyValueObserver
+public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
 {
     private readonly List<RuntimeEndpoint> _endpoints = [];
     private readonly List<IPropertyValueObserver> _observers = [];
 
     public IReadOnlyList<RuntimeEndpoint> Endpoints => _endpoints;
+
+    public IRuntimeNode? Parent => null;
+
+    public IReadOnlyList<IRuntimeNode> Children =>
+        _endpoints.Cast<IRuntimeNode>().ToArray();
 
     public RuntimeEndpoint AddEndpoint(EndpointDescriptor descriptor)
     {

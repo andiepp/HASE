@@ -3,7 +3,7 @@ using System.Diagnostics.Metrics;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeEvent
+public sealed class RuntimeEvent : IRuntimeNode
 {
     public RuntimeEvent(RuntimeInstrument instrument, EventDescriptor descriptor)
     {
@@ -13,4 +13,8 @@ public sealed class RuntimeEvent
 
     public EventDescriptor Descriptor { get; }
     public RuntimeInstrument Instrument { get; }
+    public string DisplayName => Descriptor.DisplayName;
+    public IRuntimeNode Parent => Instrument;
+    public IReadOnlyList<IRuntimeNode> Children =>
+        Array.Empty<IRuntimeNode>();
 }

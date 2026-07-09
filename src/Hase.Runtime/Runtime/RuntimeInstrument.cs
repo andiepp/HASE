@@ -5,7 +5,7 @@ using Hase.Core.Domain.Properties;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeInstrument : IPropertyValueObserver
+public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
 {
     private readonly List<RuntimeProperty> _properties = [];
     private readonly List<RuntimeCommand> _commands = [];
@@ -44,6 +44,15 @@ public sealed class RuntimeInstrument : IPropertyValueObserver
     public IReadOnlyList<RuntimeCommand> Commands => _commands;
 
     public IReadOnlyList<RuntimeEvent> Events => _events;
+
+    public IRuntimeNode Parent => Endpoint;
+
+    public IReadOnlyList<IRuntimeNode> Children =>
+        _properties
+            .Cast<IRuntimeNode>()
+            .Concat(_commands)
+            .Concat(_events)
+            .ToArray();
 
     public RuntimeProperty? FindProperty(DescriptorPath path)
     {

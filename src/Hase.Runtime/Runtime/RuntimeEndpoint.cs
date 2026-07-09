@@ -3,7 +3,7 @@ using Hase.Core.Domain.Identity;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeEndpoint : IPropertyValueObserver
+public sealed class RuntimeEndpoint : IPropertyValueObserver, IRuntimeNode
 {
     private readonly List<RuntimeInstrument> _instruments = [];
     private readonly List<IPropertyValueObserver> _observers = [];
@@ -24,6 +24,11 @@ public sealed class RuntimeEndpoint : IPropertyValueObserver
     public RuntimeContext Context { get; }
 
     public EndpointDescriptor Descriptor { get; }
+
+    public IRuntimeNode Parent => Context;
+
+    public IReadOnlyList<IRuntimeNode> Children =>
+        _instruments.Cast<IRuntimeNode>().ToArray();
 
     public IReadOnlyList<RuntimeInstrument> Instruments => _instruments;
 
