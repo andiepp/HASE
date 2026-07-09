@@ -25,15 +25,7 @@ public sealed record InstrumentDescriptor
 
     public InstrumentKind Kind { get; }
 
-    public string? Manufacturer { get; init; }
-
-    public string? Model { get; init; }
-
-    public string? SerialNumber { get; init; }
-
-    public string? FirmwareVersion { get; init; }
-
-    public string? Description { get; init; }
+    public InstrumentMetadata Metadata { get; init; } = new();
 
     public IReadOnlyList<PropertyDescriptor> Properties { get; init; }
         = [];
