@@ -4,4 +4,5 @@
   </Folder>
   <Project Path="src/Hase.Core/Hase.Core.csproj" />
   <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
+  <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
 </Solution>
