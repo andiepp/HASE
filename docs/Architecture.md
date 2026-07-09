@@ -1,12 +1,41 @@
 # HASE Architecture
 
-HASE is a platform for self-describing engineering systems.
+## Purpose
 
-## Layers
+HASE (Hardware Abstraction System for Engineering) is a platform for building engineering applications around self-describing hardware.
 
-### Hase.Core
+The primary design goal is to separate the engineering model from runtime execution, communication transports and user interface concerns.
 
-Defines immutable engineering contracts:
+---
+
+# Layered Architecture
+
+HASE is organized into independent layers.
+
+```
+Application
+        │
+        ▼
+Services
+        │
+        ▼
+Runtime
+        │
+        ▼
+Core
+```
+
+Each layer depends only on the layer below it.
+
+---
+
+# Hase.Core
+
+Hase.Core defines the immutable engineering model.
+
+It contains no runtime state and no communication logic.
+
+Examples:
 
 - Endpoints
 - Instruments
@@ -14,19 +43,30 @@ Defines immutable engineering contracts:
 - Commands
 - Events
 - Data descriptors
-- Units and quantities
+- Quantities
+- Units
 
-### Hase.Runtime
+Objects in Hase.Core are engineering contracts.
 
-Creates a live runtime graph from descriptors.
+---
 
-Runtime objects are mutable and represent the current application view of the engineering system.
+# Hase.Runtime
 
-### Services
+Hase.Runtime creates a live runtime graph from engineering contracts.
 
-Services operate on the runtime graph.
+Runtime objects are mutable.
 
-Examples:
+They represent the current application view of an engineering system.
+
+The runtime graph mirrors the engineering model.
+
+---
+
+# Services
+
+Services perform work on the runtime graph.
+
+Examples include:
 
 - Discovery
 - Polling
@@ -34,10 +74,68 @@ Examples:
 - Replay
 - Diagnostics
 
-### Future Layers
+Services modify the runtime graph but never the engineering contracts.
+
+---
+
+# Future Layers
+
+The current architecture anticipates additional layers.
+
+Examples:
 
 - Hase.Transport
 - Hase.Gateway
 - Hase.Diagnostics
 - Hase.Studio
 - Hase.SDK
+
+These layers are intentionally independent from Hase.Core.
+
+---
+
+# Design Principles
+
+## Immutable engineering contracts
+
+Engineering contracts are immutable.
+
+A contract describes what a system is capable of.
+
+---
+
+## Mutable runtime
+
+Runtime objects represent the current live state of an engineering system.
+
+---
+
+## Separation of concerns
+
+Engineering contracts never contain:
+
+- communication
+- transport
+- polling
+- user interface
+- runtime state
+
+---
+
+## Transport independence
+
+The engineering model is independent of Serial, TCP/IP, BLE, MQTT or future transports.
+
+---
+
+## Descriptor-driven runtime
+
+The runtime graph is automatically constructed from engineering descriptors.
+
+---
+
+## Services operate on the runtime
+
+Behavior is implemented by services.
+
+Runtime objects remain lightweight representations of the engineering system.
