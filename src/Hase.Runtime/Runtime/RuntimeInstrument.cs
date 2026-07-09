@@ -67,4 +67,20 @@ public sealed class RuntimeInstrument
             runtimeEvent => runtimeEvent.Descriptor.Path == path);
     }
 
+    public bool UpdatePropertyValue(DescriptorPath path, PropertyValue value)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        ArgumentNullException.ThrowIfNull(value);
+
+        var property = FindProperty(path);
+
+        if (property is null)
+        {
+            return false;
+        }
+
+        property.UpdateValue(value);
+
+        return true;
+    }
 }
