@@ -2,13 +2,15 @@
 using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
-using System.Net;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeInstrument
+public sealed class RuntimeInstrument : IPropertyValueObserver
 {
     private readonly List<RuntimeProperty> _properties = [];
+    private readonly List<RuntimeCommand> _commands = [];
+    private readonly List<RuntimeEvent> _events = [];
+    private readonly List<IPropertyValueObserver> _observers = [];
 
     public RuntimeInstrument(RuntimeEndpoint endpoint, InstrumentDescriptor descriptor)
     {
@@ -17,7 +19,9 @@ public sealed class RuntimeInstrument
 
         foreach (var property in descriptor.Interface.Properties)
         {
-            _properties.Add(new RuntimeProperty(this, property));
+            var runtimeProperty = new RuntimeProperty(this, property);
+            runtimeProperty.Subscribe(this);
+            _properties.Add(runtimeProperty);
         }
 
         foreach (var command in descriptor.Interface.Commands)
@@ -31,16 +35,14 @@ public sealed class RuntimeInstrument
         }
     }
 
-    public InstrumentDescriptor Descriptor { get; }
-
     public RuntimeEndpoint Endpoint { get; }
+
+    public InstrumentDescriptor Descriptor { get; }
 
     public IReadOnlyList<RuntimeProperty> Properties => _properties;
 
-    private readonly List<RuntimeCommand> _commands = [];
     public IReadOnlyList<RuntimeCommand> Commands => _commands;
 
-    private readonly List<RuntimeEvent> _events = [];
     public IReadOnlyList<RuntimeEvent> Events => _events;
 
     public RuntimeProperty? FindProperty(DescriptorPath path)
@@ -67,7 +69,9 @@ public sealed class RuntimeInstrument
             runtimeEvent => runtimeEvent.Descriptor.Path == path);
     }
 
-    public bool UpdatePropertyValue(DescriptorPath path, PropertyValue value)
+    public bool UpdatePropertyValue(
+        DescriptorPath path,
+        PropertyValue value)
     {
         ArgumentNullException.ThrowIfNull(path);
         ArgumentNullException.ThrowIfNull(value);
@@ -82,5 +86,30 @@ public sealed class RuntimeInstrument
         property.UpdateValue(value);
 
         return true;
+    }
+
+    public void Subscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+
+    public void Unsubscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        _observers.Remove(observer);
+    }
+
+    public void OnPropertyValueChanged(PropertyValueChanged change)
+    {
+        foreach (var observer in _observers)
+        {
+            observer.OnPropertyValueChanged(change);
+        }
     }
 }
