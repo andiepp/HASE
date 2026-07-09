@@ -27,14 +27,7 @@ public sealed record InstrumentDescriptor
 
     public InstrumentMetadata Metadata { get; init; } = new();
 
-    public IReadOnlyList<PropertyDescriptor> Properties { get; init; }
-        = [];
-
-    public IReadOnlyList<CommandDescriptor> Commands { get; init; }
-        = [];
-
-    public IReadOnlyList<EventDescriptor> Events { get; init; }
-        = [];
+    public InstrumentInterface Interface { get; init; } = new();
 
     private static string RequireText(string value, string parameterName)
     {
