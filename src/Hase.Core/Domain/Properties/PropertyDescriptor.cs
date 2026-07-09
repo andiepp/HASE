@@ -12,7 +12,7 @@ public sealed record PropertyDescriptor
 {
     public PropertyDescriptor(
         PropertyId id,
-        PropertyPath path,
+        DescriptorPath path,
         string displayName,
         DataDescriptor data)
     {
@@ -40,7 +40,7 @@ public sealed record PropertyDescriptor
     /// Hierarchical path of the property within the instrument.
     /// Example: DDS.Profile1.Frequency
     /// </summary>
-    public PropertyPath Path { get; }
+    public DescriptorPath Path { get; }
 
     /// <summary>
     /// Human readable name.
