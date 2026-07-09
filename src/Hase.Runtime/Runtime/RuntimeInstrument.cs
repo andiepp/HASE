@@ -2,19 +2,21 @@
 
 namespace Hase.Runtime.Runtime;
 
-/// <summary>
-/// Runtime representation of an instrument.
-/// It references the immutable instrument descriptor.
-/// </summary>
 public sealed class RuntimeInstrument
 {
+    private readonly List<RuntimeProperty> _properties = [];
+
     public RuntimeInstrument(InstrumentDescriptor descriptor)
     {
         Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
+
+        foreach (var property in descriptor.Interface.Properties)
+        {
+            _properties.Add(new RuntimeProperty(property));
+        }
     }
 
-    /// <summary>
-    /// Static descriptor of this instrument.
-    /// </summary>
     public InstrumentDescriptor Descriptor { get; }
+
+    public IReadOnlyList<RuntimeProperty> Properties => _properties;
 }
