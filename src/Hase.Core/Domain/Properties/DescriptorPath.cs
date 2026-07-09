@@ -84,4 +84,16 @@ public sealed record DescriptorPath : IEnumerable<string>
 
         return segment.Trim();
     }
+
+    public bool Equals(DescriptorPath? other)
+    {
+        return other is not null &&
+               string.Equals(_text, other._text, StringComparison.Ordinal);
+    }
+
+    public override int GetHashCode()
+    {
+        return StringComparer.Ordinal.GetHashCode(_text);
+    }
+
 }
