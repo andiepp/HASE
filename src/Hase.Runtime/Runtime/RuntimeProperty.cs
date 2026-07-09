@@ -28,6 +28,8 @@ public sealed class RuntimeProperty
     /// </summary>
     public PropertyValue? CurrentValue { get; private set; }
 
+    private readonly List<IPropertyValueObserver> _observers = [];
+
     /// <summary>
     /// Updates the current value.
     /// </summary>
@@ -35,6 +37,35 @@ public sealed class RuntimeProperty
     {
         ArgumentNullException.ThrowIfNull(value);
 
+        var previous = CurrentValue;
+
         CurrentValue = value;
+
+        var change = new PropertyValueChanged(
+            this,
+            previous,
+            value);
+
+        foreach (var observer in _observers)
+        {
+            observer.OnPropertyValueChanged(change);
+        }
     }
+
+    public void Subscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        if (!_observers.Contains(observer))
+        {
+            _observers.Add(observer);
+        }
+    }
+    public void Unsubscribe(IPropertyValueObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        _observers.Remove(observer);
+    }
+
 }
