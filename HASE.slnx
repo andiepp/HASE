@@ -4,7 +4,9 @@
   </Folder>
   <Project Path="src/Hase.Core/Hase.Core.csproj" />
   <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
+  <Project Path="src/Hase.Simulation.Runtime/Hase.Simulation.Runtime.csproj" Id="2237039f-536a-47bf-af87-6204a42facf9" />
   <Project Path="src/Hase.Simulation/Hase.Simulation.csproj" />
   <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
+  <Project Path="tests/Hase.Simulation.Runtime.Tests/Hase.Simulation.Runtime.Tests.csproj" Id="dee7d37f-5109-4380-a534-c95c38dd5759" />
   <Project Path="tests/Hase.Simulation.Tests/Hase.Simulation.Tests.csproj" Id="247f97b0-a24e-4397-a135-9202844299d2" />
 </Solution>

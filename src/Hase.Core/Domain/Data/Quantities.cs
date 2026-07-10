@@ -7,7 +7,9 @@ public static class Quantities
     public static readonly Quantity Current = new("current", "Current");
     public static readonly Quantity Temperature = new("temperature", "Temperature");
     public static readonly Quantity Pressure = new("pressure", "Pressure");
+    public static readonly Quantity RelativeHumidity = new("relative-humidity", "Relative Humidity");
     public static readonly Quantity Mass = new("mass", "Mass");
     public static readonly Quantity Time = new("time", "Time");
     public static readonly Quantity Length = new("length", "Length");
+
 }

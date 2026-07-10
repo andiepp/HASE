@@ -28,4 +28,18 @@ public static class Units
 
     public static readonly Unit Celsius =
         new("celsius", "Degree Celsius", "°C", Quantities.Temperature);
+
+    public static readonly Unit PercentRelativeHumidity =
+        new(
+            "percent-relative-humidity",
+            "Percent Relative Humidity",
+            "%RH",
+            Quantities.RelativeHumidity);
+
+    public static readonly Unit Hectopascal =
+        new(
+            "hectopascal",
+            "Hectopascal",
+            "hPa",
+            Quantities.Pressure);
 }
