@@ -6,4 +6,5 @@
   <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
   <Project Path="src/Hase.Simulation/Hase.Simulation.csproj" />
   <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
+  <Project Path="tests/Hase.Simulation.Tests/Hase.Simulation.Tests.csproj" Id="247f97b0-a24e-4397-a135-9202844299d2" />
 </Solution>

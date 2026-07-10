@@ -139,3 +139,12 @@ The runtime graph is automatically constructed from engineering descriptors.
 Behavior is implemented by services.
 
 Runtime objects remain lightweight representations of the engineering system.
+
+### Simulation independence
+
+Physical-process simulations are independent of HASE runtime objects, 
+descriptors, transports, and protocols.
+
+Simulated instruments adapt physical simulation state to the normal HASE runtime model. 
+Applications should therefore interact with physical and simulated instruments 
+through the same interfaces.

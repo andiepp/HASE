@@ -149,3 +149,32 @@ Examples:
 - Replay
 
 Services modify the runtime graph but do not modify engineering contracts.
+
+
+Use your repository’s existing ADR directory and naming style if it differs from `docs/adr`.
+
+---
+
+## Simulation
+
+HASE simulation models physical processes independently of HASE runtime objects.
+
+The simulation subsystem is not a separate HASE runtime mode. It is a source of instrument behavior that can later be exposed through the same runtime interfaces as physical instruments.
+
+The conceptual flow is:
+
+---
+
+ValueGenerator
+      |
+      v
+Simulation
+      |
+      v
+Physical state
+      |
+      v
+Simulated instrument
+      |
+      v
+HASE runtime

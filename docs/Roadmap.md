@@ -66,3 +66,38 @@ Status: Current
 - Descriptor repository
 - Documentation generation
 - Simulation templates
+
+## Simulation
+
+### Completed
+
+- simulation time model;
+- simulation host;
+- constant value generator;
+- periodic value generator;
+- sine waveform;
+- triangle waveform;
+- sawtooth waveform;
+- square waveform;
+- environment simulation;
+- immutable environment state;
+- unit-test coverage for the simulation foundation.
+
+### Next
+
+- define the generic boundary between simulated instruments and `Hase.Runtime`;
+- implement a simulated multi-value environment sensor;
+- expose temperature, relative humidity, and air pressure through the normal HASE runtime model.
+
+### Later
+
+- interpolated periodic waveform;
+- non-periodic recorded time-series generator;
+- configurable square-wave duty cycle;
+- noise, drift, calibration, and quantization;
+- simulation time scaling;
+- manual stepping and pause/resume;
+- JSON scenario configuration;
+- shared environments observed by several instruments;
+- actuators influencing physical simulation state;
+- recording and replay.

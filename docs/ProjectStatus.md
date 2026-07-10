@@ -62,7 +62,8 @@ Phase 2 — Simulation
 
 ## Current Architecture
 
-```text
+---
+
 Hase.Core
     Immutable engineering contracts
 
@@ -71,3 +72,36 @@ Hase.Runtime
 
 Hase.Simulation
     Simulated engineering systems
+
+    
+---
+
+### 3. Update `docs/ProjectStatus.md`
+
+Add a completed simulation-foundation entry similar to:
+
+---
+
+## Simulation
+
+Completed:
+
+- created `Hase.Simulation`;
+- added explicit simulation time through `SimulationStep`;
+- added `ISimulation` and `SimulationHost`;
+- added constant and periodic value generators;
+- added sine, triangle, sawtooth, and square waveforms;
+- added phase initialization using radians or time offset;
+- added `EnvironmentSimulation` and immutable `EnvironmentState`;
+- added unit tests for simulation timing, generators, waveforms, environment simulation, and host lifecycle.
+
+Current test status:
+
+- 60 tests passed;
+- 0 failed;
+- 0 skipped.
+
+Current stop point:
+
+- simulation foundation is implemented and tested;
+- no simulated HASE instrument or runtime integration exists yet.
