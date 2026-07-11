@@ -105,3 +105,15 @@ Current stop point:
 
 - simulation foundation is implemented and tested;
 - no simulated HASE instrument or runtime integration exists yet.
+
+
+## Current phase
+
+Phase 3: HASE Protocol
+
+ADR-0008 defines the Properties, Commands, and Events interaction model,
+device authority, runtime-cache semantics, and capability-based protocol
+profiles.
+
+Protocol message types, encoding, framing, and implementation have not yet
+been defined.

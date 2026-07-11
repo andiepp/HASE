@@ -178,3 +178,23 @@ Simulated instrument
       |
       v
 HASE runtime
+
+---
+
+## Device authority and runtime synchronization
+
+The runtime model is a synchronized representation of device state.
+
+Property values in the runtime may be current, stale, unknown, or unavailable
+depending on connection and synchronization status.
+
+Property-write operations are requests to the device. The runtime updates its
+authoritative cached representation only after device confirmation or after
+receiving the resulting property value.
+
+Commands are correlated runtime-to-device operations.
+
+Events are transient device-originated notifications and are not stored as
+current property state.
+
+See ADR-0008.

@@ -101,3 +101,16 @@ Status: Current
 - shared environments observed by several instruments;
 - actuators influencing physical simulation state;
 - recording and replay.
+
+## Phase 3: HASE Protocol
+
+- [x] Define protocol interaction model in ADR-0008
+- [ ] Define protocol capability model
+- [ ] Define protocol message model
+- [ ] Define request/response correlation
+- [ ] Define property synchronization semantics
+- [ ] Define command invocation semantics
+- [ ] Define event delivery semantics
+- [ ] Define protocol framing and encoding
+- [ ] Implement protocol model
+- [ ] Implement protocol tests
