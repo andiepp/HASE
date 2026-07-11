@@ -170,3 +170,31 @@ The message model is independent of transport, framing, and serialization.
 
 See ADR-0010.
 
+## Protocol connection lifecycle
+
+The HASE protocol defines a transport-independent connection lifecycle.
+
+Transport connectivity alone does not imply protocol readiness.
+
+A protocol connection progresses through the following states:
+
+- Disconnected
+- Transport Connected
+- Protocol Negotiation
+- Capability Negotiation
+- Descriptor Discovery
+- Initial Synchronization
+- Operational
+- Synchronization Lost
+- Resynchronizing
+
+Only the Operational state guarantees that negotiated protocol mechanisms are
+fully available.
+
+The runtime maintains protocol state independently of transport state.
+
+Following synchronization loss, the runtime performs protocol
+resynchronization. Previously validated information may be reused when
+verification confirms that it remains valid.
+
+See ADR-0011.

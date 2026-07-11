@@ -235,3 +235,26 @@ Protocol failures are represented by unsuccessful Responses.
 Transport failures are handled separately by the transport layer.
 
 See ADR-0010.
+
+## Runtime lifecycle management
+
+Each RuntimeEndpoint maintains a protocol lifecycle independent of the
+underlying transport.
+
+Runtime components shall observe protocol lifecycle changes rather than
+transport events.
+
+Property cache validity depends on the lifecycle state.
+
+During Operational the cache contains the best known authoritative endpoint
+state.
+
+During Synchronization Lost cached values become stale.
+
+During Resynchronizing cached information is validated, refreshed or reused
+before returning to Operational.
+
+Applications should use lifecycle information to determine endpoint
+availability and cache validity.
+
+See ADR-0011.

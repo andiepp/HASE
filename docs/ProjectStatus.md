@@ -133,3 +133,15 @@ The protocol architecture now defines:
 
 Connection lifecycle, framing, serialization and implementation remain to be
 defined.
+
+The protocol architecture now defines:
+
+- interaction semantics;
+- capability negotiation;
+- protocol message categories;
+- protocol connection lifecycle.
+
+The runtime distinguishes transport connectivity from protocol readiness and
+supports deterministic protocol resynchronization after synchronization loss.
+
+Protocol framing, serialization and implementation have not yet been defined.
