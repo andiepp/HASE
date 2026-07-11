@@ -1,5 +1,6 @@
 ﻿using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Runtime.Connections;
 
 namespace Hase.Runtime.Runtime;
 
@@ -29,6 +30,12 @@ public sealed class RuntimeEndpoint : IPropertyValueObserver, IRuntimeNode
 
     public IReadOnlyList<IRuntimeNode> Children =>
         _instruments.Cast<IRuntimeNode>().ToArray();
+
+    private readonly List<IEndpointConnectionStatusObserver>
+    _connectionStatusObservers = [];
+
+    public EndpointConnectionStatus ConnectionStatus { get; private set; } =
+    new(EndpointConnectionState.Disconnected);
 
     public IReadOnlyList<RuntimeInstrument> Instruments => _instruments;
 
@@ -62,6 +69,49 @@ public sealed class RuntimeEndpoint : IPropertyValueObserver, IRuntimeNode
         foreach (var observer in _observers)
         {
             observer.OnPropertyValueChanged(change);
+        }
+    }
+
+    public void SubscribeConnectionStatus(
+    IEndpointConnectionStatusObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        if (!_connectionStatusObservers.Contains(observer))
+        {
+            _connectionStatusObservers.Add(observer);
+        }
+    }
+
+    public void UnsubscribeConnectionStatus(
+        IEndpointConnectionStatusObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        _connectionStatusObservers.Remove(observer);
+    }
+
+    public void UpdateConnectionStatus(
+        EndpointConnectionStatus status)
+    {
+        ArgumentNullException.ThrowIfNull(status);
+
+        if (ConnectionStatus == status)
+        {
+            return;
+        }
+
+        var previousStatus = ConnectionStatus;
+        ConnectionStatus = status;
+
+        var change = new EndpointConnectionStatusChanged(
+            this,
+            previousStatus,
+            status);
+
+        foreach (var observer in _connectionStatusObservers.ToArray())
+        {
+            observer.OnEndpointConnectionStatusChanged(change);
         }
     }
 }
