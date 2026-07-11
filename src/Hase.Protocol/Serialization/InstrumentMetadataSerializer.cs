@@ -3,14 +3,10 @@
 namespace Hase.Protocol.Serialization;
 
 /// <summary>
-/// Serializes and deserializes instrument metadata using the HASE
-/// protocol version 1 binary encoding.
+/// Serializes and deserializes instrument metadata.
 /// </summary>
 internal sealed class InstrumentMetadataSerializer
 {
-    private const byte NullMarker = 0;
-    private const byte ValueMarker = 1;
-
     public void Write(
         BinaryProtocolWriter writer,
         InstrumentMetadata metadata)
@@ -18,12 +14,29 @@ internal sealed class InstrumentMetadataSerializer
         ArgumentNullException.ThrowIfNull(writer);
         ArgumentNullException.ThrowIfNull(metadata);
 
-        WriteOptionalString(writer, metadata.Manufacturer);
-        WriteOptionalString(writer, metadata.Model);
-        WriteOptionalString(writer, metadata.SerialNumber);
-        WriteOptionalString(writer, metadata.FirmwareVersion);
-        WriteOptionalString(writer, metadata.HardwareRevision);
-        WriteOptionalString(writer, metadata.Description);
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.Manufacturer);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.Model);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.SerialNumber);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.FirmwareVersion);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.HardwareRevision);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            metadata.Description);
     }
 
     public InstrumentMetadata Read(
@@ -33,41 +46,23 @@ internal sealed class InstrumentMetadataSerializer
 
         return new InstrumentMetadata
         {
-            Manufacturer = ReadOptionalString(reader),
-            Model = ReadOptionalString(reader),
-            SerialNumber = ReadOptionalString(reader),
-            FirmwareVersion = ReadOptionalString(reader),
-            HardwareRevision = ReadOptionalString(reader),
-            Description = ReadOptionalString(reader)
-        };
-    }
+            Manufacturer =
+                ProtocolSerializationHelper.ReadOptionalString(reader),
 
-    private static void WriteOptionalString(
-        BinaryProtocolWriter writer,
-        string? value)
-    {
-        if (value is null)
-        {
-            writer.WriteByte(NullMarker);
-            return;
-        }
+            Model =
+                ProtocolSerializationHelper.ReadOptionalString(reader),
 
-        writer.WriteByte(ValueMarker);
-        writer.WriteString(value);
-    }
+            SerialNumber =
+                ProtocolSerializationHelper.ReadOptionalString(reader),
 
-    private static string? ReadOptionalString(
-        BinaryProtocolReader reader)
-    {
-        byte marker = reader.ReadByte();
+            FirmwareVersion =
+                ProtocolSerializationHelper.ReadOptionalString(reader),
 
-        return marker switch
-        {
-            NullMarker => null,
-            ValueMarker => reader.ReadString(),
+            HardwareRevision =
+                ProtocolSerializationHelper.ReadOptionalString(reader),
 
-            _ => throw new InvalidDataException(
-                $"Invalid optional-value marker '{marker}'.")
+            Description =
+                ProtocolSerializationHelper.ReadOptionalString(reader)
         };
     }
 }
