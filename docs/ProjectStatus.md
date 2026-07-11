@@ -117,3 +117,10 @@ profiles.
 
 Protocol message types, encoding, framing, and implementation have not yet
 been defined.
+
+ADR-0009 defines the protocol capability model, including connection-scoped
+negotiation, the distinction between capabilities and descriptor metadata,
+capability dependencies, and the minimal negotiation baseline.
+
+Concrete capability identifiers, negotiation messages, framing, and encoding
+have not yet been defined or implemented.

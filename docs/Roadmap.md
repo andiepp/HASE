@@ -114,3 +114,10 @@ Status: Current
 - [ ] Define protocol framing and encoding
 - [ ] Implement protocol model
 - [ ] Implement protocol tests
+
+ADR-0009 defines the protocol capability model, including connection-scoped
+negotiation, the distinction between capabilities and descriptor metadata,
+capability dependencies, and the minimal negotiation baseline.
+
+Concrete capability identifiers, negotiation messages, framing, and encoding
+have not yet been defined or implemented.

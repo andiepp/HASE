@@ -198,3 +198,24 @@ Events are transient device-originated notifications and are not stored as
 current property state.
 
 See ADR-0008.
+
+
+## Negotiated connection capabilities
+
+Each runtime connection has an effective capability set established during
+protocol negotiation.
+
+The capability set is connection-scoped and must be recreated after
+reconnection.
+
+Runtime components must not infer support from the endpoint type alone.
+Availability of an operation depends on:
+
+1. the negotiated protocol capabilities;
+2. the endpoint descriptor;
+3. the current connection and endpoint state.
+
+Capabilities describe protocol mechanisms. They do not replace descriptor
+metadata.
+
+See ADR-0009.
