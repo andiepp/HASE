@@ -777,40 +777,94 @@ frames or raw transport data.
 Add the following component section between Protocol Context and Transport, or
 place it where it best matches the existing component order:
 
-## Serializer
+# Serializer
 
-### Responsibility
+## Responsibility
 
-The Serializer converts one protocol message into one serialized message and
-reconstructs one protocol message from one serialized message.
+The Serializer is responsible for transforming between semantic Protocol
+Messages and their canonical serialized representation.
 
-### Owns
+The Serializer applies the negotiated Encoding Profile to convert between the
+canonical Serialization Model and the encoded Serialized Message exchanged
+with the Framer.
+
+The Serializer owns protocol representation.
+
+It does not own protocol semantics, framing, or transport communication.
+
+## Owns
 
 The Serializer owns:
 
-* protocol-message encoding;
-* protocol-message decoding;
-* serialized field representation;
-* serialization-version handling;
+* transformation between Protocol Messages and the Serialization Model;
+* application of the negotiated Encoding Profile;
+* protocol message encoding;
+* protocol message decoding;
 * serialization-format validation;
+* serialization-version handling;
 * reporting serialization failures.
 
-### Does not own
+## Does not own
 
 The Serializer does not own:
 
 * transport communication;
+* transport buffering;
+* frame construction;
 * frame boundary detection;
-* endpoint identity;
 * protocol lifecycle;
+* endpoint identity;
 * request correlation;
-* Runtime Cache updates.
+* Runtime Cache updates;
+* application-visible runtime state.
 
-### Dependencies
+## Dependencies
 
 The Serializer operates between the Protocol Context and the Framer.
 
-The concrete serialization formats are defined by ADR-0015.
+It exchanges semantic Protocol Messages with the Protocol Context.
+
+It exchanges encoded Serialized Messages with the Framer.
+
+The Serializer is independent of transport implementation.
+
+The selected Encoding Profile is established during protocol capability
+negotiation before normal protocol communication begins.
+
+## Lifetime
+
+The Serializer exists for the lifetime of a protocol connection.
+
+A Serializer instance may be recreated during reconnect or renegotiation,
+provided the externally visible protocol behavior remains unchanged.
+
+If a different Encoding Profile is negotiated after reconnect, the Serializer
+shall apply the newly negotiated profile while preserving the canonical
+Serialization Model.
+
+## Architectural relationship
+
+The Serializer operates on the following conceptual layers:
+
+```text
+Protocol Message
+        │
+        ▼
+Serialization Model
+        │
+        ▼
+Encoding Profile
+        │
+        ▼
+Serialized Message
+```
+
+The Serializer is the architectural bridge between protocol semantics and
+their encoded representation.
+
+Changes to an Encoding Profile shall not alter the semantic meaning of a
+Protocol Message.
+
 
 ## Framer
 

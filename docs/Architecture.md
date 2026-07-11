@@ -358,3 +358,123 @@ See:
 * ADR-0014 – Protocol Framing and Transport Mapping
 
 
+## Serialization model and encoding profiles
+
+HASE distinguishes between the semantic meaning of a protocol message, its
+canonical serialized structure, and its encoded representation.
+
+The serialization architecture consists of three independent layers:
+
+```text
+Protocol Message
+        │
+        ▼
+Serialization Model
+        │
+        ▼
+Encoding Profile
+```
+
+Each layer has a distinct responsibility.
+
+### Protocol Message
+
+A Protocol Message represents the semantic meaning of an interaction between
+two HASE peers.
+
+Examples include Property Requests, Command Responses, Event Notifications,
+Property Change Notifications, and Stream messages.
+
+Protocol Messages are independent of binary layouts, JSON structures, field
+identifiers, transport mechanisms, and framing.
+
+### Serialization Model
+
+The Serialization Model defines the canonical structural representation of a
+Protocol Message.
+
+It specifies:
+
+* required and optional fields;
+* field semantics;
+* field data types;
+* validation rules;
+* default-value behavior;
+* compatibility and schema-evolution rules.
+
+The Serialization Model is independent of any concrete encoding.
+
+### Encoding Profile
+
+An Encoding Profile defines how the canonical Serialization Model is
+represented.
+
+Encoding Profiles may differ in representation while preserving identical
+protocol semantics.
+
+The initial HASE Encoding Profiles are:
+
+* Compact Binary
+* JSON
+
+Future Encoding Profiles may be introduced without changing the semantic
+Protocol Message model.
+
+### Capability negotiation
+
+Supported Encoding Profiles are negotiated using the capability negotiation
+mechanism defined by ADR-0009.
+
+Both peers advertise the Encoding Profiles they support.
+
+The active Encoding Profile is selected from the mutually supported profiles
+before ordinary protocol communication begins.
+
+### Equivalent semantics
+
+All Encoding Profiles represent the same canonical Serialization Model.
+
+A Protocol Message encoded using Compact Binary and the same Protocol Message
+encoded using JSON shall produce identical semantic behavior after decoding.
+
+Encoding Profiles differ only in representation.
+
+They must not redefine protocol semantics, protocol lifecycle, Endpoint
+Session behavior, correlation rules, or the meaning of Properties, Commands,
+Events, or Streams.
+
+### Architectural relationship
+
+The complete communication architecture is therefore:
+
+```text
+Protocol Message
+        │
+        ▼
+Serialization Model
+        │
+        ▼
+Encoding Profile
+        │
+        ▼
+Serialized Message
+        │
+        ▼
+Framer
+        │
+        ▼
+Frame
+        │
+        ▼
+Transport
+```
+
+This separation allows protocol semantics, serialization, framing, and
+transport communication to evolve independently while preserving one common
+HASE protocol.
+
+See:
+
+* ADR-0010 – Protocol Message Model
+* ADR-0014 – Protocol Framing and Transport Mapping
+* ADR-0015 – Serialization Model and Encoding Profiles

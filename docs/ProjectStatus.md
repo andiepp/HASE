@@ -262,3 +262,41 @@ framers, protocol contexts, endpoint sessions, transports, and integration
 with the existing runtime and simulation infrastructure while following the
 architectural boundaries established during Phase 3.
 
+## Phase 3 Completion
+
+Phase 3 has completed the architectural design of the HASE protocol.
+
+The protocol architecture is now defined by the following Architecture
+Decision Records:
+
+* ADR-0008 – Protocol interaction model
+* ADR-0009 – Protocol capability model
+* ADR-0010 – Protocol message model
+* ADR-0011 – Protocol connection lifecycle
+* ADR-0012 – Endpoint Session model
+* ADR-0013 – Protocol Context
+* ADR-0014 – Protocol framing and transport mapping
+* ADR-0015 – Serialization Model and Encoding Profiles
+
+The Runtime Component Model complements these decisions by defining the
+architectural ownership boundaries between the runtime components.
+
+The protocol architecture now separates:
+
+* protocol semantics;
+* protocol execution;
+* endpoint identity;
+* canonical serialization;
+* encoding profiles;
+* framing;
+* transport communication.
+
+The device remains authoritative.
+
+The runtime maintains a synchronized cache that is scoped to one verified
+Endpoint Session.
+
+No protocol implementation has been created yet.
+
+Phase 4 will begin with implementation of the new `Hase.Protocol` project,
+following the architecture established during Phase 3.

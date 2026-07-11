@@ -595,6 +595,165 @@ Together, these documents define both the structural and behavioral
 architecture of the HASE runtime.
 
 
+## Serialization and encoding behavior
+
+Protocol execution is independent of the concrete representation used on the
+communication channel.
+
+The runtime therefore separates semantic protocol processing from message
+representation.
+
+### Outbound processing
+
+When the runtime transmits a protocol operation, processing follows this
+sequence:
+
+```text
+Runtime Model
+        │
+        ▼
+Protocol Context
+        │
+        ▼
+Protocol Message
+        │
+        ▼
+Serializer
+        │
+        ▼
+Serialization Model
+        │
+        ▼
+Encoding Profile
+        │
+        ▼
+Serialized Message
+        │
+        ▼
+Framer
+        │
+        ▼
+Transport
+```
+
+The Protocol Context creates semantic Protocol Messages.
+
+The Serializer transforms those messages into the canonical Serialization
+Model and applies the negotiated Encoding Profile.
+
+The Framer encapsulates the encoded Serialized Message into one HASE frame.
+
+The Transport delivers the framed data.
+
+### Inbound processing
+
+Incoming communication follows the reverse sequence:
+
+```text
+Transport
+        │
+        ▼
+Framer
+        │
+        ▼
+Serialized Message
+        │
+        ▼
+Encoding Profile
+        │
+        ▼
+Serialization Model
+        │
+        ▼
+Serializer
+        │
+        ▼
+Protocol Message
+        │
+        ▼
+Protocol Context
+        │
+        ▼
+Endpoint Session
+        │
+        ▼
+Runtime Model
+```
+
+The Transport supplies communication data.
+
+The Framer reconstructs one complete HASE frame.
+
+The Serializer applies the negotiated Encoding Profile and reconstructs the
+canonical Serialization Model before producing one semantic Protocol Message.
+
+Only semantic Protocol Messages are processed by the Protocol Context.
+
+### Encoding Profile selection
+
+The active Encoding Profile is established during capability negotiation.
+
+Exactly one Encoding Profile is active for a protocol connection unless a
+future protocol extension explicitly defines otherwise.
+
+The selected profile determines only the encoded representation.
+
+It does not change protocol semantics.
+
+Changing from one Encoding Profile to another shall not change the observable
+behavior of a valid Protocol Message.
+
+### Serialization failures
+
+Serialization failures occur before protocol execution.
+
+Typical causes include:
+
+* malformed encoded data;
+* unsupported Encoding Profile version;
+* invalid field representation;
+* missing required fields;
+* unsupported mandatory fields;
+* values outside the permitted canonical range.
+
+Serialization failures prevent construction of a valid Protocol Message.
+
+Consequently, they are not represented as protocol Responses.
+
+Instead, they are handled by the runtime as communication failures and may
+trigger protocol recovery according to the lifecycle defined in ADR-0011.
+
+### Behavioral separation
+
+The runtime intentionally separates:
+
+* protocol semantics;
+* canonical message structure;
+* encoded representation;
+* framing;
+* transport communication.
+
+This separation allows:
+
+* multiple Encoding Profiles to represent identical protocol semantics;
+* transport-independent protocol execution;
+* independent evolution of serialization and framing;
+* efficient binary communication for constrained devices;
+* human-readable communication for diagnostics and tooling.
+
+Applications interact only with the Runtime Model.
+
+They remain independent of the Encoding Profile selected for a connection.
+
+### Relationship to the architecture
+
+The responsibilities of the Serializer are defined in
+`RuntimeComponentModel.md`.
+
+The protocol representation rules are defined by ADR-0015.
+
+This document describes how serialization participates in the runtime
+behavior during normal communication, recovery, and reconnect.
 
 
 

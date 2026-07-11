@@ -102,54 +102,6 @@ Status: Current
 - actuators influencing physical simulation state;
 - recording and replay.
 
-## Phase 3: HASE Protocol
-
-- [x] Define protocol interaction model in ADR-0008
-- [ ] Define protocol capability model
-- [ ] Define protocol message model
-- [ ] Define request/response correlation
-- [ ] Define property synchronization semantics
-- [ ] Define command invocation semantics
-- [ ] Define event delivery semantics
-- [ ] Define protocol framing and encoding
-- [ ] Implement protocol model
-- [ ] Implement protocol tests
-
-ADR-0009 defines the protocol capability model, including connection-scoped
-negotiation, the distinction between capabilities and descriptor metadata,
-capability dependencies, and the minimal negotiation baseline.
-
-Concrete capability identifiers, negotiation messages, framing, and encoding
-have not yet been defined or implemented.
-
-- [x] Define protocol interaction model (ADR-0008)
-- [x] Define protocol capability model (ADR-0009)
-- [x] Define protocol message model (ADR-0010)
-- [ ] Define protocol connection lifecycle
-- [ ] Define framing
-- [ ] Define serialization
-- [ ] Implement protocol model
-
-## Phase 3 – HASE Protocol
-
-ADR-0008 – Protocol interaction model
-
-ADR-0009 – Protocol capability model
-
-ADR-0010 – Protocol message model
-
-ADR-0011 – Protocol connection lifecycle
-
-ADR-0012 – Endpoint Session model
-
-ADR-0013 – Protocol framing and transport mapping
-
-ADR-0014 – Protocol serialization
-
-Protocol implementation
-
-Transport implementations
-
 
 ## Phase 3 – HASE Protocol
 
@@ -162,24 +114,23 @@ Transport implementations
 * [x] ADR-0012 – Endpoint Session model
 * [x] ADR-0013 – Protocol Context
 * [x] ADR-0014 – Protocol framing and transport mapping
+* [x] ADR-0015 – Serialization Model and Encoding Profiles
 * [x] Runtime Component Model
-
-### Remaining architecture
-
-* [ ] ADR-0015 – Protocol serialization
 
 ### Protocol implementation
 
 * [ ] Create `Hase.Protocol`
+* [ ] Define protocol interfaces
 * [ ] Implement protocol message model
-* [ ] Implement serializer abstraction
-* [ ] Implement framing abstraction
+* [ ] Implement serializer
+* [ ] Implement encoding profiles
+* [ ] Implement framer
 * [ ] Implement protocol context
-* [ ] Implement endpoint session integration
+* [ ] Integrate Endpoint Session
 * [ ] Implement protocol lifecycle
-* [ ] Implement protocol tests
 * [ ] Implement loopback transport
-* [ ] Integrate protocol with simulation
+* [ ] Integrate with simulation
+* [ ] Create protocol test suite
 
 ### Transport implementations
 
@@ -187,17 +138,14 @@ Transport implementations
 * [ ] TCP transport
 * [ ] BLE transport
 * [ ] MQTT transport
-* [ ] Simulation transport
 * [ ] Gateway transport
 
 ### Future work
 
 * [ ] Firmware update
 * [ ] Security and authentication
-* [ ] Gateway routing
 * [ ] Discovery protocols
-* [ ] Additional serialization formats
+* [ ] Gateway routing
+* [ ] Additional encoding profiles
 * [ ] Additional transport profiles
-
-
 
