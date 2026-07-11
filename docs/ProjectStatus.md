@@ -124,3 +124,12 @@ capability dependencies, and the minimal negotiation baseline.
 
 Concrete capability identifiers, negotiation messages, framing, and encoding
 have not yet been defined or implemented.
+
+The protocol architecture now defines:
+
+- interaction semantics;
+- capability negotiation;
+- transport-independent protocol messages.
+
+Connection lifecycle, framing, serialization and implementation remain to be
+defined.

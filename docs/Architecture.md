@@ -148,3 +148,25 @@ descriptors, transports, and protocols.
 Simulated instruments adapt physical simulation state to the normal HASE runtime model. 
 Applications should therefore interact with physical and simulated instruments 
 through the same interfaces.
+
+## Protocol message model
+
+Protocol communication consists of immutable protocol messages.
+
+The protocol defines four semantic message categories:
+
+- Request
+- Response
+- Notification
+- Stream
+
+Responses complete Requests.
+
+Notifications are asynchronous.
+
+Streams represent large or sequential data transfers.
+
+The message model is independent of transport, framing, and serialization.
+
+See ADR-0010.
+

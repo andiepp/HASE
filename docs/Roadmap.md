@@ -121,3 +121,11 @@ capability dependencies, and the minimal negotiation baseline.
 
 Concrete capability identifiers, negotiation messages, framing, and encoding
 have not yet been defined or implemented.
+
+- [x] Define protocol interaction model (ADR-0008)
+- [x] Define protocol capability model (ADR-0009)
+- [x] Define protocol message model (ADR-0010)
+- [ ] Define protocol connection lifecycle
+- [ ] Define framing
+- [ ] Define serialization
+- [ ] Implement protocol model

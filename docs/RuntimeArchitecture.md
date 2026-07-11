@@ -219,3 +219,19 @@ Capabilities describe protocol mechanisms. They do not replace descriptor
 metadata.
 
 See ADR-0009.
+
+## Runtime message exchange
+
+Runtime components exchange protocol messages rather than transport packets.
+
+Transport adapters convert protocol messages into transport-specific frames
+and reconstruct protocol messages from received frames.
+
+The runtime core therefore remains independent of UART, TCP, BLE, MQTT, or
+other transports.
+
+Protocol failures are represented by unsuccessful Responses.
+
+Transport failures are handled separately by the transport layer.
+
+See ADR-0010.
