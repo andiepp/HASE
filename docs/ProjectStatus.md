@@ -204,3 +204,61 @@ The Protocol Context is independent of:
 * application logic.
 
 Concrete protocol classes and interfaces have not yet been implemented.
+
+## Phase 3 Status
+
+The architectural design of the HASE protocol is now largely complete.
+
+The following protocol architecture decisions have been documented and
+accepted:
+
+* ADR-0008 – Protocol interaction model
+* ADR-0009 – Protocol capability model
+* ADR-0010 – Protocol message model
+* ADR-0011 – Protocol connection lifecycle
+* ADR-0012 – Endpoint Session model
+* ADR-0013 – Protocol Context
+* ADR-0014 – Protocol framing and transport mapping
+
+The runtime architecture now distinguishes the following responsibility
+layers:
+
+* Transport
+* Framer
+* Serializer
+* Protocol Context
+* Endpoint Session
+* Runtime Endpoint
+* Runtime Instrument
+* Runtime Property
+* Runtime Command
+* Runtime Event
+* Runtime Cache
+
+The Runtime Component Model documents the ownership boundaries between these
+architectural components.
+
+The protocol architecture now separates:
+
+* protocol semantics;
+* protocol execution;
+* serialization;
+* framing;
+* transport communication.
+
+The device remains authoritative.
+
+The runtime maintains a synchronized cache that is scoped to one verified
+Endpoint Session.
+
+Only one protocol architecture decision remains before implementation begins:
+
+* ADR-0015 – Protocol Serialization
+
+After ADR-0015, implementation of the `Hase.Protocol` project can begin.
+
+The implementation phase will introduce protocol messages, serializers,
+framers, protocol contexts, endpoint sessions, transports, and integration
+with the existing runtime and simulation infrastructure while following the
+architectural boundaries established during Phase 3.
+

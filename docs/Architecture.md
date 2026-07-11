@@ -278,4 +278,83 @@ Session.
 See ADR-0013 and `RuntimeComponentModel.md`.
 
 
+## Protocol framing and transport mapping
+
+The HASE protocol separates protocol semantics from transport mechanics.
+
+Communication passes through distinct architectural layers:
+
+```text
+Protocol Context
+        │
+        ▼
+Protocol Message
+        │
+        ▼
+Serializer
+        │
+        ▼
+Serialized Message
+        │
+        ▼
+Framer
+        │
+        ▼
+Frame
+        │
+        ▼
+Transport
+```
+
+Each architectural layer has exactly one primary responsibility.
+
+The Protocol Context operates exclusively on protocol messages and is
+independent of transport communication.
+
+The Serializer converts protocol messages into serialized representations and
+reconstructs protocol messages from serialized representations.
+
+The Framer defines the boundaries of serialized messages while they are
+transported.
+
+The Transport moves framed data between communication peers without
+interpreting protocol semantics.
+
+Each HASE frame contains exactly one complete serialized protocol message.
+
+A serialized protocol message shall not span multiple HASE frames.
+
+Large or sequential transfers are represented through protocol Streams.
+
+Each Stream message is serialized and framed independently using the same
+message pipeline as every other protocol message.
+
+Transport implementations may internally divide one HASE frame into multiple
+native transport units.
+
+Such segmentation remains entirely below the HASE framing layer.
+
+The Framer reconstructs the complete HASE frame before deserialization
+begins.
+
+Neither the Serializer nor the Protocol Context observes transport fragments.
+
+Framing and serialization are intentionally independent architectural
+concepts.
+
+A future serialization format may be introduced without changing framing.
+
+Likewise, a new framing mechanism may be introduced without changing protocol
+messages or serialization.
+
+This separation allows HASE to support stream-oriented, packet-oriented,
+message-oriented, simulated, and future transports while preserving one
+common protocol architecture.
+
+See:
+
+* ADR-0010 – Protocol Message Model
+* ADR-0013 – Protocol Context
+* ADR-0014 – Protocol Framing and Transport Mapping
+
 

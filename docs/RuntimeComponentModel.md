@@ -751,3 +751,316 @@ Protocol Context, Endpoint Session, and runtime models.
 * ADR-0011 defines protocol lifecycle.
 * ADR-0012 defines Endpoint Sessions.
 * ADR-0013 defines the Protocol Context.
+
+# RuntimeComponentModel.md
+
+Update the Protocol Context section so that framing state is not described as
+an owned Protocol Context responsibility.
+
+Replace any statement equivalent to:
+
+```text
+The Protocol Context owns framing state.
+```
+
+with:
+
+```text
+The Protocol Context owns protocol execution above the serialization and
+framing boundary.
+
+Framing state belongs to transport infrastructure below the Protocol Context.
+The Protocol Context may observe framing failures but does not process partial
+frames or raw transport data.
+```
+
+Add the following component section between Protocol Context and Transport, or
+place it where it best matches the existing component order:
+
+## Serializer
+
+### Responsibility
+
+The Serializer converts one protocol message into one serialized message and
+reconstructs one protocol message from one serialized message.
+
+### Owns
+
+The Serializer owns:
+
+* protocol-message encoding;
+* protocol-message decoding;
+* serialized field representation;
+* serialization-version handling;
+* serialization-format validation;
+* reporting serialization failures.
+
+### Does not own
+
+The Serializer does not own:
+
+* transport communication;
+* frame boundary detection;
+* endpoint identity;
+* protocol lifecycle;
+* request correlation;
+* Runtime Cache updates.
+
+### Dependencies
+
+The Serializer operates between the Protocol Context and the Framer.
+
+The concrete serialization formats are defined by ADR-0015.
+
+## Framer
+
+### Responsibility
+
+The Framer maps one serialized protocol message to one HASE frame and
+reconstructs complete frames from transport data.
+
+### Owns
+
+The Framer owns:
+
+* frame boundary detection;
+* frame-length validation;
+* frame-size enforcement;
+* framing buffers;
+* framing integrity validation where required;
+* reconstruction of complete frames;
+* framing-error reporting;
+* framing synchronization and recovery according to the selected framing
+  profile.
+
+### Does not own
+
+The Framer does not own:
+
+* protocol-message semantics;
+* endpoint identity;
+* request correlation;
+* Property synchronization;
+* Command execution;
+* Event interpretation;
+* semantic Stream state.
+
+### Frame invariant
+
+Each frame contains exactly one complete serialized protocol message.
+
+Transport-level segmentation may divide a frame into smaller native transport
+units, but the Framer must reconstruct the complete frame before passing the
+serialized message to the Serializer.
+
+### Dependencies
+
+The Framer operates between the Serializer and the Transport.
+
+Update the ownership summary with:
+
+| Concern                                  | Architectural owner |
+| ---------------------------------------- | ------------------- |
+| Protocol-message encoding and decoding   | Serializer          |
+| Frame boundaries and frame validation    | Framer              |
+| Transport segmentation and communication | Transport           |
+
+Update the dependency rules with:
+
+* Protocol Context must not depend on raw transport data or partial frames.
+* Serializer must not depend on transport-specific addressing or connection
+  state.
+* Framer must not interpret protocol-message semantics.
+* Transport fragments must be reassembled before deserialization.
+* Each frame must contain exactly one serialized protocol message.
+
+# RuntimeArchitecture.md
+
+Add the following section:
+
+## Framing and serialization boundary
+
+The runtime protocol layer operates on complete protocol messages.
+
+Raw transport data is processed below the Protocol Context through framing and
+serialization infrastructure.
+
+On receive:
+
+1. the Transport supplies transport data;
+2. the Framer reconstructs one complete HASE frame;
+3. the Serializer reconstructs one protocol message;
+4. the Protocol Context processes the protocol message;
+5. the Endpoint Session and runtime model validate and apply endpoint-specific
+   results.
+
+On send, the sequence is reversed.
+
+Partial frames, frame delimiters, transport packets, and transport-level
+segments are not exposed to the Protocol Context.
+
+Framing, serialization, transport, and protocol failures remain distinct so
+that lifecycle and recovery logic can respond appropriately.
+
+See ADR-0014 and `RuntimeComponentModel.md`.
+
+
+# Serializer
+
+## Responsibility
+
+The Serializer converts protocol messages into serialized representations and
+reconstructs protocol messages from serialized representations.
+
+The Serializer defines how protocol information is represented.
+
+It does not define how serialized data is transported.
+
+## Owns
+
+The Serializer owns:
+
+* protocol message encoding;
+* protocol message decoding;
+* serialization format interpretation;
+* serialization version handling;
+* serialized field representation;
+* validation of serialized content;
+* reporting serialization failures.
+
+## Does not own
+
+The Serializer does not own:
+
+* transport communication;
+* transport buffering;
+* frame boundary detection;
+* endpoint identity;
+* protocol lifecycle;
+* request correlation;
+* synchronization;
+* Runtime Cache updates.
+
+## Dependencies
+
+The Serializer operates between the Protocol Context and the Framer.
+
+It exchanges complete protocol messages with the Protocol Context.
+
+It exchanges complete serialized messages with the Framer.
+
+The Serializer never processes partial frames or raw transport fragments.
+
+## Lifetime
+
+The Serializer exists for the lifetime of protocol communication.
+
+An implementation may recreate Serializer instances without affecting protocol
+semantics, provided serialization compatibility is preserved.
+
+---
+
+# Framer
+
+## Responsibility
+
+The Framer maps one serialized protocol message to one HASE frame.
+
+On reception it reconstructs complete frames from transport data before
+passing serialized messages to the Serializer.
+
+The Framer owns message boundaries.
+
+## Owns
+
+The Framer owns:
+
+* frame boundary detection;
+* frame construction;
+* frame reconstruction;
+* framing buffers;
+* frame-size enforcement;
+* frame validation;
+* framing synchronization;
+* framing recovery;
+* framing error reporting.
+
+## Does not own
+
+The Framer does not own:
+
+* protocol message semantics;
+* endpoint identity;
+* request correlation;
+* protocol lifecycle;
+* Property synchronization;
+* Command execution;
+* Event interpretation;
+* semantic Stream processing.
+
+## Frame invariant
+
+Every HASE frame contains exactly one complete serialized protocol message.
+
+Transport implementations may divide a frame into multiple native transport
+units.
+
+The Framer reconstructs the complete frame before passing the serialized
+message to the Serializer.
+
+Neither the Serializer nor the Protocol Context observes partial frames.
+
+## Dependencies
+
+The Framer operates between the Serializer and the Transport.
+
+The Framer depends on transport communication.
+
+The Serializer depends on the Framer.
+
+The Protocol Context depends only on the Serializer.
+
+## Lifetime
+
+The Framer exists while framed communication is active.
+
+An implementation may maintain internal receive buffers, synchronization
+state, and temporary reconstruction state without exposing those details to
+higher architectural layers.
+
+---
+
+# Updated communication pipeline
+
+The communication pipeline is now:
+
+```text
+Application
+        │
+        ▼
+Runtime Endpoint
+        │
+        ▼
+Endpoint Session
+        │
+        ▼
+Protocol Context
+        │
+        ▼
+Serializer
+        │
+        ▼
+Framer
+        │
+        ▼
+Transport
+```
+
+Each layer owns exactly one primary architectural responsibility.
+
+Higher layers remain independent of lower-layer implementation details.
+
+No layer bypasses the responsibilities of the layers beneath it.
+
+
+

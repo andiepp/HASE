@@ -388,5 +388,213 @@ transport, protocol, identity, cache, and application behavior simultaneously.
 See ADR-0013 and `RuntimeComponentModel.md`.
 
 
+## Framing and serialization boundary
+
+The runtime protocol layer operates on complete protocol messages.
+
+Raw transport data is processed below the Protocol Context through framing and
+serialization infrastructure.
+
+On receive:
+
+the Transport supplies transport data;
+the Framer reconstructs one complete HASE frame;
+the Serializer reconstructs one protocol message;
+the Protocol Context processes the protocol message;
+the Endpoint Session and runtime model validate and apply endpoint-specific
+results.
+
+On send, the sequence is reversed.
+
+Partial frames, frame delimiters, transport packets, and transport-level
+segments are not exposed to the Protocol Context.
+
+Framing, serialization, transport, and protocol failures remain distinct so
+that lifecycle and recovery logic can respond appropriately.
+
+See ADR-0014 and RuntimeComponentModel.md.
+
+## Framing and serialization pipeline
+
+The runtime processes protocol communication through a layered pipeline.
+
+On transmission, the processing sequence is:
+
+```text
+Runtime Model
+        │
+        ▼
+Protocol Context
+        │
+        ▼
+Protocol Message
+        │
+        ▼
+Serializer
+        │
+        ▼
+Serialized Message
+        │
+        ▼
+Framer
+        │
+        ▼
+Frame
+        │
+        ▼
+Transport
+```
+
+On reception, the sequence is reversed:
+
+```text
+Transport
+        │
+        ▼
+Framer
+        │
+        ▼
+Complete Frame
+        │
+        ▼
+Serializer
+        │
+        ▼
+Protocol Message
+        │
+        ▼
+Protocol Context
+        │
+        ▼
+Endpoint Session
+        │
+        ▼
+Runtime Model
+```
+
+The Protocol Context never processes raw transport bytes.
+
+Likewise, the Runtime Model never processes protocol messages directly.
+
+Each architectural layer receives only the abstraction provided by the layer
+below it.
+
+### Reception
+
+Incoming transport data may arrive in arbitrary fragments.
+
+Examples include:
+
+* multiple transport reads for one HASE frame;
+* several HASE frames received during one transport read;
+* delayed transport data;
+* transport-specific segmentation.
+
+These transport details are resolved entirely within the framing layer.
+
+Only after one complete HASE frame has been reconstructed is the serialized
+message passed to the Serializer.
+
+The Serializer reconstructs exactly one protocol message before forwarding it
+to the Protocol Context.
+
+The Protocol Context validates the message against the current protocol
+lifecycle and active Endpoint Session.
+
+Only after successful protocol validation may endpoint-specific state be
+applied to the Runtime Model.
+
+### Transmission
+
+When the Runtime Model initiates an operation, the Protocol Context constructs
+the corresponding protocol message.
+
+The Serializer converts that message into its serialized representation.
+
+The Framer encapsulates the serialized representation into one HASE frame.
+
+The Transport is responsible for delivering the framed data to the peer.
+
+Transport-specific buffering, segmentation, and retransmission remain below
+the framing boundary.
+
+### Error handling
+
+Each layer reports only the failures that belong to its own responsibility.
+
+Typical examples include:
+
+**Transport**
+
+* communication failure;
+* disconnection;
+* write failure;
+* native transport errors.
+
+**Framer**
+
+* malformed frame;
+* invalid frame length;
+* oversized frame;
+* framing synchronization failure.
+
+**Serializer**
+
+* malformed serialized representation;
+* unsupported serialization version;
+* invalid encoded value.
+
+**Protocol Context**
+
+* timeout;
+* unsupported protocol operation;
+* capability mismatch;
+* correlation failure;
+* protocol lifecycle transition.
+
+**Runtime Model**
+
+* unavailable endpoint;
+* stale Property values;
+* rejected application operation.
+
+Failures propagate upward only after they have been translated into the
+appropriate architectural abstraction.
+
+This separation allows each layer to evolve independently while maintaining a
+clear ownership boundary.
+
+### Recovery
+
+Recovery follows the protocol lifecycle defined in ADR-0011.
+
+Transport recovery begins with restoration of communication.
+
+Framing recovery restores valid frame boundaries.
+
+Serialization resumes after a complete frame has been reconstructed.
+
+The Protocol Context performs protocol recovery, capability validation,
+descriptor validation, and resynchronization.
+
+The Endpoint Session validates endpoint identity before allowing cached
+runtime state to become authoritative again.
+
+Only after successful recovery does the runtime return to the Operational
+state.
+
+### Relationship to the component model
+
+The responsibilities of the individual runtime components are defined in
+`RuntimeComponentModel.md`.
+
+This document describes how those components cooperate during normal
+operation, error handling, and recovery.
+
+Together, these documents define both the structural and behavioral
+architecture of the HASE runtime.
+
+
+
 
 

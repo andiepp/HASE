@@ -150,7 +150,10 @@ Protocol implementation
 
 Transport implementations
 
+
 ## Phase 3 – HASE Protocol
+
+### Completed architecture
 
 * [x] ADR-0008 – Protocol interaction model
 * [x] ADR-0009 – Protocol capability model
@@ -158,10 +161,43 @@ Transport implementations
 * [x] ADR-0011 – Protocol connection lifecycle
 * [x] ADR-0012 – Endpoint Session model
 * [x] ADR-0013 – Protocol Context
-* [x] Document the Runtime Component Model
-* [ ] ADR-0014 – Protocol framing and transport mapping
+* [x] ADR-0014 – Protocol framing and transport mapping
+* [x] Runtime Component Model
+
+### Remaining architecture
+
 * [ ] ADR-0015 – Protocol serialization
-* [ ] Protocol implementation
-* [ ] Transport implementations
+
+### Protocol implementation
+
+* [ ] Create `Hase.Protocol`
+* [ ] Implement protocol message model
+* [ ] Implement serializer abstraction
+* [ ] Implement framing abstraction
+* [ ] Implement protocol context
+* [ ] Implement endpoint session integration
+* [ ] Implement protocol lifecycle
+* [ ] Implement protocol tests
+* [ ] Implement loopback transport
+* [ ] Integrate protocol with simulation
+
+### Transport implementations
+
+* [ ] Serial transport
+* [ ] TCP transport
+* [ ] BLE transport
+* [ ] MQTT transport
+* [ ] Simulation transport
+* [ ] Gateway transport
+
+### Future work
+
+* [ ] Firmware update
+* [ ] Security and authentication
+* [ ] Gateway routing
+* [ ] Discovery protocols
+* [ ] Additional serialization formats
+* [ ] Additional transport profiles
+
 
 
