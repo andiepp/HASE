@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using Hase.Core.Domain.Identity;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -84,6 +85,22 @@ internal sealed class BinaryProtocolWriter
 
         _buffer.Advance(bytesWritten);
     }
+
+    public void WriteId(HaseId id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        WriteString(id.Value);
+    }
+
+    public void WriteId(EndpointId id)
+    => WriteId((HaseId)id);
+
+    public void WriteId(InstrumentId id)
+        => WriteId((HaseId)id);
+
+    public void WriteId(PropertyId id)
+        => WriteId((HaseId)id);
 
     /// <summary>
     /// Returns a copy of all bytes written so far.

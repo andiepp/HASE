@@ -1,4 +1,5 @@
-﻿using System.Buffers.Binary;
+﻿using Hase.Core.Domain.Identity;
+using System.Buffers.Binary;
 using System.Text;
 
 namespace Hase.Protocol;
