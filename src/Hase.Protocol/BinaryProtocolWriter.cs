@@ -1,5 +1,4 @@
-﻿using Hase.Core.Domain.Identity;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -27,13 +26,29 @@ internal sealed class BinaryProtocolWriter
     /// </summary>
     public void WriteUInt16(ushort value)
     {
-        Span<byte> destination = _buffer.GetSpan(sizeof(ushort));
+        Span<byte> destination =
+            _buffer.GetSpan(sizeof(ushort));
 
         BinaryPrimitives.WriteUInt16LittleEndian(
             destination,
             value);
 
         _buffer.Advance(sizeof(ushort));
+    }
+
+    /// <summary>
+    /// Writes an IEEE 754 binary64 value in little-endian byte order.
+    /// </summary>
+    public void WriteDouble(double value)
+    {
+        Span<byte> destination =
+            _buffer.GetSpan(sizeof(double));
+
+        BinaryPrimitives.WriteDoubleLittleEndian(
+            destination,
+            value);
+
+        _buffer.Advance(sizeof(double));
     }
 
     /// <summary>
@@ -60,7 +75,8 @@ internal sealed class BinaryProtocolWriter
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        int byteCount = Encoding.UTF8.GetByteCount(value);
+        int byteCount =
+            Encoding.UTF8.GetByteCount(value);
 
         if (byteCount > ushort.MaxValue)
         {
@@ -77,30 +93,16 @@ internal sealed class BinaryProtocolWriter
             return;
         }
 
-        Span<byte> destination = _buffer.GetSpan(byteCount);
+        Span<byte> destination =
+            _buffer.GetSpan(byteCount);
 
-        int bytesWritten = Encoding.UTF8.GetBytes(
-            value,
-            destination);
+        int bytesWritten =
+            Encoding.UTF8.GetBytes(
+                value,
+                destination);
 
         _buffer.Advance(bytesWritten);
     }
-
-    public void WriteId(HaseId id)
-    {
-        ArgumentNullException.ThrowIfNull(id);
-
-        WriteString(id.Value);
-    }
-
-    public void WriteId(EndpointId id)
-    => WriteId((HaseId)id);
-
-    public void WriteId(InstrumentId id)
-        => WriteId((HaseId)id);
-
-    public void WriteId(PropertyId id)
-        => WriteId((HaseId)id);
 
     /// <summary>
     /// Returns a copy of all bytes written so far.

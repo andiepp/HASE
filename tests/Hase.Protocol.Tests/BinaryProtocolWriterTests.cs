@@ -17,6 +17,22 @@ public sealed class BinaryProtocolWriterTests
     }
 
     [Fact]
+    public void WriteDouble_WritesLittleEndianIeee754Bytes()
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteDouble(1.0);
+
+        Assert.Equal(
+            new byte[]
+            {
+                0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0xF0, 0x3F
+            },
+            writer.ToArray());
+    }
+
+    [Fact]
     public void WriteString_WritesUtf8LengthAndBytes()
     {
         BinaryProtocolWriter writer = new();
@@ -65,7 +81,8 @@ public sealed class BinaryProtocolWriterTests
     {
         BinaryProtocolWriter writer = new();
 
-        string value = new('A', ushort.MaxValue + 1);
+        string value =
+            new('A', ushort.MaxValue + 1);
 
         Assert.Throws<ArgumentOutOfRangeException>(
             () => writer.WriteString(value));
@@ -98,6 +115,7 @@ public sealed class BinaryProtocolWriterTests
         BinaryProtocolWriter writer = new();
 
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => writer.WriteCount(ushort.MaxValue + 1));
+            () => writer.WriteCount(
+                ushort.MaxValue + 1));
     }
 }

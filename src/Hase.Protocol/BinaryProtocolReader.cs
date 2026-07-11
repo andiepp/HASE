@@ -1,5 +1,4 @@
-﻿using Hase.Core.Domain.Identity;
-using System.Buffers.Binary;
+﻿using System.Buffers.Binary;
 using System.Text;
 
 namespace Hase.Protocol;
@@ -36,7 +35,9 @@ internal sealed class BinaryProtocolReader
     {
         EnsureAvailable(1);
 
-        byte value = _buffer.Span[_position];
+        byte value =
+            _buffer.Span[_position];
+
         _position++;
 
         return value;
@@ -61,6 +62,24 @@ internal sealed class BinaryProtocolReader
     }
 
     /// <summary>
+    /// Reads an IEEE 754 binary64 value in little-endian byte order.
+    /// </summary>
+    public double ReadDouble()
+    {
+        EnsureAvailable(sizeof(double));
+
+        double value =
+            BinaryPrimitives.ReadDoubleLittleEndian(
+                _buffer.Span.Slice(
+                    _position,
+                    sizeof(double)));
+
+        _position += sizeof(double);
+
+        return value;
+    }
+
+    /// <summary>
     /// Reads a collection count encoded as an unsigned 16-bit integer.
     /// </summary>
     public int ReadCount()
@@ -73,7 +92,8 @@ internal sealed class BinaryProtocolReader
     /// </summary>
     public string ReadString()
     {
-        int byteCount = ReadUInt16();
+        int byteCount =
+            ReadUInt16();
 
         EnsureAvailable(byteCount);
 

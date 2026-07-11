@@ -10,7 +10,8 @@ public sealed class BinaryProtocolReaderTests
         BinaryProtocolReader reader =
             new(new byte[] { 0x12, 0x34 });
 
-        byte value = reader.ReadByte();
+        byte value =
+            reader.ReadByte();
 
         Assert.Equal(0x12, value);
         Assert.Equal(1, reader.Remaining);
@@ -22,10 +23,47 @@ public sealed class BinaryProtocolReaderTests
         BinaryProtocolReader reader =
             new(new byte[] { 0x34, 0x12 });
 
-        ushort value = reader.ReadUInt16();
+        ushort value =
+            reader.ReadUInt16();
 
-        Assert.Equal((ushort)0x1234, value);
+        Assert.Equal(
+            (ushort)0x1234,
+            value);
+
+        Assert.Equal(
+            0,
+            reader.Remaining);
+    }
+
+    [Fact]
+    public void ReadDouble_ReadsLittleEndianIeee754Value()
+    {
+        BinaryProtocolReader reader =
+            new(new byte[]
+            {
+                0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0xF0, 0x3F
+            });
+
+        double value =
+            reader.ReadDouble();
+
+        Assert.Equal(1.0, value);
         Assert.Equal(0, reader.Remaining);
+    }
+
+    [Fact]
+    public void ReadDouble_ThrowsWhenInputIsIncomplete()
+    {
+        BinaryProtocolReader reader =
+            new(new byte[]
+            {
+                0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0xF0
+            });
+
+        Assert.Throws<InvalidDataException>(
+            () => reader.ReadDouble());
     }
 
     [Fact]
@@ -34,7 +72,8 @@ public sealed class BinaryProtocolReaderTests
         BinaryProtocolReader reader =
             new(new byte[] { 0x2C, 0x01 });
 
-        int count = reader.ReadCount();
+        int count =
+            reader.ReadCount();
 
         Assert.Equal(300, count);
     }
@@ -49,7 +88,8 @@ public sealed class BinaryProtocolReaderTests
                 0x41, 0x42, 0x43
             });
 
-        string value = reader.ReadString();
+        string value =
+            reader.ReadString();
 
         Assert.Equal("ABC", value);
         Assert.Equal(0, reader.Remaining);
@@ -61,7 +101,8 @@ public sealed class BinaryProtocolReaderTests
         BinaryProtocolReader reader =
             new(new byte[] { 0x00, 0x00 });
 
-        string value = reader.ReadString();
+        string value =
+            reader.ReadString();
 
         Assert.Equal(string.Empty, value);
         Assert.Equal(0, reader.Remaining);
@@ -77,7 +118,8 @@ public sealed class BinaryProtocolReaderTests
                 0xC3, 0xA4
             });
 
-        string value = reader.ReadString();
+        string value =
+            reader.ReadString();
 
         Assert.Equal("ä", value);
     }
