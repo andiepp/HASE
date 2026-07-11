@@ -25,10 +25,23 @@ public sealed class BinaryProtocolPayloadCodecTests
             codec.Encode(request);
 
         Assert.Equal(
+            ProtocolVersion.Current,
+            envelope.Version);
+
+        Assert.Equal(
+            ProtocolMessageRole.Request,
+            envelope.Role);
+
+        Assert.Equal(
             ProtocolMessageType.DiscoverRequest,
             envelope.MessageType);
 
-        Assert.True(envelope.Payload.IsEmpty);
+        Assert.Equal(
+            new CorrelationId(17),
+            envelope.CorrelationId);
+
+        Assert.True(
+            envelope.Payload.IsEmpty);
     }
 
     [Fact]
@@ -70,12 +83,34 @@ public sealed class BinaryProtocolPayloadCodecTests
             codec.Encode(response);
 
         Assert.Equal(
+            ProtocolVersion.Current,
+            envelope.Version);
+
+        Assert.Equal(
+            ProtocolMessageRole.Response,
+            envelope.Role);
+
+        Assert.Equal(
+            ProtocolMessageType.DiscoverResponse,
+            envelope.MessageType);
+
+        Assert.Equal(
+            new CorrelationId(7),
+            envelope.CorrelationId);
+
+        Assert.Equal(
             new byte[]
             {
-                0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
-                0x02,0x00,
-                0x02,0x00,(byte)'I',(byte)'1',
-                0x02,0x00,(byte)'I',(byte)'2'
+                0x03, 0x00,
+                (byte)'E', (byte)'P', (byte)'1',
+
+                0x02, 0x00,
+
+                0x02, 0x00,
+                (byte)'I', (byte)'1',
+
+                0x02, 0x00,
+                (byte)'I', (byte)'2'
             },
             envelope.Payload.ToArray());
     }
@@ -87,10 +122,16 @@ public sealed class BinaryProtocolPayloadCodecTests
 
         byte[] payload =
         {
-            0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
-            0x02,0x00,
-            0x02,0x00,(byte)'I',(byte)'1',
-            0x02,0x00,(byte)'I',(byte)'2'
+            0x03, 0x00,
+            (byte)'E', (byte)'P', (byte)'1',
+
+            0x02, 0x00,
+
+            0x02, 0x00,
+            (byte)'I', (byte)'1',
+
+            0x02, 0x00,
+            (byte)'I', (byte)'2'
         };
 
         ProtocolEnvelope envelope = new(
@@ -110,8 +151,12 @@ public sealed class BinaryProtocolPayloadCodecTests
 
         Assert.Collection(
             response.InstrumentIds,
-            id => Assert.Equal(new InstrumentId("I1"), id),
-            id => Assert.Equal(new InstrumentId("I2"), id));
+            id => Assert.Equal(
+                new InstrumentId("I1"),
+                id),
+            id => Assert.Equal(
+                new InstrumentId("I2"),
+                id));
     }
 
     [Fact]
@@ -124,8 +169,8 @@ public sealed class BinaryProtocolPayloadCodecTests
             new EndpointId("Endpoint"),
             new[]
             {
-            new InstrumentId("A"),
-            new InstrumentId("B")
+                new InstrumentId("A"),
+                new InstrumentId("B")
             });
 
         ProtocolEnvelope envelope =
@@ -167,8 +212,11 @@ public sealed class BinaryProtocolPayloadCodecTests
 
         byte[] payload =
         {
-            0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
-            0x00,0x00,
+            0x03, 0x00,
+            (byte)'E', (byte)'P', (byte)'1',
+
+            0x00, 0x00,
+
             0xFF
         };
 
@@ -184,13 +232,170 @@ public sealed class BinaryProtocolPayloadCodecTests
     }
 
     [Fact]
+    public void Encode_ReadEndpointDescriptorRequest_WritesExpectedPayload()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ReadEndpointDescriptorRequest request = new(
+            new CorrelationId(17),
+            new EndpointId("EP1"));
+
+        ProtocolEnvelope envelope =
+            codec.Encode(request);
+
+        Assert.Equal(
+            ProtocolVersion.Current,
+            envelope.Version);
+
+        Assert.Equal(
+            ProtocolMessageRole.Request,
+            envelope.Role);
+
+        Assert.Equal(
+            ProtocolMessageType.ReadEndpointDescriptorRequest,
+            envelope.MessageType);
+
+        Assert.Equal(
+            new CorrelationId(17),
+            envelope.CorrelationId);
+
+        Assert.Equal(
+            new byte[]
+            {
+                0x03, 0x00,
+                (byte)'E', (byte)'P', (byte)'1'
+            },
+            envelope.Payload.ToArray());
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorRequest_ReadsExpectedMessage()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        byte[] payload =
+        {
+            0x03, 0x00,
+            (byte)'E', (byte)'P', (byte)'1'
+        };
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Request,
+            ProtocolMessageType.ReadEndpointDescriptorRequest,
+            new CorrelationId(17),
+            payload);
+
+        ReadEndpointDescriptorRequest request =
+            Assert.IsType<ReadEndpointDescriptorRequest>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            new CorrelationId(17),
+            request.CorrelationId);
+
+        Assert.Equal(
+            new EndpointId("EP1"),
+            request.EndpointId);
+    }
+
+    [Fact]
+    public void ReadEndpointDescriptorRequest_RoundTrip_PreservesValues()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ReadEndpointDescriptorRequest original = new(
+            new CorrelationId(23),
+            new EndpointId("Endpoint-1"));
+
+        ProtocolEnvelope envelope =
+            codec.Encode(original);
+
+        ReadEndpointDescriptorRequest decoded =
+            Assert.IsType<ReadEndpointDescriptorRequest>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            original,
+            decoded);
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorRequest_WithWrongRole_Throws()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        byte[] payload =
+        {
+            0x03, 0x00,
+            (byte)'E', (byte)'P', (byte)'1'
+        };
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Response,
+            ProtocolMessageType.ReadEndpointDescriptorRequest,
+            new CorrelationId(17),
+            payload);
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorRequest_WithTruncatedPayload_Throws()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        byte[] payload =
+        {
+            0x03, 0x00,
+            (byte)'E', (byte)'P'
+        };
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Request,
+            ProtocolMessageType.ReadEndpointDescriptorRequest,
+            new CorrelationId(17),
+            payload);
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorRequest_WithTrailingBytes_Throws()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        byte[] payload =
+        {
+            0x03, 0x00,
+            (byte)'E', (byte)'P', (byte)'1',
+            0xFF
+        };
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Request,
+            ProtocolMessageType.ReadEndpointDescriptorRequest,
+            new CorrelationId(17),
+            payload);
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
+    [Fact]
     public void Encode_UnsupportedMessage_ThrowsNotSupportedException()
     {
         BinaryProtocolPayloadCodec codec = new();
 
+        UnsupportedTestMessage message =
+            new(CorrelationId.None);
+
         Assert.Throws<NotSupportedException>(
-            () => codec.Encode(
-                new UnsupportedTestMessage(
-                    CorrelationId.None)));
+            () => codec.Encode(message));
     }
 }

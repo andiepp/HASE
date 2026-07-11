@@ -2,9 +2,13 @@
 
 namespace Hase.Protocol;
 
+/// <summary>
+/// Encodes and decodes the binary payloads of HASE protocol messages.
+/// </summary>
 public sealed class BinaryProtocolPayloadCodec
     : IProtocolPayloadCodec
 {
+    /// <inheritdoc />
     public ProtocolEnvelope Encode(
         ProtocolMessage message)
     {
@@ -13,31 +17,27 @@ public sealed class BinaryProtocolPayloadCodec
         return message switch
         {
             DiscoverRequest request =>
-                new(
-                    request.Version,
-                    request.Role,
-                    request.MessageType,
-                    request.CorrelationId,
-                    ReadOnlyMemory<byte>.Empty),
+                EncodeDiscoverRequest(request),
 
             DiscoverResponse response =>
-                Encode(response),
+                EncodeDiscoverResponse(response),
+
+            ReadEndpointDescriptorRequest request =>
+                EncodeReadEndpointDescriptorRequest(request),
 
             _ => throw new NotSupportedException(
-                $"Encoding '{message.MessageType}' is not supported.")
+                $"Encoding message type '{message.MessageType}' " +
+                "is not supported.")
         };
     }
 
+    /// <inheritdoc />
     public ProtocolMessage Decode(
         ProtocolEnvelope envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        if (envelope.Version != ProtocolVersion.Current)
-        {
-            throw new InvalidDataException(
-                "Unsupported protocol version.");
-        }
+        ValidateVersion(envelope.Version);
 
         return envelope.MessageType switch
         {
@@ -47,22 +47,58 @@ public sealed class BinaryProtocolPayloadCodec
             ProtocolMessageType.DiscoverResponse =>
                 DecodeDiscoverResponse(envelope),
 
+            ProtocolMessageType.ReadEndpointDescriptorRequest =>
+                DecodeReadEndpointDescriptorRequest(envelope),
+
             _ => throw new NotSupportedException(
-                $"Decoding '{envelope.MessageType}' is not supported.")
+                $"Decoding message type '{envelope.MessageType}' " +
+                "is not supported.")
         };
     }
 
-    private static ProtocolEnvelope Encode(
+    private static ProtocolEnvelope EncodeDiscoverRequest(
+        DiscoverRequest request)
+    {
+        return new ProtocolEnvelope(
+            request.Version,
+            request.Role,
+            request.MessageType,
+            request.CorrelationId,
+            ReadOnlyMemory<byte>.Empty);
+    }
+
+    private static DiscoverRequest DecodeDiscoverRequest(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Request);
+
+        if (!envelope.Payload.IsEmpty)
+        {
+            throw new InvalidDataException(
+                "A DiscoverRequest envelope must have an empty payload.");
+        }
+
+        return new DiscoverRequest(
+            envelope.CorrelationId);
+    }
+
+    private static ProtocolEnvelope EncodeDiscoverResponse(
         DiscoverResponse response)
     {
         BinaryProtocolWriter writer = new();
 
-        writer.WriteString(response.EndpointId.Value);
-        writer.WriteCount(response.InstrumentIds.Count);
+        writer.WriteString(
+            response.EndpointId.Value);
 
-        foreach (InstrumentId id in response.InstrumentIds)
+        writer.WriteCount(
+            response.InstrumentIds.Count);
+
+        foreach (InstrumentId instrumentId in response.InstrumentIds)
         {
-            writer.WriteString(id.Value);
+            writer.WriteString(
+                instrumentId.Value);
         }
 
         return new ProtocolEnvelope(
@@ -73,30 +109,12 @@ public sealed class BinaryProtocolPayloadCodec
             writer.ToArray());
     }
 
-    private static DiscoverRequest DecodeDiscoverRequest(
-        ProtocolEnvelope envelope)
-    {
-        if (envelope.Role != ProtocolMessageRole.Request)
-        {
-            throw new InvalidDataException();
-        }
-
-        if (!envelope.Payload.IsEmpty)
-        {
-            throw new InvalidDataException();
-        }
-
-        return new DiscoverRequest(
-            envelope.CorrelationId);
-    }
-
     private static DiscoverResponse DecodeDiscoverResponse(
         ProtocolEnvelope envelope)
     {
-        if (envelope.Role != ProtocolMessageRole.Response)
-        {
-            throw new InvalidDataException();
-        }
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Response);
 
         BinaryProtocolReader reader =
             new(envelope.Payload);
@@ -104,12 +122,13 @@ public sealed class BinaryProtocolPayloadCodec
         EndpointId endpointId =
             new(reader.ReadString());
 
-        int count = reader.ReadCount();
+        int instrumentCount =
+            reader.ReadCount();
 
         List<InstrumentId> instrumentIds =
-            new(count);
+            new(instrumentCount);
 
-        for (int i = 0; i < count; i++)
+        for (int index = 0; index < instrumentCount; index++)
         {
             instrumentIds.Add(
                 new InstrumentId(
@@ -122,5 +141,65 @@ public sealed class BinaryProtocolPayloadCodec
             envelope.CorrelationId,
             endpointId,
             instrumentIds);
+    }
+
+    private static ProtocolEnvelope EncodeReadEndpointDescriptorRequest(
+        ReadEndpointDescriptorRequest request)
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(
+            request.EndpointId.Value);
+
+        return new ProtocolEnvelope(
+            request.Version,
+            request.Role,
+            request.MessageType,
+            request.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ReadEndpointDescriptorRequest
+        DecodeReadEndpointDescriptorRequest(
+            ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Request);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        EndpointId endpointId =
+            new(reader.ReadString());
+
+        reader.EnsureFullyConsumed();
+
+        return new ReadEndpointDescriptorRequest(
+            envelope.CorrelationId,
+            endpointId);
+    }
+
+    private static void ValidateVersion(
+        ProtocolVersion version)
+    {
+        if (version != ProtocolVersion.Current)
+        {
+            throw new InvalidDataException(
+                $"Protocol version '{version}' is not supported. " +
+                $"Expected version '{ProtocolVersion.Current}'.");
+        }
+    }
+
+    private static void ValidateRole(
+        ProtocolEnvelope envelope,
+        ProtocolMessageRole expectedRole)
+    {
+        if (envelope.Role != expectedRole)
+        {
+            throw new InvalidDataException(
+                $"Message type '{envelope.MessageType}' must have " +
+                $"the '{expectedRole}' role.");
+        }
     }
 }
