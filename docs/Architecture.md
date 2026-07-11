@@ -478,3 +478,15 @@ See:
 * ADR-0010 – Protocol Message Model
 * ADR-0014 – Protocol Framing and Transport Mapping
 * ADR-0015 – Serialization Model and Encoding Profiles
+
+
+## Binary Encoding Rules
+
+UInt16 values      little-endian
+Strings            UInt16 UTF-8 byte length + UTF-8 bytes
+Collections        UInt16 item count + encoded items
+Booleans           one byte: 0 or 1
+Optional values    one-byte presence marker
+
+
+
