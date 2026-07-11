@@ -258,3 +258,87 @@ Applications should use lifecycle information to determine endpoint
 availability and cache validity.
 
 See ADR-0011.
+
+# RuntimeArchitecture.md
+
+Add the following section:
+
+## Endpoint session management
+
+A RuntimeEndpoint operates within an Endpoint Session.
+
+The Endpoint Session is independent of both the transport connection and an
+individual protocol connection instance.
+
+The runtime establishes a session only after endpoint identity has been
+verified.
+
+Temporary transport loss or protocol resynchronization may preserve the
+session when the same endpoint identity is verified after recovery.
+
+If endpoint identity changes, the runtime must:
+
+* terminate the previous session;
+* fail outstanding Commands;
+* terminate active Streams;
+* invalidate subscriptions;
+* prevent cached Properties from being assigned to the replacement endpoint;
+* establish a new session;
+* notify applications of endpoint replacement.
+
+The Property cache belongs to the Endpoint Session.
+
+Cached values may be retained as stale or historical information after a
+session ends, but they must not become the active state of another session
+without an explicit application-level migration process.
+
+Commands, Events, notifications, Streams, diagnostics, and trace records must
+be associated with the session in which they occurred.
+
+Runtime components must distinguish:
+
+* transport availability;
+* protocol lifecycle state;
+* Endpoint Session identity.
+
+See ADR-0012.
+
+# Roadmap.md
+
+Replace or update the Phase 3 section so that it contains:
+
+## Phase 3 – HASE Protocol
+
+* [x] ADR-0008 – Protocol interaction model
+* [x] ADR-0009 – Protocol capability model
+* [x] ADR-0010 – Protocol message model
+* [x] ADR-0011 – Protocol connection lifecycle
+* [x] ADR-0012 – Endpoint Session model
+* [ ] ADR-0013 – Protocol framing and transport mapping
+* [ ] ADR-0014 – Protocol serialization
+* [ ] Protocol implementation
+* [ ] Transport implementations
+
+# ProjectStatus.md
+
+Extend the current Phase 3 description with:
+
+The protocol architecture now defines:
+
+* interaction semantics;
+* capability negotiation;
+* protocol message categories;
+* protocol connection lifecycle;
+* Endpoint Sessions.
+
+An Endpoint Session binds runtime state to one verified endpoint identity and
+is independent of both the transport connection and individual protocol
+connection instances.
+
+Temporary reconnect and resynchronization may preserve a session when endpoint
+identity remains unchanged. Endpoint replacement creates a new session and
+invalidates the previous session's active cache, subscriptions, Commands, and
+Streams.
+
+Protocol framing, transport mapping, serialization, security, and
+implementation have not yet been defined.

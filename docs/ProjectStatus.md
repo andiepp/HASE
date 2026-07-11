@@ -145,3 +145,23 @@ The runtime distinguishes transport connectivity from protocol readiness and
 supports deterministic protocol resynchronization after synchronization loss.
 
 Protocol framing, serialization and implementation have not yet been defined.
+
+The protocol architecture now defines:
+
+interaction semantics;
+capability negotiation;
+protocol message categories;
+protocol connection lifecycle;
+Endpoint Sessions.
+
+An Endpoint Session binds runtime state to one verified endpoint identity and
+is independent of both the transport connection and individual protocol
+connection instances.
+
+Temporary reconnect and resynchronization may preserve a session when endpoint
+identity remains unchanged. Endpoint replacement creates a new session and
+invalidates the previous session's active cache, subscriptions, Commands, and
+Streams.
+
+Protocol framing, transport mapping, serialization, security, and
+implementation have not yet been defined.

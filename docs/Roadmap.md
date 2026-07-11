@@ -132,12 +132,21 @@ have not yet been defined or implemented.
 
 ## Phase 3 – HASE Protocol
 
-- [x] ADR-0008 – Protocol interaction model
-- [x] ADR-0009 – Protocol capability model
-- [x] ADR-0010 – Protocol message model
-- [x] ADR-0011 – Protocol connection lifecycle
-- [ ] ADR-0012 – Protocol framing and transport mapping
-- [ ] ADR-0013 – Protocol serialization
-- [ ] Protocol implementation
-- [ ] Transport implementations
+ADR-0008 – Protocol interaction model
+
+ADR-0009 – Protocol capability model
+
+ADR-0010 – Protocol message model
+
+ADR-0011 – Protocol connection lifecycle
+
+ADR-0012 – Endpoint Session model
+
+ADR-0013 – Protocol framing and transport mapping
+
+ADR-0014 – Protocol serialization
+
+Protocol implementation
+
+Transport implementations
 

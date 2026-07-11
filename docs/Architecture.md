@@ -198,3 +198,34 @@ resynchronization. Previously validated information may be reused when
 verification confirms that it remains valid.
 
 See ADR-0011.
+
+## Endpoint sessions
+
+HASE distinguishes between a transport connection, a protocol connection, and
+an Endpoint Session.
+
+* A transport connection provides a communication path.
+* A protocol connection establishes compatible HASE communication.
+* An Endpoint Session binds the runtime to one verified endpoint identity.
+
+An Endpoint Session may continue across temporary transport disconnections,
+protocol reconnects, endpoint reboots, and resynchronization, provided that
+the returning endpoint identity is verified as unchanged.
+
+A new Endpoint Session is required when another endpoint is detected, even
+when the transport address, COM port, endpoint type, or descriptor remains the
+same.
+
+Capabilities, descriptors, cached Properties, subscriptions, Commands,
+Events, Streams, diagnostics, and application associations are interpreted
+within the context of one Endpoint Session.
+
+Runtime state from one session must not be silently assigned to another
+session.
+
+Endpoint identity is separate from an internal runtime Session Identifier.
+Endpoint identity identifies the endpoint, while the Session Identifier
+distinguishes one runtime relationship instance.
+
+See ADR-0012.
+
