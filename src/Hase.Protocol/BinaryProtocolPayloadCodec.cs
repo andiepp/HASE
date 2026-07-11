@@ -1,54 +1,76 @@
-﻿namespace Hase.Protocol;
+﻿using Hase.Core.Domain.Identity;
 
-/// <summary>
-/// Encodes and decodes the binary payloads of HASE protocol messages.
-/// </summary>
+namespace Hase.Protocol;
+
 public sealed class BinaryProtocolPayloadCodec
     : IProtocolPayloadCodec
 {
-    /// <inheritdoc />
-    public ProtocolEnvelope Encode(ProtocolMessage message)
+    public ProtocolEnvelope Encode(
+        ProtocolMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
 
         return message switch
         {
             DiscoverRequest request =>
-                EncodeDiscoverRequest(request),
+                new(
+                    request.Version,
+                    request.Role,
+                    request.MessageType,
+                    request.CorrelationId,
+                    ReadOnlyMemory<byte>.Empty),
+
+            DiscoverResponse response =>
+                Encode(response),
 
             _ => throw new NotSupportedException(
-                $"Encoding message type '{message.MessageType}' " +
-                "is not supported.")
+                $"Encoding '{message.MessageType}' is not supported.")
         };
     }
 
-    /// <inheritdoc />
-    public ProtocolMessage Decode(ProtocolEnvelope envelope)
+    public ProtocolMessage Decode(
+        ProtocolEnvelope envelope)
     {
         ArgumentNullException.ThrowIfNull(envelope);
 
-        ValidateVersion(envelope.Version);
+        if (envelope.Version != ProtocolVersion.Current)
+        {
+            throw new InvalidDataException(
+                "Unsupported protocol version.");
+        }
 
         return envelope.MessageType switch
         {
             ProtocolMessageType.DiscoverRequest =>
                 DecodeDiscoverRequest(envelope),
 
+            ProtocolMessageType.DiscoverResponse =>
+                DecodeDiscoverResponse(envelope),
+
             _ => throw new NotSupportedException(
-                $"Decoding message type '{envelope.MessageType}' " +
-                "is not supported.")
+                $"Decoding '{envelope.MessageType}' is not supported.")
         };
     }
 
-    private static ProtocolEnvelope EncodeDiscoverRequest(
-        DiscoverRequest request)
+    private static ProtocolEnvelope Encode(
+        DiscoverResponse response)
     {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(response.EndpointId.Value);
+        writer.WriteCount(response.InstrumentIds.Count);
+
+        foreach (InstrumentId id in response.InstrumentIds)
+        {
+            writer.WriteString(id.Value);
+        }
+
         return new ProtocolEnvelope(
-            request.Version,
-            request.Role,
-            request.MessageType,
-            request.CorrelationId,
-            ReadOnlyMemory<byte>.Empty);
+            response.Version,
+            response.Role,
+            response.MessageType,
+            response.CorrelationId,
+            writer.ToArray());
     }
 
     private static DiscoverRequest DecodeDiscoverRequest(
@@ -56,28 +78,49 @@ public sealed class BinaryProtocolPayloadCodec
     {
         if (envelope.Role != ProtocolMessageRole.Request)
         {
-            throw new InvalidDataException(
-                "A DiscoverRequest envelope must have the Request role.");
+            throw new InvalidDataException();
         }
 
         if (!envelope.Payload.IsEmpty)
         {
-            throw new InvalidDataException(
-                "A DiscoverRequest envelope must have an empty payload.");
+            throw new InvalidDataException();
         }
 
         return new DiscoverRequest(
             envelope.CorrelationId);
     }
 
-    private static void ValidateVersion(
-        ProtocolVersion version)
+    private static DiscoverResponse DecodeDiscoverResponse(
+        ProtocolEnvelope envelope)
     {
-        if (version != ProtocolVersion.Current)
+        if (envelope.Role != ProtocolMessageRole.Response)
         {
-            throw new InvalidDataException(
-                $"Protocol version '{version}' is not supported. " +
-                $"Expected version '{ProtocolVersion.Current}'.");
+            throw new InvalidDataException();
         }
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        EndpointId endpointId =
+            new(reader.ReadString());
+
+        int count = reader.ReadCount();
+
+        List<InstrumentId> instrumentIds =
+            new(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            instrumentIds.Add(
+                new InstrumentId(
+                    reader.ReadString()));
+        }
+
+        reader.EnsureFullyConsumed();
+
+        return new DiscoverResponse(
+            envelope.CorrelationId,
+            endpointId,
+            instrumentIds);
     }
 }

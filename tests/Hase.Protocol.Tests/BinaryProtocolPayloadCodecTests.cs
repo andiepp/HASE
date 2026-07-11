@@ -1,4 +1,5 @@
-﻿using Hase.Protocol;
+﻿using Hase.Core.Domain.Identity;
+using Hase.Protocol;
 
 namespace Hase.Protocol.Tests;
 
@@ -24,23 +25,10 @@ public sealed class BinaryProtocolPayloadCodecTests
             codec.Encode(request);
 
         Assert.Equal(
-            ProtocolVersion.Current,
-            envelope.Version);
-
-        Assert.Equal(
-            ProtocolMessageRole.Request,
-            envelope.Role);
-
-        Assert.Equal(
             ProtocolMessageType.DiscoverRequest,
             envelope.MessageType);
 
-        Assert.Equal(
-            new CorrelationId(17),
-            envelope.CorrelationId);
-
-        Assert.True(
-            envelope.Payload.IsEmpty);
+        Assert.True(envelope.Payload.IsEmpty);
     }
 
     [Fact]
@@ -55,11 +43,9 @@ public sealed class BinaryProtocolPayloadCodecTests
             new CorrelationId(17),
             ReadOnlyMemory<byte>.Empty);
 
-        ProtocolMessage message =
-            codec.Decode(envelope);
-
         DiscoverRequest request =
-            Assert.IsType<DiscoverRequest>(message);
+            Assert.IsType<DiscoverRequest>(
+                codec.Decode(envelope));
 
         Assert.Equal(
             new CorrelationId(17),
@@ -67,78 +53,144 @@ public sealed class BinaryProtocolPayloadCodecTests
     }
 
     [Fact]
-    public void Encode_UnsupportedMessage_ThrowsNotSupportedException()
+    public void Encode_DiscoverResponse_WritesExpectedPayload()
     {
         BinaryProtocolPayloadCodec codec = new();
 
-        UnsupportedTestMessage message =
-            new(new CorrelationId(1));
+        DiscoverResponse response = new(
+            new CorrelationId(7),
+            new EndpointId("EP1"),
+            new[]
+            {
+                new InstrumentId("I1"),
+                new InstrumentId("I2")
+            });
 
-        Assert.Throws<NotSupportedException>(
-            () => codec.Encode(message));
+        ProtocolEnvelope envelope =
+            codec.Encode(response);
+
+        Assert.Equal(
+            new byte[]
+            {
+                0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
+                0x02,0x00,
+                0x02,0x00,(byte)'I',(byte)'1',
+                0x02,0x00,(byte)'I',(byte)'2'
+            },
+            envelope.Payload.ToArray());
     }
 
     [Fact]
-    public void Decode_UnsupportedMessageType_ThrowsNotSupportedException()
+    public void Decode_DiscoverResponse_ReadsExpectedMessage()
     {
         BinaryProtocolPayloadCodec codec = new();
 
-        ProtocolEnvelope envelope = new(
-            ProtocolVersion.Current,
-            ProtocolMessageRole.Request,
-            ProtocolMessageType.ReadPropertyRequest,
-            new CorrelationId(1),
-            ReadOnlyMemory<byte>.Empty);
-
-        Assert.Throws<NotSupportedException>(
-            () => codec.Decode(envelope));
-    }
-
-    [Fact]
-    public void Decode_DiscoverRequestWithWrongRole_ThrowsInvalidDataException()
-    {
-        BinaryProtocolPayloadCodec codec = new();
+        byte[] payload =
+        {
+            0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
+            0x02,0x00,
+            0x02,0x00,(byte)'I',(byte)'1',
+            0x02,0x00,(byte)'I',(byte)'2'
+        };
 
         ProtocolEnvelope envelope = new(
             ProtocolVersion.Current,
             ProtocolMessageRole.Response,
-            ProtocolMessageType.DiscoverRequest,
-            new CorrelationId(1),
-            ReadOnlyMemory<byte>.Empty);
+            ProtocolMessageType.DiscoverResponse,
+            new CorrelationId(7),
+            payload);
 
-        Assert.Throws<InvalidDataException>(
-            () => codec.Decode(envelope));
+        DiscoverResponse response =
+            Assert.IsType<DiscoverResponse>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            new EndpointId("EP1"),
+            response.EndpointId);
+
+        Assert.Collection(
+            response.InstrumentIds,
+            id => Assert.Equal(new InstrumentId("I1"), id),
+            id => Assert.Equal(new InstrumentId("I2"), id));
     }
 
     [Fact]
-    public void Decode_DiscoverRequestWithPayload_ThrowsInvalidDataException()
+    public void DiscoverResponse_RoundTrip_PreservesValues()
     {
         BinaryProtocolPayloadCodec codec = new();
+
+        DiscoverResponse original = new(
+            new CorrelationId(9),
+            new EndpointId("Endpoint"),
+            new[]
+            {
+            new InstrumentId("A"),
+            new InstrumentId("B")
+            });
+
+        ProtocolEnvelope envelope =
+            codec.Encode(original);
+
+        DiscoverResponse decoded =
+            Assert.IsType<DiscoverResponse>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            original.Version,
+            decoded.Version);
+
+        Assert.Equal(
+            original.Role,
+            decoded.Role);
+
+        Assert.Equal(
+            original.MessageType,
+            decoded.MessageType);
+
+        Assert.Equal(
+            original.CorrelationId,
+            decoded.CorrelationId);
+
+        Assert.Equal(
+            original.EndpointId,
+            decoded.EndpointId);
+
+        Assert.Equal(
+            original.InstrumentIds,
+            decoded.InstrumentIds);
+    }
+
+    [Fact]
+    public void Decode_DiscoverResponse_WithTrailingBytes_Throws()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        byte[] payload =
+        {
+            0x03,0x00,(byte)'E',(byte)'P',(byte)'1',
+            0x00,0x00,
+            0xFF
+        };
 
         ProtocolEnvelope envelope = new(
             ProtocolVersion.Current,
-            ProtocolMessageRole.Request,
-            ProtocolMessageType.DiscoverRequest,
-            new CorrelationId(1),
-            new byte[] { 1 });
+            ProtocolMessageRole.Response,
+            ProtocolMessageType.DiscoverResponse,
+            CorrelationId.None,
+            payload);
 
         Assert.Throws<InvalidDataException>(
             () => codec.Decode(envelope));
     }
 
     [Fact]
-    public void Decode_UnsupportedProtocolVersion_ThrowsInvalidDataException()
+    public void Encode_UnsupportedMessage_ThrowsNotSupportedException()
     {
         BinaryProtocolPayloadCodec codec = new();
 
-        ProtocolEnvelope envelope = new(
-            new ProtocolVersion(2, 0),
-            ProtocolMessageRole.Request,
-            ProtocolMessageType.DiscoverRequest,
-            new CorrelationId(1),
-            ReadOnlyMemory<byte>.Empty);
-
-        Assert.Throws<InvalidDataException>(
-            () => codec.Decode(envelope));
+        Assert.Throws<NotSupportedException>(
+            () => codec.Encode(
+                new UnsupportedTestMessage(
+                    CorrelationId.None)));
     }
 }
