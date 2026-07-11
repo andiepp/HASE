@@ -150,3 +150,18 @@ Protocol implementation
 
 Transport implementations
 
+## Phase 3 – HASE Protocol
+
+* [x] ADR-0008 – Protocol interaction model
+* [x] ADR-0009 – Protocol capability model
+* [x] ADR-0010 – Protocol message model
+* [x] ADR-0011 – Protocol connection lifecycle
+* [x] ADR-0012 – Endpoint Session model
+* [x] ADR-0013 – Protocol Context
+* [x] Document the Runtime Component Model
+* [ ] ADR-0014 – Protocol framing and transport mapping
+* [ ] ADR-0015 – Protocol serialization
+* [ ] Protocol implementation
+* [ ] Transport implementations
+
+

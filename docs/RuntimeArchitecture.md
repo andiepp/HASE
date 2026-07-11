@@ -342,3 +342,51 @@ Streams.
 
 Protocol framing, transport mapping, serialization, security, and
 implementation have not yet been defined.
+
+## Relationship to the runtime component model
+
+This document describes runtime behavior, including:
+
+* connection lifecycle;
+* synchronization;
+* recovery;
+* cache validity;
+* endpoint replacement;
+* operational availability.
+
+The architectural components that own these responsibilities are defined in
+`RuntimeComponentModel.md`.
+
+In particular:
+
+* Transport owns communication;
+* Protocol Context owns protocol execution;
+* Endpoint Session owns endpoint identity and the active synchronized cache;
+* Runtime Endpoint exposes endpoint functionality to applications.
+
+Behavioral descriptions in this document must remain consistent with those
+ownership boundaries.
+
+Component ownership and dependencies are defined in
+`RuntimeComponentModel.md`.
+
+## Protocol execution ownership
+
+Protocol execution is owned by the Protocol Context.
+
+The Protocol Context coordinates negotiation, lifecycle transitions, request
+correlation, timeouts, heartbeat handling, synchronization, and
+resynchronization.
+
+The Endpoint Session owns endpoint identity and session-scoped runtime state.
+
+The Runtime Endpoint exposes application-facing endpoint functionality.
+
+This separation prevents RuntimeEndpoint from becoming responsible for
+transport, protocol, identity, cache, and application behavior simultaneously.
+
+See ADR-0013 and `RuntimeComponentModel.md`.
+
+
+
+

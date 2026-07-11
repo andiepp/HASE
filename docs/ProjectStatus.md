@@ -165,3 +165,42 @@ Streams.
 
 Protocol framing, transport mapping, serialization, security, and
 implementation have not yet been defined.
+
+## Runtime component model
+
+The runtime component ownership model is documented in
+`RuntimeComponentModel.md`.
+
+The model defines the following primary responsibility boundaries:
+
+* Transport owns communication.
+* Protocol Context owns protocol execution.
+* Endpoint Session owns the verified endpoint relationship and active
+  session-scoped state.
+* Runtime Endpoint exposes endpoint-level runtime functionality.
+* Runtime Instrument groups Properties, Commands, and Events.
+* Runtime Property represents synchronized device-owned state.
+* Runtime Command represents endpoint operations.
+* Runtime Event represents transient endpoint occurrences.
+* Runtime Cache stores the synchronized representation of device state.
+
+The device remains authoritative.
+
+The active Runtime Cache belongs to exactly one Endpoint Session.
+
+This component model will guide the implementation of the HASE protocol and
+runtime integration during Phase 3.
+
+
+ADR-0013 defines the Protocol Context as the architectural owner of protocol
+execution.
+
+The Protocol Context is independent of:
+
+* transport implementation;
+* endpoint identity;
+* descriptors;
+* the active Runtime Cache;
+* application logic.
+
+Concrete protocol classes and interfaces have not yet been implemented.

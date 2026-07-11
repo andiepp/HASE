@@ -229,3 +229,53 @@ distinguishes one runtime relationship instance.
 
 See ADR-0012.
 
+## Runtime component model
+
+The HASE runtime separates communication, protocol execution, endpoint
+identity, and synchronized runtime state.
+
+The primary architectural responsibilities are:
+
+* Transport owns communication.
+* Protocol Context owns protocol execution.
+* Endpoint Session owns the verified relationship with one endpoint identity.
+* Runtime Endpoint exposes endpoint-level functionality to applications.
+* Runtime Instrument groups related Properties, Commands, and Events.
+* Runtime Cache stores the synchronized representation of device-owned state.
+
+The device remains authoritative.
+
+The Runtime Cache belongs to one Endpoint Session and must not be silently
+reassigned to a replacement endpoint.
+
+The complete responsibility and ownership model is documented in
+`RuntimeComponentModel.md`.
+
+## Protocol Context
+
+The Protocol Context is the architectural owner of HASE protocol execution.
+
+It coordinates:
+
+* protocol lifecycle;
+* protocol-version negotiation;
+* capability negotiation;
+* message correlation;
+* protocol timers;
+* heartbeat handling;
+* synchronization;
+* Notifications;
+* Streams;
+* protocol recovery;
+* protocol diagnostics.
+
+The Protocol Context depends on a Transport abstraction but remains independent
+of endpoint identity and application-visible runtime state.
+
+Endpoint identity and active runtime cache ownership belong to the Endpoint
+Session.
+
+See ADR-0013 and `RuntimeComponentModel.md`.
+
+
+
