@@ -1,151 +1,264 @@
 # HASE Roadmap
 
-## Phase 1 — Foundation
+This roadmap describes the planned evolution of HASE from the core runtime through protocol support, transports, tooling, and the SDK.
 
-Status: Completed
+---
+
+# Phase 1 — Foundation
+
+**Status:** Completed
+
+## Objective
+
+Establish the core domain model and runtime architecture.
+
+### Completed
 
 - Hase.Core
 - Hase.Runtime
 - Runtime graph
 - Runtime notifications
 - Discovery abstraction
-- Tests
+- Runtime descriptor model
 - Architecture documentation
-- ADR-0001 through ADR-0006
+- ADR-0001 through ADR-0007
+- Comprehensive unit tests
 
-## Phase 2 — Simulation
+---
 
-Status: Current
+# Phase 2 — Simulation
+
+**Status:** Completed
+
+## Objective
+
+Provide a complete simulation environment for developing and testing HASE without physical hardware.
+
+### Completed
 
 - Hase.Simulation
 - Simulation host
-- Environment model
-- Value generators
+- Simulation time model
+- Immutable environment state
+- Constant value generator
+- Periodic value generator
+- Sine waveform
+- Triangle waveform
+- Sawtooth waveform
+- Square waveform
+- Environment simulation
 - Simulated environment sensor
-- Simulation integration tests
+- Runtime integration
+- Comprehensive simulation tests
 
-## Phase 3 — Transport
+### Future Extensions
 
-- In-process communication
-- Serial
-- TCP/IP
-- BLE
-- MQTT
+- Interpolated waveforms
+- Recorded time-series playback
+- Noise and drift simulation
+- Calibration models
+- Quantization effects
+- JSON simulation scenarios
+- Shared simulation environments
+- Simulation recording and replay
+
+---
+
+# Phase 3 — Transport
+
+**Status:** Planned
+
+## Objective
+
+Provide transport-independent communication between HASE runtimes.
+
+### Planned
+
+- Loopback transport
+- Serial transport
+- TCP/IP transport
+- BLE transport
+- MQTT transport
 - Network discovery
+- Automatic reconnect
+- Transport diagnostics
 
-## Phase 4 — Diagnostics
+---
 
-- Message tracer
-- Runtime diagnostics
-- Transport tracing
-- Engineering-level message interpretation
+# Phase 4 — Protocol V1
 
-## Phase 5 — Gateway
+**Status:** Completed
+
+## Objective
+
+Implement the complete binary HASE protocol.
+
+### Protocol Infrastructure
+
+- BinaryProtocolReader
+- BinaryProtocolWriter
+- BinaryProtocolPayloadCodec
+- ProtocolSerializationHelper
+
+### Descriptor Serialization
+
+- EndpointDescriptorSerializer
+- EndpointMetadataSerializer
+- InstrumentDescriptorSerializer
+- InstrumentMetadataSerializer
+- InstrumentInterfaceSerializer
+- PropertyDescriptorSerializer
+- CommandDescriptorSerializer
+- EventDescriptorSerializer
+- DataDescriptorSerializer
+
+### Runtime Serialization
+
+- VariantSerializer
+- PropertyValueSerializer
+
+### Implemented Messages
+
+#### Discovery
+
+- DiscoverRequest
+- DiscoverResponse
+
+#### Descriptor Access
+
+- ReadEndpointDescriptorRequest
+- ReadEndpointDescriptorResponse
+
+#### Property Access
+
+- ReadPropertyRequest
+- ReadPropertyResponse
+- WritePropertyRequest
+- WritePropertyResponse
+
+#### Command Execution
+
+- ExecuteCommandRequest
+- ExecuteCommandResponse
+
+#### Event Distribution
+
+- EventNotification
+
+### Testing
+
+- Binary protocol verification
+- Round-trip serialization tests
+- Error handling tests
+- Boundary condition tests
+
+**Current status:**
+
+- **386 automated tests passing**
+
+Protocol Version 1 is considered feature complete.
+
+---
+
+# Phase 5 — Runtime Integration
+
+**Status:** Next
+
+## Objective
+
+Connect Protocol V1 to the runtime and physical transports.
+
+### Runtime
+
+- Protocol dispatcher
+- Runtime request routing
+- Property providers
+- Command handlers
+- Event publication
+- Runtime service integration
+
+### Endpoint Hosting
+
+- Runtime endpoint host
+- Instrument adapters
+- Runtime lifecycle
+- Connection management
+
+### Integration Testing
+
+- End-to-end protocol tests
+- Runtime integration tests
+- Transport integration tests
+- Hardware integration tests
+
+---
+
+# Phase 6 — Gateway
+
+**Status:** Planned
+
+## Objective
+
+Allow HASE endpoints to expose downstream buses and devices.
+
+### Planned
 
 - Gateway endpoints
-- I2C forwarding
+- I²C forwarding
 - SPI forwarding
 - Transparent register access
 - Downstream device discovery
 
-## Phase 6 — HASE Studio
+---
 
-- Runtime topology view
-- Live property editor
+# Phase 7 — HASE Studio
+
+**Status:** Planned
+
+## Objective
+
+Provide a complete engineering environment.
+
+### Planned
+
+- Runtime topology
+- Endpoint explorer
+- Property editor
 - Command execution
-- Event display
-- Trends
-- Tracer UI
+- Event monitor
+- Trend display
+- Protocol tracer
 - Descriptor management
 
-## Phase 7 — HASE SDK
+---
 
-- Instrument module templates
+# Phase 8 — HASE SDK
+
+**Status:** Planned
+
+## Objective
+
+Provide tooling for third-party instrument development.
+
+### Planned
+
+- Instrument templates
 - Descriptor editor
 - Descriptor validation
 - Descriptor repository
 - Documentation generation
 - Simulation templates
 
-## Simulation
+---
 
-### Completed
+# Long-Term Vision
 
-- simulation time model;
-- simulation host;
-- constant value generator;
-- periodic value generator;
-- sine waveform;
-- triangle waveform;
-- sawtooth waveform;
-- square waveform;
-- environment simulation;
-- immutable environment state;
-- unit-test coverage for the simulation foundation.
+Future protocol versions may introduce:
 
-### Next
-
-- define the generic boundary between simulated instruments and `Hase.Runtime`;
-- implement a simulated multi-value environment sensor;
-- expose temperature, relative humidity, and air pressure through the normal HASE runtime model.
-
-### Later
-
-- interpolated periodic waveform;
-- non-periodic recorded time-series generator;
-- configurable square-wave duty cycle;
-- noise, drift, calibration, and quantization;
-- simulation time scaling;
-- manual stepping and pause/resume;
-- JSON scenario configuration;
-- shared environments observed by several instruments;
-- actuators influencing physical simulation state;
-- recording and replay.
-
-
-## Phase 3 – HASE Protocol
-
-### Completed architecture
-
-* [x] ADR-0008 – Protocol interaction model
-* [x] ADR-0009 – Protocol capability model
-* [x] ADR-0010 – Protocol message model
-* [x] ADR-0011 – Protocol connection lifecycle
-* [x] ADR-0012 – Endpoint Session model
-* [x] ADR-0013 – Protocol Context
-* [x] ADR-0014 – Protocol framing and transport mapping
-* [x] ADR-0015 – Serialization Model and Encoding Profiles
-* [x] Runtime Component Model
-
-### Protocol implementation
-
-* [ ] Create `Hase.Protocol`
-* [ ] Define protocol interfaces
-* [ ] Implement protocol message model
-* [ ] Implement serializer
-* [ ] Implement encoding profiles
-* [ ] Implement framer
-* [ ] Implement protocol context
-* [ ] Integrate Endpoint Session
-* [ ] Implement protocol lifecycle
-* [ ] Implement loopback transport
-* [ ] Integrate with simulation
-* [ ] Create protocol test suite
-
-### Transport implementations
-
-* [ ] Serial transport
-* [ ] TCP transport
-* [ ] BLE transport
-* [ ] MQTT transport
-* [ ] Gateway transport
-
-### Future work
-
-* [ ] Firmware update
-* [ ] Security and authentication
-* [ ] Discovery protocols
-* [ ] Gateway routing
-* [ ] Additional encoding profiles
-* [ ] Additional transport profiles
-
+- Security and authentication
+- Firmware update support
+- Gateway routing
+- Additional encoding profiles
+- Additional transport profiles
+- Distributed runtime services
+- Cloud integration

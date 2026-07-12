@@ -1,343 +1,164 @@
-# HASE Project Status
+# Project Status
 
-## Current Phase
+## Project
 
-Phase 2 — Simulation
+**HASE – Hardware Access System Environment**
 
-## Completed
+An open, modular framework for describing, discovering, communicating with and controlling hardware instruments independently of transport technology.
 
-### Repository and tooling
+---
 
-- GitHub repository
-- Visual Studio solution
-- .NET 10 projects
-- Git workflow
+# Overall Status
+
+**Current Phase:** Phase 5 – Runtime Integration
+
+The core architecture, runtime model, simulation framework and Protocol Version 1 have been implemented.
+
+The project is now transitioning from protocol implementation to connecting the runtime with transports and physical devices.
+
+---
+
+# Completed Phases
+
+## Phase 1 – Foundation
+
+Completed
+
+Highlights:
+
+- Core domain model
+- Runtime model
+- Descriptor model
+- Identity model
 - Architecture documentation
-
-### Hase.Core
-
-- Strongly typed identifiers
-- Endpoint descriptors
-- Instrument descriptors
-- Instrument metadata
-- Instrument interface
-- Property descriptors
-- Command descriptors
-- Event descriptors
-- Descriptor paths
-- Data descriptors
-- Quantities and units
-- Property values and quality
-
-### Hase.Runtime
-
-- Runtime context
-- Runtime endpoints
-- Runtime instruments
-- Runtime properties
-- Runtime commands
-- Runtime events
-- Parent and child runtime navigation
-- Property value updates
-- Hierarchical observer notifications
-- Discovery service abstraction
-
-### Tests
-
-- Runtime construction tests
-- Runtime graph tests
-- Property notification integration tests
-- Discovery service integration test
-
-### Documentation
-
-- Architecture.md
-- RuntimeArchitecture.md
-- ADR-0001: Immutable Engineering Contracts
-- ADR-0002: Descriptor-Driven Runtime
-- ADR-0003: Hierarchical Runtime Graph
-- ADR-0004: Hierarchical Runtime Notification
-- ADR-0005: Runtime Services
-- ADR-0006: Descriptor Resolution
-
-## Current Architecture
+- Initial ADRs
+- Unit test infrastructure
 
 ---
 
-Hase.Core
-    Immutable engineering contracts
+## Phase 2 – Simulation
 
-Hase.Runtime
-    Live runtime graph and runtime services
+Completed
 
-Hase.Simulation
-    Simulated engineering systems
+Highlights:
 
-    
----
-
-### 3. Update `docs/ProjectStatus.md`
-
-Add a completed simulation-foundation entry similar to:
+- Simulation framework
+- Simulation host
+- Environment simulation
+- Value generators
+- Simulated instruments
+- Runtime integration
+- Simulation test suite
 
 ---
 
-## Simulation
+## Phase 3 – Transport Architecture
 
-Completed:
+Completed (Architecture)
 
-- created `Hase.Simulation`;
-- added explicit simulation time through `SimulationStep`;
-- added `ISimulation` and `SimulationHost`;
-- added constant and periodic value generators;
-- added sine, triangle, sawtooth, and square waveforms;
-- added phase initialization using radians or time offset;
-- added `EnvironmentSimulation` and immutable `EnvironmentState`;
-- added unit tests for simulation timing, generators, waveforms, environment simulation, and host lifecycle.
+Highlights:
 
-Current test status:
+- Transport abstraction
+- Protocol architecture
+- Session model
+- Runtime component model
+- Serialization architecture
+- Multiple ADRs documenting the protocol design
 
-- 60 tests passed;
-- 0 failed;
-- 0 skipped.
+---
 
-Current stop point:
+## Phase 4 – Protocol V1
 
-- simulation foundation is implemented and tested;
-- no simulated HASE instrument or runtime integration exists yet.
+Completed
 
+Highlights:
 
-## Current phase
+### Binary Protocol
 
-Phase 3: HASE Protocol
+- BinaryProtocolReader
+- BinaryProtocolWriter
+- BinaryProtocolPayloadCodec
 
-ADR-0008 defines the Properties, Commands, and Events interaction model,
-device authority, runtime-cache semantics, and capability-based protocol
-profiles.
+### Serialization
 
-Protocol message types, encoding, framing, and implementation have not yet
-been defined.
+- Descriptor serializers
+- VariantSerializer
+- PropertyValueSerializer
 
-ADR-0009 defines the protocol capability model, including connection-scoped
-negotiation, the distinction between capabilities and descriptor metadata,
-capability dependencies, and the minimal negotiation baseline.
+### Protocol Messages
 
-Concrete capability identifiers, negotiation messages, framing, and encoding
-have not yet been defined or implemented.
+Implemented support for:
 
-The protocol architecture now defines:
+- Discover
+- ReadEndpointDescriptor
+- ReadProperty
+- WriteProperty
+- ExecuteCommand
+- EventNotification
 
-- interaction semantics;
-- capability negotiation;
-- transport-independent protocol messages.
+### Testing
 
-Connection lifecycle, framing, serialization and implementation remain to be
-defined.
+Current status:
 
-The protocol architecture now defines:
+**386 automated tests passing**
 
-- interaction semantics;
-- capability negotiation;
-- protocol message categories;
-- protocol connection lifecycle.
+Protocol Version 1 is feature complete.
 
-The runtime distinguishes transport connectivity from protocol readiness and
-supports deterministic protocol resynchronization after synchronization loss.
+---
 
-Protocol framing, serialization and implementation have not yet been defined.
+# Current Focus
 
-The protocol architecture now defines:
+Phase 5 – Runtime Integration
 
-interaction semantics;
-capability negotiation;
-protocol message categories;
-protocol connection lifecycle;
-Endpoint Sessions.
+Current objectives:
 
-An Endpoint Session binds runtime state to one verified endpoint identity and
-is independent of both the transport connection and individual protocol
-connection instances.
+- Connect Runtime to Protocol
+- Connect Runtime to Transports
+- Build Runtime dispatcher
+- Implement request routing
+- Connect property providers
+- Connect command handlers
+- Connect event publication
+- Build end-to-end integration tests
 
-Temporary reconnect and resynchronization may preserve a session when endpoint
-identity remains unchanged. Endpoint replacement creates a new session and
-invalidates the previous session's active cache, subscriptions, Commands, and
-Streams.
+---
 
-Protocol framing, transport mapping, serialization, security, and
-implementation have not yet been defined.
+# Current Architecture
 
-## Runtime component model
+Implemented components:
 
-The runtime component ownership model is documented in
-`RuntimeComponentModel.md`.
+- Hase.Core
+- Hase.Runtime
+- Hase.Simulation
+- Hase.Protocol
 
-The model defines the following primary responsibility boundaries:
+Remaining major components:
 
-* Transport owns communication.
-* Protocol Context owns protocol execution.
-* Endpoint Session owns the verified endpoint relationship and active
-  session-scoped state.
-* Runtime Endpoint exposes endpoint-level runtime functionality.
-* Runtime Instrument groups Properties, Commands, and Events.
-* Runtime Property represents synchronized device-owned state.
-* Runtime Command represents endpoint operations.
-* Runtime Event represents transient endpoint occurrences.
-* Runtime Cache stores the synchronized representation of device state.
+- Transport implementations
+- Gateway support
+- HASE Studio
+- SDK
 
-The device remains authoritative.
+---
 
-The active Runtime Cache belongs to exactly one Endpoint Session.
+# Quality Status
 
-This component model will guide the implementation of the HASE protocol and
-runtime integration during Phase 3.
+The project currently provides:
 
+- Comprehensive unit testing
+- Layered architecture
+- Strong separation of concerns
+- Platform-independent binary protocol
+- Transport-independent runtime model
+- Simulation support
+- Extensive architectural documentation
 
-ADR-0013 defines the Protocol Context as the architectural owner of protocol
-execution.
+The codebase is considered stable and ready for runtime integration.
 
-The Protocol Context is independent of:
+---
 
-* transport implementation;
-* endpoint identity;
-* descriptors;
-* the active Runtime Cache;
-* application logic.
+# Next Milestone
 
-Concrete protocol classes and interfaces have not yet been implemented.
+Complete Runtime Integration by connecting Protocol V1 to the Runtime layer and implementing the first physical transports.
 
-## Phase 3 Status
-
-The architectural design of the HASE protocol is now largely complete.
-
-The following protocol architecture decisions have been documented and
-accepted:
-
-* ADR-0008 – Protocol interaction model
-* ADR-0009 – Protocol capability model
-* ADR-0010 – Protocol message model
-* ADR-0011 – Protocol connection lifecycle
-* ADR-0012 – Endpoint Session model
-* ADR-0013 – Protocol Context
-* ADR-0014 – Protocol framing and transport mapping
-
-The runtime architecture now distinguishes the following responsibility
-layers:
-
-* Transport
-* Framer
-* Serializer
-* Protocol Context
-* Endpoint Session
-* Runtime Endpoint
-* Runtime Instrument
-* Runtime Property
-* Runtime Command
-* Runtime Event
-* Runtime Cache
-
-The Runtime Component Model documents the ownership boundaries between these
-architectural components.
-
-The protocol architecture now separates:
-
-* protocol semantics;
-* protocol execution;
-* serialization;
-* framing;
-* transport communication.
-
-The device remains authoritative.
-
-The runtime maintains a synchronized cache that is scoped to one verified
-Endpoint Session.
-
-Only one protocol architecture decision remains before implementation begins:
-
-* ADR-0015 – Protocol Serialization
-
-After ADR-0015, implementation of the `Hase.Protocol` project can begin.
-
-The implementation phase will introduce protocol messages, serializers,
-framers, protocol contexts, endpoint sessions, transports, and integration
-with the existing runtime and simulation infrastructure while following the
-architectural boundaries established during Phase 3.
-
-## Phase 3 Completion
-
-Phase 3 has completed the architectural design of the HASE protocol.
-
-The protocol architecture is now defined by the following Architecture
-Decision Records:
-
-* ADR-0008 – Protocol interaction model
-* ADR-0009 – Protocol capability model
-* ADR-0010 – Protocol message model
-* ADR-0011 – Protocol connection lifecycle
-* ADR-0012 – Endpoint Session model
-* ADR-0013 – Protocol Context
-* ADR-0014 – Protocol framing and transport mapping
-* ADR-0015 – Serialization Model and Encoding Profiles
-
-The Runtime Component Model complements these decisions by defining the
-architectural ownership boundaries between the runtime components.
-
-The protocol architecture now separates:
-
-* protocol semantics;
-* protocol execution;
-* endpoint identity;
-* canonical serialization;
-* encoding profiles;
-* framing;
-* transport communication.
-
-The device remains authoritative.
-
-The runtime maintains a synchronized cache that is scoped to one verified
-Endpoint Session.
-
-No protocol implementation has been created yet.
-
-Phase 4 will begin with implementation of the new `Hase.Protocol` project,
-following the architecture established during Phase 3.
-
-## Phase 4 Completed – Protocol V1
-
-Phase 4 completed the first fully functional implementation of the HASE binary protocol.
-
-### Highlights
-
-- Implemented the complete Protocol V1 payload codec.
-- Implemented binary serialization for all descriptor types.
-- Implemented binary serialization for runtime property values.
-- Introduced the VariantSerializer for platform-independent value encoding.
-- Added PropertyValueSerializer for timestamped engineering values.
-- Implemented protocol support for:
-  - Discover
-  - ReadEndpointDescriptor
-  - ReadProperty
-  - WriteProperty
-  - ExecuteCommand
-  - EventNotification
-- Completed comprehensive protocol test coverage.
-
-### Protocol V1 Status
-
-The protocol now supports:
-
-- Endpoint discovery
-- Descriptor transfer
-- Runtime property access
-- Runtime property modification
-- Command invocation
-- Event notification
-
-All protocol messages are encoded using the common BinaryProtocolPayloadCodec and reusable serializer components.
-
-### Test Status
-
-Current automated test count:
-
-**386 tests passing**
-
-The protocol implementation is considered feature-complete for Version 1 and provides a stable foundation for runtime integration with transports and physical devices.
+The initial target hardware remains the ESP32-based environment sensor, providing a complete end-to-end validation of the HASE architecture.
