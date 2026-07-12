@@ -1,0 +1,39 @@
+﻿using Hase.Core.Domain.Properties;
+using Hase.Simulation.Runtime.Environment;
+
+namespace Hase.Simulation.Runtime.Tests.Environment;
+
+public sealed class EnvironmentControllerDescriptorFactoryTests
+{
+    [Fact]
+    public void CreateDescriptor_ShouldCreateWritableTargetTemperature()
+    {
+        // Act
+        var descriptor =
+            EnvironmentControllerDescriptorFactory
+                .CreateDescriptor();
+
+        // Assert
+        Assert.Equal(
+            EnvironmentControllerDescriptorFactory.InstrumentId,
+            descriptor.Id);
+
+        var property =
+            Assert.Single(
+                descriptor.Interface.Properties);
+
+        Assert.Equal(
+            EnvironmentControllerDescriptorFactory
+                .TargetTemperaturePropertyId,
+            property.Id);
+
+        Assert.Equal(
+            EnvironmentControllerDescriptorFactory
+                .TargetTemperaturePath,
+            property.Path);
+
+        Assert.Equal(
+            PropertyAccessMode.ReadWrite,
+            property.AccessMode);
+    }
+}

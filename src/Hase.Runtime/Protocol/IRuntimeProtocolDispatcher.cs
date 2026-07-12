@@ -18,4 +18,8 @@ public interface IRuntimeProtocolDispatcher
     Task<ReadPropertyResponse> DispatchAsync(
         ReadPropertyRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<WritePropertyResponse> DispatchAsync(
+        WritePropertyRequest request,
+        CancellationToken cancellationToken = default);
 }
