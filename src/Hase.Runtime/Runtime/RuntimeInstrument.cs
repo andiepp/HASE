@@ -1,7 +1,9 @@
 ﻿using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Events;
+using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
+using Hase.Runtime.Execution;
 
 namespace Hase.Runtime.Runtime;
 
@@ -11,11 +13,16 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
     private readonly List<RuntimeCommand> _commands = [];
     private readonly List<RuntimeEvent> _events = [];
     private readonly List<IPropertyValueObserver> _observers = [];
+    public IInstrumentExecutor Executor { get; }
 
-    public RuntimeInstrument(RuntimeEndpoint endpoint, InstrumentDescriptor descriptor)
+    public RuntimeInstrument(
+    RuntimeEndpoint endpoint,
+    InstrumentDescriptor descriptor,
+    IInstrumentExecutor? executor = null)
     {
         Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
         Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
+        Executor = executor ?? new NullInstrumentExecutor();
 
         foreach (var property in descriptor.Interface.Properties)
         {
@@ -60,6 +67,14 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
 
         return _properties.FirstOrDefault(
             property => property.Descriptor.Path == path);
+    }
+
+    public RuntimeProperty? FindProperty(PropertyId id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+
+        return _properties.FirstOrDefault(
+            property => property.Descriptor.Id == id);
     }
 
     public RuntimeCommand? FindCommand(DescriptorPath path)

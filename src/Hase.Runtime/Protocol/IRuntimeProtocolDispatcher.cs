@@ -14,4 +14,8 @@ public interface IRuntimeProtocolDispatcher
     Task<ReadEndpointDescriptorResponse> DispatchAsync(
         ReadEndpointDescriptorRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ReadPropertyResponse> DispatchAsync(
+        ReadPropertyRequest request,
+        CancellationToken cancellationToken = default);
 }

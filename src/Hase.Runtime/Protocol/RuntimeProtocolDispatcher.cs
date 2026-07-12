@@ -45,20 +45,65 @@ public sealed class RuntimeProtocolDispatcher
 
         if (request.EndpointId != _endpoint.Descriptor.Id)
         {
-            var response = new ReadEndpointDescriptorResponse(
-                request.CorrelationId,
-                ProtocolResult.NotFound,
-                null);
+            var notFoundResponse =
+                new ReadEndpointDescriptorResponse(
+                    request.CorrelationId,
+                    ProtocolResult.NotFound,
+                    null);
 
-            return Task.FromResult(response);
+            return Task.FromResult(notFoundResponse);
         }
 
-        var successResponse = new ReadEndpointDescriptorResponse(
-            request.CorrelationId,
-            ProtocolResult.Success,
-            _endpoint.Descriptor);
+        var response =
+            new ReadEndpointDescriptorResponse(
+                request.CorrelationId,
+                ProtocolResult.Success,
+                _endpoint.Descriptor);
 
-        return Task.FromResult(successResponse);
+        return Task.FromResult(response);
+    }
+
+    public Task<ReadPropertyResponse> DispatchAsync(
+        ReadPropertyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(request, cancellationToken);
+
+        RuntimeInstrument? instrument =
+            _endpoint.FindInstrument(request.InstrumentId);
+
+        if (instrument is null)
+        {
+            var notFoundResponse =
+                new ReadPropertyResponse(
+                    request.CorrelationId,
+                    ProtocolResult.NotFound,
+                    null);
+
+            return Task.FromResult(notFoundResponse);
+        }
+
+        RuntimeProperty? property =
+            instrument.FindProperty(request.PropertyId);
+
+        if (property is null)
+        {
+            var notFoundResponse =
+                new ReadPropertyResponse(
+                    request.CorrelationId,
+                    ProtocolResult.NotFound,
+                    null);
+
+            return Task.FromResult(notFoundResponse);
+        }
+
+        var response =
+            new ReadPropertyResponse(
+                request.CorrelationId,
+                ProtocolResult.Success,
+                property.CurrentValue);
+
+        return Task.FromResult(response);
     }
 
     private static void Validate(
