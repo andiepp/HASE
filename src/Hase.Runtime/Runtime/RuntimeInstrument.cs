@@ -7,38 +7,46 @@ using Hase.Runtime.Execution;
 
 namespace Hase.Runtime.Runtime;
 
-public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
+public sealed class RuntimeInstrument
+    : IPropertyValueObserver, IRuntimeNode
 {
     private readonly List<RuntimeProperty> _properties = [];
     private readonly List<RuntimeCommand> _commands = [];
     private readonly List<RuntimeEvent> _events = [];
     private readonly List<IPropertyValueObserver> _observers = [];
-    public IInstrumentExecutor Executor { get; }
+
+    private IInstrumentExecutor _executor =
+        new NullInstrumentExecutor();
 
     public RuntimeInstrument(
-    RuntimeEndpoint endpoint,
-    InstrumentDescriptor descriptor,
-    IInstrumentExecutor? executor = null)
+        RuntimeEndpoint endpoint,
+        InstrumentDescriptor descriptor)
     {
-        Endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
-        Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
-        Executor = executor ?? new NullInstrumentExecutor();
+        Endpoint = endpoint
+            ?? throw new ArgumentNullException(nameof(endpoint));
+
+        Descriptor = descriptor
+            ?? throw new ArgumentNullException(nameof(descriptor));
 
         foreach (var property in descriptor.Interface.Properties)
         {
-            var runtimeProperty = new RuntimeProperty(this, property);
+            var runtimeProperty =
+                new RuntimeProperty(this, property);
+
             runtimeProperty.Subscribe(this);
             _properties.Add(runtimeProperty);
         }
 
         foreach (var command in descriptor.Interface.Commands)
         {
-            _commands.Add(new RuntimeCommand(this, command));
+            _commands.Add(
+                new RuntimeCommand(this, command));
         }
 
         foreach (var eventDescriptor in descriptor.Interface.Events)
         {
-            _events.Add(new RuntimeEvent(this, eventDescriptor));
+            _events.Add(
+                new RuntimeEvent(this, eventDescriptor));
         }
     }
 
@@ -46,11 +54,16 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
 
     public InstrumentDescriptor Descriptor { get; }
 
-    public IReadOnlyList<RuntimeProperty> Properties => _properties;
+    public IInstrumentExecutor Executor => _executor;
 
-    public IReadOnlyList<RuntimeCommand> Commands => _commands;
+    public IReadOnlyList<RuntimeProperty> Properties =>
+        _properties;
 
-    public IReadOnlyList<RuntimeEvent> Events => _events;
+    public IReadOnlyList<RuntimeCommand> Commands =>
+        _commands;
+
+    public IReadOnlyList<RuntimeEvent> Events =>
+        _events;
 
     public IRuntimeNode Parent => Endpoint;
 
@@ -61,7 +74,30 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
             .Concat(_events)
             .ToArray();
 
-    public RuntimeProperty? FindProperty(DescriptorPath path)
+    public void ConnectExecutor(
+        IInstrumentExecutor executor)
+    {
+        ArgumentNullException.ThrowIfNull(executor);
+
+        if (executor is NullInstrumentExecutor)
+        {
+            throw new ArgumentException(
+                "A NullInstrumentExecutor cannot be connected.",
+                nameof(executor));
+        }
+
+        if (_executor is not NullInstrumentExecutor)
+        {
+            throw new InvalidOperationException(
+                "An executor has already been connected " +
+                $"to instrument '{Descriptor.Id}'.");
+        }
+
+        _executor = executor;
+    }
+
+    public RuntimeProperty? FindProperty(
+        DescriptorPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
 
@@ -69,7 +105,8 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
             property => property.Descriptor.Path == path);
     }
 
-    public RuntimeProperty? FindProperty(PropertyId id)
+    public RuntimeProperty? FindProperty(
+        PropertyId id)
     {
         ArgumentNullException.ThrowIfNull(id);
 
@@ -77,7 +114,8 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
             property => property.Descriptor.Id == id);
     }
 
-    public RuntimeCommand? FindCommand(DescriptorPath path)
+    public RuntimeCommand? FindCommand(
+        DescriptorPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
 
@@ -85,12 +123,14 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
             command => command.Descriptor.Path == path);
     }
 
-    public RuntimeEvent? FindEvent(DescriptorPath path)
+    public RuntimeEvent? FindEvent(
+        DescriptorPath path)
     {
         ArgumentNullException.ThrowIfNull(path);
 
         return _events.FirstOrDefault(
-            runtimeEvent => runtimeEvent.Descriptor.Path == path);
+            runtimeEvent =>
+                runtimeEvent.Descriptor.Path == path);
     }
 
     public bool UpdatePropertyValue(
@@ -112,7 +152,8 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
         return true;
     }
 
-    public void Subscribe(IPropertyValueObserver observer)
+    public void Subscribe(
+        IPropertyValueObserver observer)
     {
         ArgumentNullException.ThrowIfNull(observer);
 
@@ -122,14 +163,16 @@ public sealed class RuntimeInstrument : IPropertyValueObserver, IRuntimeNode
         }
     }
 
-    public void Unsubscribe(IPropertyValueObserver observer)
+    public void Unsubscribe(
+        IPropertyValueObserver observer)
     {
         ArgumentNullException.ThrowIfNull(observer);
 
         _observers.Remove(observer);
     }
 
-    public void OnPropertyValueChanged(PropertyValueChanged change)
+    public void OnPropertyValueChanged(
+        PropertyValueChanged change)
     {
         foreach (var observer in _observers)
         {
