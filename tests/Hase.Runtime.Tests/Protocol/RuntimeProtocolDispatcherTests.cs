@@ -41,4 +41,43 @@ public class RuntimeProtocolDispatcherTests
 
         Assert.Empty(response.InstrumentIds);
     }
+
+    [Fact]
+    public async Task DispatchAsync_ReadEndpointDescriptor_ShouldReturnDescriptor()
+    {
+        // Arrange
+        var context = new RuntimeContext();
+
+        var descriptor = new EndpointDescriptor(
+            new EndpointId("Endpoint1"));
+
+        RuntimeEndpoint endpoint =
+            context.AddEndpoint(descriptor);
+
+        var dispatcher =
+            new RuntimeProtocolDispatcher(endpoint);
+
+        var request =
+            new ReadEndpointDescriptorRequest(
+                CorrelationId.None,
+                descriptor.Id);
+
+        // Act
+        ReadEndpointDescriptorResponse response =
+            await dispatcher.DispatchAsync(request);
+
+        // Assert
+        Assert.Equal(
+            request.CorrelationId,
+            response.CorrelationId);
+
+        Assert.Equal(
+            ProtocolResult.Success,
+            response.Result);
+
+        Assert.Same(
+            descriptor,
+            response.Descriptor);
+    }
+
 }

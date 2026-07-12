@@ -37,9 +37,33 @@ public sealed class RuntimeProtocolDispatcher
         return Task.FromResult(response);
     }
 
+    public Task<ReadEndpointDescriptorResponse> DispatchAsync(
+        ReadEndpointDescriptorRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(request, cancellationToken);
+
+        if (request.EndpointId != _endpoint.Descriptor.Id)
+        {
+            var response = new ReadEndpointDescriptorResponse(
+                request.CorrelationId,
+                ProtocolResult.NotFound,
+                null);
+
+            return Task.FromResult(response);
+        }
+
+        var successResponse = new ReadEndpointDescriptorResponse(
+            request.CorrelationId,
+            ProtocolResult.Success,
+            _endpoint.Descriptor);
+
+        return Task.FromResult(successResponse);
+    }
+
     private static void Validate(
-    ProtocolMessage request,
-    CancellationToken cancellationToken)
+        ProtocolMessage request,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();

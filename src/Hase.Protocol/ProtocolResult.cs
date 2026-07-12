@@ -18,4 +18,20 @@ public readonly record struct ProtocolResult(
     /// </summary>
     public bool IsSuccess =>
         Code == ProtocolResultCode.Success;
+
+    public static ProtocolResult InvalidRequest { get; } =
+    new(ProtocolResultCode.InvalidRequest, null);
+
+    public static ProtocolResult NotFound { get; } =
+        new(ProtocolResultCode.NotFound, null);
+
+    public static ProtocolResult NotSupported { get; } =
+        new(ProtocolResultCode.NotSupported, null);
+
+    public static ProtocolResult Rejected { get; } =
+        new(ProtocolResultCode.Rejected, null);
+
+    public static ProtocolResult InternalError { get; } =
+        new(ProtocolResultCode.InternalError, null);
+
 }

@@ -10,4 +10,8 @@ public interface IRuntimeProtocolDispatcher
     Task<DiscoverResponse> DispatchAsync(
         DiscoverRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ReadEndpointDescriptorResponse> DispatchAsync(
+        ReadEndpointDescriptorRequest request,
+        CancellationToken cancellationToken = default);
 }
