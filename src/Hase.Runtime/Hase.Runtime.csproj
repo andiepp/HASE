@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
+    <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
   </ItemGroup>
 
 </Project>
