@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.Protocol.Serialization;
 
 namespace Hase.Protocol;
@@ -29,6 +30,27 @@ public sealed class BinaryProtocolPayloadCodec
             ReadEndpointDescriptorResponse response =>
                 EncodeReadEndpointDescriptorResponse(response),
 
+            ReadPropertyRequest request =>
+                EncodeReadPropertyRequest(request),
+
+            ReadPropertyResponse response =>
+                EncodeReadPropertyResponse(response),
+
+            WritePropertyRequest request =>
+                EncodeWritePropertyRequest(request),
+
+            WritePropertyResponse response =>
+                EncodeWritePropertyResponse(response),
+
+            ExecuteCommandRequest request =>
+                EncodeExecuteCommandRequest(request),
+
+            ExecuteCommandResponse response =>
+                EncodeExecuteCommandResponse(response),
+
+            EventNotification notification =>
+                EncodeEventNotification(notification),
+
             _ => throw new NotSupportedException(
                 $"Encoding message type '{message.MessageType}' " +
                 "is not supported.")
@@ -56,6 +78,27 @@ public sealed class BinaryProtocolPayloadCodec
 
             ProtocolMessageType.ReadEndpointDescriptorResponse =>
                 DecodeReadEndpointDescriptorResponse(envelope),
+
+            ProtocolMessageType.ReadPropertyRequest =>
+                DecodeReadPropertyRequest(envelope),
+
+            ProtocolMessageType.ReadPropertyResponse =>
+                DecodeReadPropertyResponse(envelope),
+
+            ProtocolMessageType.WritePropertyRequest =>
+                DecodeWritePropertyRequest(envelope),
+
+            ProtocolMessageType.WritePropertyResponse =>
+                DecodeWritePropertyResponse(envelope),
+
+            ProtocolMessageType.ExecuteCommandRequest =>
+                DecodeExecuteCommandRequest(envelope),
+
+            ProtocolMessageType.ExecuteCommandResponse =>
+                DecodeExecuteCommandResponse(envelope),
+
+            ProtocolMessageType.EventNotification =>
+                DecodeEventNotification(envelope),
 
             _ => throw new NotSupportedException(
                 $"Decoding message type '{envelope.MessageType}' " +
@@ -291,6 +334,424 @@ public sealed class BinaryProtocolPayloadCodec
         return new ProtocolResult(
             code,
             message);
+    }
+
+    private static ProtocolEnvelope EncodeReadPropertyRequest(
+    ReadPropertyRequest request)
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(
+            request.InstrumentId.Value);
+
+        writer.WriteString(
+            request.PropertyId.Value);
+
+        return new ProtocolEnvelope(
+            request.Version,
+            request.Role,
+            request.MessageType,
+            request.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ReadPropertyRequest DecodeReadPropertyRequest(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Request);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        InstrumentId instrumentId =
+            new(reader.ReadString());
+
+        PropertyId propertyId =
+            new(reader.ReadString());
+
+        reader.EnsureFullyConsumed();
+
+        return new ReadPropertyRequest(
+            envelope.CorrelationId,
+            instrumentId,
+            propertyId);
+    }
+
+    private static ProtocolEnvelope EncodeReadPropertyResponse(
+        ReadPropertyResponse response)
+    {
+        BinaryProtocolWriter writer = new();
+
+        WriteProtocolResult(
+            writer,
+            response.Result);
+
+        if (response.PropertyValue is null)
+        {
+            writer.WriteByte(0);
+        }
+        else
+        {
+            writer.WriteByte(1);
+
+            PropertyValueSerializer serializer = new();
+
+            serializer.Write(
+                writer,
+                response.PropertyValue);
+        }
+
+        return new ProtocolEnvelope(
+            response.Version,
+            response.Role,
+            response.MessageType,
+            response.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ReadPropertyResponse DecodeReadPropertyResponse(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Response);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        ProtocolResult result =
+            ReadProtocolResult(reader);
+
+        byte propertyValueMarker =
+            reader.ReadByte();
+
+        Hase.Core.Domain.Properties.PropertyValue? propertyValue =
+            propertyValueMarker switch
+            {
+                0 => null,
+
+                1 => new PropertyValueSerializer()
+                    .Read(reader),
+
+                _ => throw new InvalidDataException(
+                    $"Invalid property-value marker " +
+                    $"'{propertyValueMarker}'.")
+            };
+
+        reader.EnsureFullyConsumed();
+
+        return new ReadPropertyResponse(
+            envelope.CorrelationId,
+            result,
+            propertyValue);
+    }
+
+    private static ProtocolEnvelope EncodeWritePropertyRequest(
+    WritePropertyRequest request)
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(
+            request.InstrumentId.Value);
+
+        writer.WriteString(
+            request.PropertyId.Value);
+
+        new VariantSerializer().Write(
+            writer,
+            request.Value);
+
+        return new ProtocolEnvelope(
+            request.Version,
+            request.Role,
+            request.MessageType,
+            request.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static WritePropertyRequest DecodeWritePropertyRequest(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Request);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        InstrumentId instrumentId =
+            new(reader.ReadString());
+
+        PropertyId propertyId =
+            new(reader.ReadString());
+
+        object? value =
+            new VariantSerializer().Read(reader);
+
+        reader.EnsureFullyConsumed();
+
+        return new WritePropertyRequest(
+            envelope.CorrelationId,
+            instrumentId,
+            propertyId,
+            value);
+    }
+
+    private static ProtocolEnvelope EncodeWritePropertyResponse(
+        WritePropertyResponse response)
+    {
+        BinaryProtocolWriter writer = new();
+
+        WriteProtocolResult(
+            writer,
+            response.Result);
+
+        if (response.PropertyValue is null)
+        {
+            writer.WriteByte(0);
+        }
+        else
+        {
+            writer.WriteByte(1);
+
+            new PropertyValueSerializer().Write(
+                writer,
+                response.PropertyValue);
+        }
+
+        return new ProtocolEnvelope(
+            response.Version,
+            response.Role,
+            response.MessageType,
+            response.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static WritePropertyResponse DecodeWritePropertyResponse(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Response);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        ProtocolResult result =
+            ReadProtocolResult(reader);
+
+        byte marker =
+            reader.ReadByte();
+
+        PropertyValue? propertyValue =
+            marker switch
+            {
+                0 => null,
+
+                1 => new PropertyValueSerializer()
+                        .Read(reader),
+
+                _ => throw new InvalidDataException(
+                    $"Invalid property-value marker '{marker}'.")
+            };
+
+        reader.EnsureFullyConsumed();
+
+        return new WritePropertyResponse(
+            envelope.CorrelationId,
+            result,
+            propertyValue);
+    }
+
+    private static ProtocolEnvelope EncodeExecuteCommandRequest(
+    ExecuteCommandRequest request)
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(
+            request.InstrumentId.Value);
+
+        writer.WriteString(
+            request.CommandPath.ToString());
+
+        new VariantSerializer().Write(
+            writer,
+            request.Argument);
+
+        return new ProtocolEnvelope(
+            request.Version,
+            request.Role,
+            request.MessageType,
+            request.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ExecuteCommandRequest DecodeExecuteCommandRequest(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Request);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        InstrumentId instrumentId =
+            new(reader.ReadString());
+
+        Hase.Core.Domain.Properties.DescriptorPath commandPath =
+            Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                reader.ReadString());
+
+        object? argument =
+            new VariantSerializer().Read(reader);
+
+        reader.EnsureFullyConsumed();
+
+        return new ExecuteCommandRequest(
+            envelope.CorrelationId,
+            instrumentId,
+            commandPath,
+            argument);
+    }
+
+    private static ProtocolEnvelope EncodeExecuteCommandResponse(
+        ExecuteCommandResponse response)
+    {
+        BinaryProtocolWriter writer = new();
+
+        WriteProtocolResult(
+            writer,
+            response.Result);
+
+        new VariantSerializer().Write(
+            writer,
+            response.ReturnValue);
+
+        return new ProtocolEnvelope(
+            response.Version,
+            response.Role,
+            response.MessageType,
+            response.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ExecuteCommandResponse DecodeExecuteCommandResponse(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Response);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        ProtocolResult result =
+            ReadProtocolResult(reader);
+
+        object? returnValue =
+            new VariantSerializer().Read(reader);
+
+        reader.EnsureFullyConsumed();
+
+        return new ExecuteCommandResponse(
+            envelope.CorrelationId,
+            result,
+            returnValue);
+    }
+
+    private static ProtocolEnvelope EncodeEventNotification(
+    EventNotification notification)
+    {
+        BinaryProtocolWriter writer = new();
+
+        writer.WriteString(
+            notification.InstrumentId.Value);
+
+        writer.WriteString(
+            notification.EventPath.ToString());
+
+        WriteUnixTimeMilliseconds(
+            writer,
+            notification.TimestampUtc.ToUnixTimeMilliseconds());
+
+        new VariantSerializer().Write(
+            writer,
+            notification.Value);
+
+        return new ProtocolEnvelope(
+            notification.Version,
+            notification.Role,
+            notification.MessageType,
+            notification.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static EventNotification DecodeEventNotification(
+        ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Notification);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        InstrumentId instrumentId =
+            new(reader.ReadString());
+
+        DescriptorPath eventPath =
+            DescriptorPath.Parse(
+                reader.ReadString());
+
+        long unixTimeMilliseconds =
+            ReadUnixTimeMilliseconds(reader);
+
+        DateTimeOffset timestampUtc =
+            DateTimeOffset.FromUnixTimeMilliseconds(
+                unixTimeMilliseconds);
+
+        object? value =
+            new VariantSerializer().Read(reader);
+
+        reader.EnsureFullyConsumed();
+
+        return new EventNotification(
+            instrumentId,
+            eventPath,
+            timestampUtc,
+            value);
+    }
+
+    private static void WriteUnixTimeMilliseconds(
+        BinaryProtocolWriter writer,
+        long value)
+    {
+        Span<byte> bytes = stackalloc byte[8];
+
+        System.Buffers.Binary.BinaryPrimitives
+            .WriteInt64LittleEndian(bytes, value);
+
+        foreach (byte b in bytes)
+        {
+            writer.WriteByte(b);
+        }
+    }
+
+    private static long ReadUnixTimeMilliseconds(
+        BinaryProtocolReader reader)
+    {
+        Span<byte> bytes = stackalloc byte[8];
+
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = reader.ReadByte();
+        }
+
+        return System.Buffers.Binary.BinaryPrimitives
+            .ReadInt64LittleEndian(bytes);
     }
 
     private static void ValidateVersion(
