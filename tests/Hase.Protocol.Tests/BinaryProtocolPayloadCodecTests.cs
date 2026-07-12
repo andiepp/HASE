@@ -1,4 +1,5 @@
-﻿using Hase.Core.Domain.Identity;
+﻿using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
 using Hase.Protocol;
 
 namespace Hase.Protocol.Tests;
@@ -398,4 +399,187 @@ public sealed class BinaryProtocolPayloadCodecTests
         Assert.Throws<NotSupportedException>(
             () => codec.Encode(message));
     }
+
+    [Fact]
+    public void Encode_ReadEndpointDescriptorResponseWithDescriptor_WritesExpectedHeader()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        EndpointDescriptor descriptor =
+            new(new EndpointId("endpoint"));
+
+        ReadEndpointDescriptorResponse response = new(
+            new CorrelationId(31),
+            ProtocolResult.Success,
+            descriptor);
+
+        ProtocolEnvelope envelope =
+            codec.Encode(response);
+
+        Assert.Equal(
+            ProtocolVersion.Current,
+            envelope.Version);
+
+        Assert.Equal(
+            ProtocolMessageRole.Response,
+            envelope.Role);
+
+        Assert.Equal(
+            ProtocolMessageType.ReadEndpointDescriptorResponse,
+            envelope.MessageType);
+
+        Assert.Equal(
+            new CorrelationId(31),
+            envelope.CorrelationId);
+
+        Assert.False(
+            envelope.Payload.IsEmpty);
+    }
+
+    [Fact]
+    public void ReadEndpointDescriptorResponse_RoundTripWithDescriptor_PreservesValues()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        EndpointDescriptor descriptor =
+            new(new EndpointId("endpoint"))
+            {
+                Metadata = new EndpointMetadata
+                {
+                    DisplayName = "Laboratory Endpoint",
+                    Description = "Main laboratory endpoint."
+                }
+            };
+
+        ReadEndpointDescriptorResponse original = new(
+            new CorrelationId(32),
+            ProtocolResult.Success,
+            descriptor);
+
+        ProtocolEnvelope envelope =
+            codec.Encode(original);
+
+        ReadEndpointDescriptorResponse decoded =
+            Assert.IsType<ReadEndpointDescriptorResponse>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            original.CorrelationId,
+            decoded.CorrelationId);
+
+        Assert.Equal(
+            original.Result,
+            decoded.Result);
+
+        Assert.NotNull(
+            decoded.Descriptor);
+
+        Assert.Equal(
+            descriptor.Id,
+            decoded.Descriptor.Id);
+
+        Assert.Equal(
+            descriptor.Metadata,
+            decoded.Descriptor.Metadata);
+
+        Assert.Empty(
+            decoded.Descriptor.Instruments);
+    }
+
+    [Fact]
+    public void ReadEndpointDescriptorResponse_RoundTripWithoutDescriptor_PreservesFailure()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ProtocolResult result = new(
+            ProtocolResultCode.NotFound,
+            "Endpoint was not found.");
+
+        ReadEndpointDescriptorResponse original = new(
+            new CorrelationId(33),
+            result,
+            null);
+
+        ProtocolEnvelope envelope =
+            codec.Encode(original);
+
+        ReadEndpointDescriptorResponse decoded =
+            Assert.IsType<ReadEndpointDescriptorResponse>(
+                codec.Decode(envelope));
+
+        Assert.Equal(
+            original.CorrelationId,
+            decoded.CorrelationId);
+
+        Assert.Equal(
+            result,
+            decoded.Result);
+
+        Assert.Null(
+            decoded.Descriptor);
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorResponseWithWrongRole_ThrowsInvalidDataException()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Request,
+            ProtocolMessageType.ReadEndpointDescriptorResponse,
+            new CorrelationId(34),
+            new byte[]
+            {
+            (byte)ProtocolResultCode.NotFound,
+            0x00,
+            0x00
+            });
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorResponseWithUnknownResultCode_ThrowsInvalidDataException()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Response,
+            ProtocolMessageType.ReadEndpointDescriptorResponse,
+            new CorrelationId(35),
+            new byte[]
+            {
+            0xFF,
+            0x00,
+            0x00
+            });
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
+    [Fact]
+    public void Decode_ReadEndpointDescriptorResponseWithInvalidDescriptorMarker_ThrowsInvalidDataException()
+    {
+        BinaryProtocolPayloadCodec codec = new();
+
+        ProtocolEnvelope envelope = new(
+            ProtocolVersion.Current,
+            ProtocolMessageRole.Response,
+            ProtocolMessageType.ReadEndpointDescriptorResponse,
+            new CorrelationId(36),
+            new byte[]
+            {
+            (byte)ProtocolResultCode.Success,
+            0x00,
+            0x02
+            });
+
+        Assert.Throws<InvalidDataException>(
+            () => codec.Decode(envelope));
+    }
+
 }

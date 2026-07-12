@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Identity;
+using Hase.Protocol.Serialization;
 
 namespace Hase.Protocol;
 
@@ -25,6 +26,9 @@ public sealed class BinaryProtocolPayloadCodec
             ReadEndpointDescriptorRequest request =>
                 EncodeReadEndpointDescriptorRequest(request),
 
+            ReadEndpointDescriptorResponse response =>
+                EncodeReadEndpointDescriptorResponse(response),
+
             _ => throw new NotSupportedException(
                 $"Encoding message type '{message.MessageType}' " +
                 "is not supported.")
@@ -49,6 +53,9 @@ public sealed class BinaryProtocolPayloadCodec
 
             ProtocolMessageType.ReadEndpointDescriptorRequest =>
                 DecodeReadEndpointDescriptorRequest(envelope),
+
+            ProtocolMessageType.ReadEndpointDescriptorResponse =>
+                DecodeReadEndpointDescriptorResponse(envelope),
 
             _ => throw new NotSupportedException(
                 $"Decoding message type '{envelope.MessageType}' " +
@@ -178,6 +185,112 @@ public sealed class BinaryProtocolPayloadCodec
         return new ReadEndpointDescriptorRequest(
             envelope.CorrelationId,
             endpointId);
+    }
+
+    private static ProtocolEnvelope EncodeReadEndpointDescriptorResponse(
+    ReadEndpointDescriptorResponse response)
+    {
+        BinaryProtocolWriter writer = new();
+
+        WriteProtocolResult(
+            writer,
+            response.Result);
+
+        if (response.Descriptor is null)
+        {
+            writer.WriteByte(0);
+        }
+        else
+        {
+            writer.WriteByte(1);
+
+            EndpointDescriptorSerializer serializer = new();
+
+            serializer.Write(
+                writer,
+                response.Descriptor);
+        }
+
+        return new ProtocolEnvelope(
+            response.Version,
+            response.Role,
+            response.MessageType,
+            response.CorrelationId,
+            writer.ToArray());
+    }
+
+    private static ReadEndpointDescriptorResponse
+        DecodeReadEndpointDescriptorResponse(
+            ProtocolEnvelope envelope)
+    {
+        ValidateRole(
+            envelope,
+            ProtocolMessageRole.Response);
+
+        BinaryProtocolReader reader =
+            new(envelope.Payload);
+
+        ProtocolResult result =
+            ReadProtocolResult(reader);
+
+        byte descriptorMarker =
+            reader.ReadByte();
+
+        Hase.Core.Domain.Endpoints.EndpointDescriptor? descriptor =
+            descriptorMarker switch
+            {
+                0 => null,
+
+                1 => new EndpointDescriptorSerializer()
+                    .Read(reader),
+
+                _ => throw new InvalidDataException(
+                    $"Invalid endpoint descriptor marker " +
+                    $"'{descriptorMarker}'.")
+            };
+
+        reader.EnsureFullyConsumed();
+
+        return new ReadEndpointDescriptorResponse(
+            envelope.CorrelationId,
+            result,
+            descriptor);
+    }
+
+    private static void WriteProtocolResult(
+        BinaryProtocolWriter writer,
+        ProtocolResult result)
+    {
+        writer.WriteByte(
+            (byte)result.Code);
+
+        ProtocolSerializationHelper.WriteOptionalString(
+            writer,
+            result.Message);
+    }
+
+    private static ProtocolResult ReadProtocolResult(
+        BinaryProtocolReader reader)
+    {
+        byte encodedCode =
+            reader.ReadByte();
+
+        ProtocolResultCode code =
+            (ProtocolResultCode)encodedCode;
+
+        if (!Enum.IsDefined(code))
+        {
+            throw new InvalidDataException(
+                $"Unknown protocol result code '{encodedCode}'.");
+        }
+
+        string? message =
+            ProtocolSerializationHelper.ReadOptionalString(
+                reader);
+
+        return new ProtocolResult(
+            code,
+            message);
     }
 
     private static void ValidateVersion(
