@@ -8,11 +8,11 @@ namespace Hase.Runtime.Execution;
 /// </summary>
 public interface IInstrumentExecutor
 {
-    Task<ProtocolExecutionResult<PropertyValue?>> ReadPropertyAsync(
+    Task<ExecutionResult<PropertyValue?>> ReadPropertyAsync(
         PropertyId propertyId,
         CancellationToken cancellationToken = default);
 
-    Task<ProtocolExecutionResult<PropertyValue?>> WritePropertyAsync(
+    Task<ExecutionResult> WritePropertyAsync(
         PropertyId propertyId,
         object? value,
         CancellationToken cancellationToken = default);

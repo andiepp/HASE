@@ -135,37 +135,31 @@ public sealed class RuntimeInstrumentTests
     private sealed class TestInstrumentExecutor
         : IInstrumentExecutor
     {
-        public Task<ProtocolExecutionResult<PropertyValue?>>
+        public Task<ExecutionResult<PropertyValue?>>
             ReadPropertyAsync(
                 PropertyId propertyId,
                 CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(propertyId);
-
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
             return Task.FromResult(
-                new ProtocolExecutionResult<PropertyValue?>(
-                    false,
-                    null));
+                new ExecutionResult<PropertyValue?>(
+                    success: false,
+                    value: null));
         }
 
-        public Task<ProtocolExecutionResult<PropertyValue?>>
+        public Task<ExecutionResult>
             WritePropertyAsync(
                 PropertyId propertyId,
                 object? value,
                 CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(propertyId);
-
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
             return Task.FromResult(
-                new ProtocolExecutionResult<PropertyValue?>(
-                    false,
-                    null));
+                ExecutionResult.Failed);
         }
     }
 }
