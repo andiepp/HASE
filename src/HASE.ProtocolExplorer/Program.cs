@@ -7,7 +7,8 @@ internal static class Program
     public static int Main(
         string[] args)
     {
-        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(
+            args);
 
         WriteHeader();
 
@@ -23,12 +24,14 @@ internal static class Program
                 new DiscoverScenario(),
                 new DiscoverResponseScenario(),
                 new ReadPropertyScenario(),
+                new ReadPropertyResponseScenario(),
                 new WritePropertyScenario(),
                 new ExecuteCommandScenario(),
                 new EventNotificationScenario()
             ]);
 
-        if (!runner.TryRun(args[0]))
+        if (!runner.TryRun(
+                args[0]))
         {
             Console.WriteLine(
                 $"Unknown scenario '{args[0]}'.");
@@ -69,11 +72,25 @@ internal static class Program
         Console.WriteLine(
             "Available scenarios:");
 
-        Console.WriteLine("  discover");
-        Console.WriteLine("  discover-response");
-        Console.WriteLine("  read");
-        Console.WriteLine("  write");
-        Console.WriteLine("  command");
-        Console.WriteLine("  event");
+        Console.WriteLine(
+            "  discover");
+
+        Console.WriteLine(
+            "  discover-response");
+
+        Console.WriteLine(
+            "  read");
+
+        Console.WriteLine(
+            "  read-response");
+
+        Console.WriteLine(
+            "  write");
+
+        Console.WriteLine(
+            "  command");
+
+        Console.WriteLine(
+            "  event");
     }
 }

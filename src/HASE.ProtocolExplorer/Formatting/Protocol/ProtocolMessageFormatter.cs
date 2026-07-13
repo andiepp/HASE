@@ -10,6 +10,7 @@ internal sealed class ProtocolMessageFormatter
             new DiscoverRequestFormatter(),
             new DiscoverResponseFormatter(),
             new ReadPropertyRequestFormatter(),
+            new ReadPropertyResponseFormatter(),
             new WritePropertyRequestFormatter(),
             new ExecuteCommandRequestFormatter(),
             new EventNotificationFormatter()
@@ -18,17 +19,29 @@ internal sealed class ProtocolMessageFormatter
     public IReadOnlyList<string> Format(
         ProtocolMessage message)
     {
-        ArgumentNullException.ThrowIfNull(message);
+        ArgumentNullException.ThrowIfNull(
+            message);
 
         foreach (IProtocolMessageFormatter formatter
             in _formatters)
         {
-            if (formatter.CanFormat(message))
+            if (!formatter.CanFormat(message))
             {
-                return formatter.Format(message);
+                continue;
             }
+
+            return formatter.Format(
+                message);
         }
 
+        return CreateFallbackFormat(
+            message);
+    }
+
+    private static IReadOnlyList<string>
+        CreateFallbackFormat(
+            ProtocolMessage message)
+    {
         return
         [
             $"Type          : {message.MessageType}",

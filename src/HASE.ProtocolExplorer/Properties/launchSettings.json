@@ -2,7 +2,7 @@
   "profiles": {
     "HASE.ProtocolExplorer": {
       "commandName": "Project",
-      "commandLineArgs": "event"
+      "commandLineArgs": "read-response"
     }
   }
 }
