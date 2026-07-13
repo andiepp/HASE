@@ -162,7 +162,7 @@ Protocol Version 1 is considered feature complete.
 
 # Phase 5 — Runtime Integration
 
-**Status:** Next
+**Status:** In Progress
 
 ## Objective
 
@@ -170,11 +170,11 @@ Connect Protocol V1 to the runtime and physical transports.
 
 ### Runtime
 
-- Protocol dispatcher
-- Runtime request routing
-- Property providers
-- Command handlers
-- Event publication
+- ✓ Protocol dispatcher
+- ✓ Runtime request routing
+- ✓ Property providers
+- ✓ Command handlers
+- Event publication (via future protocol session)
 - Runtime service integration
 
 ### Endpoint Hosting

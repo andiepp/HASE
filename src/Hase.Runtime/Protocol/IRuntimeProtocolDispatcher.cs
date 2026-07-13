@@ -22,4 +22,8 @@ public interface IRuntimeProtocolDispatcher
     Task<WritePropertyResponse> DispatchAsync(
         WritePropertyRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ExecuteCommandResponse> DispatchAsync(
+    ExecuteCommandRequest request,
+    CancellationToken cancellationToken = default);
 }

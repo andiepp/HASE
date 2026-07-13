@@ -149,6 +149,59 @@ public sealed class RuntimeProtocolDispatcher
             null);
     }
 
+    public async Task<ExecuteCommandResponse> DispatchAsync(
+    ExecuteCommandRequest request,
+    CancellationToken cancellationToken = default)
+    {
+        Validate(
+            request,
+            cancellationToken);
+
+        RuntimeInstrument? runtimeInstrument =
+            _endpoint.FindInstrument(
+                request.InstrumentId);
+
+        if (runtimeInstrument is null)
+        {
+            return new ExecuteCommandResponse(
+                request.CorrelationId,
+                ProtocolResult.NotFound,
+                null);
+        }
+
+        RuntimeCommand? runtimeCommand =
+            runtimeInstrument.FindCommand(
+                request.CommandPath);
+
+        if (runtimeCommand is null)
+        {
+            return new ExecuteCommandResponse(
+                request.CorrelationId,
+                ProtocolResult.NotFound,
+                null);
+        }
+
+        ExecutionResult<object?> executionResult =
+            await runtimeInstrument.Executor
+                .ExecuteCommandAsync(
+                    request.CommandPath,
+                    request.Argument,
+                    cancellationToken);
+
+        if (!executionResult.Success)
+        {
+            return new ExecuteCommandResponse(
+                request.CorrelationId,
+                ProtocolResult.Rejected,
+                null);
+        }
+
+        return new ExecuteCommandResponse(
+            request.CorrelationId,
+            ProtocolResult.Success,
+            executionResult.Value);
+    }
+
     private bool TryResolveProperty(
         InstrumentId instrumentId,
         PropertyId propertyId,

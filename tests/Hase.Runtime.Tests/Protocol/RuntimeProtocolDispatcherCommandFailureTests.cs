@@ -1,5 +1,4 @@
 ﻿using Hase.Core.Domain.Commands;
-using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
@@ -11,126 +10,30 @@ using Hase.Runtime.Runtime;
 
 namespace Hase.Runtime.Tests.Protocol;
 
-public sealed class RuntimeProtocolDispatcherTests
+public sealed class RuntimeProtocolDispatcherCommandFailureTests
 {
     [Fact]
-    public async Task DispatchAsync_ShouldReturnDiscoverResponse()
-    {
-        // Arrange
-        var context =
-            new RuntimeContext();
-
-        var endpointDescriptor =
-            new EndpointDescriptor(
-                new EndpointId("Endpoint1"));
-
-        RuntimeEndpoint endpoint =
-            context.AddEndpoint(
-                endpointDescriptor);
-
-        var dispatcher =
-            new RuntimeProtocolDispatcher(
-                endpoint);
-
-        var request =
-            new DiscoverRequest(
-                CorrelationId.None);
-
-        // Act
-        DiscoverResponse response =
-            await dispatcher.DispatchAsync(
-                request);
-
-        // Assert
-        Assert.Equal(
-            request.CorrelationId,
-            response.CorrelationId);
-
-        Assert.Equal(
-            endpointDescriptor.Id,
-            response.EndpointId);
-
-        Assert.Empty(
-            response.InstrumentIds);
-    }
-
-    [Fact]
     public async Task
-        DispatchAsync_ReadEndpointDescriptor_ShouldReturnDescriptor()
-    {
-        // Arrange
-        var context =
-            new RuntimeContext();
-
-        var descriptor =
-            new EndpointDescriptor(
-                new EndpointId("Endpoint1"));
-
-        RuntimeEndpoint endpoint =
-            context.AddEndpoint(
-                descriptor);
-
-        var dispatcher =
-            new RuntimeProtocolDispatcher(
-                endpoint);
-
-        var request =
-            new ReadEndpointDescriptorRequest(
-                CorrelationId.None,
-                descriptor.Id);
-
-        // Act
-        ReadEndpointDescriptorResponse response =
-            await dispatcher.DispatchAsync(
-                request);
-
-        // Assert
-        Assert.Equal(
-            request.CorrelationId,
-            response.CorrelationId);
-
-        Assert.Equal(
-            ProtocolResult.Success,
-            response.Result);
-
-        Assert.Same(
-            descriptor,
-            response.Descriptor);
-    }
-
-    [Fact]
-    public async Task
-        DispatchAsync_ReadProperty_ShouldReturnCurrentValue()
+        DispatchAsync_ExecuteCommand_UnknownInstrument_ShouldReturnNotFound()
     {
         // Arrange
         TestRuntime runtime =
             CreateRuntime();
-
-        var expectedValue =
-            new PropertyValue(
-                1_000_000.0,
-                DateTimeOffset.UtcNow);
-
-        bool updated =
-            runtime.Instrument
-                .UpdatePropertyValue(
-                    runtime.PropertyDescriptor.Path,
-                    expectedValue);
-
-        Assert.True(updated);
 
         var dispatcher =
             new RuntimeProtocolDispatcher(
                 runtime.Endpoint);
 
         var request =
-            new ReadPropertyRequest(
+            new ExecuteCommandRequest(
                 CorrelationId.None,
-                runtime.InstrumentDescriptor.Id,
-                runtime.PropertyDescriptor.Id);
+                new InstrumentId(
+                    "Unknown"),
+                runtime.CommandDescriptor.Path,
+                Argument: null);
 
         // Act
-        ReadPropertyResponse response =
+        ExecuteCommandResponse response =
             await dispatcher.DispatchAsync(
                 request);
 
@@ -140,77 +43,61 @@ public sealed class RuntimeProtocolDispatcherTests
             response.CorrelationId);
 
         Assert.Equal(
-            ProtocolResult.Success,
+            ProtocolResult.NotFound,
             response.Result);
-
-        Assert.Same(
-            expectedValue,
-            response.PropertyValue);
-    }
-
-    [Fact]
-    public async Task
-        DispatchAsync_WriteProperty_ShouldCallInstrumentExecutor()
-    {
-        // Arrange
-        TestRuntime runtime =
-            CreateRuntime();
-
-        var executor =
-            new RecordingInstrumentExecutor();
-
-        runtime.Instrument
-            .ConnectExecutor(
-                executor);
-
-        var dispatcher =
-            new RuntimeProtocolDispatcher(
-                runtime.Endpoint);
-
-        var request =
-            new WritePropertyRequest(
-                CorrelationId.None,
-                runtime.InstrumentDescriptor.Id,
-                runtime.PropertyDescriptor.Id,
-                Value: 23.0);
-
-        // Act
-        WritePropertyResponse response =
-            await dispatcher.DispatchAsync(
-                request);
-
-        // Assert
-        Assert.Equal(
-            ProtocolResult.Success,
-            response.Result);
-
-        Assert.Equal(
-            runtime.PropertyDescriptor.Id,
-            executor.LastPropertyId);
-
-        Assert.Equal(
-            23.0,
-            Assert.IsType<double>(
-                executor.LastValue),
-            precision: 10);
 
         Assert.Null(
-            response.PropertyValue);
+            response.ReturnValue);
     }
 
     [Fact]
     public async Task
-        DispatchAsync_ExecuteCommand_ShouldCallInstrumentExecutor()
+        DispatchAsync_ExecuteCommand_UnknownCommand_ShouldReturnNotFound()
+    {
+        // Arrange
+        TestRuntime runtime =
+            CreateRuntime();
+
+        var dispatcher =
+            new RuntimeProtocolDispatcher(
+                runtime.Endpoint);
+
+        var request =
+            new ExecuteCommandRequest(
+                CorrelationId.None,
+                runtime.InstrumentDescriptor.Id,
+                DescriptorPath.Parse(
+                    "DDS.Unknown"),
+                Argument: null);
+
+        // Act
+        ExecuteCommandResponse response =
+            await dispatcher.DispatchAsync(
+                request);
+
+        // Assert
+        Assert.Equal(
+            request.CorrelationId,
+            response.CorrelationId);
+
+        Assert.Equal(
+            ProtocolResult.NotFound,
+            response.Result);
+
+        Assert.Null(
+            response.ReturnValue);
+    }
+
+    [Fact]
+    public async Task
+        DispatchAsync_ExecuteCommand_RejectedExecution_ShouldReturnRejected()
     {
         // Arrange
         TestRuntime runtime =
             CreateRuntime();
 
         var executor =
-            new RecordingInstrumentExecutor
-            {
-                CommandReturnValue = "OK"
-            };
+            new RejectingInstrumentExecutor();
 
         runtime.Instrument
             .ConnectExecutor(
@@ -225,7 +112,7 @@ public sealed class RuntimeProtocolDispatcherTests
                 CorrelationId.None,
                 runtime.InstrumentDescriptor.Id,
                 runtime.CommandDescriptor.Path,
-                Argument: 123);
+                Argument: "Reset");
 
         // Act
         ExecuteCommandResponse response =
@@ -238,37 +125,24 @@ public sealed class RuntimeProtocolDispatcherTests
             response.CorrelationId);
 
         Assert.Equal(
-            ProtocolResult.Success,
+            ProtocolResult.Rejected,
             response.Result);
+
+        Assert.Null(
+            response.ReturnValue);
 
         Assert.Equal(
             runtime.CommandDescriptor.Path,
             executor.LastCommandPath);
 
         Assert.Equal(
-            123,
-            Assert.IsType<int>(
-                executor.LastCommandArgument));
-
-        Assert.Equal(
-            "OK",
+            "Reset",
             Assert.IsType<string>(
-                response.ReturnValue));
+                executor.LastArgument));
     }
 
     private static TestRuntime CreateRuntime()
     {
-        var propertyDescriptor =
-            new PropertyDescriptor(
-                new PropertyId(
-                    "DDS.Frequency"),
-                DescriptorPath.Parse(
-                    "DDS.Frequency"),
-                "Frequency",
-                new NumericDataDescriptor(
-                    Quantities.Frequency,
-                    Units.Hertz));
-
         var commandDescriptor =
             new CommandDescriptor(
                 DescriptorPath.Parse(
@@ -277,17 +151,14 @@ public sealed class RuntimeProtocolDispatcherTests
 
         var instrumentDescriptor =
             new InstrumentDescriptor(
-                new InstrumentId("DDS"),
+                new InstrumentId(
+                    "DDS"),
                 "DDS Generator",
                 new InstrumentKind(
                     "FrequencyGenerator"))
             {
                 Interface =
                     new InstrumentInterface(
-                        properties:
-                        [
-                            propertyDescriptor
-                        ],
                         commands:
                         [
                             commandDescriptor
@@ -296,8 +167,11 @@ public sealed class RuntimeProtocolDispatcherTests
 
         var endpointDescriptor =
             new EndpointDescriptor(
-                new EndpointId("Endpoint1"),
-                [instrumentDescriptor]);
+                new EndpointId(
+                    "Endpoint1"),
+                [
+                    instrumentDescriptor
+                ]);
 
         var context =
             new RuntimeContext();
@@ -314,7 +188,6 @@ public sealed class RuntimeProtocolDispatcherTests
             endpoint,
             instrument,
             instrumentDescriptor,
-            propertyDescriptor,
             commandDescriptor);
     }
 
@@ -322,40 +195,21 @@ public sealed class RuntimeProtocolDispatcherTests
         RuntimeEndpoint Endpoint,
         RuntimeInstrument Instrument,
         InstrumentDescriptor InstrumentDescriptor,
-        PropertyDescriptor PropertyDescriptor,
         CommandDescriptor CommandDescriptor);
 
-    private sealed class RecordingInstrumentExecutor
+    private sealed class RejectingInstrumentExecutor
         : IInstrumentExecutor
     {
-        public PropertyId? LastPropertyId
-        {
-            get;
-            private set;
-        }
-
-        public object? LastValue
-        {
-            get;
-            private set;
-        }
-
         public DescriptorPath? LastCommandPath
         {
             get;
             private set;
         }
 
-        public object? LastCommandArgument
+        public object? LastArgument
         {
             get;
             private set;
-        }
-
-        public object? CommandReturnValue
-        {
-            get;
-            init;
         }
 
         public Task<ExecutionResult<PropertyValue?>>
@@ -387,11 +241,8 @@ public sealed class RuntimeProtocolDispatcherTests
             cancellationToken
                 .ThrowIfCancellationRequested();
 
-            LastPropertyId = propertyId;
-            LastValue = value;
-
             return Task.FromResult(
-                ExecutionResult.Successful);
+                ExecutionResult.Failed);
         }
 
         public Task<ExecutionResult<object?>>
@@ -407,12 +258,12 @@ public sealed class RuntimeProtocolDispatcherTests
                 .ThrowIfCancellationRequested();
 
             LastCommandPath = commandPath;
-            LastCommandArgument = argument;
+            LastArgument = argument;
 
             return Task.FromResult(
                 new ExecutionResult<object?>(
-                    success: true,
-                    value: CommandReturnValue));
+                    success: false,
+                    value: null));
         }
     }
 }

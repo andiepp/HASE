@@ -141,6 +141,7 @@ public sealed class RuntimeInstrumentTests
                 CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(propertyId);
+
             cancellationToken.ThrowIfCancellationRequested();
 
             return Task.FromResult(
@@ -156,10 +157,27 @@ public sealed class RuntimeInstrumentTests
                 CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(propertyId);
+
             cancellationToken.ThrowIfCancellationRequested();
 
             return Task.FromResult(
                 ExecutionResult.Failed);
+        }
+
+        public Task<ExecutionResult<object?>>
+            ExecuteCommandAsync(
+                DescriptorPath commandPath,
+                object? argument,
+                CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(commandPath);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return Task.FromResult(
+                new ExecutionResult<object?>(
+                    success: false,
+                    value: null));
         }
     }
 }

@@ -81,4 +81,31 @@ public sealed class EnvironmentControllerInstrumentExecutor
         return Task.FromResult(
             ExecutionResult.Successful);
     }
+
+    public Task<ExecutionResult<object?>> ExecuteCommandAsync(
+        DescriptorPath commandPath,
+        object? argument,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(commandPath);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (commandPath !=
+            EnvironmentControllerDescriptorFactory
+                .ResetTargetTemperatureCommandPath)
+        {
+            return Task.FromResult(
+                new ExecutionResult<object?>(
+                    success: false,
+                    value: null));
+        }
+
+        _simulation.ResetTargetTemperature();
+
+        return Task.FromResult(
+            new ExecutionResult<object?>(
+                success: true,
+                value: null));
+    }
 }

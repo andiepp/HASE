@@ -1,4 +1,5 @@
-﻿using Hase.Core.Domain.Data;
+﻿using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
@@ -18,6 +19,9 @@ public static class EnvironmentControllerDescriptorFactory
 
     public static readonly DescriptorPath TargetTemperaturePath =
         new("Environment", "TargetTemperature");
+
+    public static readonly DescriptorPath ResetTargetTemperatureCommandPath =
+        new("Environment", "ResetTargetTemperature");
 
     public static InstrumentDescriptor CreateDescriptor()
     {
@@ -39,6 +43,15 @@ public static class EnvironmentControllerDescriptorFactory
                     PropertyAccessMode.ReadWrite
             };
 
+        var resetTargetTemperature =
+            new CommandDescriptor(
+                path: ResetTargetTemperatureCommandPath,
+                displayName: "Reset Target Temperature")
+            {
+                Description =
+                    "Resets the simulated target temperature to its default value."
+            };
+
         return new InstrumentDescriptor(
             id: InstrumentId,
             name: "Simulated Environment Controller",
@@ -56,6 +69,10 @@ public static class EnvironmentControllerDescriptorFactory
                 properties:
                 [
                     targetTemperature
+                ],
+                commands:
+                [
+                    resetTargetTemperature
                 ])
         };
     }

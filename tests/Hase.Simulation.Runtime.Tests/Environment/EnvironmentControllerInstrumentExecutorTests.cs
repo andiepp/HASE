@@ -167,6 +167,38 @@ public sealed class EnvironmentControllerInstrumentExecutorTests
             precision: 10);
     }
 
+    [Fact]
+    public async Task
+    ExecuteCommandAsync_ResetTargetTemperature_ShouldRestoreDefaultTemperature()
+    {
+        // Arrange
+        var simulation =
+            CreateSimulation(
+                targetTemperature: 40.0);
+
+        var executor =
+            new EnvironmentControllerInstrumentExecutor(
+                simulation);
+
+        // Act
+        var result =
+            await executor.ExecuteCommandAsync(
+                EnvironmentControllerDescriptorFactory
+                    .ResetTargetTemperatureCommandPath,
+                argument: null);
+
+        // Assert
+        Assert.True(result.Success);
+
+        Assert.Equal(
+            EnvironmentControllerSimulation
+                .DefaultTargetTemperature,
+            simulation.State.TargetTemperature,
+            precision: 10);
+
+        Assert.Null(result.Value);
+    }
+
     private static EnvironmentControllerSimulation
         CreateSimulation(
             double targetTemperature)

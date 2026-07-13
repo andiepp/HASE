@@ -36,4 +36,31 @@ public sealed class EnvironmentControllerDescriptorFactoryTests
             PropertyAccessMode.ReadWrite,
             property.AccessMode);
     }
+
+    [Fact]
+    public void CreateDescriptor_ShouldCreateResetTargetTemperatureCommand()
+    {
+        // Act
+        var descriptor =
+            EnvironmentControllerDescriptorFactory
+                .CreateDescriptor();
+
+        // Assert
+        var command =
+            Assert.Single(
+                descriptor.Interface.Commands);
+
+        Assert.Equal(
+            EnvironmentControllerDescriptorFactory
+                .ResetTargetTemperatureCommandPath,
+            command.Path);
+
+        Assert.Equal(
+            "Reset Target Temperature",
+            command.DisplayName);
+
+        Assert.Equal(
+            "Resets the simulated target temperature to its default value.",
+            command.Description);
+    }
 }

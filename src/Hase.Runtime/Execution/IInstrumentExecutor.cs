@@ -16,4 +16,9 @@ public interface IInstrumentExecutor
         PropertyId propertyId,
         object? value,
         CancellationToken cancellationToken = default);
+
+    Task<ExecutionResult<object?>> ExecuteCommandAsync(
+        DescriptorPath commandPath,
+        object? argument,
+        CancellationToken cancellationToken = default);
 }

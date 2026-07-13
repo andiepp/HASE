@@ -23,4 +23,25 @@ public sealed class EnvironmentControllerSimulationTests
             state.TargetTemperature,
             precision: 10);
     }
+
+    [Fact]
+    public void ResetTargetTemperature_ShouldRestoreDefaultTemperature()
+    {
+        // Arrange
+        var state =
+            new EnvironmentControllerState(35.0);
+
+        var simulation =
+            new EnvironmentControllerSimulation(state);
+
+        // Act
+        simulation.ResetTargetTemperature();
+
+        // Assert
+        Assert.Equal(
+            EnvironmentControllerSimulation
+                .DefaultTargetTemperature,
+            state.TargetTemperature,
+            precision: 10);
+    }
 }

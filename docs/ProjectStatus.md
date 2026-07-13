@@ -100,7 +100,7 @@ Implemented support for:
 
 Current status:
 
-**386 automated tests passing**
+**421 automated tests passing**
 
 Protocol Version 1 is feature complete.
 
@@ -112,14 +112,19 @@ Phase 5 – Runtime Integration
 
 Current objectives:
 
-- Connect Runtime to Protocol
-- Connect Runtime to Transports
-- Build Runtime dispatcher
-- Implement request routing
-- Connect property providers
-- Connect command handlers
-- Connect event publication
-- Build end-to-end integration tests
+Completed
+
+- Runtime protocol dispatcher
+- Runtime request routing
+- Property read/write routing
+- Command execution routing
+
+In progress
+
+- Runtime service integration
+- Event publication via protocol sessions
+- Transport integration
+- End-to-end integration tests
 
 ---
 
