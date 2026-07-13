@@ -35,7 +35,11 @@ internal static class Program
                     new ExecuteCommandScenario(),
                     new ExecuteCommandResponseScenario(),
                     new EventNotificationScenario(),
-                    new ReadEndpointDescriptorResponseScenario()
+                    new ReadEndpointDescriptorResponseScenario(),
+                    new CapabilityC001Scenario(
+                        host),
+                    new CapabilityC002Scenario(
+                        host)
                 ]);
 
         if (!runner.TryRun(
@@ -78,26 +82,46 @@ internal static class Program
         Console.WriteLine();
 
         Console.WriteLine(
-            "Available scenarios:");
+            "Capability scenarios:");
+
+        Console.WriteLine(
+            "  c001");
+
+        Console.WriteLine(
+            "  c002");
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            "Protocol scenarios:");
 
         Console.WriteLine(
             "  discover");
+
         Console.WriteLine(
             "  discover-response");
+
         Console.WriteLine(
             "  read");
+
         Console.WriteLine(
             "  read-response");
+
         Console.WriteLine(
             "  write");
+
         Console.WriteLine(
             "  write-response");
+
         Console.WriteLine(
             "  command");
+
         Console.WriteLine(
             "  command-response");
+
         Console.WriteLine(
             "  event");
+
         Console.WriteLine(
             "  descriptor-response");
     }

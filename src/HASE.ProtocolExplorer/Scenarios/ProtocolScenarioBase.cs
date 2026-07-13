@@ -16,7 +16,10 @@ internal abstract class ProtocolScenarioBase
         _consoleFormatter =
         new();
 
-    public abstract string Name { get; }
+    public abstract string Name
+    {
+        get;
+    }
 
     protected abstract ProtocolMessage CreateMessage();
 
