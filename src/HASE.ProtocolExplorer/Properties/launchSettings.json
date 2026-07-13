@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "HASE.ProtocolExplorer": {
+      "commandName": "Project",
+      "commandLineArgs": "write"
+    }
+  }
+}
