@@ -12,6 +12,7 @@ internal sealed class ProtocolMessageFormatter
             new ReadPropertyRequestFormatter(),
             new ReadPropertyResponseFormatter(),
             new WritePropertyRequestFormatter(),
+            new WritePropertyResponseFormatter(),
             new ExecuteCommandRequestFormatter(),
             new EventNotificationFormatter()
         ];

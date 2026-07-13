@@ -26,6 +26,7 @@ internal static class Program
                 new ReadPropertyScenario(),
                 new ReadPropertyResponseScenario(),
                 new WritePropertyScenario(),
+                new WritePropertyResponseScenario(),
                 new ExecuteCommandScenario(),
                 new EventNotificationScenario()
             ]);
@@ -86,6 +87,9 @@ internal static class Program
 
         Console.WriteLine(
             "  write");
+
+        Console.WriteLine(
+            "  write-response");
 
         Console.WriteLine(
             "  command");
