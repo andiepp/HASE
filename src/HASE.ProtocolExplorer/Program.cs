@@ -1,4 +1,5 @@
-﻿using Hase.ProtocolExplorer.Scenarios;
+﻿using Hase.ProtocolExplorer.Hosting;
+using Hase.ProtocolExplorer.Scenarios;
 
 namespace Hase.ProtocolExplorer;
 
@@ -18,20 +19,24 @@ internal static class Program
             return 1;
         }
 
+        ProtocolExplorerHost host =
+            new();
+
         ScenarioRunner runner =
             new(
-            [
-                new DiscoverScenario(),
-                new DiscoverResponseScenario(),
-                new ReadPropertyScenario(),
-                new ReadPropertyResponseScenario(),
-                new WritePropertyScenario(),
-                new WritePropertyResponseScenario(),
-                new ExecuteCommandScenario(),
-                new ExecuteCommandResponseScenario(),
-                new EventNotificationScenario(),
-                new ReadEndpointDescriptorResponseScenario()
-            ]);
+                host.TraceGenerator,
+                [
+                    new DiscoverScenario(),
+                    new DiscoverResponseScenario(),
+                    new ReadPropertyScenario(),
+                    new ReadPropertyResponseScenario(),
+                    new WritePropertyScenario(),
+                    new WritePropertyResponseScenario(),
+                    new ExecuteCommandScenario(),
+                    new ExecuteCommandResponseScenario(),
+                    new EventNotificationScenario(),
+                    new ReadEndpointDescriptorResponseScenario()
+                ]);
 
         if (!runner.TryRun(
                 args[0]))
@@ -77,31 +82,22 @@ internal static class Program
 
         Console.WriteLine(
             "  discover");
-
         Console.WriteLine(
             "  discover-response");
-
         Console.WriteLine(
             "  read");
-
         Console.WriteLine(
             "  read-response");
-
         Console.WriteLine(
             "  write");
-
         Console.WriteLine(
             "  write-response");
-
         Console.WriteLine(
             "  command");
-
         Console.WriteLine(
             "  command-response");
-
         Console.WriteLine(
             "  event");
-
         Console.WriteLine(
             "  descriptor-response");
     }

@@ -7,7 +7,7 @@ internal sealed class ScenarioRunner
     private readonly Dictionary<string, IScenario> _scenarios;
 
     public ScenarioRunner(
-        IEnumerable<IScenario> scenarios)
+Generators.ProtocolTraceGenerator traceGenerator, IEnumerable<IScenario> scenarios)
     {
         ArgumentNullException.ThrowIfNull(scenarios);
 
