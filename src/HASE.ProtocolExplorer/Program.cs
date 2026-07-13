@@ -28,7 +28,9 @@ internal static class Program
                 new WritePropertyScenario(),
                 new WritePropertyResponseScenario(),
                 new ExecuteCommandScenario(),
-                new EventNotificationScenario()
+                new ExecuteCommandResponseScenario(),
+                new EventNotificationScenario(),
+                new ReadEndpointDescriptorResponseScenario()
             ]);
 
         if (!runner.TryRun(
@@ -95,6 +97,12 @@ internal static class Program
             "  command");
 
         Console.WriteLine(
+            "  command-response");
+
+        Console.WriteLine(
             "  event");
+
+        Console.WriteLine(
+            "  descriptor-response");
     }
 }

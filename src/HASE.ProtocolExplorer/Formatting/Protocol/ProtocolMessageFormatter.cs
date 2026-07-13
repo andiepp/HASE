@@ -14,7 +14,9 @@ internal sealed class ProtocolMessageFormatter
             new WritePropertyRequestFormatter(),
             new WritePropertyResponseFormatter(),
             new ExecuteCommandRequestFormatter(),
-            new EventNotificationFormatter()
+            new ExecuteCommandResponseFormatter(),
+            new EventNotificationFormatter(),
+            new ReadEndpointDescriptorResponseFormatter()
         ];
 
     public IReadOnlyList<string> Format(

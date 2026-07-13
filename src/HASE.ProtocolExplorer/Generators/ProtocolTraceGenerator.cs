@@ -47,6 +47,14 @@ internal sealed class ProtocolTraceGenerator
         _writePropertyResponsePayloadFormatter =
         new();
 
+    private readonly ExecuteCommandResponsePayloadFormatter
+        _executeCommandResponsePayloadFormatter =
+        new();
+
+    private readonly ReadEndpointDescriptorResponsePayloadFormatter
+        _readEndpointDescriptorResponsePayloadFormatter =
+        new();
+
     public TraceDocument Generate(
         ProtocolMessage message)
     {
@@ -159,6 +167,18 @@ internal sealed class ProtocolTraceGenerator
                             response,
                             payload),
 
+                ExecuteCommandResponse response =>
+                    _executeCommandResponsePayloadFormatter
+                        .Format(
+                            response,
+                            payload),
+
+                ReadEndpointDescriptorResponse response =>
+                    _readEndpointDescriptorResponsePayloadFormatter
+                        .Format(
+                            response,
+                            payload),
+
                 _ =>
                     []
             };
@@ -233,8 +253,14 @@ internal sealed class ProtocolTraceGenerator
             ExecuteCommandRequest =>
                 "command",
 
+            ExecuteCommandResponse =>
+                "command-response",
+
             EventNotification =>
                 "event",
+
+            ReadEndpointDescriptorResponse =>
+                "descriptor-response",
 
             _ =>
                 message.MessageType.ToString()
