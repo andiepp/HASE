@@ -1,6 +1,7 @@
 ﻿using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.ProtocolExplorer.Generators;
+using Hase.ProtocolExplorer.Transport;
 using Hase.Runtime.Execution;
 using Hase.Runtime.Protocol;
 using Hase.Runtime.Runtime;
@@ -64,6 +65,14 @@ internal sealed class ProtocolExplorerHost
         Dispatcher =
             new RuntimeProtocolDispatcher(
                 Endpoint);
+
+        Transport =
+            new LoopbackProtocolTransport(
+                Dispatcher);
+
+        Client =
+            new ProtocolClient(
+                Transport);
     }
 
     public ProtocolTraceGenerator TraceGenerator
@@ -102,6 +111,16 @@ internal sealed class ProtocolExplorerHost
     }
 
     public IRuntimeProtocolDispatcher Dispatcher
+    {
+        get;
+    }
+
+    public IProtocolTransport Transport
+    {
+        get;
+    }
+
+    public ProtocolClient Client
     {
         get;
     }
