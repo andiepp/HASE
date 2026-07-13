@@ -488,5 +488,48 @@ Collections        UInt16 item count + encoded items
 Booleans           one byte: 0 or 1
 Optional values    one-byte presence marker
 
+## Protocol Explorer
+
+The Protocol Explorer is a reference implementation that demonstrates the
+complete HASE execution pipeline.
+
+It is intentionally implemented outside of the runtime itself and does not
+contain production runtime logic. Instead, it composes the existing runtime,
+protocol and simulation components to provide an executable architecture
+demonstration.
+
+The execution flow is:
+
+Capability Scenario
+│
+▼
+Protocol Client
+│
+▼
+Protocol Transport
+│
+▼
+Binary Protocol Codec
+│
+▼
+Runtime Protocol Dispatcher
+│
+▼
+Instrument Executor
+│
+▼
+Simulation
+
+
+The Protocol Explorer allows protocol messages to be inspected on three levels:
+
+1. Runtime protocol message
+2. Annotated payload structure
+3. Raw protocol bytes
+
+Because the explorer communicates through a byte-oriented transport, the same
+execution path can later be reused unchanged for USB, TCP/IP, BLE and MQTT
+transports.
+
 
 

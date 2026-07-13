@@ -262,3 +262,21 @@ Future protocol versions may introduce:
 - Additional transport profiles
 - Distributed runtime services
 - Cloud integration
+
+## Protocol Explorer
+
+Completed
+
+- Protocol message visualization
+- Annotated payload visualization
+- Runtime capability demonstrations (C-001, C-002)
+- Byte-oriented loopback transport
+- Shared capability scenario framework
+
+Future work
+
+- Recursive descriptor visualization
+- Transport implementations (USB, TCP/IP, BLE, MQTT)
+- Optional coloured console output
+- Optional Markdown/HTML report generation
+

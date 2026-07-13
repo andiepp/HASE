@@ -167,3 +167,20 @@ The codebase is considered stable and ready for runtime integration.
 Complete Runtime Integration by connecting Protocol V1 to the Runtime layer and implementing the first physical transports.
 
 The initial target hardware remains the ESP32-based environment sensor, providing a complete end-to-end validation of the HASE architecture.
+
+
+## Phase 5 Status
+
+Phase 5 has introduced the Protocol Explorer.
+
+Completed capabilities include:
+
+- Annotated payload visualization for all implemented protocol messages.
+- Runtime-backed capability demonstrations.
+- Byte-oriented loopback transport.
+- End-to-end protocol execution through the complete runtime stack.
+- Shared capability scenario framework.
+
+The Protocol Explorer is now capable of executing engineering capabilities
+against the simulation while visualizing every protocol layer from engineering
+operation down to raw bytes.
