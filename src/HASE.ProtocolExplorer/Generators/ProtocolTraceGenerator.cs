@@ -31,6 +31,14 @@ internal sealed class ProtocolTraceGenerator
         _writePropertyPayloadFormatter =
         new();
 
+    private readonly ExecuteCommandRequestPayloadFormatter
+        _executeCommandPayloadFormatter =
+        new();
+
+    private readonly EventNotificationPayloadFormatter
+        _eventNotificationPayloadFormatter =
+        new();
+
     public TraceDocument Generate(
         ProtocolMessage message)
     {
@@ -117,6 +125,18 @@ internal sealed class ProtocolTraceGenerator
                     _writePropertyPayloadFormatter
                         .Format(
                             request,
+                            payload),
+
+                ExecuteCommandRequest request =>
+                    _executeCommandPayloadFormatter
+                        .Format(
+                            request,
+                            payload),
+
+                EventNotification notification =>
+                    _eventNotificationPayloadFormatter
+                        .Format(
+                            notification,
                             payload),
 
                 _ =>
