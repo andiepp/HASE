@@ -23,6 +23,14 @@ internal sealed class ProtocolTraceGenerator
         _readPropertyPayloadFormatter =
         new();
 
+    private readonly DiscoverResponsePayloadFormatter
+        _discoverResponsePayloadFormatter =
+        new();
+
+    private readonly WritePropertyRequestPayloadFormatter
+        _writePropertyPayloadFormatter =
+        new();
+
     public TraceDocument Generate(
         ProtocolMessage message)
     {
@@ -95,6 +103,18 @@ internal sealed class ProtocolTraceGenerator
             {
                 ReadPropertyRequest request =>
                     _readPropertyPayloadFormatter
+                        .Format(
+                            request,
+                            payload),
+
+                DiscoverResponse response =>
+                    _discoverResponsePayloadFormatter
+                        .Format(
+                            response,
+                            payload),
+
+                WritePropertyRequest request =>
+                    _writePropertyPayloadFormatter
                         .Format(
                             request,
                             payload),
