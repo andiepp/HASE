@@ -1,5 +1,6 @@
 ﻿using Hase.Protocol;
 using Hase.ProtocolExplorer.Formatting;
+using Hase.ProtocolExplorer.Formatting.Payload;
 using Hase.ProtocolExplorer.Formatting.Protocol;
 using Hase.ProtocolExplorer.Tracing.Model;
 
@@ -16,6 +17,10 @@ internal sealed class ProtocolTraceGenerator
 
     private readonly HexDumpFormatter
         _hexDumpFormatter =
+        new();
+
+    private readonly ReadPropertyRequestPayloadFormatter
+        _readPropertyPayloadFormatter =
         new();
 
     public TraceDocument Generate(
@@ -37,7 +42,8 @@ internal sealed class ProtocolTraceGenerator
 
         trace.AddSection(
             "Scenario",
-            GetScenarioName(message));
+            GetScenarioName(
+                message));
 
         trace.AddSection(
             "Protocol Message",
@@ -59,6 +65,18 @@ internal sealed class ProtocolTraceGenerator
                 .Format(envelope.Payload.Span)
                 .ToArray());
 
+        IReadOnlyList<string> payloadStructure =
+            FormatPayloadStructure(
+                message,
+                envelope.Payload);
+
+        if (payloadStructure.Count > 0)
+        {
+            trace.AddSection(
+                "Payload Structure",
+                payloadStructure.ToArray());
+        }
+
         trace.AddSection(
             "Decoded Message",
             _messageFormatter
@@ -68,6 +86,67 @@ internal sealed class ProtocolTraceGenerator
         return trace;
     }
 
+    private IReadOnlyList<string> FormatPayloadStructure(
+        ProtocolMessage message,
+        ReadOnlyMemory<byte> payload)
+    {
+        IReadOnlyList<PayloadField> fields =
+            message switch
+            {
+                ReadPropertyRequest request =>
+                    _readPropertyPayloadFormatter
+                        .Format(
+                            request,
+                            payload),
+
+                _ =>
+                    []
+            };
+
+        if (fields.Count == 0)
+        {
+            return [];
+        }
+
+        List<string> lines =
+        [
+            "Offset  Length  Bytes                                      Description",
+            "------  ------  -----------------------------------------  ------------------------------"
+        ];
+
+        foreach (PayloadField field in fields)
+        {
+            string bytes =
+                FormatBytes(
+                    field.Bytes.Span);
+
+            lines.Add(
+                $"{field.Offset:X4}    " +
+                $"{field.Length,6}  " +
+                $"{bytes,-41}  " +
+                $"{field.Description}");
+        }
+
+        return lines;
+    }
+
+    private static string FormatBytes(
+        ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.IsEmpty)
+        {
+            return "<empty>";
+        }
+
+        return string.Join(
+            " ",
+            bytes
+                .ToArray()
+                .Select(
+                    value =>
+                        value.ToString("X2")));
+    }
+
     private static string GetScenarioName(
         ProtocolMessage message)
     {
@@ -75,6 +154,9 @@ internal sealed class ProtocolTraceGenerator
         {
             DiscoverRequest =>
                 "discover",
+
+            DiscoverResponse =>
+                "discover-response",
 
             ReadPropertyRequest =>
                 "read",

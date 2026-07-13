@@ -21,12 +21,14 @@ internal static class Program
             new(
             [
                 new DiscoverScenario(),
+                new DiscoverResponseScenario(),
                 new ReadPropertyScenario(),
-                new WritePropertyScenario()
+                new WritePropertyScenario(),
+                new ExecuteCommandScenario(),
+                new EventNotificationScenario()
             ]);
 
-        if (!runner.TryRun(
-                args[0]))
+        if (!runner.TryRun(args[0]))
         {
             Console.WriteLine(
                 $"Unknown scenario '{args[0]}'.");
@@ -67,13 +69,11 @@ internal static class Program
         Console.WriteLine(
             "Available scenarios:");
 
-        Console.WriteLine(
-            "  discover");
-
-        Console.WriteLine(
-            "  read");
-
-        Console.WriteLine(
-            "  write");
+        Console.WriteLine("  discover");
+        Console.WriteLine("  discover-response");
+        Console.WriteLine("  read");
+        Console.WriteLine("  write");
+        Console.WriteLine("  command");
+        Console.WriteLine("  event");
     }
 }

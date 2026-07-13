@@ -8,8 +8,11 @@ internal sealed class ProtocolMessageFormatter
         _formatters =
         [
             new DiscoverRequestFormatter(),
+            new DiscoverResponseFormatter(),
             new ReadPropertyRequestFormatter(),
-            new WritePropertyRequestFormatter()
+            new WritePropertyRequestFormatter(),
+            new ExecuteCommandRequestFormatter(),
+            new EventNotificationFormatter()
         ];
 
     public IReadOnlyList<string> Format(
@@ -20,22 +23,12 @@ internal sealed class ProtocolMessageFormatter
         foreach (IProtocolMessageFormatter formatter
             in _formatters)
         {
-            if (!formatter.CanFormat(message))
+            if (formatter.CanFormat(message))
             {
-                continue;
+                return formatter.Format(message);
             }
-
-            return formatter.Format(message);
         }
 
-        return CreateFallbackFormat(
-            message);
-    }
-
-    private static IReadOnlyList<string>
-        CreateFallbackFormat(
-            ProtocolMessage message)
-    {
         return
         [
             $"Type          : {message.MessageType}",
