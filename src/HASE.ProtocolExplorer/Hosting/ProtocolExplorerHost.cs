@@ -1,19 +1,27 @@
 ﻿using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Protocol;
 using Hase.ProtocolExplorer.Generators;
 using Hase.ProtocolExplorer.Transport;
 using Hase.Runtime.Execution;
 using Hase.Runtime.Protocol;
 using Hase.Runtime.Runtime;
 using Hase.Simulation.Environment;
+using Hase.Transport;
+using Hase.Transport.Loopback;
 
 namespace Hase.ProtocolExplorer.Hosting;
 
-/// <summary>
-/// Hosts the complete Protocol Explorer runtime.
-/// </summary>
 internal sealed class ProtocolExplorerHost
 {
+    private readonly BinaryProtocolPayloadCodec
+        _payloadCodec =
+        new();
+
+    private readonly ProtocolEnvelopeByteCodec
+        _envelopeByteCodec =
+        new();
+
     public ProtocolExplorerHost()
     {
         TraceGenerator =
@@ -66,13 +74,13 @@ internal sealed class ProtocolExplorerHost
             new RuntimeProtocolDispatcher(
                 Endpoint);
 
-        Transport =
-            new LoopbackProtocolTransport(
-                Dispatcher);
+        TransportConnection =
+            new LoopbackTransportConnection(
+                ExchangeAsync);
 
         Client =
             new ProtocolClient(
-                Transport);
+                TransportConnection);
     }
 
     public ProtocolTraceGenerator TraceGenerator
@@ -115,7 +123,7 @@ internal sealed class ProtocolExplorerHost
         get;
     }
 
-    public IProtocolTransport Transport
+    public ITransportConnection TransportConnection
     {
         get;
     }
@@ -123,5 +131,74 @@ internal sealed class ProtocolExplorerHost
     public ProtocolClient Client
     {
         get;
+    }
+
+    private async Task<byte[]> ExchangeAsync(
+        byte[] requestFrame,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(
+            requestFrame);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ProtocolEnvelope requestEnvelope =
+            _envelopeByteCodec.Decode(
+                requestFrame);
+
+        ProtocolMessage requestMessage =
+            _payloadCodec.Decode(
+                requestEnvelope);
+
+        ProtocolMessage responseMessage =
+            await DispatchAsync(
+                requestMessage,
+                cancellationToken);
+
+        ProtocolEnvelope responseEnvelope =
+            _payloadCodec.Encode(
+                responseMessage);
+
+        return _envelopeByteCodec.Encode(
+            responseEnvelope);
+    }
+
+    private async Task<ProtocolMessage> DispatchAsync(
+        ProtocolMessage request,
+        CancellationToken cancellationToken)
+    {
+        return request switch
+        {
+            DiscoverRequest discoverRequest =>
+                await Dispatcher.DispatchAsync(
+                    discoverRequest,
+                    cancellationToken),
+
+            ReadEndpointDescriptorRequest descriptorRequest =>
+                await Dispatcher.DispatchAsync(
+                    descriptorRequest,
+                    cancellationToken),
+
+            ReadPropertyRequest readPropertyRequest =>
+                await Dispatcher.DispatchAsync(
+                    readPropertyRequest,
+                    cancellationToken),
+
+            WritePropertyRequest writePropertyRequest =>
+                await Dispatcher.DispatchAsync(
+                    writePropertyRequest,
+                    cancellationToken),
+
+            ExecuteCommandRequest executeCommandRequest =>
+                await Dispatcher.DispatchAsync(
+                    executeCommandRequest,
+                    cancellationToken),
+
+            _ =>
+                throw new NotSupportedException(
+                    $"Runtime dispatch does not support protocol " +
+                    $"message type '{request.MessageType}' with role " +
+                    $"'{request.Role}'.")
+        };
     }
 }

@@ -1,30 +1,32 @@
 ﻿using Hase.Protocol;
+using Hase.Transport;
 
 namespace Hase.ProtocolExplorer.Transport;
 
 /// <summary>
-/// Executes protocol request/response exchanges through a raw-byte
-/// transport.
+/// Executes protocol request/response exchanges through an
+/// <see cref="ITransportConnection"/>.
 /// </summary>
 internal sealed class ProtocolClient
 {
-    private readonly IProtocolTransport _transport;
+    private readonly ITransportConnection
+        _transportConnection;
 
     private readonly BinaryProtocolPayloadCodec
         _payloadCodec =
         new();
 
     private readonly ProtocolEnvelopeByteCodec
-        _envelopeCodec =
+        _envelopeByteCodec =
         new();
 
     public ProtocolClient(
-        IProtocolTransport transport)
+        ITransportConnection transportConnection)
     {
-        _transport =
-            transport
+        _transportConnection =
+            transportConnection
             ?? throw new ArgumentNullException(
-                nameof(transport));
+                nameof(transportConnection));
     }
 
     public async Task<ProtocolExchangeResult> SendAsync(
@@ -39,10 +41,7 @@ internal sealed class ProtocolClient
         if (request.Role != ProtocolMessageRole.Request)
         {
             throw new ArgumentException(
-                $"Only protocol requests can be sent through the " +
-                $"protocol client. Message type " +
-                $"'{request.MessageType}' has role " +
-                $"'{request.Role}'.",
+                "Only request messages can be sent.",
                 nameof(request));
         }
 
@@ -51,23 +50,23 @@ internal sealed class ProtocolClient
                 request);
 
         byte[] requestFrame =
-            _envelopeCodec.Encode(
+            _envelopeByteCodec.Encode(
                 requestEnvelope);
 
         byte[] responseFrame =
-            await _transport.SendAsync(
+            await _transportConnection.ExchangeAsync(
                 requestFrame,
                 cancellationToken);
 
         ProtocolEnvelope responseEnvelope =
-            _envelopeCodec.Decode(
+            _envelopeByteCodec.Decode(
                 responseFrame);
 
         ProtocolMessage responseMessage =
             _payloadCodec.Decode(
                 responseEnvelope);
 
-        ValidateResponse(
+        ValidateExchange(
             request,
             responseMessage);
 
@@ -80,26 +79,20 @@ internal sealed class ProtocolClient
             responseMessage);
     }
 
-    private static void ValidateResponse(
+    private static void ValidateExchange(
         ProtocolMessage request,
         ProtocolMessage response)
     {
         if (response.Role != ProtocolMessageRole.Response)
         {
             throw new InvalidDataException(
-                $"The transport returned message type " +
-                $"'{response.MessageType}' with role " +
-                $"'{response.Role}' instead of a response.");
+                "Transport returned a non-response message.");
         }
 
-        if (response.CorrelationId !=
-            request.CorrelationId)
+        if (response.CorrelationId != request.CorrelationId)
         {
             throw new InvalidDataException(
-                $"The response correlation identifier " +
-                $"'{response.CorrelationId}' does not match the " +
-                $"request correlation identifier " +
-                $"'{request.CorrelationId}'.");
+                "Response correlation identifier does not match the request.");
         }
     }
 }
