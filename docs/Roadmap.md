@@ -1,6 +1,6 @@
 # HASE Roadmap
 
-This roadmap describes the planned evolution of HASE from the core runtime through protocol support, transports, tooling, and the SDK.
+This roadmap describes the planned evolution of HASE from the core runtime through protocol support, transport infrastructure, gateways, tooling, and the SDK.
 
 ---
 
@@ -64,34 +64,36 @@ Provide a complete simulation environment for developing and testing HASE withou
 
 ---
 
-# Phase 3 — Transport
-
-**Status:** Planned
-
-## Objective
-
-Provide transport-independent communication between HASE runtimes.
-
-### Planned
-
-- Loopback transport
-- Serial transport
-- TCP/IP transport
-- BLE transport
-- MQTT transport
-- Network discovery
-- Automatic reconnect
-- Transport diagnostics
-
----
-
-# Phase 4 — Protocol V1
+# Phase 3 — Protocol Foundation
 
 **Status:** Completed
 
 ## Objective
 
-Implement the complete binary HASE protocol.
+Define the HASE protocol architecture and establish its binary serialization foundation.
+
+### Completed
+
+- Protocol message model
+- Protocol request and response abstractions
+- Protocol message types
+- Binary protocol reader
+- Binary protocol writer
+- Binary payload encoding
+- Protocol serialization helpers
+- Descriptor-path serialization
+- Protocol error handling
+- Protocol architecture documentation
+
+---
+
+# Phase 4 — Protocol Implementation
+
+**Status:** Completed
+
+## Objective
+
+Implement Protocol Version 1 for discovery, descriptors, properties, commands, and events.
 
 ### Protocol Infrastructure
 
@@ -150,50 +152,130 @@ Implement the complete binary HASE protocol.
 - Binary protocol verification
 - Round-trip serialization tests
 - Error handling tests
-- Boundary condition tests
+- Boundary-condition tests
 
-**Current status:**
-
-- **386 automated tests passing**
-
-Protocol Version 1 is considered feature complete.
+Protocol Version 1 is feature complete.
 
 ---
 
-# Phase 5 — Runtime Integration
+# Phase 5 — Runtime Integration and Protocol Explorer
+
+**Status:** Completed
+
+## Objective
+
+Connect Protocol Version 1 to the runtime, demonstrate runtime capabilities, and establish byte-oriented protocol exploration and tracing.
+
+### Runtime Integration
+
+- Protocol dispatcher
+- Runtime request routing
+- Property providers
+- Command handlers
+- Runtime service integration
+- Runtime endpoint hosting foundations
+- Runtime instrument integration
+- End-to-end protocol dispatch tests
+
+### Capability Demonstrations
+
+- C-001 property capability demonstration
+- C-002 command capability demonstration
+- Shared capability scenario framework
+- Scenario runner
+- Protocol scenario base
+
+### Protocol Explorer
+
+- Protocol message visualization
+- Request and response visualization
+- Annotated payload visualization
+- Protocol scenario execution
+- Runtime capability demonstrations
+- Byte-oriented loopback execution
+
+### Transport Foundation
+
+- Hase.Transport project
+- ITransportConnection
+- Protocol-independent byte exchange
+- LoopbackTransportConnection
+- Loopback transport tests
+- Separation of protocol, runtime, and transport layers
+
+### Testing
+
+- Runtime protocol-dispatch tests
+- Capability scenario tests
+- Protocol Explorer integration tests
+- Loopback transport contract tests
+
+### Completion Baseline
+
+- **428 automated tests passing**
+
+---
+
+# Phase 6 — Transport Infrastructure
 
 **Status:** In Progress
 
 ## Objective
 
-Connect Protocol V1 to the runtime and physical transports.
+Provide production-ready, protocol-independent communication infrastructure between HASE runtimes and endpoints.
 
-### Runtime
+The transport layer exchanges byte sequences and remains independent of the HASE protocol and runtime models.
 
-- ✓ Protocol dispatcher
-- ✓ Runtime request routing
-- ✓ Property providers
-- ✓ Command handlers
-- Event publication (via future protocol session)
-- Runtime service integration
+### Completed Foundations
 
-### Endpoint Hosting
+- Hase.Transport
+- ITransportConnection
+- Byte-oriented request/response exchange
+- LoopbackTransportConnection
+- Request forwarding
+- Cancellation-token propagation
+- Null-request validation
+- Null-response validation
+- Transport exception propagation
+- Loopback transport contract tests
 
-- Runtime endpoint host
-- Instrument adapters
-- Runtime lifecycle
+### Planned Infrastructure
+
+- Shared transport contract testing
+- Transport lifecycle semantics
+- Transport configuration models
+- Transport creation and selection
 - Connection management
-
-### Integration Testing
-
-- End-to-end protocol tests
-- Runtime integration tests
+- Automatic reconnect
+- Cancellation and timeout handling
+- Transport diagnostics
+- Transport tracing integration
 - Transport integration tests
-- Hardware integration tests
+
+### Planned Transport Implementations
+
+- TCP/IP transport
+- Serial transport
+- BLE transport
+- MQTT transport
+
+### Planned Discovery Support
+
+- Network discovery
+- Serial-device discovery
+- Transport-specific endpoint discovery
+
+### Future Protocol Explorer Extensions
+
+- Real transport execution
+- Transport diagnostics display
+- Optional coloured console output
+- Optional Markdown report generation
+- Optional HTML report generation
 
 ---
 
-# Phase 6 — Gateway
+# Phase 7 — Gateway
 
 **Status:** Planned
 
@@ -207,17 +289,19 @@ Allow HASE endpoints to expose downstream buses and devices.
 - I²C forwarding
 - SPI forwarding
 - Transparent register access
-- Downstream device discovery
+- Downstream-device discovery
+- Gateway routing
+- Compact downstream-device support
 
 ---
 
-# Phase 7 — HASE Studio
+# Phase 8 — HASE Studio
 
 **Status:** Planned
 
 ## Objective
 
-Provide a complete engineering environment.
+Provide a complete engineering environment for configuring, operating, observing, and diagnosing HASE systems.
 
 ### Planned
 
@@ -228,55 +312,47 @@ Provide a complete engineering environment.
 - Event monitor
 - Trend display
 - Protocol tracer
+- Transport diagnostics
 - Descriptor management
+- Connection management
+- Simulation integration
 
 ---
 
-# Phase 8 — HASE SDK
+# Phase 9 — HASE SDK
 
 **Status:** Planned
 
 ## Objective
 
-Provide tooling for third-party instrument development.
+Provide tooling and extension points for third-party instrument and endpoint development.
 
 ### Planned
 
 - Instrument templates
+- Endpoint templates
 - Descriptor editor
 - Descriptor validation
 - Descriptor repository
 - Documentation generation
 - Simulation templates
+- Transport extension guidance
+- Protocol extension guidance
+- Example hardware integrations
 
 ---
 
 # Long-Term Vision
 
-Future protocol versions may introduce:
+Future HASE versions may introduce:
 
 - Security and authentication
+- Authorization
 - Firmware update support
-- Gateway routing
 - Additional encoding profiles
 - Additional transport profiles
 - Distributed runtime services
 - Cloud integration
-
-## Protocol Explorer
-
-Completed
-
-- Protocol message visualization
-- Annotated payload visualization
-- Runtime capability demonstrations (C-001, C-002)
-- Byte-oriented loopback transport
-- Shared capability scenario framework
-
-Future work
-
-- Recursive descriptor visualization
-- Transport implementations (USB, TCP/IP, BLE, MQTT)
-- Optional coloured console output
-- Optional Markdown/HTML report generation
-
+- Descriptor repositories
+- Recorded simulation playback
+- Advanced gateway routing

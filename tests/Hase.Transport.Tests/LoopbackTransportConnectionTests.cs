@@ -189,4 +189,73 @@ public sealed class LoopbackTransportConnectionTests
             "The loopback endpoint handler returned a null response.",
             exception.Message);
     }
+
+    [Fact]
+    public async Task ExchangeAsync_NullRequest_ShouldThrow()
+    {
+        // Arrange
+        var transport =
+            new LoopbackTransportConnection(
+                static (
+                    request,
+                    cancellationToken) =>
+                {
+                    return Task.FromResult(
+                        Array.Empty<byte>());
+                });
+
+        // Act
+        Task Act()
+        {
+            return transport.ExchangeAsync(
+                null!);
+        }
+
+        // Assert
+        await Assert.ThrowsAsync<
+            ArgumentNullException>(
+                Act);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_HandlerException_ShouldPropagate()
+    {
+        // Arrange
+        var expected =
+            new InvalidOperationException(
+                "Test exception");
+
+        var transport =
+            new LoopbackTransportConnection(
+                static (
+                    request,
+                    cancellationToken) =>
+                {
+                    throw new InvalidOperationException(
+                        "Test exception");
+                });
+
+        // Act
+        Task Act()
+        {
+            return transport.ExchangeAsync(
+                Array.Empty<byte>());
+        }
+
+        // Assert
+        var actual =
+            await Assert.ThrowsAsync<
+                InvalidOperationException>(
+                    Act);
+
+        Assert.Same(
+            expected.GetType(),
+            actual.GetType());
+
+        Assert.Equal(
+            expected.Message,
+            actual.Message);
+    }
+
+
 }
