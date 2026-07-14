@@ -1,5 +1,6 @@
-#include "HaseProtocolDispatcher.h"
+/* Protocol Dispatcher */
 
+#include "HaseProtocolDispatcher.h"
 #include "HaseBinaryProtocolReader.h"
 
 namespace
