@@ -1,11 +1,14 @@
 // -----------------------------------------------------------------------------
 // HASE Endpoint ESP32
 // -----------------------------------------------------------------------------
+
 #include <WiFi.h>
 
 #include "HaseDiscoverHandler.h"
+#include "HasePhysicalEndpointDescriptor.h"
 #include "HaseProtocolDispatcher.h"
 #include "HaseProtocolEnvelope.h"
+#include "HaseReadEndpointDescriptorHandler.h"
 #include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
 
@@ -370,16 +373,61 @@ bool processDiscoverRequest(
 bool processReadEndpointDescriptorRequest(
     const HaseProtocolEnvelope& envelope)
 {
-    static_cast<void>(
-        envelope);
+    uint32_t responseLength =
+        0;
+
+    const HaseEndpointDescriptor& descriptor =
+        HasePhysicalEndpointDescriptor::Descriptor();
+
+    bool responseCreated =
+        HaseReadEndpointDescriptorHandler::CreateResponse(
+            envelope,
+            descriptor,
+            responseBuffer,
+            sizeof(responseBuffer),
+            responseLength);
+
+    if (!responseCreated)
+    {
+        Serial.println(
+            "Failed to create ReadEndpointDescriptorResponse.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    bool responseWritten =
+        transport.writeFrame(
+            responseBuffer,
+            responseLength);
+
+    if (!responseWritten)
+    {
+        Serial.println(
+            "Failed to write ReadEndpointDescriptorResponse. "
+            "Closing client connection.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    printPayload(
+        "Responded",
+        responseBuffer,
+        responseLength);
 
     Serial.println();
 
     Serial.println(
-        "ReadEndpointDescriptorRequest recognized.");
+        "ReadEndpointDescriptorResponse sent.");
+
+    Serial.print(
+        "Endpoint ID : ");
 
     Serial.println(
-        "Descriptor response handler is not implemented yet.");
+        descriptor.id);
 
     Serial.println();
 
