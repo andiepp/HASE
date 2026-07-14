@@ -94,6 +94,46 @@ bool HaseBinaryProtocolWriter::writeUInt32(
     return true;
 }
 
+bool HaseBinaryProtocolWriter::writeDouble(
+    double value)
+{
+    static_assert(
+        sizeof(double) == 8,
+        "HASE Protocol Version 1 requires 64-bit double values.");
+
+    if (!_succeeded
+        || remaining() < sizeof(double))
+    {
+        _succeeded =
+            false;
+
+        return false;
+    }
+
+    uint64_t encodedValue =
+        0;
+
+    memcpy(
+        &encodedValue,
+        &value,
+        sizeof(encodedValue));
+
+    for (size_t index = 0;
+         index < sizeof(encodedValue);
+         index++)
+    {
+        _buffer[_position + index] =
+            static_cast<uint8_t>(
+                (encodedValue >> (index * 8))
+                & 0xFF);
+    }
+
+    _position +=
+        sizeof(encodedValue);
+
+    return true;
+}
+
 bool HaseBinaryProtocolWriter::writeCount(
     uint16_t count)
 {

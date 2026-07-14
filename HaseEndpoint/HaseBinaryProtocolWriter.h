@@ -18,6 +18,9 @@ public:
     bool writeUInt32(
         uint32_t value);
 
+    bool writeDouble(
+        double value);
+
     bool writeCount(
         uint16_t count);
 
