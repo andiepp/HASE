@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Hase.Core.Domain.Identity;
 using Hase.Protocol;
 using Hase.ProtocolExplorer.Transport;
 using Hase.Transport;
@@ -14,6 +15,12 @@ internal sealed class CapabilityC004Scenario
 
     private const int MaximumPayloadLength =
         4096;
+
+    private const string ExpectedEndpointId =
+        "ideaspark-esp32-01";
+
+    private const string ExpectedInstrumentId =
+        "environment-sensor-01";
 
     private static readonly CorrelationId
         DiscoveryCorrelationId =
@@ -89,7 +96,7 @@ internal sealed class CapabilityC004Scenario
             requestEnvelope);
 
         WriteBytes(
-            "Encoded Protocol Frame",
+            "Encoded Request Frame",
             requestFrame);
 
         var options =
@@ -118,53 +125,41 @@ internal sealed class CapabilityC004Scenario
             var stopwatch =
                 Stopwatch.StartNew();
 
-            byte[] echoedFrame =
+            byte[] responseFrame =
                 await connection.ExchangeAsync(
                     requestFrame);
 
             stopwatch.Stop();
 
             WriteBytes(
-                "Echoed Protocol Frame",
-                echoedFrame);
+                "Encoded Response Frame",
+                responseFrame);
 
-            if (!requestFrame.SequenceEqual(
-                    echoedFrame))
-            {
-                throw new InvalidDataException(
-                    "The protocol frame returned by the ESP32 does not "
-                    + "match the transmitted frame.");
-            }
-
-            ProtocolEnvelope echoedEnvelope =
+            ProtocolEnvelope responseEnvelope =
                 envelopeByteCodec.Decode(
-                    echoedFrame);
+                    responseFrame);
 
-            ProtocolMessage echoedMessage =
+            ProtocolMessage responseMessage =
                 payloadCodec.Decode(
-                    echoedEnvelope);
+                    responseEnvelope);
 
-            if (echoedMessage is not DiscoverRequest
-                echoedRequest)
+            if (responseMessage is not DiscoverResponse
+                response)
             {
                 throw new InvalidDataException(
-                    "The echoed protocol frame did not decode as a "
-                    + "DiscoverRequest.");
+                    "The ESP32 response did not decode as a "
+                    + "DiscoverResponse.");
             }
 
-            if (echoedRequest.CorrelationId
-                != DiscoveryCorrelationId)
-            {
-                throw new InvalidDataException(
-                    "The echoed DiscoverRequest has a different "
-                    + "correlation identifier.");
-            }
+            ValidateResponse(
+                response);
 
             WriteProtocolInformation(
-                "Decoded Echo",
-                echoedEnvelope);
+                "Discover Response",
+                responseEnvelope);
 
-            WriteResult(
+            WriteDiscoveryResult(
+                response,
                 stopwatch.Elapsed);
         }
         finally
@@ -179,6 +174,50 @@ internal sealed class CapabilityC004Scenario
             {
                 disposable.Dispose();
             }
+        }
+    }
+
+    private static void ValidateResponse(
+        DiscoverResponse response)
+    {
+        if (response.CorrelationId
+            != DiscoveryCorrelationId)
+        {
+            throw new InvalidDataException(
+                "The DiscoverResponse correlation identifier does "
+                + "not match the DiscoverRequest.");
+        }
+
+        var expectedEndpointId =
+            new EndpointId(
+                ExpectedEndpointId);
+
+        if (response.EndpointId
+            != expectedEndpointId)
+        {
+            throw new InvalidDataException(
+                $"Expected endpoint '{ExpectedEndpointId}', but "
+                + $"received '{response.EndpointId.Value}'.");
+        }
+
+        if (response.InstrumentIds.Count
+            != 1)
+        {
+            throw new InvalidDataException(
+                "The DiscoverResponse must contain exactly one "
+                + "instrument identifier.");
+        }
+
+        var expectedInstrumentId =
+            new InstrumentId(
+                ExpectedInstrumentId);
+
+        if (response.InstrumentIds[0]
+            != expectedInstrumentId)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument '{ExpectedInstrumentId}', but "
+                + $"received '{response.InstrumentIds[0].Value}'.");
         }
     }
 
@@ -198,9 +237,8 @@ internal sealed class CapabilityC004Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Send a genuine HASE DiscoverRequest protocol envelope "
-            + "to a physical ESP32-WROOM endpoint and validate the "
-            + "unchanged echo.");
+            "Discover a physical ESP32-WROOM endpoint through "
+            + "HASE Protocol Version 1 over framed TCP.");
 
         Console.WriteLine();
     }
@@ -269,7 +307,8 @@ internal sealed class CapabilityC004Scenario
         Console.WriteLine();
     }
 
-    private static void WriteResult(
+    private static void WriteDiscoveryResult(
+        DiscoverResponse response,
         TimeSpan elapsed)
     {
         const string title =
@@ -286,16 +325,26 @@ internal sealed class CapabilityC004Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Result                  : Success");
+            "Result           : Success");
 
         Console.WriteLine(
-            "Protocol Frame Echo     : Passed");
+            "Discovery        : Passed");
 
         Console.WriteLine(
-            "DiscoverRequest Decode  : Passed");
+            $"Endpoint ID      : {response.EndpointId.Value}");
 
         Console.WriteLine(
-            $"Round Trip Time         : "
+            $"Instrument Count : {response.InstrumentIds.Count}");
+
+        foreach (InstrumentId instrumentId
+                 in response.InstrumentIds)
+        {
+            Console.WriteLine(
+                $"Instrument ID   : {instrumentId.Value}");
+        }
+
+        Console.WriteLine(
+            $"Round Trip Time  : "
             + $"{elapsed.TotalMilliseconds:0.000} ms");
 
         Console.WriteLine();

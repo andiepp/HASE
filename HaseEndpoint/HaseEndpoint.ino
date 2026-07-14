@@ -1,5 +1,6 @@
 #include <WiFi.h>
 
+#include "HaseDiscoverHandler.h"
 #include "HaseProtocolDispatcher.h"
 #include "HaseProtocolEnvelope.h"
 #include "HaseTcpTransport.h"
@@ -36,7 +37,10 @@ HaseTcpTransport transport(
     MAXIMUM_PAYLOAD_LENGTH,
     READ_TIMEOUT_MILLISECONDS);
 
-uint8_t payloadBuffer[
+uint8_t requestBuffer[
+    MAXIMUM_PAYLOAD_LENGTH];
+
+uint8_t responseBuffer[
     MAXIMUM_PAYLOAD_LENGTH];
 
 // -----------------------------------------------------------------------------
@@ -46,6 +50,10 @@ uint8_t payloadBuffer[
 void connectToWiFi();
 
 void processTransport();
+
+bool processProtocolFrame(
+    const HaseProtocolEnvelope& envelope,
+    HaseProtocolDispatchResult dispatchResult);
 
 void printProtocolEnvelope(
     const HaseProtocolEnvelope& envelope);
@@ -77,6 +85,22 @@ void setup()
 
     Serial.println(
         "===================");
+
+    Serial.println();
+
+    Serial.print(
+        "Endpoint ID   : ");
+
+    Serial.println(
+        HaseDiscoverHandler::EndpointId());
+
+    Serial.print(
+        "Instrument ID : ");
+
+    Serial.println(
+        HaseDiscoverHandler::InstrumentId());
+
+    Serial.println();
 
     connectToWiFi();
 
@@ -168,14 +192,14 @@ void processTransport()
         return;
     }
 
-    uint32_t payloadLength =
+    uint32_t requestLength =
         0;
 
     bool frameRead =
         transport.readFrame(
-            payloadBuffer,
-            sizeof(payloadBuffer),
-            payloadLength);
+            requestBuffer,
+            sizeof(requestBuffer),
+            requestLength);
 
     if (!frameRead)
     {
@@ -189,15 +213,15 @@ void processTransport()
 
     printPayload(
         "Received",
-        payloadBuffer,
-        payloadLength);
+        requestBuffer,
+        requestLength);
 
     HaseProtocolEnvelope envelope;
 
     bool envelopeDecoded =
         HaseProtocolEnvelopeCodec::Decode(
-            payloadBuffer,
-            payloadLength,
+            requestBuffer,
+            requestLength,
             envelope);
 
     if (envelopeDecoded)
@@ -211,6 +235,13 @@ void processTransport()
 
         printDispatchResult(
             dispatchResult);
+
+        if (processProtocolFrame(
+                envelope,
+                dispatchResult))
+        {
+            return;
+        }
     }
     else
     {
@@ -224,13 +255,13 @@ void processTransport()
 
     bool frameWritten =
         transport.writeFrame(
-            payloadBuffer,
-            payloadLength);
+            requestBuffer,
+            requestLength);
 
     if (!frameWritten)
     {
         Serial.println(
-            "Failed to write TCP frame. Closing client connection.");
+            "Failed to echo TCP frame. Closing client connection.");
 
         transport.disconnectClient();
 
@@ -239,8 +270,82 @@ void processTransport()
 
     printPayload(
         "Echoed",
-        payloadBuffer,
-        payloadLength);
+        requestBuffer,
+        requestLength);
+}
+
+bool processProtocolFrame(
+    const HaseProtocolEnvelope& envelope,
+    HaseProtocolDispatchResult dispatchResult)
+{
+    if (dispatchResult
+        != HaseProtocolDispatchResult::
+            DiscoverRequestRecognized)
+    {
+        return false;
+    }
+
+    uint32_t responseLength =
+        0;
+
+    bool responseCreated =
+        HaseDiscoverHandler::CreateResponse(
+            envelope,
+            responseBuffer,
+            sizeof(responseBuffer),
+            responseLength);
+
+    if (!responseCreated)
+    {
+        Serial.println(
+            "Failed to create DiscoverResponse.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    bool responseWritten =
+        transport.writeFrame(
+            responseBuffer,
+            responseLength);
+
+    if (!responseWritten)
+    {
+        Serial.println(
+            "Failed to write DiscoverResponse. "
+            "Closing client connection.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    printPayload(
+        "Responded",
+        responseBuffer,
+        responseLength);
+
+    Serial.println();
+
+    Serial.println(
+        "DiscoverResponse sent.");
+
+    Serial.print(
+        "Endpoint ID   : ");
+
+    Serial.println(
+        HaseDiscoverHandler::EndpointId());
+
+    Serial.print(
+        "Instrument ID : ");
+
+    Serial.println(
+        HaseDiscoverHandler::InstrumentId());
+
+    Serial.println();
+
+    return true;
 }
 
 // -----------------------------------------------------------------------------
