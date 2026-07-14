@@ -4,12 +4,18 @@ namespace Hase.ProtocolExplorer;
 
 internal sealed class ScenarioRunner
 {
-    private readonly Dictionary<string, IScenario> _scenarios;
+    private readonly Dictionary<string, IScenario>
+        _scenarios;
 
     public ScenarioRunner(
-Generators.ProtocolTraceGenerator traceGenerator, IEnumerable<IScenario> scenarios)
+        Generators.ProtocolTraceGenerator traceGenerator,
+        IEnumerable<IScenario> scenarios)
     {
-        ArgumentNullException.ThrowIfNull(scenarios);
+        ArgumentNullException.ThrowIfNull(
+            traceGenerator);
+
+        ArgumentNullException.ThrowIfNull(
+            scenarios);
 
         _scenarios =
             scenarios.ToDictionary(
@@ -20,7 +26,20 @@ Generators.ProtocolTraceGenerator traceGenerator, IEnumerable<IScenario> scenari
     public bool TryRun(
         string scenarioName)
     {
-        ArgumentNullException.ThrowIfNull(scenarioName);
+        return TryRun(
+            scenarioName,
+            Array.Empty<string>());
+    }
+
+    public bool TryRun(
+        string scenarioName,
+        IReadOnlyList<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(
+            scenarioName);
+
+        ArgumentNullException.ThrowIfNull(
+            arguments);
 
         if (!_scenarios.TryGetValue(
                 scenarioName,
@@ -29,7 +48,16 @@ Generators.ProtocolTraceGenerator traceGenerator, IEnumerable<IScenario> scenari
             return false;
         }
 
-        scenario.Execute();
+        if (scenario is IParameterizedScenario
+            parameterizedScenario)
+        {
+            parameterizedScenario.Execute(
+                arguments);
+        }
+        else
+        {
+            scenario.Execute();
+        }
 
         return true;
     }

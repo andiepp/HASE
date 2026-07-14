@@ -13,7 +13,7 @@ internal static class Program
 
         WriteHeader();
 
-        if (args.Length != 1)
+        if (args.Length < 1)
         {
             WriteHelp();
             return 1;
@@ -39,18 +39,47 @@ internal static class Program
                     new CapabilityC001Scenario(
                         host),
                     new CapabilityC002Scenario(
-                        host)
+                        host),
+                    new CapabilityC003Scenario()
                 ]);
 
-        if (!runner.TryRun(
-                args[0]))
+        string scenarioName =
+            args[0];
+
+        IReadOnlyList<string> scenarioArguments =
+            args
+                .Skip(
+                    1)
+                .ToArray();
+
+        try
         {
+            if (!runner.TryRun(
+                    scenarioName,
+                    scenarioArguments))
+            {
+                Console.WriteLine(
+                    $"Unknown scenario '{scenarioName}'.");
+
+                Console.WriteLine();
+
+                WriteHelp();
+
+                return 1;
+            }
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine();
+
             Console.WriteLine(
-                $"Unknown scenario '{args[0]}'.");
+                "Scenario failed.");
 
             Console.WriteLine();
 
-            WriteHelp();
+            Console.WriteLine(
+                $"{exception.GetType().Name}: "
+                + $"{exception.Message}");
 
             return 1;
         }
@@ -77,7 +106,7 @@ internal static class Program
         Console.WriteLine();
 
         Console.WriteLine(
-            "  Hase.ProtocolExplorer <scenario>");
+            "  Hase.ProtocolExplorer <scenario> [arguments]");
 
         Console.WriteLine();
 
@@ -89,6 +118,9 @@ internal static class Program
 
         Console.WriteLine(
             "  c002");
+
+        Console.WriteLine(
+            "  c003 <ESP32 host or IP address>");
 
         Console.WriteLine();
 
