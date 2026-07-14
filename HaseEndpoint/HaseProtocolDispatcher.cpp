@@ -1,5 +1,40 @@
 #include "HaseProtocolDispatcher.h"
 
+#include "HaseBinaryProtocolReader.h"
+
+namespace
+{
+    bool IsValidReadEndpointDescriptorRequestPayload(
+        const HaseProtocolEnvelope& envelope)
+    {
+        HaseBinaryProtocolReader reader(
+            envelope.payload,
+            envelope.payloadLength);
+
+        uint16_t endpointIdLength =
+            0;
+
+        if (!reader.readUInt16(
+                endpointIdLength))
+        {
+            return false;
+        }
+
+        if (endpointIdLength == 0)
+        {
+            return false;
+        }
+
+        if (!reader.skipBytes(
+                endpointIdLength))
+        {
+            return false;
+        }
+
+        return reader.fullyConsumed();
+    }
+}
+
 HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
     const HaseProtocolEnvelope& envelope)
 {
@@ -21,11 +56,31 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
                 != 0)
         {
             return
-                HaseProtocolDispatchResult::InvalidDiscoverRequest;
+                HaseProtocolDispatchResult::
+                    InvalidDiscoverRequest;
         }
 
         return
-            HaseProtocolDispatchResult::DiscoverRequestRecognized;
+            HaseProtocolDispatchResult::
+                DiscoverRequestRecognized;
+    }
+
+    if (envelope.messageType
+        == ReadEndpointDescriptorRequestMessageType)
+    {
+        if (envelope.role
+                != RequestRole
+            || !IsValidReadEndpointDescriptorRequestPayload(
+                envelope))
+        {
+            return
+                HaseProtocolDispatchResult::
+                    InvalidReadEndpointDescriptorRequest;
+        }
+
+        return
+            HaseProtocolDispatchResult::
+                ReadEndpointDescriptorRequestRecognized;
     }
 
     return

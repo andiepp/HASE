@@ -19,3 +19,6 @@ TestResults/
 
 ## Logs
 *.log
+
+## Local secrets
+HaseEndpoint/HaseSecrets.h

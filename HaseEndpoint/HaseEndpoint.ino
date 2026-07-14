@@ -9,11 +9,9 @@
 // Wi-Fi configuration
 // -----------------------------------------------------------------------------
 
-const char* WIFI_SSID =
-    "Vodafone-C5E4";
+const char* WIFI_SSID = "secretSSID";
 
-const char* WIFI_PASSWORD =
-    "Sonnenhut1234";
+const char* WIFI_PASSWORD = "secretPW";
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration
