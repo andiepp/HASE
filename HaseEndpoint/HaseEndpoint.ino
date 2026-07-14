@@ -1,17 +1,13 @@
+// -----------------------------------------------------------------------------
+// HASE Endpoint ESP32
+// -----------------------------------------------------------------------------
 #include <WiFi.h>
 
 #include "HaseDiscoverHandler.h"
 #include "HaseProtocolDispatcher.h"
 #include "HaseProtocolEnvelope.h"
+#include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
-
-// -----------------------------------------------------------------------------
-// Wi-Fi configuration
-// -----------------------------------------------------------------------------
-
-const char* WIFI_SSID = "secretSSID";
-
-const char* WIFI_PASSWORD = "secretPW";
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration
@@ -52,6 +48,12 @@ void processTransport();
 bool processProtocolFrame(
     const HaseProtocolEnvelope& envelope,
     HaseProtocolDispatchResult dispatchResult);
+
+bool processDiscoverRequest(
+    const HaseProtocolEnvelope& envelope);
+
+bool processReadEndpointDescriptorRequest(
+    const HaseProtocolEnvelope& envelope);
 
 void printProtocolEnvelope(
     const HaseProtocolEnvelope& envelope);
@@ -276,13 +278,32 @@ bool processProtocolFrame(
     const HaseProtocolEnvelope& envelope,
     HaseProtocolDispatchResult dispatchResult)
 {
-    if (dispatchResult
-        != HaseProtocolDispatchResult::
-            DiscoverRequestRecognized)
+    switch (dispatchResult)
     {
-        return false;
-    }
+        case HaseProtocolDispatchResult::
+            DiscoverRequestRecognized:
+        {
+            return processDiscoverRequest(
+                envelope);
+        }
 
+        case HaseProtocolDispatchResult::
+            ReadEndpointDescriptorRequestRecognized:
+        {
+            return processReadEndpointDescriptorRequest(
+                envelope);
+        }
+
+        default:
+        {
+            return false;
+        }
+    }
+}
+
+bool processDiscoverRequest(
+    const HaseProtocolEnvelope& envelope)
+{
     uint32_t responseLength =
         0;
 
@@ -340,6 +361,25 @@ bool processProtocolFrame(
 
     Serial.println(
         HaseDiscoverHandler::InstrumentId());
+
+    Serial.println();
+
+    return true;
+}
+
+bool processReadEndpointDescriptorRequest(
+    const HaseProtocolEnvelope& envelope)
+{
+    static_cast<void>(
+        envelope);
+
+    Serial.println();
+
+    Serial.println(
+        "ReadEndpointDescriptorRequest recognized.");
+
+    Serial.println(
+        "Descriptor response handler is not implemented yet.");
 
     Serial.println();
 
@@ -424,6 +464,15 @@ void printDispatchResult(
         }
 
         case HaseProtocolDispatchResult::
+            ReadEndpointDescriptorRequestRecognized:
+        {
+            Serial.println(
+                "ReadEndpointDescriptorRequest recognized");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
             UnsupportedVersion:
         {
             Serial.println(
@@ -437,6 +486,15 @@ void printDispatchResult(
         {
             Serial.println(
                 "Invalid DiscoverRequest");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
+            InvalidReadEndpointDescriptorRequest:
+        {
+            Serial.println(
+                "Invalid ReadEndpointDescriptorRequest");
 
             break;
         }
