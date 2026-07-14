@@ -25,6 +25,24 @@ internal sealed class CapabilityC005Scenario
     private const string ExpectedDescription =
         "Physical HASE endpoint running on an Ideaspark ESP32 board.";
 
+    private const string ExpectedInstrumentId =
+        "environment-sensor-01";
+
+    private const string ExpectedInstrumentName =
+        "BMP280 Environment Sensor";
+
+    private const string ExpectedInstrumentKind =
+        "environment-sensor";
+
+    private const string ExpectedManufacturer =
+        "Bosch Sensortec";
+
+    private const string ExpectedModel =
+        "BMP280";
+
+    private const string ExpectedInstrumentDescription =
+        "Temperature and air-pressure sensor connected to the ESP32.";
+
     private static readonly CorrelationId
         DescriptorCorrelationId =
         new(105);
@@ -242,11 +260,112 @@ internal sealed class CapabilityC005Scenario
         }
 
         if (response.Descriptor.Instruments.Count
+            != 1)
+        {
+            throw new InvalidDataException(
+                "The physical endpoint descriptor must contain "
+                + "exactly one instrument.");
+        }
+
+        var instrument =
+            response.Descriptor.Instruments[0];
+
+        var expectedInstrumentId =
+            new InstrumentId(
+                ExpectedInstrumentId);
+
+        if (instrument.Id
+            != expectedInstrumentId)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument '{ExpectedInstrumentId}', but "
+                + $"received '{instrument.Id.Value}'.");
+        }
+
+        if (instrument.Name
+            != ExpectedInstrumentName)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument name '{ExpectedInstrumentName}', "
+                + $"but received '{instrument.Name}'.");
+        }
+
+        if (instrument.Kind.Name
+            != ExpectedInstrumentKind)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument kind '{ExpectedInstrumentKind}', "
+                + $"but received '{instrument.Kind.Name}'.");
+        }
+
+        if (instrument.Metadata.Manufacturer
+            != ExpectedManufacturer)
+        {
+            throw new InvalidDataException(
+                $"Expected manufacturer '{ExpectedManufacturer}', but "
+                + $"received '{instrument.Metadata.Manufacturer}'.");
+        }
+
+        if (instrument.Metadata.Model
+            != ExpectedModel)
+        {
+            throw new InvalidDataException(
+                $"Expected model '{ExpectedModel}', but received "
+                + $"'{instrument.Metadata.Model}'.");
+        }
+
+        if (instrument.Metadata.SerialNumber is not null)
+        {
+            throw new InvalidDataException(
+                "The current instrument descriptor must not contain "
+                + "a serial number.");
+        }
+
+        if (instrument.Metadata.FirmwareVersion is not null)
+        {
+            throw new InvalidDataException(
+                "The current instrument descriptor must not contain "
+                + "a firmware version.");
+        }
+
+        if (instrument.Metadata.HardwareRevision is not null)
+        {
+            throw new InvalidDataException(
+                "The current instrument descriptor must not contain "
+                + "a hardware revision.");
+        }
+
+        if (instrument.Metadata.Description
+            != ExpectedInstrumentDescription)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument description "
+                + $"'{ExpectedInstrumentDescription}', but received "
+                + $"'{instrument.Metadata.Description}'.");
+        }
+
+        if (instrument.Interface.Properties.Count
             != 0)
         {
             throw new InvalidDataException(
-                "The current minimal physical endpoint descriptor "
-                + "must not contain instruments.");
+                "The current physical instrument descriptor must not "
+                + "contain properties.");
+        }
+
+        if (instrument.Interface.Commands.Count
+            != 0)
+        {
+            throw new InvalidDataException(
+                "The current physical instrument descriptor must not "
+                + "contain commands.");
+        }
+
+        if (instrument.Interface.Events.Count
+            != 0)
+        {
+            throw new InvalidDataException(
+                "The current physical instrument descriptor must not "
+                + "contain events.");
         }
     }
 
@@ -341,6 +460,9 @@ internal sealed class CapabilityC005Scenario
         ReadEndpointDescriptorResponse response,
         TimeSpan elapsed)
     {
+        var instrument =
+            response.Descriptor!.Instruments[0];
+
         const string title =
             "Capability Result";
 
@@ -362,19 +484,47 @@ internal sealed class CapabilityC005Scenario
 
         Console.WriteLine(
             $"Endpoint ID      : "
-            + $"{response.Descriptor!.Id.Value}");
+            + $"{response.Descriptor.Id.Value}");
 
         Console.WriteLine(
             $"Display Name     : "
             + $"{response.Descriptor.Metadata.DisplayName}");
 
         Console.WriteLine(
-            $"Description      : "
-            + $"{response.Descriptor.Metadata.Description}");
-
-        Console.WriteLine(
             $"Instrument Count : "
             + $"{response.Descriptor.Instruments.Count}");
+
+        Console.WriteLine(
+            $"Instrument ID    : "
+            + $"{instrument.Id.Value}");
+
+        Console.WriteLine(
+            $"Instrument Name  : "
+            + $"{instrument.Name}");
+
+        Console.WriteLine(
+            $"Instrument Kind  : "
+            + $"{instrument.Kind.Name}");
+
+        Console.WriteLine(
+            $"Manufacturer     : "
+            + $"{instrument.Metadata.Manufacturer}");
+
+        Console.WriteLine(
+            $"Model            : "
+            + $"{instrument.Metadata.Model}");
+
+        Console.WriteLine(
+            $"Property Count   : "
+            + $"{instrument.Interface.Properties.Count}");
+
+        Console.WriteLine(
+            $"Command Count    : "
+            + $"{instrument.Interface.Commands.Count}");
+
+        Console.WriteLine(
+            $"Event Count      : "
+            + $"{instrument.Interface.Events.Count}");
 
         Console.WriteLine(
             $"Round Trip Time  : "
