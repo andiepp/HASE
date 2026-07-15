@@ -13,6 +13,12 @@ namespace Hase.Transport;
 public interface ITransportConnection
 {
     /// <summary>
+    /// Occurs when the locally observable lifecycle state changes.
+    /// </summary>
+    event EventHandler<TransportConnectionStateChangedEventArgs>?
+        StateChanged;
+
+    /// <summary>
     /// Gets the locally observable lifecycle state of the connection.
     /// </summary>
     TransportConnectionState State

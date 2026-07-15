@@ -56,6 +56,11 @@ public sealed class TcpTransportConnection
     }
 
     /// <inheritdoc />
+    public event EventHandler<
+        TransportConnectionStateChangedEventArgs>?
+        StateChanged;
+
+    /// <inheritdoc />
     public TransportConnectionState State =>
         _disposed
             ? TransportConnectionState.Closed
@@ -116,6 +121,9 @@ public sealed class TcpTransportConnection
             return ValueTask.CompletedTask;
         }
 
+        TransportConnectionState previousState =
+            State;
+
         _disposed =
             true;
 
@@ -123,6 +131,21 @@ public sealed class TcpTransportConnection
         _client.Dispose();
         _exchangeLock.Dispose();
 
+        OnStateChanged(
+            previousState,
+            State);
+
         return ValueTask.CompletedTask;
+    }
+
+    private void OnStateChanged(
+        TransportConnectionState previousState,
+        TransportConnectionState currentState)
+    {
+        StateChanged?.Invoke(
+            this,
+            new TransportConnectionStateChangedEventArgs(
+                previousState,
+                currentState));
     }
 }

@@ -21,6 +21,19 @@ public sealed class TransportFactoryTests
     private sealed class TestTransportConnection
         : ITransportConnection
     {
+        public event EventHandler<
+            TransportConnectionStateChangedEventArgs>?
+            StateChanged
+        {
+            add
+            {
+            }
+
+            remove
+            {
+            }
+        }
+
         public TransportConnectionState State =>
             TransportConnectionState.Connected;
 

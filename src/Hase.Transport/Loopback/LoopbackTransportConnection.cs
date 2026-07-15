@@ -28,6 +28,20 @@ public sealed class LoopbackTransportConnection
     }
 
     /// <inheritdoc />
+    public event EventHandler<
+        TransportConnectionStateChangedEventArgs>?
+        StateChanged
+    {
+        add
+        {
+        }
+
+        remove
+        {
+        }
+    }
+
+    /// <inheritdoc />
     public TransportConnectionState State =>
         TransportConnectionState.Connected;
 
