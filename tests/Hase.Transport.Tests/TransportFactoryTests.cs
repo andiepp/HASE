@@ -21,6 +21,9 @@ public sealed class TransportFactoryTests
     private sealed class TestTransportConnection
         : ITransportConnection
     {
+        public TransportConnectionState State =>
+            TransportConnectionState.Connected;
+
         public Task<byte[]> ExchangeAsync(
             byte[] request,
             CancellationToken cancellationToken = default)

@@ -27,6 +27,11 @@ public sealed class LoopbackTransportConnection
                 nameof(exchangeHandler));
     }
 
+    /// <inheritdoc />
+    public TransportConnectionState State =>
+        TransportConnectionState.Connected;
+
+    /// <inheritdoc />
     public async Task<byte[]> ExchangeAsync(
         byte[] request,
         CancellationToken cancellationToken = default)

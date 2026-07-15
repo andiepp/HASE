@@ -56,6 +56,12 @@ public sealed class TcpTransportConnection
     }
 
     /// <inheritdoc />
+    public TransportConnectionState State =>
+        _disposed
+            ? TransportConnectionState.Closed
+            : TransportConnectionState.Connected;
+
+    /// <inheritdoc />
     public async Task<byte[]> ExchangeAsync(
         byte[] request,
         CancellationToken cancellationToken = default)

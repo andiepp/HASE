@@ -13,6 +13,14 @@ namespace Hase.Transport;
 public interface ITransportConnection
 {
     /// <summary>
+    /// Gets the locally observable lifecycle state of the connection.
+    /// </summary>
+    TransportConnectionState State
+    {
+        get;
+    }
+
+    /// <summary>
     /// Sends a request and waits for the corresponding response.
     /// </summary>
     Task<byte[]> ExchangeAsync(
