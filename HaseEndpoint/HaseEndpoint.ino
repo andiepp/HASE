@@ -4,6 +4,7 @@
 
 #include <WiFi.h>
 
+#include "HaseBme280Sensor.h"
 #include "HaseDiscoverHandler.h"
 #include "HasePhysicalEndpointDescriptor.h"
 #include "HaseProtocolDispatcher.h"
@@ -29,6 +30,8 @@ constexpr unsigned long READ_TIMEOUT_MILLISECONDS =
 // Global objects and buffers
 // -----------------------------------------------------------------------------
 
+HaseBme280Sensor environmentSensor;
+
 HaseTcpTransport transport(
     TCP_PORT,
     MAXIMUM_PAYLOAD_LENGTH,
@@ -40,9 +43,16 @@ uint8_t requestBuffer[
 uint8_t responseBuffer[
     MAXIMUM_PAYLOAD_LENGTH];
 
+bool endpointStarted =
+    false;
+
 // -----------------------------------------------------------------------------
 // Forward declarations
 // -----------------------------------------------------------------------------
+
+bool initializeEnvironmentSensor();
+
+void printEnvironmentSensorReading();
 
 void connectToWiFi();
 
@@ -105,9 +115,23 @@ void setup()
 
     Serial.println();
 
+    if (!initializeEnvironmentSensor())
+    {
+        Serial.println(
+            "Endpoint startup stopped because the BME280 "
+            "could not be initialized.");
+
+        Serial.println();
+
+        return;
+    }
+
     connectToWiFi();
 
     transport.begin();
+
+    endpointStarted =
+        true;
 
     Serial.println(
         "Waiting for HASE client...");
@@ -115,6 +139,14 @@ void setup()
 
 void loop()
 {
+    if (!endpointStarted)
+    {
+        delay(
+            1000);
+
+        return;
+    }
+
     if (WiFi.status() != WL_CONNECTED)
     {
         transport.disconnectClient();
@@ -133,6 +165,109 @@ void loop()
 
     delay(
         1);
+}
+
+// -----------------------------------------------------------------------------
+// Environment sensor
+// -----------------------------------------------------------------------------
+
+bool initializeEnvironmentSensor()
+{
+    Serial.println(
+        "Initializing BME280 environment sensor...");
+
+    Serial.println(
+        "I2C configuration:");
+
+    Serial.println(
+        "  SDA     : GPIO21");
+
+    Serial.println(
+        "  SCL     : GPIO22");
+
+    Serial.println(
+        "  Address : 0x76");
+
+    Serial.println();
+
+    if (!environmentSensor.begin())
+    {
+        Serial.println(
+            "BME280 initialization failed.");
+
+        Serial.println(
+            "Check the sensor type, I2C address, wiring, and power.");
+
+        Serial.println();
+
+        return false;
+    }
+
+    Serial.println(
+        "BME280 initialized.");
+
+    Serial.print(
+        "Sensor ID : 0x");
+
+    Serial.println(
+        environmentSensor.sensorId(),
+        HEX);
+
+    Serial.println();
+
+    printEnvironmentSensorReading();
+
+    return true;
+}
+
+void printEnvironmentSensorReading()
+{
+    float temperature =
+        environmentSensor.readTemperatureCelsius();
+
+    float relativeHumidity =
+        environmentSensor.readRelativeHumidity();
+
+    float airPressure =
+        environmentSensor.readAirPressureHectopascal();
+
+    Serial.println(
+        "Initial BME280 Reading");
+
+    Serial.println(
+        "----------------------");
+
+    Serial.print(
+        "Temperature       : ");
+
+    Serial.print(
+        temperature,
+        1);
+
+    Serial.println(
+        " degree Celsius");
+
+    Serial.print(
+        "Relative Humidity : ");
+
+    Serial.print(
+        relativeHumidity,
+        1);
+
+    Serial.println(
+        " %RH");
+
+    Serial.print(
+        "Air Pressure      : ");
+
+    Serial.print(
+        airPressure,
+        1);
+
+    Serial.println(
+        " hPa");
+
+    Serial.println();
 }
 
 // -----------------------------------------------------------------------------
