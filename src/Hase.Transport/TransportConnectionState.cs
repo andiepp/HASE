@@ -11,6 +11,11 @@ public enum TransportConnectionState
     Connected,
 
     /// <summary>
+    /// A transport operation failed and the connection must not be reused.
+    /// </summary>
+    Faulted,
+
+    /// <summary>
     /// The connection has been closed and can no longer be used.
     /// </summary>
     Closed

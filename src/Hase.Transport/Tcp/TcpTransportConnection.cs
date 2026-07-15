@@ -18,7 +18,8 @@ public sealed class TcpTransportConnection
             initialCount: 1,
             maxCount: 1);
 
-    private bool _disposed;
+    private TransportConnectionState _state =
+        TransportConnectionState.Connected;
 
     /// <summary>
     /// Initializes a transport connection over an already-connected
@@ -62,18 +63,14 @@ public sealed class TcpTransportConnection
 
     /// <inheritdoc />
     public TransportConnectionState State =>
-        _disposed
-            ? TransportConnectionState.Closed
-            : TransportConnectionState.Connected;
+        _state;
 
     /// <inheritdoc />
     public async Task<byte[]> ExchangeAsync(
         byte[] request,
         CancellationToken cancellationToken = default)
     {
-        ObjectDisposedException.ThrowIf(
-            _disposed,
-            this);
+        ThrowIfUnavailable();
 
         ArgumentNullException.ThrowIfNull(
             request);
@@ -85,9 +82,7 @@ public sealed class TcpTransportConnection
 
         try
         {
-            ObjectDisposedException.ThrowIf(
-                _disposed,
-                this);
+            ThrowIfUnavailable();
 
             byte[] requestFrame =
                 TcpFrameCodec.Encode(
@@ -105,6 +100,23 @@ public sealed class TcpTransportConnection
                 _maximumPayloadLength,
                 cancellationToken);
         }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (ObjectDisposedException)
+            when (_state == TransportConnectionState.Closed)
+        {
+            throw;
+        }
+        catch
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            throw;
+        }
         finally
         {
             _exchangeLock.Release();
@@ -116,32 +128,51 @@ public sealed class TcpTransportConnection
     /// </summary>
     public ValueTask DisposeAsync()
     {
-        if (_disposed)
+        if (_state == TransportConnectionState.Closed)
         {
             return ValueTask.CompletedTask;
         }
-
-        TransportConnectionState previousState =
-            State;
-
-        _disposed =
-            true;
 
         _stream.Dispose();
         _client.Dispose();
         _exchangeLock.Dispose();
 
-        OnStateChanged(
-            previousState,
-            State);
+        TransitionTo(
+            TransportConnectionState.Closed);
 
         return ValueTask.CompletedTask;
     }
 
-    private void OnStateChanged(
-        TransportConnectionState previousState,
+    private void ThrowIfUnavailable()
+    {
+        if (_state == TransportConnectionState.Closed)
+        {
+            throw new ObjectDisposedException(
+                nameof(TcpTransportConnection));
+        }
+
+        if (_state == TransportConnectionState.Faulted)
+        {
+            throw new InvalidOperationException(
+                "The TCP transport connection is faulted "
+                + "and cannot be reused.");
+        }
+    }
+
+    private void TransitionTo(
         TransportConnectionState currentState)
     {
+        TransportConnectionState previousState =
+            _state;
+
+        if (previousState == currentState)
+        {
+            return;
+        }
+
+        _state =
+            currentState;
+
         StateChanged?.Invoke(
             this,
             new TransportConnectionStateChangedEventArgs(
