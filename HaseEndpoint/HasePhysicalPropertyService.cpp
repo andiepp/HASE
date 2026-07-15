@@ -56,6 +56,14 @@ HasePhysicalPropertyReadResult
         sensorValue =
             _sensor.readRelativeHumidity();
     }
+    else if (strcmp(
+                 propertyId,
+                 AirPressurePropertyId)
+             == 0)
+    {
+        sensorValue =
+            _sensor.readAirPressureHectopascal();
+    }
     else
     {
         return
