@@ -30,22 +30,41 @@ HasePhysicalPropertyReadResult
                 InstrumentNotFound;
     }
 
-    if (propertyId == nullptr
-        || strcmp(
-               propertyId,
-               TemperaturePropertyId)
-            != 0)
+    if (propertyId == nullptr)
     {
         return
             HasePhysicalPropertyReadResult::
                 PropertyNotFound;
     }
 
-    float temperature =
-        _sensor.readTemperatureCelsius();
+    float sensorValue =
+        NAN;
+
+    if (strcmp(
+            propertyId,
+            TemperaturePropertyId)
+        == 0)
+    {
+        sensorValue =
+            _sensor.readTemperatureCelsius();
+    }
+    else if (strcmp(
+                 propertyId,
+                 RelativeHumidityPropertyId)
+             == 0)
+    {
+        sensorValue =
+            _sensor.readRelativeHumidity();
+    }
+    else
+    {
+        return
+            HasePhysicalPropertyReadResult::
+                PropertyNotFound;
+    }
 
     if (isnan(
-            temperature))
+            sensorValue))
     {
         return
             HasePhysicalPropertyReadResult::
@@ -54,7 +73,7 @@ HasePhysicalPropertyReadResult
 
     value =
         static_cast<double>(
-            temperature);
+            sensorValue);
 
     return
         HasePhysicalPropertyReadResult::

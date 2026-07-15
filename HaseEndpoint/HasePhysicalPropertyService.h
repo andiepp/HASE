@@ -33,5 +33,8 @@ private:
     static constexpr const char* TemperaturePropertyId =
         "physical.environment-sensor.temperature";
 
+    static constexpr const char* RelativeHumidityPropertyId =
+        "physical.environment-sensor.relative-humidity";
+
     HaseBme280Sensor& _sensor;
 };
