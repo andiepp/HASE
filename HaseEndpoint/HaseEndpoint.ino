@@ -12,6 +12,8 @@
 #include "HaseReadEndpointDescriptorHandler.h"
 #include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
+#include "HaseReadPropertyRequest.h"
+#include <cstring>
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration
@@ -518,16 +520,92 @@ bool processDiscoverRequest(
 bool processReadPropertyRequest(
     const HaseProtocolEnvelope& envelope)
 {
-    static_cast<void>(
-        envelope);
+    HaseReadPropertyRequest request;
+
+    if (!HaseReadPropertyRequestDecoder::Decode(
+            envelope,
+            request))
+    {
+        Serial.println();
+
+        Serial.println(
+            "Failed to decode ReadPropertyRequest.");
+
+        Serial.println();
+
+        return true;
+    }
 
     Serial.println();
 
     Serial.println(
-        "ReadPropertyRequest recognized.");
+        "ReadPropertyRequest");
 
     Serial.println(
-        "ReadPropertyResponse handler is not implemented yet.");
+        "-------------------");
+
+    Serial.print(
+        "Instrument ID : ");
+
+    Serial.println(
+        request.instrumentId);
+
+    Serial.print(
+        "Property ID   : ");
+
+    Serial.println(
+        request.propertyId);
+
+    const HaseEndpointDescriptor& descriptor =
+        HasePhysicalEndpointDescriptor::Descriptor();
+
+    if (strcmp(
+            request.instrumentId,
+            descriptor.instruments[0].id) != 0)
+    {
+        Serial.println();
+
+        Serial.println(
+            "Unknown instrument.");
+
+        Serial.println();
+
+        return true;
+    }
+
+    bool propertyFound =
+        false;
+
+    const HaseInstrumentDescriptor& instrument =
+        descriptor.instruments[0];
+
+    for (uint16_t index = 0;
+         index < instrument.propertyCount;
+         ++index)
+    {
+        if (strcmp(
+                request.propertyId,
+                instrument.properties[index].id) == 0)
+        {
+            propertyFound = true;
+
+            Serial.println(
+                "Property recognized.");
+
+            break;
+        }
+    }
+
+    if (!propertyFound)
+    {
+        Serial.println(
+            "Unknown property.");
+    }
+
+    Serial.println();
+
+    Serial.println(
+        "ReadPropertyResponse not implemented yet.");
 
     Serial.println();
 
