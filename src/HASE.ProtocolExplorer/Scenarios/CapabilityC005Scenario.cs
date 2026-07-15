@@ -1,9 +1,13 @@
-﻿using System.Diagnostics;
+﻿using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 using Hase.Protocol;
 using Hase.ProtocolExplorer.Transport;
 using Hase.Transport;
 using Hase.Transport.Tcp;
+using System.Diagnostics;
 
 namespace Hase.ProtocolExplorer.Scenarios;
 
@@ -222,53 +226,71 @@ internal sealed class CapabilityC005Scenario
                 + $"{response.Result.Message ?? "(no message)"}.");
         }
 
-        if (response.Descriptor is null)
-        {
-            throw new InvalidDataException(
+        EndpointDescriptor descriptor =
+            response.Descriptor
+            ?? throw new InvalidDataException(
                 "The successful descriptor response did not contain "
                 + "an endpoint descriptor.");
-        }
 
+        ValidateEndpoint(
+            descriptor);
+
+        InstrumentDescriptor instrument =
+            ValidateInstrument(
+                descriptor);
+
+        ValidateTemperatureProperty(
+            instrument);
+
+        ValidateAirPressureProperty(
+            instrument);
+    }
+
+    private static void ValidateEndpoint(
+        EndpointDescriptor descriptor)
+    {
         var expectedEndpointId =
             new EndpointId(
                 ExpectedEndpointId);
 
-        if (response.Descriptor.Id
+        if (descriptor.Id
             != expectedEndpointId)
         {
             throw new InvalidDataException(
                 $"Expected endpoint '{ExpectedEndpointId}', but "
-                + $"received '{response.Descriptor.Id.Value}'.");
+                + $"received '{descriptor.Id.Value}'.");
         }
 
-        if (response.Descriptor.Metadata.DisplayName
+        if (descriptor.Metadata.DisplayName
             != ExpectedDisplayName)
         {
             throw new InvalidDataException(
                 $"Expected display name '{ExpectedDisplayName}', but "
-                + $"received "
-                + $"'{response.Descriptor.Metadata.DisplayName}'.");
+                + $"received '{descriptor.Metadata.DisplayName}'.");
         }
 
-        if (response.Descriptor.Metadata.Description
+        if (descriptor.Metadata.Description
             != ExpectedDescription)
         {
             throw new InvalidDataException(
                 $"Expected description '{ExpectedDescription}', but "
-                + $"received "
-                + $"'{response.Descriptor.Metadata.Description}'.");
+                + $"received '{descriptor.Metadata.Description}'.");
         }
 
-        if (response.Descriptor.Instruments.Count
+        if (descriptor.Instruments.Count
             != 1)
         {
             throw new InvalidDataException(
                 "The physical endpoint descriptor must contain "
                 + "exactly one instrument.");
         }
+    }
 
-        var instrument =
-            response.Descriptor.Instruments[0];
+    private static InstrumentDescriptor ValidateInstrument(
+        EndpointDescriptor descriptor)
+    {
+        InstrumentDescriptor instrument =
+            descriptor.Instruments[0];
 
         var expectedInstrumentId =
             new InstrumentId(
@@ -345,27 +367,230 @@ internal sealed class CapabilityC005Scenario
         }
 
         if (instrument.Interface.Properties.Count
-            != 0)
+            != 2)
         {
             throw new InvalidDataException(
-                "The current physical instrument descriptor must not "
-                + "contain properties.");
+                "The physical BMP280 descriptor must contain exactly "
+                + "two properties.");
         }
 
         if (instrument.Interface.Commands.Count
             != 0)
         {
             throw new InvalidDataException(
-                "The current physical instrument descriptor must not "
-                + "contain commands.");
+                "The physical BMP280 descriptor must not contain "
+                + "commands.");
         }
 
         if (instrument.Interface.Events.Count
             != 0)
         {
             throw new InvalidDataException(
-                "The current physical instrument descriptor must not "
-                + "contain events.");
+                "The physical BMP280 descriptor must not contain "
+                + "events.");
+        }
+
+        return instrument;
+    }
+
+    private static void ValidateTemperatureProperty(
+        InstrumentDescriptor instrument)
+    {
+        PropertyDescriptor property =
+            instrument.Interface.Properties[0];
+
+        ValidateNumericProperty(
+            property,
+            expectedId:
+                "physical.environment-sensor.temperature",
+            expectedPath:
+                new DescriptorPath(
+                    "Environment",
+                    "Temperature"),
+            expectedDisplayName:
+                "Temperature",
+            expectedDescription:
+                "Ambient temperature.",
+            expectedQuantityId:
+                "temperature",
+            expectedQuantityDisplayName:
+                "Temperature",
+            expectedUnitId:
+                "celsius",
+            expectedUnitDisplayName:
+                "Degree Celsius",
+            expectedUnitSymbol:
+                "°C",
+            expectedMinimum:
+                -100.0,
+            expectedMaximum:
+                100.0,
+            expectedResolution:
+                0.1);
+    }
+
+    private static void ValidateAirPressureProperty(
+        InstrumentDescriptor instrument)
+    {
+        PropertyDescriptor property =
+            instrument.Interface.Properties[1];
+
+        ValidateNumericProperty(
+            property,
+            expectedId:
+                "physical.environment-sensor.air-pressure",
+            expectedPath:
+                new DescriptorPath(
+                    "Environment",
+                    "AirPressure"),
+            expectedDisplayName:
+                "Air Pressure",
+            expectedDescription:
+                "Ambient air pressure.",
+            expectedQuantityId:
+                "pressure",
+            expectedQuantityDisplayName:
+                "Pressure",
+            expectedUnitId:
+                "hectopascal",
+            expectedUnitDisplayName:
+                "Hectopascal",
+            expectedUnitSymbol:
+                "hPa",
+            expectedMinimum:
+                300.0,
+            expectedMaximum:
+                1100.0,
+            expectedResolution:
+                0.1);
+    }
+
+    private static void ValidateNumericProperty(
+        PropertyDescriptor property,
+        string expectedId,
+        DescriptorPath expectedPath,
+        string expectedDisplayName,
+        string expectedDescription,
+        string expectedQuantityId,
+        string expectedQuantityDisplayName,
+        string expectedUnitId,
+        string expectedUnitDisplayName,
+        string expectedUnitSymbol,
+        double expectedMinimum,
+        double expectedMaximum,
+        double expectedResolution)
+    {
+        var expectedPropertyId =
+            new PropertyId(
+                expectedId);
+
+        if (property.Id
+            != expectedPropertyId)
+        {
+            throw new InvalidDataException(
+                $"Expected property '{expectedId}', but received "
+                + $"'{property.Id.Value}'.");
+        }
+
+        if (property.Path
+            != expectedPath)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected path "
+                + $"'{property.Path}'.");
+        }
+
+        if (property.DisplayName
+            != expectedDisplayName)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected display name "
+                + $"'{property.DisplayName}'.");
+        }
+
+        if (property.Description
+            != expectedDescription)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected description "
+                + $"'{property.Description}'.");
+        }
+
+        if (property.AccessMode
+            != PropertyAccessMode.Read)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' must be read-only.");
+        }
+
+        if (property.Data
+            is not NumericDataDescriptor numericData)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' does not contain a numeric "
+                + "data descriptor.");
+        }
+
+        if (numericData.Quantity.Id
+            != expectedQuantityId
+            || numericData.Quantity.DisplayName
+            != expectedQuantityDisplayName)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected quantity "
+                + $"'{numericData.Quantity.Id}' / "
+                + $"'{numericData.Quantity.DisplayName}'.");
+        }
+
+        if (numericData.NativeUnit.Id
+            != expectedUnitId
+            || numericData.NativeUnit.DisplayName
+                != expectedUnitDisplayName
+            || numericData.NativeUnit.Symbol
+                != expectedUnitSymbol)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected native unit "
+                + $"'{numericData.NativeUnit.Id}' / "
+                + $"'{numericData.NativeUnit.DisplayName}' / "
+                + $"'{numericData.NativeUnit.Symbol}'.");
+        }
+
+        if (numericData.NativeUnit.Quantity
+            != numericData.Quantity)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has a unit associated with "
+                + "the wrong quantity.");
+        }
+
+        ValueRange range =
+            numericData.Range
+            ?? throw new InvalidDataException(
+                $"Property '{expectedId}' does not contain a range.");
+
+        if (range.Minimum
+                != expectedMinimum
+            || range.Maximum
+                != expectedMaximum)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected range "
+                + $"{range.Minimum} to {range.Maximum}.");
+        }
+
+        Resolution resolution =
+            numericData.Resolution
+            ?? throw new InvalidDataException(
+                $"Property '{expectedId}' does not contain a "
+                + "resolution.");
+
+        if (resolution.Value
+            != expectedResolution)
+        {
+            throw new InvalidDataException(
+                $"Property '{expectedId}' has unexpected resolution "
+                + $"{resolution.Value}.");
         }
     }
 
@@ -385,9 +610,9 @@ internal sealed class CapabilityC005Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Read and decode the descriptor of a physical "
-            + "ESP32-WROOM endpoint through HASE Protocol Version 1 "
-            + "over framed TCP.");
+            "Read and decode the complete descriptor of a physical "
+            + "BMP280 endpoint through HASE Protocol Version 1 over "
+            + "framed TCP.");
 
         Console.WriteLine();
     }
@@ -460,8 +685,11 @@ internal sealed class CapabilityC005Scenario
         ReadEndpointDescriptorResponse response,
         TimeSpan elapsed)
     {
-        var instrument =
-            response.Descriptor!.Instruments[0];
+        EndpointDescriptor descriptor =
+            response.Descriptor!;
+
+        InstrumentDescriptor instrument =
+            descriptor.Instruments[0];
 
         const string title =
             "Capability Result";
@@ -483,40 +711,48 @@ internal sealed class CapabilityC005Scenario
             "Descriptor Read  : Passed");
 
         Console.WriteLine(
-            $"Endpoint ID      : "
-            + $"{response.Descriptor.Id.Value}");
+            $"Endpoint ID      : {descriptor.Id.Value}");
 
         Console.WriteLine(
-            $"Display Name     : "
-            + $"{response.Descriptor.Metadata.DisplayName}");
-
-        Console.WriteLine(
-            $"Instrument Count : "
-            + $"{response.Descriptor.Instruments.Count}");
-
-        Console.WriteLine(
-            $"Instrument ID    : "
-            + $"{instrument.Id.Value}");
-
-        Console.WriteLine(
-            $"Instrument Name  : "
-            + $"{instrument.Name}");
-
-        Console.WriteLine(
-            $"Instrument Kind  : "
-            + $"{instrument.Kind.Name}");
-
-        Console.WriteLine(
-            $"Manufacturer     : "
-            + $"{instrument.Metadata.Manufacturer}");
-
-        Console.WriteLine(
-            $"Model            : "
-            + $"{instrument.Metadata.Model}");
+            $"Instrument ID    : {instrument.Id.Value}");
 
         Console.WriteLine(
             $"Property Count   : "
             + $"{instrument.Interface.Properties.Count}");
+
+        foreach (PropertyDescriptor property
+                 in instrument.Interface.Properties)
+        {
+            var numericData =
+                (NumericDataDescriptor)property.Data;
+
+            Console.WriteLine(
+                $"Property         : {property.DisplayName}");
+
+            Console.WriteLine(
+                $"  ID             : {property.Id.Value}");
+
+            Console.WriteLine(
+                $"  Path           : {property.Path}");
+
+            Console.WriteLine(
+                $"  Quantity       : "
+                + $"{numericData.Quantity.DisplayName}");
+
+            Console.WriteLine(
+                $"  Native Unit    : "
+                + $"{numericData.NativeUnit.DisplayName} "
+                + $"({numericData.NativeUnit.Symbol})");
+
+            Console.WriteLine(
+                $"  Range          : "
+                + $"{numericData.Range!.Minimum} to "
+                + $"{numericData.Range.Maximum}");
+
+            Console.WriteLine(
+                $"  Resolution     : "
+                + $"{numericData.Resolution!.Value}");
+        }
 
         Console.WriteLine(
             $"Command Count    : "

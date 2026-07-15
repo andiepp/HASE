@@ -2,7 +2,7 @@
   "profiles": {
     "HASE.ProtocolExplorer": {
       "commandName": "Project",
-      "commandLineArgs": "c005 192.168.0.43"
+      "commandLineArgs": "c005 192.168.0.223"
     }
   }
 }
