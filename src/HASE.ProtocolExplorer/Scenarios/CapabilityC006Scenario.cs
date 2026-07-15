@@ -23,11 +23,20 @@ internal sealed class CapabilityC006Scenario
     private const string TemperaturePropertyIdValue =
         "physical.environment-sensor.temperature";
 
+    private const string RelativeHumidityPropertyIdValue =
+        "physical.environment-sensor.relative-humidity";
+
     private const double MinimumPlausibleTemperatureCelsius =
         -40.0;
 
     private const double MaximumPlausibleTemperatureCelsius =
         85.0;
+
+    private const double MinimumPlausibleRelativeHumidity =
+        0.0;
+
+    private const double MaximumPlausibleRelativeHumidity =
+        100.0;
 
     private static readonly TimeSpan
         MaximumTimestampDifference =
@@ -35,8 +44,12 @@ internal sealed class CapabilityC006Scenario
             2);
 
     private static readonly CorrelationId
-        ReadCorrelationId =
+        TemperatureCorrelationId =
         new(106);
+
+    private static readonly CorrelationId
+        RelativeHumidityCorrelationId =
+        new(107);
 
     public string Name =>
         "c006";
@@ -70,35 +83,11 @@ internal sealed class CapabilityC006Scenario
         WriteCapabilityHeader(
             host);
 
-        var request =
-            new ReadPropertyRequest(
-                ReadCorrelationId,
-                new InstrumentId(
-                    InstrumentIdValue),
-                new PropertyId(
-                    TemperaturePropertyIdValue));
-
         var payloadCodec =
             new BinaryProtocolPayloadCodec();
 
-        ProtocolEnvelope requestEnvelope =
-            payloadCodec.Encode(
-                request);
-
         var envelopeByteCodec =
             new ProtocolEnvelopeByteCodec();
-
-        byte[] requestFrame =
-            envelopeByteCodec.Encode(
-                requestEnvelope);
-
-        WriteProtocolInformation(
-            "Read Property Request",
-            requestEnvelope);
-
-        WriteBytes(
-            "Encoded Request Frame",
-            requestFrame);
 
         var options =
             new TcpTransportOptions(
@@ -123,46 +112,33 @@ internal sealed class CapabilityC006Scenario
 
             Console.WriteLine();
 
-            var stopwatch =
-                Stopwatch.StartNew();
+            PropertyReadResult temperature =
+                await ReadPropertyAsync(
+                    connection,
+                    payloadCodec,
+                    envelopeByteCodec,
+                    TemperatureCorrelationId,
+                    TemperaturePropertyIdValue,
+                    "Temperature",
+                    MinimumPlausibleTemperatureCelsius,
+                    MaximumPlausibleTemperatureCelsius,
+                    "degree Celsius");
 
-            byte[] responseFrame =
-                await connection.ExchangeAsync(
-                    requestFrame);
-
-            stopwatch.Stop();
-
-            WriteBytes(
-                "Encoded Response Frame",
-                responseFrame);
-
-            ProtocolEnvelope responseEnvelope =
-                envelopeByteCodec.Decode(
-                    responseFrame);
-
-            ProtocolMessage responseMessage =
-                payloadCodec.Decode(
-                    responseEnvelope);
-
-            if (responseMessage
-                is not ReadPropertyResponse response)
-            {
-                throw new InvalidDataException(
-                    "The ESP32 response did not decode as a "
-                    + "ReadPropertyResponse.");
-            }
-
-            PropertyValue propertyValue =
-                ValidateResponse(
-                    response);
-
-            WriteProtocolInformation(
-                "Read Property Response",
-                responseEnvelope);
+            PropertyReadResult relativeHumidity =
+                await ReadPropertyAsync(
+                    connection,
+                    payloadCodec,
+                    envelopeByteCodec,
+                    RelativeHumidityCorrelationId,
+                    RelativeHumidityPropertyIdValue,
+                    "Relative Humidity",
+                    MinimumPlausibleRelativeHumidity,
+                    MaximumPlausibleRelativeHumidity,
+                    "%RH");
 
             WriteCapabilityResult(
-                propertyValue,
-                stopwatch.Elapsed);
+                temperature,
+                relativeHumidity);
         }
         finally
         {
@@ -179,21 +155,125 @@ internal sealed class CapabilityC006Scenario
         }
     }
 
-    private static PropertyValue ValidateResponse(
-        ReadPropertyResponse response)
+    private static async Task<PropertyReadResult>
+        ReadPropertyAsync(
+            ITransportConnection connection,
+            BinaryProtocolPayloadCodec payloadCodec,
+            ProtocolEnvelopeByteCodec envelopeByteCodec,
+            CorrelationId correlationId,
+            string propertyIdValue,
+            string displayName,
+            double minimumPlausibleValue,
+            double maximumPlausibleValue,
+            string unitSymbol)
     {
-        if (response.CorrelationId
-            != ReadCorrelationId)
+        var request =
+            new ReadPropertyRequest(
+                correlationId,
+                new InstrumentId(
+                    InstrumentIdValue),
+                new PropertyId(
+                    propertyIdValue));
+
+        ProtocolEnvelope requestEnvelope =
+            payloadCodec.Encode(
+                request);
+
+        byte[] requestFrame =
+            envelopeByteCodec.Encode(
+                requestEnvelope);
+
+        WritePropertyHeader(
+            displayName,
+            propertyIdValue);
+
+        WriteProtocolInformation(
+            "Read Property Request",
+            requestEnvelope);
+
+        WriteBytes(
+            "Encoded Request Frame",
+            requestFrame);
+
+        var stopwatch =
+            Stopwatch.StartNew();
+
+        byte[] responseFrame =
+            await connection.ExchangeAsync(
+                requestFrame);
+
+        stopwatch.Stop();
+
+        WriteBytes(
+            "Encoded Response Frame",
+            responseFrame);
+
+        ProtocolEnvelope responseEnvelope =
+            envelopeByteCodec.Decode(
+                responseFrame);
+
+        ProtocolMessage responseMessage =
+            payloadCodec.Decode(
+                responseEnvelope);
+
+        if (responseMessage
+            is not ReadPropertyResponse response)
         {
             throw new InvalidDataException(
-                "The property-response correlation identifier does "
-                + "not match the property request.");
+                $"The ESP32 response for '{displayName}' did not "
+                + "decode as a ReadPropertyResponse.");
+        }
+
+        PropertyValue propertyValue =
+            ValidateResponse(
+                response,
+                correlationId,
+                displayName,
+                minimumPlausibleValue,
+                maximumPlausibleValue,
+                unitSymbol);
+
+        WriteProtocolInformation(
+            "Read Property Response",
+            responseEnvelope);
+
+        WritePropertyResult(
+            displayName,
+            propertyIdValue,
+            propertyValue,
+            unitSymbol,
+            stopwatch.Elapsed);
+
+        return new PropertyReadResult(
+            displayName,
+            propertyIdValue,
+            (double)propertyValue.Value!,
+            propertyValue.TimestampUtc,
+            propertyValue.Quality,
+            unitSymbol,
+            stopwatch.Elapsed);
+    }
+
+    private static PropertyValue ValidateResponse(
+        ReadPropertyResponse response,
+        CorrelationId expectedCorrelationId,
+        string displayName,
+        double minimumPlausibleValue,
+        double maximumPlausibleValue,
+        string unitSymbol)
+    {
+        if (response.CorrelationId
+            != expectedCorrelationId)
+        {
+            throw new InvalidDataException(
+                $"The '{displayName}' response correlation identifier "
+                + "does not match its request.");
         }
 
         if (!response.Result.IsSuccess)
         {
             throw new InvalidDataException(
-                "The endpoint returned property result "
+                $"The endpoint returned '{displayName}' result "
                 + $"'{response.Result.Code}': "
                 + $"{response.Result.Message ?? "(no message)"}.");
         }
@@ -201,46 +281,48 @@ internal sealed class CapabilityC006Scenario
         PropertyValue propertyValue =
             response.PropertyValue
             ?? throw new InvalidDataException(
-                "The successful property response did not contain "
-                + "a property value.");
+                $"The successful '{displayName}' response did not "
+                + "contain a property value.");
 
         if (propertyValue.Value
-            is not double temperature)
+            is not double value)
         {
             string actualType =
                 propertyValue.Value?.GetType().FullName
                 ?? "null";
 
             throw new InvalidDataException(
-                "The temperature property did not contain a double "
-                + $"value. Actual type: '{actualType}'.");
+                $"The '{displayName}' property did not contain a "
+                + $"double value. Actual type: '{actualType}'.");
         }
 
         if (double.IsNaN(
-                temperature)
+                value)
             || double.IsInfinity(
-                temperature))
+                value))
         {
             throw new InvalidDataException(
-                "The temperature property contained a non-finite "
-                + $"value: {temperature}.");
+                $"The '{displayName}' property contained a non-finite "
+                + $"value: {value}.");
         }
 
-        if (temperature
-                < MinimumPlausibleTemperatureCelsius
-            || temperature
-                > MaximumPlausibleTemperatureCelsius)
+        if (value
+                < minimumPlausibleValue
+            || value
+                > maximumPlausibleValue)
         {
             throw new InvalidDataException(
-                "The temperature property contained an implausible "
-                + $"BME280 value: {temperature} degree Celsius.");
+                $"The '{displayName}' property contained an "
+                + $"implausible BME280 value: {value} {unitSymbol}. "
+                + $"Expected range: {minimumPlausibleValue} to "
+                + $"{maximumPlausibleValue} {unitSymbol}.");
         }
 
         if (propertyValue.Quality
             != PropertyQuality.Good)
         {
             throw new InvalidDataException(
-                "The temperature property quality must be Good, "
+                $"The '{displayName}' property quality must be Good, "
                 + $"but was '{propertyValue.Quality}'.");
         }
 
@@ -248,7 +330,8 @@ internal sealed class CapabilityC006Scenario
             != TimeSpan.Zero)
         {
             throw new InvalidDataException(
-                "The property timestamp is not expressed in UTC.");
+                $"The '{displayName}' timestamp is not expressed "
+                + "in UTC.");
         }
 
         DateTimeOffset now =
@@ -262,8 +345,8 @@ internal sealed class CapabilityC006Scenario
             > MaximumTimestampDifference)
         {
             throw new InvalidDataException(
-                "The property timestamp differs from the current "
-                + "UTC time by "
+                $"The '{displayName}' timestamp differs from the "
+                + "current UTC time by "
                 + $"{timestampDifference.TotalSeconds:0.000} seconds.");
         }
 
@@ -287,9 +370,9 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Read a live BME280 temperature value from a physical "
-            + "ESP32 endpoint through HASE Protocol Version 1 over "
-            + "framed TCP.");
+            "Read live BME280 property values from a physical ESP32 "
+            + "endpoint through HASE Protocol Version 1 over framed "
+            + "TCP.");
 
         Console.WriteLine();
 
@@ -303,7 +386,36 @@ internal sealed class CapabilityC006Scenario
             $"Instrument ID : {InstrumentIdValue}");
 
         Console.WriteLine(
-            $"Property ID   : {TemperaturePropertyIdValue}");
+            "Properties    :");
+
+        Console.WriteLine(
+            $"  {TemperaturePropertyIdValue}");
+
+        Console.WriteLine(
+            $"  {RelativeHumidityPropertyIdValue}");
+
+        Console.WriteLine();
+    }
+
+    private static void WritePropertyHeader(
+        string displayName,
+        string propertyIdValue)
+    {
+        string title =
+            $"Physical Property: {displayName}";
+
+        Console.WriteLine(
+            title);
+
+        Console.WriteLine(
+            new string(
+                '=',
+                title.Length));
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            $"Property ID : {propertyIdValue}");
 
         Console.WriteLine();
     }
@@ -372,15 +484,18 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine();
     }
 
-    private static void WriteCapabilityResult(
+    private static void WritePropertyResult(
+        string displayName,
+        string propertyIdValue,
         PropertyValue propertyValue,
+        string unitSymbol,
         TimeSpan elapsed)
     {
-        double temperature =
+        double value =
             (double)propertyValue.Value!;
 
         const string title =
-            "Capability Result";
+            "Property Result";
 
         Console.WriteLine(
             title);
@@ -396,10 +511,13 @@ internal sealed class CapabilityC006Scenario
             "Result           : Success");
 
         Console.WriteLine(
-            "Property Read    : Passed");
+            $"Property         : {displayName}");
 
         Console.WriteLine(
-            $"Temperature      : {temperature:0.000} degree Celsius");
+            $"Property ID      : {propertyIdValue}");
+
+        Console.WriteLine(
+            $"Value            : {value:0.000} {unitSymbol}");
 
         Console.WriteLine(
             $"Timestamp UTC    : "
@@ -414,4 +532,68 @@ internal sealed class CapabilityC006Scenario
 
         Console.WriteLine();
     }
+
+    private static void WriteCapabilityResult(
+        PropertyReadResult temperature,
+        PropertyReadResult relativeHumidity)
+    {
+        const string title =
+            "Capability Result";
+
+        Console.WriteLine(
+            title);
+
+        Console.WriteLine(
+            new string(
+                '-',
+                title.Length));
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            "Result              : Success");
+
+        Console.WriteLine(
+            "Physical Reads      : Passed");
+
+        Console.WriteLine(
+            $"Temperature         : "
+            + $"{temperature.Value:0.000} "
+            + $"{temperature.UnitSymbol}");
+
+        Console.WriteLine(
+            $"Relative Humidity   : "
+            + $"{relativeHumidity.Value:0.000} "
+            + $"{relativeHumidity.UnitSymbol}");
+
+        Console.WriteLine(
+            $"Temperature Quality : {temperature.Quality}");
+
+        Console.WriteLine(
+            $"Humidity Quality    : {relativeHumidity.Quality}");
+
+        Console.WriteLine(
+            $"Temperature UTC     : "
+            + $"{temperature.TimestampUtc:O}");
+
+        Console.WriteLine(
+            $"Humidity UTC        : "
+            + $"{relativeHumidity.TimestampUtc:O}");
+
+        Console.WriteLine(
+            $"Total Round Trip    : "
+            + $"{temperature.Elapsed.TotalMilliseconds
+                + relativeHumidity.Elapsed.TotalMilliseconds:0.000} ms");
+
+        Console.WriteLine();
+    }
+
+    private sealed record PropertyReadResult(
+        string DisplayName,
+        string PropertyId,
+        double Value,
+        DateTimeOffset TimestampUtc,
+        PropertyQuality Quality,
+        string UnitSymbol,
+        TimeSpan Elapsed);
 }
