@@ -1,8 +1,10 @@
 ﻿using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.Protocol;
 using Hase.ProtocolExplorer.Transport;
 using Hase.Transport;
 using Hase.Transport.Tcp;
+using System.Diagnostics;
 
 namespace Hase.ProtocolExplorer.Scenarios;
 
@@ -15,14 +17,22 @@ internal sealed class CapabilityC006Scenario
     private const int MaximumPayloadLength =
         4096;
 
-    private const int ResponseWaitMilliseconds =
-        2000;
-
     private const string InstrumentIdValue =
         "environment-sensor-01";
 
     private const string TemperaturePropertyIdValue =
         "physical.environment-sensor.temperature";
+
+    private const double MinimumPlausibleTemperatureCelsius =
+        -40.0;
+
+    private const double MaximumPlausibleTemperatureCelsius =
+        85.0;
+
+    private static readonly TimeSpan
+        MaximumTimestampDifference =
+        TimeSpan.FromMinutes(
+            2);
 
     private static readonly CorrelationId
         ReadCorrelationId =
@@ -82,8 +92,12 @@ internal sealed class CapabilityC006Scenario
             envelopeByteCodec.Encode(
                 requestEnvelope);
 
-        WriteRequestInformation(
-            requestEnvelope,
+        WriteProtocolInformation(
+            "Read Property Request",
+            requestEnvelope);
+
+        WriteBytes(
+            "Encoded Request Frame",
             requestFrame);
 
         var options =
@@ -109,47 +123,46 @@ internal sealed class CapabilityC006Scenario
 
             Console.WriteLine();
 
-            using var cancellationSource =
-                new CancellationTokenSource(
-                    TimeSpan.FromMilliseconds(
-                        ResponseWaitMilliseconds));
+            var stopwatch =
+                Stopwatch.StartNew();
 
-            try
+            byte[] responseFrame =
+                await connection.ExchangeAsync(
+                    requestFrame);
+
+            stopwatch.Stop();
+
+            WriteBytes(
+                "Encoded Response Frame",
+                responseFrame);
+
+            ProtocolEnvelope responseEnvelope =
+                envelopeByteCodec.Decode(
+                    responseFrame);
+
+            ProtocolMessage responseMessage =
+                payloadCodec.Decode(
+                    responseEnvelope);
+
+            if (responseMessage
+                is not ReadPropertyResponse response)
             {
-                byte[] unexpectedResponse =
-                    await connection.ExchangeAsync(
-                        requestFrame,
-                        cancellationSource.Token);
-
-                Console.WriteLine(
-                    "The ESP32 returned a response before the "
-                    + "temporary timeout.");
-
-                Console.WriteLine(
-                    $"Response Length : "
-                    + $"{unexpectedResponse.Length} bytes");
-
-                Console.WriteLine();
-
                 throw new InvalidDataException(
-                    "C-006 does not yet expect a "
+                    "The ESP32 response did not decode as a "
                     + "ReadPropertyResponse.");
             }
-            catch (OperationCanceledException)
-                when (cancellationSource.IsCancellationRequested)
-            {
-                Console.WriteLine(
-                    "Request frame was written.");
 
-                Console.WriteLine(
-                    "No response was expected at this checkpoint.");
+            PropertyValue propertyValue =
+                ValidateResponse(
+                    response);
 
-                Console.WriteLine(
-                    $"Wait expired after "
-                    + $"{ResponseWaitMilliseconds} ms.");
+            WriteProtocolInformation(
+                "Read Property Response",
+                responseEnvelope);
 
-                Console.WriteLine();
-            }
+            WriteCapabilityResult(
+                propertyValue,
+                stopwatch.Elapsed);
         }
         finally
         {
@@ -164,25 +177,97 @@ internal sealed class CapabilityC006Scenario
                 disposable.Dispose();
             }
         }
+    }
 
-        Console.WriteLine(
-            "Capability Result");
+    private static PropertyValue ValidateResponse(
+        ReadPropertyResponse response)
+    {
+        if (response.CorrelationId
+            != ReadCorrelationId)
+        {
+            throw new InvalidDataException(
+                "The property-response correlation identifier does "
+                + "not match the property request.");
+        }
 
-        Console.WriteLine(
-            "-----------------");
+        if (!response.Result.IsSuccess)
+        {
+            throw new InvalidDataException(
+                "The endpoint returned property result "
+                + $"'{response.Result.Code}': "
+                + $"{response.Result.Message ?? "(no message)"}.");
+        }
 
-        Console.WriteLine();
+        PropertyValue propertyValue =
+            response.PropertyValue
+            ?? throw new InvalidDataException(
+                "The successful property response did not contain "
+                + "a property value.");
 
-        Console.WriteLine(
-            "Request Transmission : Completed");
+        if (propertyValue.Value
+            is not double temperature)
+        {
+            string actualType =
+                propertyValue.Value?.GetType().FullName
+                ?? "null";
 
-        Console.WriteLine(
-            "Response Validation   : Deferred");
+            throw new InvalidDataException(
+                "The temperature property did not contain a double "
+                + $"value. Actual type: '{actualType}'.");
+        }
 
-        Console.WriteLine(
-            "Physical Validation   : Check ESP32 Serial Monitor");
+        if (double.IsNaN(
+                temperature)
+            || double.IsInfinity(
+                temperature))
+        {
+            throw new InvalidDataException(
+                "The temperature property contained a non-finite "
+                + $"value: {temperature}.");
+        }
 
-        Console.WriteLine();
+        if (temperature
+                < MinimumPlausibleTemperatureCelsius
+            || temperature
+                > MaximumPlausibleTemperatureCelsius)
+        {
+            throw new InvalidDataException(
+                "The temperature property contained an implausible "
+                + $"BME280 value: {temperature} degree Celsius.");
+        }
+
+        if (propertyValue.Quality
+            != PropertyQuality.Good)
+        {
+            throw new InvalidDataException(
+                "The temperature property quality must be Good, "
+                + $"but was '{propertyValue.Quality}'.");
+        }
+
+        if (propertyValue.TimestampUtc.Offset
+            != TimeSpan.Zero)
+        {
+            throw new InvalidDataException(
+                "The property timestamp is not expressed in UTC.");
+        }
+
+        DateTimeOffset now =
+            DateTimeOffset.UtcNow;
+
+        TimeSpan timestampDifference =
+            (now - propertyValue.TimestampUtc)
+            .Duration();
+
+        if (timestampDifference
+            > MaximumTimestampDifference)
+        {
+            throw new InvalidDataException(
+                "The property timestamp differs from the current "
+                + "UTC time by "
+                + $"{timestampDifference.TotalSeconds:0.000} seconds.");
+        }
+
+        return propertyValue;
     }
 
     private static void WriteCapabilityHeader(
@@ -202,8 +287,9 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Send a physical BME280 temperature "
-            + "ReadPropertyRequest over framed TCP.");
+            "Read a live BME280 temperature value from a physical "
+            + "ESP32 endpoint through HASE Protocol Version 1 over "
+            + "framed TCP.");
 
         Console.WriteLine();
 
@@ -222,15 +308,17 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine();
     }
 
-    private static void WriteRequestInformation(
-        ProtocolEnvelope envelope,
-        IReadOnlyList<byte> frame)
+    private static void WriteProtocolInformation(
+        string title,
+        ProtocolEnvelope envelope)
     {
         Console.WriteLine(
-            "Read Property Request");
+            title);
 
         Console.WriteLine(
-            "---------------------");
+            new string(
+                '-',
+                title.Length));
 
         Console.WriteLine();
 
@@ -249,8 +337,80 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine(
             $"Payload Length : {envelope.PayloadLength} bytes");
 
+        Console.WriteLine();
+    }
+
+    private static void WriteBytes(
+        string title,
+        IReadOnlyList<byte> bytes)
+    {
         Console.WriteLine(
-            $"Frame Length   : {frame.Count} bytes");
+            title);
+
+        Console.WriteLine(
+            new string(
+                '-',
+                title.Length));
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            $"Frame Length : {bytes.Count} bytes");
+
+        Console.WriteLine();
+
+        Console.Write(
+            "Bytes        :");
+
+        foreach (byte value in bytes)
+        {
+            Console.Write(
+                $" {value:X2}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine();
+    }
+
+    private static void WriteCapabilityResult(
+        PropertyValue propertyValue,
+        TimeSpan elapsed)
+    {
+        double temperature =
+            (double)propertyValue.Value!;
+
+        const string title =
+            "Capability Result";
+
+        Console.WriteLine(
+            title);
+
+        Console.WriteLine(
+            new string(
+                '-',
+                title.Length));
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            "Result           : Success");
+
+        Console.WriteLine(
+            "Property Read    : Passed");
+
+        Console.WriteLine(
+            $"Temperature      : {temperature:0.000} degree Celsius");
+
+        Console.WriteLine(
+            $"Timestamp UTC    : "
+            + $"{propertyValue.TimestampUtc:O}");
+
+        Console.WriteLine(
+            $"Quality          : {propertyValue.Quality}");
+
+        Console.WriteLine(
+            $"Round Trip Time  : "
+            + $"{elapsed.TotalMilliseconds:0.000} ms");
 
         Console.WriteLine();
     }

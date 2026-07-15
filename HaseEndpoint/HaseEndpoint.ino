@@ -12,6 +12,7 @@
 #include "HaseProtocolEnvelope.h"
 #include "HaseReadEndpointDescriptorHandler.h"
 #include "HaseReadPropertyRequest.h"
+#include "HaseReadPropertyResponseHandler.h"
 #include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
 #include "HaseUtcClock.h"
@@ -612,38 +613,26 @@ bool processReadPropertyRequest(
             envelope,
             request))
     {
-        Serial.println();
+        uint32_t responseLength = 0;
 
-        Serial.println(
-            "Failed to decode ReadPropertyRequest.");
+        HaseReadPropertyResponseHandler::
+            CreateFailureResponse(
+                envelope,
+                HaseReadPropertyResponseHandler::
+                    InvalidRequestResultCode,
+                "Invalid request",
+                responseBuffer,
+                sizeof(responseBuffer),
+                responseLength);
 
-        Serial.println();
+        transport.writeFrame(
+            responseBuffer,
+            responseLength);
 
         return true;
     }
 
-    Serial.println();
-
-    Serial.println(
-        "ReadPropertyRequest");
-
-    Serial.println(
-        "-------------------");
-
-    Serial.print(
-        "Instrument ID : ");
-
-    Serial.println(
-        request.instrumentId);
-
-    Serial.print(
-        "Property ID   : ");
-
-    Serial.println(
-        request.propertyId);
-
-    double value =
-        0.0;
+    double value = 0.0;
 
     HasePhysicalPropertyReadResult readResult =
         physicalPropertyService.readDouble(
@@ -651,83 +640,86 @@ bool processReadPropertyRequest(
             request.propertyId,
             value);
 
-    Serial.print(
-        "Read Result   : ");
-
     switch (readResult)
     {
-        case HasePhysicalPropertyReadResult::
-            Success:
+        case HasePhysicalPropertyReadResult::Success:
         {
-            Serial.println(
-                "Success");
+            int64_t timestamp;
 
-            Serial.print(
-                "Value         : ");
-
-            Serial.print(
-                value,
-                1);
-
-            Serial.println(
-                " degree Celsius");
-
-            int64_t unixTimeMilliseconds =
-                0;
-
-            if (utcClock.tryGetUnixTimeMilliseconds(
-                    unixTimeMilliseconds))
+            if (!utcClock.tryGetUnixTimeMilliseconds(
+                    timestamp))
             {
-                Serial.print(
-                    "Timestamp     : ");
-
-                Serial.println(
-                    static_cast<long long>(
-                        unixTimeMilliseconds));
-            }
-            else
-            {
-                Serial.println(
-                    "Timestamp     : unavailable");
+                break;
             }
 
-            break;
+            uint32_t responseLength = 0;
+
+            if (!HaseReadPropertyResponseHandler::
+                    CreateSuccessResponse(
+                        envelope,
+                        value,
+                        timestamp,
+                        responseBuffer,
+                        sizeof(responseBuffer),
+                        responseLength))
+            {
+                return true;
+            }
+
+            transport.writeFrame(
+                responseBuffer,
+                responseLength);
+
+            return true;
         }
 
         case HasePhysicalPropertyReadResult::
             InstrumentNotFound:
-        {
-            Serial.println(
-                "InstrumentNotFound");
-
-            break;
-        }
 
         case HasePhysicalPropertyReadResult::
             PropertyNotFound:
         {
-            Serial.println(
-                "PropertyNotFound");
+            uint32_t responseLength = 0;
 
-            break;
+            HaseReadPropertyResponseHandler::
+                CreateFailureResponse(
+                    envelope,
+                    HaseReadPropertyResponseHandler::
+                        NotFoundResultCode,
+                    "Property not found",
+                    responseBuffer,
+                    sizeof(responseBuffer),
+                    responseLength);
+
+            transport.writeFrame(
+                responseBuffer,
+                responseLength);
+
+            return true;
         }
 
         case HasePhysicalPropertyReadResult::
             SensorUnavailable:
         {
-            Serial.println(
-                "SensorUnavailable");
-
             break;
         }
     }
 
-    Serial.println();
+    uint32_t responseLength = 0;
 
-    Serial.println(
-        "ReadPropertyResponse not implemented yet.");
+    HaseReadPropertyResponseHandler::
+        CreateFailureResponse(
+            envelope,
+            HaseReadPropertyResponseHandler::
+                InternalErrorResultCode,
+            "Sensor unavailable",
+            responseBuffer,
+            sizeof(responseBuffer),
+            responseLength);
 
-    Serial.println();
+    transport.writeFrame(
+        responseBuffer,
+        responseLength);
 
     return true;
 }
