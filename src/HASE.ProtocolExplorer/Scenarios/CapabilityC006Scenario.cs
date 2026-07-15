@@ -26,6 +26,9 @@ internal sealed class CapabilityC006Scenario
     private const string RelativeHumidityPropertyIdValue =
         "physical.environment-sensor.relative-humidity";
 
+    private const string AirPressurePropertyIdValue =
+        "physical.environment-sensor.air-pressure";
+
     private const double MinimumPlausibleTemperatureCelsius =
         -40.0;
 
@@ -37,6 +40,12 @@ internal sealed class CapabilityC006Scenario
 
     private const double MaximumPlausibleRelativeHumidity =
         100.0;
+
+    private const double MinimumPlausibleAirPressureHectopascal =
+        300.0;
+
+    private const double MaximumPlausibleAirPressureHectopascal =
+        1100.0;
 
     private static readonly TimeSpan
         MaximumTimestampDifference =
@@ -50,6 +59,10 @@ internal sealed class CapabilityC006Scenario
     private static readonly CorrelationId
         RelativeHumidityCorrelationId =
         new(107);
+
+    private static readonly CorrelationId
+        AirPressureCorrelationId =
+        new(108);
 
     public string Name =>
         "c006";
@@ -136,9 +149,22 @@ internal sealed class CapabilityC006Scenario
                     MaximumPlausibleRelativeHumidity,
                     "%RH");
 
+            PropertyReadResult airPressure =
+                await ReadPropertyAsync(
+                    connection,
+                    payloadCodec,
+                    envelopeByteCodec,
+                    AirPressureCorrelationId,
+                    AirPressurePropertyIdValue,
+                    "Air Pressure",
+                    MinimumPlausibleAirPressureHectopascal,
+                    MaximumPlausibleAirPressureHectopascal,
+                    "hPa");
+
             WriteCapabilityResult(
                 temperature,
-                relativeHumidity);
+                relativeHumidity,
+                airPressure);
         }
         finally
         {
@@ -394,6 +420,9 @@ internal sealed class CapabilityC006Scenario
         Console.WriteLine(
             $"  {RelativeHumidityPropertyIdValue}");
 
+        Console.WriteLine(
+            $"  {AirPressurePropertyIdValue}");
+
         Console.WriteLine();
     }
 
@@ -535,7 +564,8 @@ internal sealed class CapabilityC006Scenario
 
     private static void WriteCapabilityResult(
         PropertyReadResult temperature,
-        PropertyReadResult relativeHumidity)
+        PropertyReadResult relativeHumidity,
+        PropertyReadResult airPressure)
     {
         const string title =
             "Capability Result";
@@ -567,10 +597,18 @@ internal sealed class CapabilityC006Scenario
             + $"{relativeHumidity.UnitSymbol}");
 
         Console.WriteLine(
+            $"Air Pressure        : "
+            + $"{airPressure.Value:0.000} "
+            + $"{airPressure.UnitSymbol}");
+
+        Console.WriteLine(
             $"Temperature Quality : {temperature.Quality}");
 
         Console.WriteLine(
             $"Humidity Quality    : {relativeHumidity.Quality}");
+
+        Console.WriteLine(
+            $"Pressure Quality    : {airPressure.Quality}");
 
         Console.WriteLine(
             $"Temperature UTC     : "
@@ -581,9 +619,17 @@ internal sealed class CapabilityC006Scenario
             + $"{relativeHumidity.TimestampUtc:O}");
 
         Console.WriteLine(
+            $"Pressure UTC        : "
+            + $"{airPressure.TimestampUtc:O}");
+
+        double totalRoundTripMilliseconds =
+            temperature.Elapsed.TotalMilliseconds
+            + relativeHumidity.Elapsed.TotalMilliseconds
+            + airPressure.Elapsed.TotalMilliseconds;
+
+        Console.WriteLine(
             $"Total Round Trip    : "
-            + $"{temperature.Elapsed.TotalMilliseconds
-                + relativeHumidity.Elapsed.TotalMilliseconds:0.000} ms");
+            + $"{totalRoundTripMilliseconds:0.000} ms");
 
         Console.WriteLine();
     }
