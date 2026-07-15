@@ -100,11 +100,6 @@ public sealed class TcpTransportConnection
                 _maximumPayloadLength,
                 cancellationToken);
         }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
         catch (ObjectDisposedException)
             when (_state == TransportConnectionState.Closed)
         {
