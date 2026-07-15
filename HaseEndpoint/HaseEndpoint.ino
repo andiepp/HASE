@@ -7,13 +7,13 @@
 #include "HaseBme280Sensor.h"
 #include "HaseDiscoverHandler.h"
 #include "HasePhysicalEndpointDescriptor.h"
+#include "HasePhysicalPropertyService.h"
 #include "HaseProtocolDispatcher.h"
 #include "HaseProtocolEnvelope.h"
 #include "HaseReadEndpointDescriptorHandler.h"
+#include "HaseReadPropertyRequest.h"
 #include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
-#include "HaseReadPropertyRequest.h"
-#include <cstring>
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration
@@ -33,6 +33,9 @@ constexpr unsigned long READ_TIMEOUT_MILLISECONDS =
 // -----------------------------------------------------------------------------
 
 HaseBme280Sensor environmentSensor;
+
+HasePhysicalPropertyService physicalPropertyService(
+    environmentSensor);
 
 HaseTcpTransport transport(
     TCP_PORT,
@@ -556,50 +559,65 @@ bool processReadPropertyRequest(
     Serial.println(
         request.propertyId);
 
-    const HaseEndpointDescriptor& descriptor =
-        HasePhysicalEndpointDescriptor::Descriptor();
+    double value =
+        0.0;
 
-    if (strcmp(
+    HasePhysicalPropertyReadResult readResult =
+        physicalPropertyService.readDouble(
             request.instrumentId,
-            descriptor.instruments[0].id) != 0)
+            request.propertyId,
+            value);
+
+    Serial.print(
+        "Read Result   : ");
+
+    switch (readResult)
     {
-        Serial.println();
-
-        Serial.println(
-            "Unknown instrument.");
-
-        Serial.println();
-
-        return true;
-    }
-
-    bool propertyFound =
-        false;
-
-    const HaseInstrumentDescriptor& instrument =
-        descriptor.instruments[0];
-
-    for (uint16_t index = 0;
-         index < instrument.propertyCount;
-         ++index)
-    {
-        if (strcmp(
-                request.propertyId,
-                instrument.properties[index].id) == 0)
+        case HasePhysicalPropertyReadResult::
+            Success:
         {
-            propertyFound = true;
+            Serial.println(
+                "Success");
+
+            Serial.print(
+                "Value         : ");
+
+            Serial.print(
+                value,
+                1);
 
             Serial.println(
-                "Property recognized.");
+                " degree Celsius");
 
             break;
         }
-    }
 
-    if (!propertyFound)
-    {
-        Serial.println(
-            "Unknown property.");
+        case HasePhysicalPropertyReadResult::
+            InstrumentNotFound:
+        {
+            Serial.println(
+                "InstrumentNotFound");
+
+            break;
+        }
+
+        case HasePhysicalPropertyReadResult::
+            PropertyNotFound:
+        {
+            Serial.println(
+                "PropertyNotFound");
+
+            break;
+        }
+
+        case HasePhysicalPropertyReadResult::
+            SensorUnavailable:
+        {
+            Serial.println(
+                "SensorUnavailable");
+
+            break;
+        }
     }
 
     Serial.println();
