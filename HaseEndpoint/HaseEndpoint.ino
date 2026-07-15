@@ -14,6 +14,7 @@
 #include "HaseReadPropertyRequest.h"
 #include "HaseSecrets.h"
 #include "HaseTcpTransport.h"
+#include "HaseUtcClock.h"
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration
@@ -28,6 +29,9 @@ constexpr uint32_t MAXIMUM_PAYLOAD_LENGTH =
 constexpr unsigned long READ_TIMEOUT_MILLISECONDS =
     5000;
 
+constexpr unsigned long UTC_SYNCHRONIZATION_TIMEOUT_MILLISECONDS =
+    15000;
+
 // -----------------------------------------------------------------------------
 // Global objects and buffers
 // -----------------------------------------------------------------------------
@@ -36,6 +40,8 @@ HaseBme280Sensor environmentSensor;
 
 HasePhysicalPropertyService physicalPropertyService(
     environmentSensor);
+
+HaseUtcClock utcClock;
 
 HaseTcpTransport transport(
     TCP_PORT,
@@ -60,6 +66,8 @@ bool initializeEnvironmentSensor();
 void printEnvironmentSensorReading();
 
 void connectToWiFi();
+
+bool synchronizeUtcClock();
 
 void processTransport();
 
@@ -136,6 +144,17 @@ void setup()
 
     connectToWiFi();
 
+    if (!synchronizeUtcClock())
+    {
+        Serial.println(
+            "Endpoint startup stopped because UTC "
+            "could not be synchronized.");
+
+        Serial.println();
+
+        return;
+    }
+
     transport.begin();
 
     endpointStarted =
@@ -160,6 +179,22 @@ void loop()
         transport.disconnectClient();
 
         connectToWiFi();
+
+        if (!synchronizeUtcClock())
+        {
+            Serial.println(
+                "UTC synchronization failed after Wi-Fi reconnect.");
+
+            Serial.println(
+                "Endpoint transport remains stopped.");
+
+            Serial.println();
+
+            endpointStarted =
+                false;
+
+            return;
+        }
 
         transport.begin();
 
@@ -279,7 +314,7 @@ void printEnvironmentSensorReading()
 }
 
 // -----------------------------------------------------------------------------
-// Wi-Fi
+// Wi-Fi and UTC
 // -----------------------------------------------------------------------------
 
 void connectToWiFi()
@@ -325,6 +360,54 @@ void connectToWiFi()
 
     Serial.println(
         " dBm");
+
+    Serial.println();
+}
+
+bool synchronizeUtcClock()
+{
+    Serial.println(
+        "Synchronizing UTC clock...");
+
+    if (!utcClock.synchronize(
+            UTC_SYNCHRONIZATION_TIMEOUT_MILLISECONDS))
+    {
+        Serial.println(
+            "UTC synchronization failed.");
+
+        Serial.println();
+
+        return false;
+    }
+
+    int64_t unixTimeMilliseconds =
+        0;
+
+    if (!utcClock.tryGetUnixTimeMilliseconds(
+            unixTimeMilliseconds))
+    {
+        Serial.println(
+            "UTC clock synchronized but no valid timestamp "
+            "could be read.");
+
+        Serial.println();
+
+        return false;
+    }
+
+    Serial.println(
+        "UTC clock synchronized.");
+
+    Serial.print(
+        "Unix time milliseconds : ");
+
+    Serial.println(
+        static_cast<long long>(
+            unixTimeMilliseconds));
+
+    Serial.println();
+
+    return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -588,6 +671,25 @@ bool processReadPropertyRequest(
 
             Serial.println(
                 " degree Celsius");
+
+            int64_t unixTimeMilliseconds =
+                0;
+
+            if (utcClock.tryGetUnixTimeMilliseconds(
+                    unixTimeMilliseconds))
+            {
+                Serial.print(
+                    "Timestamp     : ");
+
+                Serial.println(
+                    static_cast<long long>(
+                        unixTimeMilliseconds));
+            }
+            else
+            {
+                Serial.println(
+                    "Timestamp     : unavailable");
+            }
 
             break;
         }
