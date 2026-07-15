@@ -4,17 +4,25 @@
 
 **HASE – Hardware Access System Environment**
 
-An open, modular framework for describing, discovering, communicating with and controlling hardware instruments independently of transport technology.
+HASE is an open, modular framework for describing, discovering, communicating
+with, and controlling hardware instruments independently of transport
+technology.
 
 ---
 
 # Overall Status
 
-**Current Phase:** Phase 5 – Runtime Integration
+**Current Phase:** Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework and Protocol Version 1 have been implemented.
+The core architecture, runtime model, simulation framework, Protocol Version 1,
+runtime integration, and Protocol Explorer are implemented.
 
-The project is now transitioning from protocol implementation to connecting the runtime with transports and physical devices.
+Phase 6 has established the first real TCP transport and the first complete
+physical HASE endpoint based on an ESP32 and BME280 environment sensor.
+
+The project can now discover a physical endpoint, retrieve its descriptor, read
+live engineering properties, and validate complete request/response transactions
+through Protocol Version 1 over framed TCP.
 
 ---
 
@@ -22,7 +30,7 @@ The project is now transitioning from protocol implementation to connecting the 
 
 ## Phase 1 – Foundation
 
-Completed
+**Status:** Completed
 
 Highlights:
 
@@ -31,45 +39,46 @@ Highlights:
 - Descriptor model
 - Identity model
 - Architecture documentation
-- Initial ADRs
-- Unit test infrastructure
+- Initial architecture decision records
+- Unit-test infrastructure
 
 ---
 
 ## Phase 2 – Simulation
 
-Completed
+**Status:** Completed
 
 Highlights:
 
 - Simulation framework
 - Simulation host
 - Environment simulation
-- Value generators
+- Value-generator hierarchy
 - Simulated instruments
 - Runtime integration
 - Simulation test suite
 
 ---
 
-## Phase 3 – Transport Architecture
+## Phase 3 – Protocol Foundation
 
-Completed (Architecture)
+**Status:** Completed
 
 Highlights:
 
-- Transport abstraction
 - Protocol architecture
+- Protocol message model
+- Binary serialization foundation
 - Session model
 - Runtime component model
 - Serialization architecture
-- Multiple ADRs documenting the protocol design
+- Protocol design decision records
 
 ---
 
-## Phase 4 – Protocol V1
+## Phase 4 – Protocol Version 1
 
-Completed
+**Status:** Completed
 
 Highlights:
 
@@ -78,12 +87,14 @@ Highlights:
 - BinaryProtocolReader
 - BinaryProtocolWriter
 - BinaryProtocolPayloadCodec
+- ProtocolEnvelopeByteCodec
 
 ### Serialization
 
 - Descriptor serializers
 - VariantSerializer
 - PropertyValueSerializer
+- Protocol serialization helpers
 
 ### Protocol Messages
 
@@ -96,35 +107,111 @@ Implemented support for:
 - ExecuteCommand
 - EventNotification
 
-### Testing
+Protocol Version 1 is feature complete for the currently defined message set.
 
-Current status:
+---
 
-**421 automated tests passing**
+## Phase 5 – Runtime Integration and Protocol Explorer
 
-Protocol Version 1 is feature complete.
+**Status:** Completed
+
+Highlights:
+
+- Runtime protocol dispatcher
+- Runtime request routing
+- Property read and write routing
+- Command execution routing
+- Runtime service integration
+- Runtime-backed capability demonstrations
+- Protocol Explorer
+- Annotated payload visualization
+- Byte-oriented loopback transport
+- Shared capability-scenario framework
+- End-to-end runtime protocol execution
+
+Phase 5 completion baseline:
+
+- **428 automated tests passing**
 
 ---
 
 # Current Focus
 
-Phase 5 – Runtime Integration
+## Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
-Current objectives:
+**Status:** In Progress
 
-Completed
+### Completed Transport Foundations
 
-- Runtime protocol dispatcher
-- Runtime request routing
-- Property read/write routing
-- Command execution routing
+- Protocol-independent `ITransportConnection`
+- Byte-oriented request/response exchange
+- Loopback transport
+- TCP transport
+- TCP transport options and factory
+- Framed TCP communication
+- Maximum-payload validation
+- Cancellation and timeout propagation
+- Transport exception propagation
+- Physical Protocol Explorer execution
 
-In progress
+### Completed Physical Endpoint Foundations
 
-- Runtime service integration
-- Event publication via protocol sessions
-- Transport integration
-- End-to-end integration tests
+- ESP32 endpoint application
+- DOIT ESP32 DEVKIT V4 hardware target
+- BME280 connected through I²C
+- GPIO21 used for SDA
+- GPIO22 used for SCL
+- BME280 address `0x76`
+- Wi-Fi connectivity
+- TCP server on port `5000`
+- HASE Protocol Version 1 envelope decoding
+- Protocol request dispatch
+- Physical endpoint descriptor
+- Physical instrument descriptor
+- Property request decoding
+- Physical property-service abstraction
+- Property-response serialization
+- UTC synchronization through SNTP
+- Unix timestamps in milliseconds
+- Property quality reporting
+- Failure-result serialization
+
+### Completed Physical Capabilities
+
+The physical endpoint supports complete request/response reads for:
+
+- `physical.environment-sensor.temperature`
+- `physical.environment-sensor.relative-humidity`
+- `physical.environment-sensor.air-pressure`
+
+Each successful property response contains:
+
+- A `double` engineering value
+- A truthful UTC timestamp
+- `PropertyQuality.Good`
+- The original request correlation identifier
+
+### Protocol Explorer Physical Scenarios
+
+Completed scenarios include:
+
+- C-003 physical TCP connectivity
+- C-004 physical discovery
+- C-005 physical endpoint-descriptor exchange
+- C-006 physical property reads
+
+C-006 validates:
+
+- Temperature
+- Relative humidity
+- Air pressure
+- Protocol result
+- Correlation identifiers
+- Variant type
+- UTC timestamps
+- Property quality
+- Plausible engineering ranges
+- Round-trip communication
 
 ---
 
@@ -136,13 +223,19 @@ Implemented components:
 - Hase.Runtime
 - Hase.Simulation
 - Hase.Protocol
+- Hase.Transport
+- HASE.ProtocolExplorer
+- ESP32 physical endpoint
 
-Remaining major components:
+The architecture currently provides:
 
-- Transport implementations
-- Gateway support
-- HASE Studio
-- SDK
+- Transport-independent runtime abstractions
+- Protocol-independent transport abstractions
+- Binary Protocol Version 1
+- Simulation and physical endpoint execution
+- Descriptor-driven endpoint discovery
+- Live physical property access
+- Layered separation between protocol, transport, physical services, and hardware
 
 ---
 
@@ -150,37 +243,61 @@ Remaining major components:
 
 The project currently provides:
 
-- Comprehensive unit testing
+- Comprehensive automated testing
 - Layered architecture
 - Strong separation of concerns
 - Platform-independent binary protocol
 - Transport-independent runtime model
+- Protocol-independent transport model
 - Simulation support
+- Physical hardware validation
+- Truthful UTC property timestamps
+- Explicit protocol result handling
 - Extensive architectural documentation
+- Buildable and testable incremental development
 
-The codebase is considered stable and ready for runtime integration.
+The physical BME280 endpoint has been validated through repeated C-005 and C-006
+executions after each major transport, protocol, and property-service change.
+
+---
+
+# Remaining Phase 6 Work
+
+The major remaining Phase 6 objectives are:
+
+- Shared transport contract tests
+- Explicit transport lifecycle semantics
+- Connection-state model
+- Automatic reconnect
+- Endpoint reinitialization after reconnect
+- Transport diagnostics
+- Transport tracing integration
+- Network discovery
+- Serial transport
+- Serial-device discovery
+- BLE transport
+- MQTT transport evaluation or implementation
+- Additional transport integration tests
+- Physical failure-path capability tests
+- Physical write-property capability
+- Physical command-execution capability
+- Physical event-notification capability
 
 ---
 
 # Next Milestone
 
-Complete Runtime Integration by connecting Protocol V1 to the Runtime layer and implementing the first physical transports.
+The next milestone is to complete the production transport lifecycle around the
+working TCP and ESP32 implementation.
 
-The initial target hardware remains the ESP32-based environment sensor, providing a complete end-to-end validation of the HASE architecture.
+The immediate priorities are:
 
+1. Define explicit connection lifecycle and state semantics.
+2. Add automatic reconnect behavior.
+3. Restore endpoint state and descriptor synchronization after reconnect.
+4. Add transport diagnostics and tracing.
+5. Add physical negative-path tests for unknown instruments, unknown properties,
+   unavailable hardware, invalid requests, and connection loss.
 
-## Phase 5 Status
-
-Phase 5 has introduced the Protocol Explorer.
-
-Completed capabilities include:
-
-- Annotated payload visualization for all implemented protocol messages.
-- Runtime-backed capability demonstrations.
-- Byte-oriented loopback transport.
-- End-to-end protocol execution through the complete runtime stack.
-- Shared capability scenario framework.
-
-The Protocol Explorer is now capable of executing engineering capabilities
-against the simulation while visualizing every protocol layer from engineering
-operation down to raw bytes.
+The current physical BME280 implementation serves as the reference endpoint for
+continuing Phase 6 development.

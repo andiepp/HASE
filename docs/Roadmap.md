@@ -1,6 +1,8 @@
 # HASE Roadmap
 
-This roadmap describes the planned evolution of HASE from the core runtime through protocol support, transport infrastructure, gateways, tooling, and the SDK.
+This roadmap describes the planned evolution of HASE from the core runtime
+through protocol support, transport infrastructure, gateways, engineering
+tooling, and the SDK.
 
 ---
 
@@ -12,7 +14,7 @@ This roadmap describes the planned evolution of HASE from the core runtime throu
 
 Establish the core domain model and runtime architecture.
 
-### Completed
+## Completed
 
 - Hase.Core
 - Hase.Runtime
@@ -32,9 +34,10 @@ Establish the core domain model and runtime architecture.
 
 ## Objective
 
-Provide a complete simulation environment for developing and testing HASE without physical hardware.
+Provide a complete simulation environment for developing and testing HASE
+without physical hardware.
 
-### Completed
+## Completed
 
 - Hase.Simulation
 - Simulation host
@@ -51,7 +54,7 @@ Provide a complete simulation environment for developing and testing HASE withou
 - Runtime integration
 - Comprehensive simulation tests
 
-### Future Extensions
+## Future Extensions
 
 - Interpolated waveforms
 - Recorded time-series playback
@@ -70,9 +73,10 @@ Provide a complete simulation environment for developing and testing HASE withou
 
 ## Objective
 
-Define the HASE protocol architecture and establish its binary serialization foundation.
+Define the HASE protocol architecture and establish its binary serialization
+foundation.
 
-### Completed
+## Completed
 
 - Protocol message model
 - Protocol request and response abstractions
@@ -80,6 +84,7 @@ Define the HASE protocol architecture and establish its binary serialization fou
 - Binary protocol reader
 - Binary protocol writer
 - Binary payload encoding
+- Protocol envelope encoding
 - Protocol serialization helpers
 - Descriptor-path serialization
 - Protocol error handling
@@ -93,16 +98,18 @@ Define the HASE protocol architecture and establish its binary serialization fou
 
 ## Objective
 
-Implement Protocol Version 1 for discovery, descriptors, properties, commands, and events.
+Implement Protocol Version 1 for discovery, descriptors, properties, commands,
+and events.
 
-### Protocol Infrastructure
+## Protocol Infrastructure
 
 - BinaryProtocolReader
 - BinaryProtocolWriter
 - BinaryProtocolPayloadCodec
+- ProtocolEnvelopeByteCodec
 - ProtocolSerializationHelper
 
-### Descriptor Serialization
+## Descriptor Serialization
 
 - EndpointDescriptorSerializer
 - EndpointMetadataSerializer
@@ -114,47 +121,47 @@ Implement Protocol Version 1 for discovery, descriptors, properties, commands, a
 - EventDescriptorSerializer
 - DataDescriptorSerializer
 
-### Runtime Serialization
+## Runtime Serialization
 
 - VariantSerializer
 - PropertyValueSerializer
 
-### Implemented Messages
+## Implemented Messages
 
-#### Discovery
+### Discovery
 
 - DiscoverRequest
 - DiscoverResponse
 
-#### Descriptor Access
+### Descriptor Access
 
 - ReadEndpointDescriptorRequest
 - ReadEndpointDescriptorResponse
 
-#### Property Access
+### Property Access
 
 - ReadPropertyRequest
 - ReadPropertyResponse
 - WritePropertyRequest
 - WritePropertyResponse
 
-#### Command Execution
+### Command Execution
 
 - ExecuteCommandRequest
 - ExecuteCommandResponse
 
-#### Event Distribution
+### Event Distribution
 
 - EventNotification
 
-### Testing
+## Testing
 
 - Binary protocol verification
 - Round-trip serialization tests
-- Error handling tests
+- Error-handling tests
 - Boundary-condition tests
 
-Protocol Version 1 is feature complete.
+Protocol Version 1 is feature complete for the currently defined message set.
 
 ---
 
@@ -164,28 +171,30 @@ Protocol Version 1 is feature complete.
 
 ## Objective
 
-Connect Protocol Version 1 to the runtime, demonstrate runtime capabilities, and establish byte-oriented protocol exploration and tracing.
+Connect Protocol Version 1 to the runtime, demonstrate runtime capabilities,
+and establish byte-oriented protocol exploration and tracing.
 
-### Runtime Integration
+## Runtime Integration
 
 - Protocol dispatcher
 - Runtime request routing
 - Property providers
+- Property read and write routing
 - Command handlers
 - Runtime service integration
 - Runtime endpoint hosting foundations
 - Runtime instrument integration
-- End-to-end protocol dispatch tests
+- End-to-end protocol-dispatch tests
 
-### Capability Demonstrations
+## Capability Demonstrations
 
 - C-001 property capability demonstration
 - C-002 command capability demonstration
-- Shared capability scenario framework
+- Shared capability-scenario framework
 - Scenario runner
 - Protocol scenario base
 
-### Protocol Explorer
+## Protocol Explorer
 
 - Protocol message visualization
 - Request and response visualization
@@ -194,7 +203,7 @@ Connect Protocol Version 1 to the runtime, demonstrate runtime capabilities, and
 - Runtime capability demonstrations
 - Byte-oriented loopback execution
 
-### Transport Foundation
+## Transport Foundation
 
 - Hase.Transport project
 - ITransportConnection
@@ -203,30 +212,32 @@ Connect Protocol Version 1 to the runtime, demonstrate runtime capabilities, and
 - Loopback transport tests
 - Separation of protocol, runtime, and transport layers
 
-### Testing
+## Testing
 
 - Runtime protocol-dispatch tests
-- Capability scenario tests
+- Capability-scenario tests
 - Protocol Explorer integration tests
 - Loopback transport contract tests
 
-### Completion Baseline
+## Completion Baseline
 
 - **428 automated tests passing**
 
 ---
 
-# Phase 6 — Transport Infrastructure
+# Phase 6 — Transport Infrastructure and Physical Endpoint Integration
 
 **Status:** In Progress
 
 ## Objective
 
-Provide production-ready, protocol-independent communication infrastructure between HASE runtimes and endpoints.
+Provide production-ready, protocol-independent communication infrastructure
+between HASE runtimes and endpoints, and validate it against real hardware.
 
-The transport layer exchanges byte sequences and remains independent of the HASE protocol and runtime models.
+The transport layer exchanges byte sequences and remains independent of the
+HASE protocol and runtime models.
 
-### Completed Foundations
+## Completed Transport Foundations
 
 - Hase.Transport
 - ITransportConnection
@@ -238,40 +249,158 @@ The transport layer exchanges byte sequences and remains independent of the HASE
 - Null-response validation
 - Transport exception propagation
 - Loopback transport contract tests
+- TCP transport connection
+- TCP transport factory
+- TCP transport options
+- Framed TCP communication
+- Payload-size validation
+- Physical transport execution from Protocol Explorer
 
-### Planned Infrastructure
+## Completed Physical Endpoint Integration
+
+- ESP32 endpoint application
+- DOIT ESP32 DEVKIT V4 target
+- Wi-Fi connection
+- TCP server on port `5000`
+- Protocol envelope decoding
+- Request dispatch
+- DiscoverRequest handling
+- DiscoverResponse generation
+- ReadEndpointDescriptorRequest handling
+- ReadEndpointDescriptorResponse generation
+- Physical endpoint descriptor
+- Physical environment-sensor descriptor
+- BME280 hardware abstraction
+- BME280 initialization through I²C
+- GPIO21 SDA
+- GPIO22 SCL
+- BME280 I²C address `0x76`
+
+## Completed Physical Property Infrastructure
+
+- ReadPropertyRequest recognition
+- ReadPropertyRequest decoding
+- Instrument validation
+- Property validation
+- Physical property-service abstraction
+- Table-driven property lookup
+- ReadPropertyResponse serialization
+- Success responses
+- Invalid-request responses
+- Not-found responses
+- Internal-error responses
+- `double` variant serialization
+- Signed 64-bit timestamp serialization
+- UTC synchronization through SNTP
+- Unix timestamp generation in milliseconds
+- `PropertyQuality.Good`
+
+## Completed Physical Properties
+
+The ESP32 BME280 endpoint exposes:
+
+- `physical.environment-sensor.temperature`
+- `physical.environment-sensor.relative-humidity`
+- `physical.environment-sensor.air-pressure`
+
+## Completed Physical Protocol Explorer Scenarios
+
+### C-003
+
+Physical TCP connectivity.
+
+### C-004
+
+Physical endpoint discovery.
+
+### C-005
+
+Physical endpoint-descriptor request and validation.
+
+### C-006
+
+Complete live property request/response validation for:
+
+- Temperature
+- Relative humidity
+- Air pressure
+
+C-006 validates:
+
+- Framed TCP exchange
+- Protocol version
+- Request and response roles
+- Message types
+- Correlation identifiers
+- Protocol result
+- Optional property-value presence
+- `double` variant type
+- Engineering value
+- Plausible sensor range
+- UTC timestamp
+- Property quality
+- Round-trip time
+
+## Remaining Transport Infrastructure
 
 - Shared transport contract testing
-- Transport lifecycle semantics
-- Transport configuration models
+- Explicit transport lifecycle semantics
+- Connection-state model
+- Transport configuration consolidation
 - Transport creation and selection
 - Connection management
 - Automatic reconnect
-- Cancellation and timeout handling
+- Endpoint reinitialization after reconnect
+- Cancellation and timeout policy
 - Transport diagnostics
 - Transport tracing integration
 - Transport integration tests
+- Physical connection-loss tests
 
-### Planned Transport Implementations
+## Remaining Transport Implementations
 
-- TCP/IP transport
 - Serial transport
 - BLE transport
-- MQTT transport
+- MQTT transport evaluation or implementation
 
-### Planned Discovery Support
+## Remaining Discovery Support
 
 - Network discovery
 - Serial-device discovery
 - Transport-specific endpoint discovery
 
-### Future Protocol Explorer Extensions
+## Remaining Physical Protocol Capabilities
 
-- Real transport execution
+- Negative-path ReadProperty tests
+- Physical WriteProperty
+- Physical ExecuteCommand
+- Physical EventNotification
+- Hardware-unavailable handling tests
+- Invalid-request handling tests
+- Unknown-instrument handling tests
+- Unknown-property handling tests
+
+## Future Protocol Explorer Extensions
+
+- Connection-state display
 - Transport diagnostics display
+- Reconnect visualization
 - Optional coloured console output
 - Optional Markdown report generation
 - Optional HTML report generation
+
+## Phase 6 Completion Criteria
+
+Phase 6 will be complete when:
+
+- TCP lifecycle semantics are defined and tested.
+- Automatic reconnect is implemented and validated.
+- Connection diagnostics and tracing are available.
+- Shared transport contracts are applied to production transports.
+- At least TCP and serial transports are operational.
+- Discovery is available for the supported physical transports.
+- Physical property, command, write, and event paths are validated.
+- Connection-loss and recovery behavior is verified end to end.
 
 ---
 
@@ -283,7 +412,7 @@ The transport layer exchanges byte sequences and remains independent of the HASE
 
 Allow HASE endpoints to expose downstream buses and devices.
 
-### Planned
+## Planned
 
 - Gateway endpoints
 - I²C forwarding
@@ -301,9 +430,10 @@ Allow HASE endpoints to expose downstream buses and devices.
 
 ## Objective
 
-Provide a complete engineering environment for configuring, operating, observing, and diagnosing HASE systems.
+Provide a complete engineering environment for configuring, operating,
+observing, and diagnosing HASE systems.
 
-### Planned
+## Planned
 
 - Runtime topology
 - Endpoint explorer
@@ -325,9 +455,10 @@ Provide a complete engineering environment for configuring, operating, observing
 
 ## Objective
 
-Provide tooling and extension points for third-party instrument and endpoint development.
+Provide tooling and extension points for third-party instrument and endpoint
+development.
 
-### Planned
+## Planned
 
 - Instrument templates
 - Endpoint templates
