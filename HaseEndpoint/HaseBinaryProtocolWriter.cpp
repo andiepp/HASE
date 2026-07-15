@@ -94,6 +94,38 @@ bool HaseBinaryProtocolWriter::writeUInt32(
     return true;
 }
 
+bool HaseBinaryProtocolWriter::writeInt64(
+    int64_t value)
+{
+    if (!_succeeded
+        || remaining() < sizeof(int64_t))
+    {
+        _succeeded =
+            false;
+
+        return false;
+    }
+
+    uint64_t encodedValue =
+        static_cast<uint64_t>(
+            value);
+
+    for (size_t index = 0;
+         index < sizeof(encodedValue);
+         index++)
+    {
+        _buffer[_position + index] =
+            static_cast<uint8_t>(
+                (encodedValue >> (index * 8))
+                & 0xFF);
+    }
+
+    _position +=
+        sizeof(encodedValue);
+
+    return true;
+}
+
 bool HaseBinaryProtocolWriter::writeDouble(
     double value)
 {

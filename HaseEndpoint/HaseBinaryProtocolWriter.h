@@ -18,6 +18,9 @@ public:
     bool writeUInt32(
         uint32_t value);
 
+    bool writeInt64(
+        int64_t value);
+
     bool writeDouble(
         double value);
 
