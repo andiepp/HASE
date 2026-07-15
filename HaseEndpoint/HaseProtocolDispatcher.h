@@ -10,11 +10,15 @@ enum class HaseProtocolDispatchResult : uint8_t
 {
     DiscoverRequestRecognized,
 
+    ReadPropertyRequestRecognized,
+
     ReadEndpointDescriptorRequestRecognized,
 
     UnsupportedVersion,
 
     InvalidDiscoverRequest,
+
+    InvalidReadPropertyRequest,
 
     InvalidReadEndpointDescriptorRequest,
 
@@ -39,6 +43,9 @@ private:
 
     static constexpr uint8_t DiscoverRequestMessageType =
         1;
+
+    static constexpr uint8_t ReadPropertyRequestMessageType =
+        10;
 
     static constexpr uint8_t ReadEndpointDescriptorRequestMessageType =
         52;

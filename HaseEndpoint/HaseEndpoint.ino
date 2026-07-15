@@ -65,6 +65,9 @@ bool processProtocolFrame(
 bool processDiscoverRequest(
     const HaseProtocolEnvelope& envelope);
 
+bool processReadPropertyRequest(
+    const HaseProtocolEnvelope& envelope);
+
 bool processReadEndpointDescriptorRequest(
     const HaseProtocolEnvelope& envelope);
 
@@ -426,6 +429,13 @@ bool processProtocolFrame(
         }
 
         case HaseProtocolDispatchResult::
+            ReadPropertyRequestRecognized:
+        {
+            return processReadPropertyRequest(
+                envelope);
+        }
+
+        case HaseProtocolDispatchResult::
             ReadEndpointDescriptorRequestRecognized:
         {
             return processReadEndpointDescriptorRequest(
@@ -499,6 +509,25 @@ bool processDiscoverRequest(
 
     Serial.println(
         HaseDiscoverHandler::InstrumentId());
+
+    Serial.println();
+
+    return true;
+}
+
+bool processReadPropertyRequest(
+    const HaseProtocolEnvelope& envelope)
+{
+    static_cast<void>(
+        envelope);
+
+    Serial.println();
+
+    Serial.println(
+        "ReadPropertyRequest recognized.");
+
+    Serial.println(
+        "ReadPropertyResponse handler is not implemented yet.");
 
     Serial.println();
 
@@ -647,6 +676,15 @@ void printDispatchResult(
         }
 
         case HaseProtocolDispatchResult::
+            ReadPropertyRequestRecognized:
+        {
+            Serial.println(
+                "ReadPropertyRequest recognized");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
             ReadEndpointDescriptorRequestRecognized:
         {
             Serial.println(
@@ -669,6 +707,15 @@ void printDispatchResult(
         {
             Serial.println(
                 "Invalid DiscoverRequest");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
+            InvalidReadPropertyRequest:
+        {
+            Serial.println(
+                "Invalid ReadPropertyRequest");
 
             break;
         }

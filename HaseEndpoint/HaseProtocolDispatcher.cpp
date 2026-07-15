@@ -1,10 +1,54 @@
 /* Protocol Dispatcher */
 
 #include "HaseProtocolDispatcher.h"
+
 #include "HaseBinaryProtocolReader.h"
 
 namespace
 {
+    bool SkipRequiredString(
+        HaseBinaryProtocolReader& reader)
+    {
+        uint16_t stringLength =
+            0;
+
+        if (!reader.readUInt16(
+                stringLength))
+        {
+            return false;
+        }
+
+        if (stringLength == 0)
+        {
+            return false;
+        }
+
+        return reader.skipBytes(
+            stringLength);
+    }
+
+    bool IsValidReadPropertyRequestPayload(
+        const HaseProtocolEnvelope& envelope)
+    {
+        HaseBinaryProtocolReader reader(
+            envelope.payload,
+            envelope.payloadLength);
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        return reader.fullyConsumed();
+    }
+
     bool IsValidReadEndpointDescriptorRequestPayload(
         const HaseProtocolEnvelope& envelope)
     {
@@ -12,22 +56,8 @@ namespace
             envelope.payload,
             envelope.payloadLength);
 
-        uint16_t endpointIdLength =
-            0;
-
-        if (!reader.readUInt16(
-                endpointIdLength))
-        {
-            return false;
-        }
-
-        if (endpointIdLength == 0)
-        {
-            return false;
-        }
-
-        if (!reader.skipBytes(
-                endpointIdLength))
+        if (!SkipRequiredString(
+                reader))
         {
             return false;
         }
@@ -64,6 +94,24 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
         return
             HaseProtocolDispatchResult::
                 DiscoverRequestRecognized;
+    }
+
+    if (envelope.messageType
+        == ReadPropertyRequestMessageType)
+    {
+        if (envelope.role
+                != RequestRole
+            || !IsValidReadPropertyRequestPayload(
+                envelope))
+        {
+            return
+                HaseProtocolDispatchResult::
+                    InvalidReadPropertyRequest;
+        }
+
+        return
+            HaseProtocolDispatchResult::
+                ReadPropertyRequestRecognized;
     }
 
     if (envelope.messageType
