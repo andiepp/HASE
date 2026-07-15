@@ -4,18 +4,19 @@ namespace
 {
     const HaseEndpointMetadata EndpointMetadata =
     {
-        "Ideaspark ESP32 Environment Endpoint",
-        "Physical HASE endpoint running on an Ideaspark ESP32 board."
+        "DOIT ESP32 DEVKIT V4 Environment Endpoint",
+        "Physical HASE endpoint running on a DOIT ESP32 DEVKIT V4 board."
     };
 
     const HaseInstrumentMetadata EnvironmentSensorMetadata =
     {
         "Bosch Sensortec",
-        "BMP280",
+        "BME280",
         nullptr,
         nullptr,
         nullptr,
-        "Temperature and air-pressure sensor connected to the ESP32."
+        "Temperature, relative-humidity, and air-pressure sensor "
+        "connected to the ESP32 through I2C."
     };
 
     const HasePropertyDescriptor EnvironmentSensorProperties[] =
@@ -37,6 +38,31 @@ namespace
                 {
                     true,
                     -100.0,
+                    100.0
+                },
+                {
+                    true,
+                    0.1
+                }
+            }
+        },
+
+        {
+            "physical.environment-sensor.relative-humidity",
+            "Environment.RelativeHumidity",
+            "Relative Humidity",
+            "Ambient relative humidity.",
+            HasePropertyAccessMode::Read,
+            HaseDataDescriptorType::Numeric,
+            {
+                "relative-humidity",
+                "Relative Humidity",
+                "percent-relative-humidity",
+                "Percent Relative Humidity",
+                "%RH",
+                {
+                    true,
+                    0.0,
                     100.0
                 },
                 {
@@ -76,11 +102,11 @@ namespace
     {
         {
             "environment-sensor-01",
-            "BMP280 Environment Sensor",
+            "BME280 Environment Sensor",
             "environment-sensor",
             EnvironmentSensorMetadata,
             EnvironmentSensorProperties,
-            2,
+            3,
             0,
             0
         }

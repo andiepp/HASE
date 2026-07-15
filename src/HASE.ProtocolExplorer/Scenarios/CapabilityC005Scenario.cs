@@ -1,4 +1,5 @@
-﻿using Hase.Core.Domain.Data;
+﻿using System.Diagnostics;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
@@ -7,7 +8,6 @@ using Hase.Protocol;
 using Hase.ProtocolExplorer.Transport;
 using Hase.Transport;
 using Hase.Transport.Tcp;
-using System.Diagnostics;
 
 namespace Hase.ProtocolExplorer.Scenarios;
 
@@ -23,17 +23,17 @@ internal sealed class CapabilityC005Scenario
     private const string ExpectedEndpointId =
         "ideaspark-esp32-01";
 
-    private const string ExpectedDisplayName =
-        "Ideaspark ESP32 Environment Endpoint";
+    private const string ExpectedEndpointDisplayName =
+        "DOIT ESP32 DEVKIT V4 Environment Endpoint";
 
-    private const string ExpectedDescription =
-        "Physical HASE endpoint running on an Ideaspark ESP32 board.";
+    private const string ExpectedEndpointDescription =
+        "Physical HASE endpoint running on a DOIT ESP32 DEVKIT V4 board.";
 
     private const string ExpectedInstrumentId =
         "environment-sensor-01";
 
     private const string ExpectedInstrumentName =
-        "BMP280 Environment Sensor";
+        "BME280 Environment Sensor";
 
     private const string ExpectedInstrumentKind =
         "environment-sensor";
@@ -42,10 +42,11 @@ internal sealed class CapabilityC005Scenario
         "Bosch Sensortec";
 
     private const string ExpectedModel =
-        "BMP280";
+        "BME280";
 
     private const string ExpectedInstrumentDescription =
-        "Temperature and air-pressure sensor connected to the ESP32.";
+        "Temperature, relative-humidity, and air-pressure sensor "
+        + "connected to the ESP32 through I2C.";
 
     private static readonly CorrelationId
         DescriptorCorrelationId =
@@ -242,6 +243,9 @@ internal sealed class CapabilityC005Scenario
         ValidateTemperatureProperty(
             instrument);
 
+        ValidateRelativeHumidityProperty(
+            instrument);
+
         ValidateAirPressureProperty(
             instrument);
     }
@@ -262,19 +266,21 @@ internal sealed class CapabilityC005Scenario
         }
 
         if (descriptor.Metadata.DisplayName
-            != ExpectedDisplayName)
+            != ExpectedEndpointDisplayName)
         {
             throw new InvalidDataException(
-                $"Expected display name '{ExpectedDisplayName}', but "
-                + $"received '{descriptor.Metadata.DisplayName}'.");
+                $"Expected endpoint display name "
+                + $"'{ExpectedEndpointDisplayName}', but received "
+                + $"'{descriptor.Metadata.DisplayName}'.");
         }
 
         if (descriptor.Metadata.Description
-            != ExpectedDescription)
+            != ExpectedEndpointDescription)
         {
             throw new InvalidDataException(
-                $"Expected description '{ExpectedDescription}', but "
-                + $"received '{descriptor.Metadata.Description}'.");
+                $"Expected endpoint description "
+                + $"'{ExpectedEndpointDescription}', but received "
+                + $"'{descriptor.Metadata.Description}'.");
         }
 
         if (descriptor.Instruments.Count
@@ -367,18 +373,18 @@ internal sealed class CapabilityC005Scenario
         }
 
         if (instrument.Interface.Properties.Count
-            != 2)
+            != 3)
         {
             throw new InvalidDataException(
-                "The physical BMP280 descriptor must contain exactly "
-                + "two properties.");
+                "The physical BME280 descriptor must contain exactly "
+                + "three properties.");
         }
 
         if (instrument.Interface.Commands.Count
             != 0)
         {
             throw new InvalidDataException(
-                "The physical BMP280 descriptor must not contain "
+                "The physical BME280 descriptor must not contain "
                 + "commands.");
         }
 
@@ -386,7 +392,7 @@ internal sealed class CapabilityC005Scenario
             != 0)
         {
             throw new InvalidDataException(
-                "The physical BMP280 descriptor must not contain "
+                "The physical BME280 descriptor must not contain "
                 + "events.");
         }
 
@@ -429,11 +435,47 @@ internal sealed class CapabilityC005Scenario
                 0.1);
     }
 
-    private static void ValidateAirPressureProperty(
+    private static void ValidateRelativeHumidityProperty(
         InstrumentDescriptor instrument)
     {
         PropertyDescriptor property =
             instrument.Interface.Properties[1];
+
+        ValidateNumericProperty(
+            property,
+            expectedId:
+                "physical.environment-sensor.relative-humidity",
+            expectedPath:
+                new DescriptorPath(
+                    "Environment",
+                    "RelativeHumidity"),
+            expectedDisplayName:
+                "Relative Humidity",
+            expectedDescription:
+                "Ambient relative humidity.",
+            expectedQuantityId:
+                "relative-humidity",
+            expectedQuantityDisplayName:
+                "Relative Humidity",
+            expectedUnitId:
+                "percent-relative-humidity",
+            expectedUnitDisplayName:
+                "Percent Relative Humidity",
+            expectedUnitSymbol:
+                "%RH",
+            expectedMinimum:
+                0.0,
+            expectedMaximum:
+                100.0,
+            expectedResolution:
+                0.1);
+    }
+
+    private static void ValidateAirPressureProperty(
+        InstrumentDescriptor instrument)
+    {
+        PropertyDescriptor property =
+            instrument.Interface.Properties[2];
 
         ValidateNumericProperty(
             property,
@@ -534,7 +576,7 @@ internal sealed class CapabilityC005Scenario
         if (numericData.Quantity.Id
             != expectedQuantityId
             || numericData.Quantity.DisplayName
-            != expectedQuantityDisplayName)
+                != expectedQuantityDisplayName)
         {
             throw new InvalidDataException(
                 $"Property '{expectedId}' has unexpected quantity "
@@ -611,7 +653,7 @@ internal sealed class CapabilityC005Scenario
 
         Console.WriteLine(
             "Read and decode the complete descriptor of a physical "
-            + "BMP280 endpoint through HASE Protocol Version 1 over "
+            + "BME280 endpoint through HASE Protocol Version 1 over "
             + "framed TCP.");
 
         Console.WriteLine();
@@ -714,7 +756,17 @@ internal sealed class CapabilityC005Scenario
             $"Endpoint ID      : {descriptor.Id.Value}");
 
         Console.WriteLine(
+            $"Endpoint Name    : "
+            + $"{descriptor.Metadata.DisplayName}");
+
+        Console.WriteLine(
             $"Instrument ID    : {instrument.Id.Value}");
+
+        Console.WriteLine(
+            $"Instrument Name  : {instrument.Name}");
+
+        Console.WriteLine(
+            $"Sensor Model     : {instrument.Metadata.Model}");
 
         Console.WriteLine(
             $"Property Count   : "
