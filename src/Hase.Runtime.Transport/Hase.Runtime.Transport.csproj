@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
   </ItemGroup>

@@ -9,8 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
-    <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
+    <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Simulation.Runtime\Hase.Simulation.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Simulation\Hase.Simulation.csproj" />
     <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
