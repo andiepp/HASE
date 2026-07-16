@@ -16,12 +16,16 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         // Act
         void Act()
         {
             _ = new RuntimeEndpointConnectionCoordinator(
                 null!,
-                endpoint);
+                endpoint,
+                synchronizer);
         }
 
         // Assert
@@ -42,12 +46,16 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             new TransportConnectionManager(
                 new TestTransportFactory());
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         // Act
         void Act()
         {
             _ = new RuntimeEndpointConnectionCoordinator(
                 manager,
-                null!);
+                null!,
+                synchronizer);
         }
 
         // Assert
@@ -57,6 +65,36 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
 
         Assert.Equal(
             "runtimeEndpoint",
+            exception.ParamName);
+    }
+
+    [Fact]
+    public void Constructor_NullSynchronizer_ShouldThrow()
+    {
+        // Arrange
+        var manager =
+            new TransportConnectionManager(
+                new TestTransportFactory());
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        // Act
+        void Act()
+        {
+            _ = new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                null!);
+        }
+
+        // Assert
+        ArgumentNullException exception =
+            Assert.Throws<ArgumentNullException>(
+                Act);
+
+        Assert.Equal(
+            "synchronizer",
             exception.ParamName);
     }
 
@@ -71,11 +109,15 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         // Act
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         // Assert
         Assert.Equal(
@@ -88,6 +130,41 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         Assert.Equal(
             "No transport connection is currently available.",
             endpoint.ConnectionStatus.Detail);
+    }
+
+    [Fact]
+    public async Task Constructor_ShouldExposeDependencies()
+    {
+        // Arrange
+        await using var manager =
+            new TransportConnectionManager(
+                new TestTransportFactory());
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        // Act
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                synchronizer);
+
+        // Assert
+        Assert.Same(
+            manager,
+            coordinator.ConnectionManager);
+
+        Assert.Same(
+            endpoint,
+            coordinator.RuntimeEndpoint);
+
+        Assert.Same(
+            synchronizer,
+            coordinator.Synchronizer);
     }
 
     [Fact]
@@ -115,10 +192,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         // Act
         Task<ITransportConnection> connectTask =
@@ -159,12 +240,12 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             actualConnection);
 
         Assert.Equal(
-            EndpointConnectionState.Synchronizing,
+            EndpointConnectionState.Ready,
             endpoint.ConnectionStatus.State);
     }
 
     [Fact]
-    public async Task SuccessfulConnect_ShouldFinishSynchronizing()
+    public async Task ConnectAsync_WhileSynchronizationIsPending_ShouldReportSynchronizing()
     {
         // Arrange
         var connection =
@@ -184,10 +265,88 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var pendingSynchronization =
+            new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        synchronizer.EnqueuePendingSynchronization(
+            pendingSynchronization);
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
+
+        // Act
+        Task<ITransportConnection> connectTask =
+            coordinator.ConnectAsync();
+
+        await synchronizer.SynchronizationStarted;
+
+        // Assert
+        Assert.Equal(
+            EndpointConnectionState.Synchronizing,
+            endpoint.ConnectionStatus.State);
+
+        Assert.Equal(
+            manager.LastStateChangeUtc,
+            endpoint.ConnectionStatus.ChangedAtUtc);
+
+        Assert.Equal(
+            "Synchronizing the runtime endpoint with the physical endpoint.",
+            endpoint.ConnectionStatus.Detail);
+
+        Assert.False(
+            connectTask.IsCompleted);
+
+        pendingSynchronization.SetResult(
+            true);
+
+        ITransportConnection actualConnection =
+            await connectTask;
+
+        Assert.Same(
+            connection,
+            actualConnection);
+
+        Assert.Equal(
+            EndpointConnectionState.Ready,
+            endpoint.ConnectionStatus.State);
+    }
+
+    [Fact]
+    public async Task SuccessfulConnect_ShouldFinishReady()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                synchronizer);
 
         // Act
         ITransportConnection actualConnection =
@@ -199,21 +358,30 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             actualConnection);
 
         Assert.Equal(
-            EndpointConnectionState.Synchronizing,
+            EndpointConnectionState.Ready,
             endpoint.ConnectionStatus.State);
 
-        Assert.Equal(
-            manager.LastStateChangeUtc,
+        Assert.NotNull(
             endpoint.ConnectionStatus.ChangedAtUtc);
 
         Assert.Equal(
-            "The transport connection is established; "
-            + "endpoint synchronization is required.",
+            TimeSpan.Zero,
+            endpoint.ConnectionStatus
+                .ChangedAtUtc
+                .Value
+                .Offset);
+
+        Assert.Equal(
+            "The endpoint is connected, synchronized, and ready.",
             endpoint.ConnectionStatus.Detail);
+
+        Assert.Equal(
+            1,
+            synchronizer.SynchronizeCallCount);
     }
 
     [Fact]
-    public async Task SuccessfulConnect_ShouldPreserveTransportTimestamp()
+    public async Task SuccessfulConnect_ShouldPassConnectionAndEndpointToSynchronizer()
     {
         // Arrange
         var connection =
@@ -233,46 +401,77 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
-
-        DateTimeOffset beforeConnectUtc =
-            DateTimeOffset.UtcNow;
+                endpoint,
+                synchronizer);
 
         // Act
         await coordinator.ConnectAsync();
 
-        DateTimeOffset afterConnectUtc =
-            DateTimeOffset.UtcNow;
-
         // Assert
-        Assert.NotNull(
-            manager.LastStateChangeUtc);
+        Assert.Same(
+            connection,
+            synchronizer.LastConnection);
 
-        Assert.NotNull(
-            endpoint.ConnectionStatus.ChangedAtUtc);
-
-        Assert.Equal(
-            manager.LastStateChangeUtc,
-            endpoint.ConnectionStatus.ChangedAtUtc);
-
-        Assert.InRange(
-            endpoint.ConnectionStatus.ChangedAtUtc.Value,
-            beforeConnectUtc,
-            afterConnectUtc);
+        Assert.Same(
+            endpoint,
+            synchronizer.LastRuntimeEndpoint);
 
         Assert.Equal(
-            TimeSpan.Zero,
-            endpoint.ConnectionStatus
-                .ChangedAtUtc
-                .Value
-                .Offset);
+            1,
+            synchronizer.SynchronizeCallCount);
     }
 
     [Fact]
-    public async Task ConnectAsync_Cancelled_ShouldReturnToDisconnected()
+    public async Task SuccessfulConnect_ShouldPassCancellationTokenToSynchronizer()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                synchronizer);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        // Act
+        await coordinator.ConnectAsync(
+            cancellationTokenSource.Token);
+
+        // Assert
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            synchronizer.LastCancellationToken);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_CancelledDuringConnection_ShouldReturnToDisconnected()
     {
         // Arrange
         var factory =
@@ -287,10 +486,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         using var cancellationTokenSource =
             new CancellationTokenSource();
@@ -340,10 +543,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
 
         Assert.Null(
             manager.CurrentConnection);
+
+        Assert.Equal(
+            0,
+            synchronizer.SynchronizeCallCount);
     }
 
     [Fact]
-    public async Task ConnectAsync_FactoryFailure_ShouldBecomeFaulted()
+    public async Task ConnectAsync_ConnectionFailure_ShouldBecomeFaulted()
     {
         // Arrange
         var expectedException =
@@ -363,10 +570,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         // Act
         Task Act()
@@ -403,10 +614,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
 
         Assert.Null(
             manager.CurrentConnection);
+
+        Assert.Equal(
+            0,
+            synchronizer.SynchronizeCallCount);
     }
 
     [Fact]
-    public async Task FaultedTransport_ShouldBecomeFaulted()
+    public async Task ConnectAsync_SynchronizationCancelled_ShouldBecomeDisconnected()
     {
         // Arrange
         var connection =
@@ -426,17 +641,195 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        synchronizer.EnqueueCancellation();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        Task<ITransportConnection> connectTask =
+            coordinator.ConnectAsync(
+                cancellationTokenSource.Token);
+
+        await synchronizer.SynchronizationStarted;
+
+        Assert.Equal(
+            EndpointConnectionState.Synchronizing,
+            endpoint.ConnectionStatus.State);
+
+        // Act
+        cancellationTokenSource.Cancel();
+
+        // Assert
+        TaskCanceledException exception =
+            await Assert.ThrowsAsync<TaskCanceledException>(
+                async () =>
+                {
+                    await connectTask;
+                });
+
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            exception.CancellationToken);
+
+        Assert.Equal(
+            EndpointConnectionState.Disconnected,
+            endpoint.ConnectionStatus.State);
+
+        Assert.NotNull(
+            endpoint.ConnectionStatus.ChangedAtUtc);
+
+        Assert.Equal(
+            TimeSpan.Zero,
+            endpoint.ConnectionStatus
+                .ChangedAtUtc
+                .Value
+                .Offset);
+
+        Assert.Equal(
+            "Endpoint synchronization was cancelled.",
+            endpoint.ConnectionStatus.Detail);
+
+        Assert.Same(
+            connection,
+            manager.CurrentConnection);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            manager.CurrentState);
+
+        Assert.Equal(
+            1,
+            synchronizer.SynchronizeCallCount);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_SynchronizationFailure_ShouldBecomeFaulted()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var expectedException =
+            new InvalidOperationException(
+                "Synchronization failed.");
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        synchronizer.EnqueueException(
+            expectedException);
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                synchronizer);
+
+        // Act
+        Task Act()
+        {
+            return coordinator.ConnectAsync();
+        }
+
+        // Assert
+        InvalidOperationException actualException =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                Act);
+
+        Assert.Same(
+            expectedException,
+            actualException);
+
+        Assert.Equal(
+            EndpointConnectionState.Faulted,
+            endpoint.ConnectionStatus.State);
+
+        Assert.NotNull(
+            endpoint.ConnectionStatus.ChangedAtUtc);
+
+        Assert.Equal(
+            TimeSpan.Zero,
+            endpoint.ConnectionStatus
+                .ChangedAtUtc
+                .Value
+                .Offset);
+
+        Assert.Equal(
+            "Endpoint synchronization failed.",
+            endpoint.ConnectionStatus.Detail);
+
+        Assert.Same(
+            connection,
+            manager.CurrentConnection);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            manager.CurrentState);
+
+        Assert.Equal(
+            1,
+            synchronizer.SynchronizeCallCount);
+    }
+
+    [Fact]
+    public async Task FaultedTransport_AfterReady_ShouldBecomeFaulted()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        RuntimeEndpoint endpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                manager,
+                endpoint,
+                synchronizer);
 
         await coordinator.ConnectAsync();
 
-        DateTimeOffset synchronizingTimestamp =
+        DateTimeOffset readyTimestamp =
             endpoint.ConnectionStatus.ChangedAtUtc
             ?? throw new InvalidOperationException(
-                "The synchronizing timestamp was not established.");
+                "The ready timestamp was not established.");
 
         await Task.Delay(
             TimeSpan.FromMilliseconds(
@@ -456,7 +849,7 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
 
         Assert.True(
             endpoint.ConnectionStatus.ChangedAtUtc.Value
-            > synchronizingTimestamp);
+            > readyTimestamp);
 
         Assert.Equal(
             manager.LastStateChangeUtc,
@@ -468,7 +861,7 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
     }
 
     [Fact]
-    public async Task ConnectionManagerDisposal_ShouldBecomeDisconnected()
+    public async Task ConnectionManagerDisposal_AfterReady_ShouldBecomeDisconnected()
     {
         // Arrange
         var connection =
@@ -488,17 +881,21 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         await coordinator.ConnectAsync();
 
-        DateTimeOffset establishedTimestamp =
+        DateTimeOffset readyTimestamp =
             endpoint.ConnectionStatus.ChangedAtUtc
             ?? throw new InvalidOperationException(
-                "The synchronizing timestamp was not established.");
+                "The ready timestamp was not established.");
 
         // Act
         await manager.DisposeAsync();
@@ -509,7 +906,11 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             endpoint.ConnectionStatus.State);
 
         Assert.Equal(
-            establishedTimestamp,
+            manager.LastStateChangeUtc,
+            endpoint.ConnectionStatus.ChangedAtUtc);
+
+        Assert.NotEqual(
+            readyTimestamp,
             endpoint.ConnectionStatus.ChangedAtUtc);
 
         Assert.Equal(
@@ -545,10 +946,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         await coordinator.ConnectAsync();
 
@@ -567,7 +972,7 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             endpoint.ConnectionStatus);
 
         Assert.Equal(
-            EndpointConnectionState.Synchronizing,
+            EndpointConnectionState.Ready,
             endpoint.ConnectionStatus.State);
 
         Assert.Equal(
@@ -596,10 +1001,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         await coordinator.ConnectAsync();
 
@@ -619,7 +1028,7 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             endpoint.ConnectionStatus);
 
         Assert.Equal(
-            EndpointConnectionState.Synchronizing,
+            EndpointConnectionState.Ready,
             endpoint.ConnectionStatus.State);
     }
 
@@ -637,10 +1046,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         RuntimeEndpoint endpoint =
             CreateRuntimeEndpoint();
 
+        var synchronizer =
+            new TestRuntimeEndpointSynchronizer();
+
         var coordinator =
             new RuntimeEndpointConnectionCoordinator(
                 manager,
-                endpoint);
+                endpoint,
+                synchronizer);
 
         await coordinator.DisposeAsync();
 
@@ -661,6 +1074,10 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
         Assert.Equal(
             0,
             factory.ConnectCallCount);
+
+        Assert.Equal(
+            0,
+            synchronizer.SynchronizeCallCount);
     }
 
     private static RuntimeEndpoint CreateRuntimeEndpoint()
@@ -683,9 +1100,10 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
                 Task<ITransportConnection>>> _results =
             new();
 
-        private TaskCompletionSource<bool>
+        private readonly TaskCompletionSource<bool>
             _connectStarted =
-                CreateConnectStartedSource();
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int ConnectCallCount
         {
@@ -770,12 +1188,118 @@ public sealed class RuntimeEndpointConnectionCoordinatorTests
             return result(
                 cancellationToken);
         }
+    }
 
-        private static TaskCompletionSource<bool>
-            CreateConnectStartedSource()
+    private sealed class TestRuntimeEndpointSynchronizer
+        : IRuntimeEndpointSynchronizer
+    {
+        private readonly Queue<
+            Func<CancellationToken, Task>> _results =
+            new();
+
+        private readonly TaskCompletionSource<bool>
+            _synchronizationStarted =
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int SynchronizeCallCount
         {
-            return new TaskCompletionSource<bool>(
-                TaskCreationOptions.RunContinuationsAsynchronously);
+            get;
+            private set;
+        }
+
+        public Task SynchronizationStarted =>
+            _synchronizationStarted.Task;
+
+        public ITransportConnection? LastConnection
+        {
+            get;
+            private set;
+        }
+
+        public RuntimeEndpoint? LastRuntimeEndpoint
+        {
+            get;
+            private set;
+        }
+
+        public CancellationToken LastCancellationToken
+        {
+            get;
+            private set;
+        }
+
+        public void EnqueuePendingSynchronization(
+            TaskCompletionSource<bool> pendingSynchronization)
+        {
+            ArgumentNullException.ThrowIfNull(
+                pendingSynchronization);
+
+            _results.Enqueue(
+                cancellationToken =>
+                    pendingSynchronization.Task);
+        }
+
+        public void EnqueueCancellation()
+        {
+            _results.Enqueue(
+                async cancellationToken =>
+                {
+                    await Task.Delay(
+                        Timeout.InfiniteTimeSpan,
+                        cancellationToken);
+                });
+        }
+
+        public void EnqueueException(
+            Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(
+                exception);
+
+            _results.Enqueue(
+                cancellationToken =>
+                    Task.FromException(
+                        exception));
+        }
+
+        public Task SynchronizeAsync(
+            ITransportConnection connection,
+            RuntimeEndpoint runtimeEndpoint,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(
+                connection);
+
+            ArgumentNullException.ThrowIfNull(
+                runtimeEndpoint);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            SynchronizeCallCount++;
+
+            LastConnection =
+                connection;
+
+            LastRuntimeEndpoint =
+                runtimeEndpoint;
+
+            LastCancellationToken =
+                cancellationToken;
+
+            _synchronizationStarted.TrySetResult(
+                true);
+
+            if (_results.Count == 0)
+            {
+                return Task.CompletedTask;
+            }
+
+            Func<CancellationToken, Task> result =
+                _results.Dequeue();
+
+            return result(
+                cancellationToken);
         }
     }
 

@@ -5,21 +5,22 @@ using Hase.Transport;
 namespace Hase.Runtime.Transport;
 
 /// <summary>
-/// Coordinates the runtime endpoint connection lifecycle above the
-/// transport connection manager.
+/// Coordinates the runtime endpoint connection and synchronization
+/// lifecycle above the transport connection manager.
 /// </summary>
 /// <remarks>
-/// This initial implementation establishes the transport connection and
-/// transitions the runtime endpoint into synchronization state.
+/// This implementation establishes the transport connection, invokes the
+/// configured endpoint synchronizer, and transitions the runtime endpoint
+/// to ready state after successful synchronization.
 ///
-/// It does not perform protocol discovery, descriptor synchronization,
-/// automatic reconnect, retry, or runtime-cache restoration.
+/// It does not perform automatic reconnect, retry, or retry backoff.
 /// </remarks>
 public sealed class RuntimeEndpointConnectionCoordinator
     : IAsyncDisposable
 {
     private readonly TransportConnectionManager _connectionManager;
     private readonly RuntimeEndpoint _runtimeEndpoint;
+    private readonly IRuntimeEndpointSynchronizer _synchronizer;
 
     private bool _disposed;
 
@@ -28,7 +29,8 @@ public sealed class RuntimeEndpointConnectionCoordinator
     /// </summary>
     public RuntimeEndpointConnectionCoordinator(
         TransportConnectionManager connectionManager,
-        RuntimeEndpoint runtimeEndpoint)
+        RuntimeEndpoint runtimeEndpoint,
+        IRuntimeEndpointSynchronizer synchronizer)
     {
         _connectionManager =
             connectionManager
@@ -39,6 +41,11 @@ public sealed class RuntimeEndpointConnectionCoordinator
             runtimeEndpoint
             ?? throw new ArgumentNullException(
                 nameof(runtimeEndpoint));
+
+        _synchronizer =
+            synchronizer
+            ?? throw new ArgumentNullException(
+                nameof(synchronizer));
 
         _connectionManager.HealthChanged +=
             OnTransportHealthChanged;
@@ -60,12 +67,17 @@ public sealed class RuntimeEndpointConnectionCoordinator
         _runtimeEndpoint;
 
     /// <summary>
-    /// Establishes the initial transport connection.
+    /// Gets the endpoint synchronizer used after transport connection.
+    /// </summary>
+    public IRuntimeEndpointSynchronizer Synchronizer =>
+        _synchronizer;
+
+    /// <summary>
+    /// Establishes the initial transport connection and synchronizes the
+    /// runtime endpoint.
     /// </summary>
     /// <remarks>
-    /// A successful transport connection transitions the runtime endpoint
-    /// to <see cref="EndpointConnectionState.Synchronizing"/>.
-    /// A later protocol synchronization operation must transition it to
+    /// Successful completion transitions the runtime endpoint to
     /// <see cref="EndpointConnectionState.Ready"/>.
     /// </remarks>
     public async Task<ITransportConnection> ConnectAsync(
@@ -78,10 +90,13 @@ public sealed class RuntimeEndpointConnectionCoordinator
             DateTimeOffset.UtcNow,
             "Establishing the transport connection.");
 
+        ITransportConnection connection;
+
         try
         {
-            return await _connectionManager.ConnectAsync(
-                cancellationToken);
+            connection =
+                await _connectionManager.ConnectAsync(
+                    cancellationToken);
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -102,6 +117,45 @@ public sealed class RuntimeEndpointConnectionCoordinator
 
             throw;
         }
+
+        UpdateRuntimeStatus(
+            EndpointConnectionState.Synchronizing,
+            _connectionManager.LastStateChangeUtc,
+            "Synchronizing the runtime endpoint with the physical endpoint.");
+
+        try
+        {
+            await _synchronizer.SynchronizeAsync(
+                connection,
+                _runtimeEndpoint,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            UpdateRuntimeStatus(
+                EndpointConnectionState.Disconnected,
+                DateTimeOffset.UtcNow,
+                "Endpoint synchronization was cancelled.");
+
+            throw;
+        }
+        catch
+        {
+            UpdateRuntimeStatus(
+                EndpointConnectionState.Faulted,
+                DateTimeOffset.UtcNow,
+                "Endpoint synchronization failed.");
+
+            throw;
+        }
+
+        UpdateRuntimeStatus(
+            EndpointConnectionState.Ready,
+            DateTimeOffset.UtcNow,
+            "The endpoint is connected, synchronized, and ready.");
+
+        return connection;
     }
 
     /// <summary>
