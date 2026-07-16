@@ -2,13 +2,13 @@
 using Hase.Runtime.Runtime;
 using Hase.Transport;
 
-namespace Hase.ProtocolExplorer.Runtime;
+namespace Hase.Runtime.Transport;
 
 /// <summary>
 /// Translates transport connection health into the existing runtime
 /// endpoint connection-status model.
 /// </summary>
-internal sealed class RuntimeTransportConnectionBridge
+public sealed class RuntimeTransportConnectionBridge
     : IDisposable
 {
     private readonly TransportConnectionManager _connectionManager;

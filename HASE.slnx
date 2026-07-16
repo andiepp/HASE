@@ -6,6 +6,7 @@
   <Project Path="src/Hase.Protocol/Hase.Protocol.csproj" Id="b1d3a42a-bb92-4737-bc05-6012645d1709" />
   <Project Path="src/HASE.ProtocolExplorer/HASE.ProtocolExplorer.csproj" Id="31754301-ad31-4a2f-a426-0f595c0d07f7" />
   <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
+  <Project Path="src/Hase.Runtime.Transport/Hase.Runtime.Transport.csproj" />
   <Project Path="src/Hase.Simulation.Runtime/Hase.Simulation.Runtime.csproj" Id="2237039f-536a-47bf-af87-6204a42facf9" />
   <Project Path="src/Hase.Simulation/Hase.Simulation.csproj" />
   <Project Path="src/Hase.Transport/Hase.Transport.csproj" Id="944d6668-cfaa-468d-b1fc-75681f9e4ede" />
