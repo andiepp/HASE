@@ -41,6 +41,13 @@ public sealed class TransportConnectionManager
     }
 
     /// <summary>
+    /// Occurs when the observable transport health changes.
+    /// </summary>
+    public event EventHandler<
+        TransportConnectionHealthChangedEventArgs>?
+        HealthChanged;
+
+    /// <summary>
     /// Gets the currently owned transport connection,
     /// or <see langword="null"/> before a connection has been created.
     /// </summary>
@@ -113,6 +120,9 @@ public sealed class TransportConnectionManager
                     + "a connection.");
             }
 
+            TransportConnectionHealthSnapshot previousHealth =
+                GetHealthSnapshot();
+
             ITransportConnection connection =
                 await _factory.ConnectAsync(
                     cancellationToken);
@@ -125,6 +135,10 @@ public sealed class TransportConnectionManager
 
             AttachConnection(
                 connection);
+
+            RaiseHealthChanged(
+                previousHealth,
+                GetHealthSnapshot());
 
             return connection;
         }
@@ -167,6 +181,9 @@ public sealed class TransportConnectionManager
                     + "replaced.");
             }
 
+            TransportConnectionHealthSnapshot previousHealth =
+                GetHealthSnapshot();
+
             ITransportConnection replacementConnection =
                 await _factory.ConnectAsync(
                     cancellationToken);
@@ -187,6 +204,10 @@ public sealed class TransportConnectionManager
 
             await DisposeConnectionAsync(
                 previousConnection);
+
+            RaiseHealthChanged(
+                previousHealth,
+                GetHealthSnapshot());
 
             return replacementConnection;
         }
@@ -221,17 +242,26 @@ public sealed class TransportConnectionManager
             ITransportConnection? connection =
                 _currentConnection;
 
-            if (connection is not null)
+            if (connection is null)
             {
-                DetachConnection(
-                    connection);
-
-                _currentConnection =
-                    null;
-
-                await DisposeConnectionAsync(
-                    connection);
+                return;
             }
+
+            TransportConnectionHealthSnapshot previousHealth =
+                GetHealthSnapshot();
+
+            DetachConnection(
+                connection);
+
+            _currentConnection =
+                null;
+
+            await DisposeConnectionAsync(
+                connection);
+
+            RaiseHealthChanged(
+                previousHealth,
+                GetHealthSnapshot());
         }
         finally
         {
@@ -271,8 +301,39 @@ public sealed class TransportConnectionManager
             return;
         }
 
+        TransportConnectionHealthSnapshot previousHealth =
+            new(
+                hasConnection:
+                    true,
+                state:
+                    eventArgs.PreviousState,
+                lastStateChangeUtc:
+                    _lastStateChangeUtc,
+                replacementCount:
+                    _replacementCount);
+
         _lastStateChangeUtc =
             DateTimeOffset.UtcNow;
+
+        RaiseHealthChanged(
+            previousHealth,
+            GetHealthSnapshot());
+    }
+
+    private void RaiseHealthChanged(
+        TransportConnectionHealthSnapshot previousHealth,
+        TransportConnectionHealthSnapshot currentHealth)
+    {
+        if (previousHealth == currentHealth)
+        {
+            return;
+        }
+
+        HealthChanged?.Invoke(
+            this,
+            new TransportConnectionHealthChangedEventArgs(
+                previousHealth,
+                currentHealth));
     }
 
     private static async ValueTask DisposeConnectionAsync(
