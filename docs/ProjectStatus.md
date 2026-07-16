@@ -15,14 +15,24 @@ technology.
 **Current Phase:** Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
 The core architecture, runtime model, simulation framework, Protocol Version 1,
-runtime integration, and Protocol Explorer are implemented.
+runtime integration, Protocol Explorer, initial production transport lifecycle,
+and initial runtime endpoint synchronization are implemented.
 
-Phase 6 has established the first real TCP transport and the first complete
-physical HASE endpoint based on an ESP32 and BME280 environment sensor.
+Phase 6 has established:
+
+- the first real TCP transport;
+- the first complete physical HASE endpoint based on an ESP32 and BME280;
+- explicit transport connection lifecycle and health tracking;
+- runtime endpoint connection coordination;
+- strict endpoint-descriptor compatibility validation;
+- initial readable-property synchronization;
+- successful and failed end-to-end runtime, protocol, and transport integration.
 
 The project can now discover a physical endpoint, retrieve its descriptor, read
-live engineering properties, and validate complete request/response transactions
-through Protocol Version 1 over framed TCP.
+live engineering properties, validate complete request/response transactions
+through Protocol Version 1 over framed TCP, establish a managed runtime
+connection, validate the physical descriptor, populate readable runtime property
+caches, and publish `Ready` only after synchronization completes successfully.
 
 ---
 
@@ -153,6 +163,71 @@ Phase 5 completion baseline:
 - Cancellation and timeout propagation
 - Transport exception propagation
 - Physical Protocol Explorer execution
+- Reusable `ProtocolEnvelopeByteCodec` in `Hase.Protocol`
+- Removal of the Protocol Explorer framing-code duplicate
+
+### Completed Transport Lifecycle Foundations
+
+- Explicit transport connection states
+- Transport health snapshots
+- Transport health-change notifications
+- `TransportConnectionManager`
+- Current-connection ownership
+- Connection-state timestamps
+- Connection disposal behavior
+- Fault propagation
+- Repeated-disposal safety
+- Runtime endpoint connection coordination
+- Explicit runtime endpoint lifecycle states:
+  - `Disconnected`
+  - `Connecting`
+  - `Synchronizing`
+  - `Ready`
+  - `Faulted`
+- Separation of transport connection failure from synchronization failure
+- Cancellation handling for connection and synchronization
+- Runtime status updates after transport fault or closure
+
+### Completed Runtime Endpoint Synchronization
+
+- `IRuntimeEndpointSynchronizer`
+- `ProtocolRuntimeEndpointSynchronizer`
+- Physical endpoint-descriptor request during connection
+- Protocol message-type validation
+- Correlation-identifier validation
+- Protocol-result validation
+- Successful-response descriptor-presence validation
+- Strict physical/runtime descriptor compatibility validation
+- Canonical protocol-representation comparison
+- Readable-property enumeration
+- `Read` property synchronization
+- `ReadWrite` property synchronization
+- Write-only property exclusion
+- Runtime property-cache population
+- Runtime property observer notification
+- Property quality preservation
+- Protocol timestamp precision handling
+- Sequential property synchronization
+- Partial synchronization semantics
+- Cancellation between property reads
+- Preservation of values received before a later failure
+- `Ready` publication only after descriptor and property synchronization complete
+
+### Completed Runtime Transport Integration Tests
+
+- Real coordinator with real protocol synchronizer
+- Real binary payload codec
+- Real protocol-envelope byte codec
+- Real loopback byte transport
+- Real runtime protocol dispatcher
+- Successful descriptor synchronization
+- Successful property synchronization
+- Verification that the runtime cache is populated before `Ready`
+- Property synchronization failure propagation
+- Verification that failed synchronization prevents `Ready`
+- Verification that failed synchronization ends in `Faulted`
+- Verification that the established transport remains available after a
+  synchronization failure
 
 ### Completed Physical Endpoint Foundations
 
@@ -224,6 +299,7 @@ Implemented components:
 - Hase.Simulation
 - Hase.Protocol
 - Hase.Transport
+- Hase.Runtime.Transport
 - HASE.ProtocolExplorer
 - ESP32 physical endpoint
 
@@ -235,69 +311,28 @@ The architecture currently provides:
 - Simulation and physical endpoint execution
 - Descriptor-driven endpoint discovery
 - Live physical property access
-- Layered separation between protocol, transport, physical services, and hardware
+- Managed runtime transport connections
+- Runtime endpoint lifecycle coordination
+- Strict physical/runtime descriptor validation
+- Initial runtime property-cache synchronization
+- Layered separation between protocol, transport, runtime coordination,
+  physical services, and hardware
 
----
+The current connection and synchronization flow is:
 
-# Quality Status
-
-The project currently provides:
-
-- Comprehensive automated testing
-- Layered architecture
-- Strong separation of concerns
-- Platform-independent binary protocol
-- Transport-independent runtime model
-- Protocol-independent transport model
-- Simulation support
-- Physical hardware validation
-- Truthful UTC property timestamps
-- Explicit protocol result handling
-- Extensive architectural documentation
-- Buildable and testable incremental development
-
-The physical BME280 endpoint has been validated through repeated C-005 and C-006
-executions after each major transport, protocol, and property-service change.
-
----
-
-# Remaining Phase 6 Work
-
-The major remaining Phase 6 objectives are:
-
-- Shared transport contract tests
-- Explicit transport lifecycle semantics
-- Connection-state model
-- Automatic reconnect
-- Endpoint reinitialization after reconnect
-- Transport diagnostics
-- Transport tracing integration
-- Network discovery
-- Serial transport
-- Serial-device discovery
-- BLE transport
-- MQTT transport evaluation or implementation
-- Additional transport integration tests
-- Physical failure-path capability tests
-- Physical write-property capability
-- Physical command-execution capability
-- Physical event-notification capability
-
----
-
-# Next Milestone
-
-The next milestone is to complete the production transport lifecycle around the
-working TCP and ESP32 implementation.
-
-The immediate priorities are:
-
-1. Define explicit connection lifecycle and state semantics.
-2. Add automatic reconnect behavior.
-3. Restore endpoint state and descriptor synchronization after reconnect.
-4. Add transport diagnostics and tracing.
-5. Add physical negative-path tests for unknown instruments, unknown properties,
-   unavailable hardware, invalid requests, and connection loss.
-
-The current physical BME280 implementation serves as the reference endpoint for
-continuing Phase 6 development.
+```text
+TransportConnectionManager
+        ↓
+RuntimeEndpointConnectionCoordinator
+        ↓
+ProtocolRuntimeEndpointSynchronizer
+        ↓
+ReadEndpointDescriptorRequest
+        ↓
+EndpointDescriptorCompatibilityValidator
+        ↓
+ReadPropertyRequest for every readable property
+        ↓
+RuntimeProperty.CurrentValue update
+        ↓
+EndpointConnectionState.Ready
