@@ -12,6 +12,7 @@
   <Project Path="src/Hase.Transport/Hase.Transport.csproj" Id="944d6668-cfaa-468d-b1fc-75681f9e4ede" />
   <Project Path="tests/Hase.Protocol.Tests/Hase.Protocol.Tests.csproj" Id="37af6823-121d-42cd-8023-ac7f9aff8e3c" />
   <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
+  <Project Path="tests/Hase.Runtime.Transport.Tests/Hase.Runtime.Transport.Tests.csproj" Id="ffdefcd1-c441-4e0d-9988-4cd9a7e0e032" />
   <Project Path="tests/Hase.Simulation.Runtime.Tests/Hase.Simulation.Runtime.Tests.csproj" Id="dee7d37f-5109-4380-a534-c95c38dd5759" />
   <Project Path="tests/Hase.Simulation.Tests/Hase.Simulation.Tests.csproj" Id="247f97b0-a24e-4397-a135-9202844299d2" />
   <Project Path="tests/Hase.Transport.Tests/Hase.Transport.Tests.csproj" Id="704608b2-a88f-450b-a9a9-9cbd9f327268" />
