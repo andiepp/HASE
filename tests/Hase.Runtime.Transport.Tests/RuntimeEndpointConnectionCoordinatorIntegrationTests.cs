@@ -1,5 +1,8 @@
-﻿using Hase.Core.Domain.Endpoints;
+﻿using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 using Hase.Protocol;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Protocol;
@@ -27,6 +30,15 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
             new RuntimeProtocolDispatcher(
                 physicalEndpoint);
 
+        PropertyValue physicalPropertyValue =
+            CreatePhysicalPropertyValue();
+
+        int descriptorRequestCount =
+            0;
+
+        int propertyRequestCount =
+            0;
+
         var connection =
             new LoopbackTransportConnection(
                 async (
@@ -36,6 +48,15 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
                     return await HandleProtocolExchangeAsync(
                         dispatcher,
                         requestFrame,
+                        physicalPropertyValue,
+                        () =>
+                        {
+                            descriptorRequestCount++;
+                        },
+                        () =>
+                        {
+                            propertyRequestCount++;
+                        },
                         cancellationToken);
                 });
 
@@ -51,8 +72,17 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
             CreateRuntimeEndpoint(
                 CreateDescriptor());
 
+        RuntimeProperty clientProperty =
+            GetRuntimeProperty(
+                clientEndpoint);
+
+        Assert.Null(
+            clientProperty.CurrentValue);
+
         var statusObserver =
-            new TestConnectionStatusObserver();
+            new TestConnectionStatusObserver(
+                clientEndpoint,
+                clientProperty);
 
         clientEndpoint.SubscribeConnectionStatus(
             statusObserver);
@@ -111,6 +141,25 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
             factory.ConnectCallCount);
 
         Assert.Equal(
+            1,
+            descriptorRequestCount);
+
+        Assert.Equal(
+            1,
+            propertyRequestCount);
+
+        AssertPropertyValueEquivalent(
+            physicalPropertyValue,
+            clientProperty.CurrentValue);
+
+        Assert.True(
+            statusObserver.PropertyWasPopulatedWhenReady);
+
+        AssertPropertyValueEquivalent(
+            physicalPropertyValue,
+            statusObserver.PropertyValueObservedWhenReady);
+
+        Assert.Equal(
             new[]
             {
                 EndpointConnectionState.Disconnected,
@@ -128,6 +177,9 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
     private static async Task<byte[]> HandleProtocolExchangeAsync(
         IRuntimeProtocolDispatcher dispatcher,
         byte[] requestFrame,
+        PropertyValue physicalPropertyValue,
+        Action descriptorRequestReceived,
+        Action propertyRequestReceived,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(
@@ -135,6 +187,15 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
 
         ArgumentNullException.ThrowIfNull(
             requestFrame);
+
+        ArgumentNullException.ThrowIfNull(
+            physicalPropertyValue);
+
+        ArgumentNullException.ThrowIfNull(
+            descriptorRequestReceived);
+
+        ArgumentNullException.ThrowIfNull(
+            propertyRequestReceived);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -152,20 +213,38 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
             payloadCodec.Decode(
                 requestEnvelope);
 
-        ProtocolMessage responseMessage =
-            requestMessage switch
-            {
-                ReadEndpointDescriptorRequest request =>
+        ProtocolMessage responseMessage;
+
+        switch (requestMessage)
+        {
+            case ReadEndpointDescriptorRequest request:
+                descriptorRequestReceived();
+
+                responseMessage =
                     await dispatcher.DispatchAsync(
                         request,
-                        cancellationToken),
+                        cancellationToken);
+                break;
 
-                _ =>
-                    throw new InvalidDataException(
-                        $"The integration endpoint does not support "
-                        + $"request type "
-                        + $"'{requestMessage.MessageType}'.")
-            };
+            case ReadPropertyRequest request:
+                propertyRequestReceived();
+
+                ValidatePropertyRequest(
+                    request);
+
+                responseMessage =
+                    new ReadPropertyResponse(
+                        request.CorrelationId,
+                        ProtocolResult.Success,
+                        physicalPropertyValue);
+                break;
+
+            default:
+                throw new InvalidDataException(
+                    $"The integration endpoint does not support "
+                    + $"request type "
+                    + $"'{requestMessage.MessageType}'.");
+        }
 
         ProtocolEnvelope responseEnvelope =
             payloadCodec.Encode(
@@ -173,6 +252,38 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
 
         return envelopeByteCodec.Encode(
             responseEnvelope);
+    }
+
+    private static void ValidatePropertyRequest(
+        ReadPropertyRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        if (request.InstrumentId
+            != InstrumentId)
+        {
+            throw new InvalidDataException(
+                $"Expected instrument identifier "
+                + $"'{InstrumentId.Value}', but received "
+                + $"'{request.InstrumentId.Value}'.");
+        }
+
+        if (request.PropertyId
+            != TemperaturePropertyId)
+        {
+            throw new InvalidDataException(
+                $"Expected property identifier "
+                + $"'{TemperaturePropertyId.Value}', but received "
+                + $"'{request.PropertyId.Value}'.");
+        }
+
+        if (request.CorrelationId.IsNone)
+        {
+            throw new InvalidDataException(
+                "The property request must contain a correlation "
+                + "identifier.");
+        }
     }
 
     private static IReadOnlyList<EndpointConnectionState>
@@ -214,9 +325,43 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
 
     private static EndpointDescriptor CreateDescriptor()
     {
+        var temperatureProperty =
+            new PropertyDescriptor(
+                TemperaturePropertyId,
+                new DescriptorPath(
+                    "Environment",
+                    "Temperature"),
+                "Temperature",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius))
+            {
+                AccessMode =
+                    PropertyAccessMode.Read,
+                Description =
+                    "Current measured temperature."
+            };
+
+        var instrument =
+            new InstrumentDescriptor(
+                InstrumentId,
+                "Environment Sensor",
+                new InstrumentKind(
+                    "environment-sensor"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            temperatureProperty
+                        ])
+            };
+
         return new EndpointDescriptor(
-            new EndpointId(
-                "integration-endpoint-01"))
+            EndpointId,
+            [
+                instrument
+            ])
         {
             Metadata =
                 new EndpointMetadata
@@ -229,6 +374,64 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
                 }
         };
     }
+
+    private static PropertyValue CreatePhysicalPropertyValue()
+    {
+        return new PropertyValue(
+            22.75,
+            DateTimeOffset.FromUnixTimeMilliseconds(
+                1_750_000_000_123),
+            PropertyQuality.Good);
+    }
+
+    private static RuntimeProperty GetRuntimeProperty(
+        RuntimeEndpoint runtimeEndpoint)
+    {
+        RuntimeInstrument runtimeInstrument =
+            Assert.Single(
+                runtimeEndpoint.Instruments);
+
+        return runtimeInstrument.FindProperty(
+                   TemperaturePropertyId)
+               ?? throw new InvalidOperationException(
+                   $"Runtime property "
+                   + $"'{TemperaturePropertyId.Value}' was not found.");
+    }
+
+    private static void AssertPropertyValueEquivalent(
+        PropertyValue expected,
+        PropertyValue? actual)
+    {
+        ArgumentNullException.ThrowIfNull(
+            expected);
+
+        Assert.NotNull(
+            actual);
+
+        Assert.Equal(
+            expected.Value,
+            actual!.Value);
+
+        Assert.Equal(
+            expected.TimestampUtc,
+            actual.TimestampUtc);
+
+        Assert.Equal(
+            expected.Quality,
+            actual.Quality);
+    }
+
+    private static readonly EndpointId EndpointId =
+        new(
+            "integration-endpoint-01");
+
+    private static readonly InstrumentId InstrumentId =
+        new(
+            "environment-sensor-01");
+
+    private static readonly PropertyId TemperaturePropertyId =
+        new(
+            "environment.temperature");
 
     private sealed class TestTransportFactory
         : ITransportFactory
@@ -265,11 +468,41 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
     private sealed class TestConnectionStatusObserver
         : IEndpointConnectionStatusObserver
     {
+        private readonly RuntimeEndpoint _runtimeEndpoint;
+        private readonly RuntimeProperty _runtimeProperty;
+
         private readonly List<EndpointConnectionState> _states =
             new();
 
+        public TestConnectionStatusObserver(
+            RuntimeEndpoint runtimeEndpoint,
+            RuntimeProperty runtimeProperty)
+        {
+            _runtimeEndpoint =
+                runtimeEndpoint
+                ?? throw new ArgumentNullException(
+                    nameof(runtimeEndpoint));
+
+            _runtimeProperty =
+                runtimeProperty
+                ?? throw new ArgumentNullException(
+                    nameof(runtimeProperty));
+        }
+
         public IReadOnlyList<EndpointConnectionState> States =>
             _states;
+
+        public bool PropertyWasPopulatedWhenReady
+        {
+            get;
+            private set;
+        }
+
+        public PropertyValue? PropertyValueObservedWhenReady
+        {
+            get;
+            private set;
+        }
 
         public void OnEndpointConnectionStatusChanged(
             EndpointConnectionStatusChanged change)
@@ -277,8 +510,24 @@ public sealed class RuntimeEndpointConnectionCoordinatorIntegrationTests
             ArgumentNullException.ThrowIfNull(
                 change);
 
+            Assert.Same(
+                _runtimeEndpoint,
+                change.Endpoint);
+
             _states.Add(
                 change.CurrentStatus.State);
+
+            if (change.CurrentStatus.State
+                != EndpointConnectionState.Ready)
+            {
+                return;
+            }
+
+            PropertyValueObservedWhenReady =
+                _runtimeProperty.CurrentValue;
+
+            PropertyWasPopulatedWhenReady =
+                PropertyValueObservedWhenReady is not null;
         }
     }
 }
