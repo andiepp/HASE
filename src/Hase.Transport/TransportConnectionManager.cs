@@ -69,6 +69,26 @@ public sealed class TransportConnectionManager
         _replacementCount;
 
     /// <summary>
+    /// Creates an immutable snapshot of the currently observable
+    /// transport health.
+    /// </summary>
+    public TransportConnectionHealthSnapshot GetHealthSnapshot()
+    {
+        ITransportConnection? connection =
+            _currentConnection;
+
+        return new TransportConnectionHealthSnapshot(
+            hasConnection:
+                connection is not null,
+            state:
+                connection?.State,
+            lastStateChangeUtc:
+                _lastStateChangeUtc,
+            replacementCount:
+                _replacementCount);
+    }
+
+    /// <summary>
     /// Creates and owns the initial transport connection.
     /// </summary>
     /// <exception cref="InvalidOperationException">
