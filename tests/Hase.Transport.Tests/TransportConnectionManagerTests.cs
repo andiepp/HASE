@@ -24,7 +24,7 @@ public sealed class TransportConnectionManagerTests
     }
 
     [Fact]
-    public void NewManager_ShouldHaveNoCurrentConnection()
+    public void NewManager_ShouldHaveNoCurrentConnectionOrDiagnostics()
     {
         // Arrange
         var factory =
@@ -41,12 +41,25 @@ public sealed class TransportConnectionManagerTests
         TransportConnectionState? currentState =
             manager.CurrentState;
 
+        DateTimeOffset? lastStateChangeUtc =
+            manager.LastStateChangeUtc;
+
+        int replacementCount =
+            manager.ReplacementCount;
+
         // Assert
         Assert.Null(
             currentConnection);
 
         Assert.Null(
             currentState);
+
+        Assert.Null(
+            lastStateChangeUtc);
+
+        Assert.Equal(
+            0,
+            replacementCount);
     }
 
     [Fact]
@@ -87,6 +100,47 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             1,
             factory.ConnectCallCount);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldEstablishStateChangeTimestamp()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        DateTimeOffset beforeConnectUtc =
+            DateTimeOffset.UtcNow;
+
+        // Act
+        await manager.ConnectAsync();
+
+        DateTimeOffset afterConnectUtc =
+            DateTimeOffset.UtcNow;
+
+        // Assert
+        Assert.NotNull(
+            manager.LastStateChangeUtc);
+
+        Assert.InRange(
+            manager.LastStateChangeUtc.Value,
+            beforeConnectUtc,
+            afterConnectUtc);
+
+        Assert.Equal(
+            0,
+            manager.ReplacementCount);
     }
 
     [Fact]
@@ -136,6 +190,52 @@ public sealed class TransportConnectionManagerTests
     }
 
     [Fact]
+    public async Task CurrentConnectionStateChange_ShouldAdvanceTimestamp()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        DateTimeOffset initialTimestamp =
+            manager.LastStateChangeUtc
+            ?? throw new InvalidOperationException(
+                "The initial connection timestamp was not established.");
+
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                20));
+
+        // Act
+        connection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        // Assert
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            manager.CurrentState);
+
+        Assert.NotNull(
+            manager.LastStateChangeUtc);
+
+        Assert.True(
+            manager.LastStateChangeUtc.Value
+            > initialTimestamp);
+    }
+
+    [Fact]
     public async Task ReplaceFaultedAsync_WithoutConnection_ShouldThrow()
     {
         // Arrange
@@ -166,6 +266,10 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             0,
             factory.ConnectCallCount);
+
+        Assert.Equal(
+            0,
+            manager.ReplacementCount);
     }
 
     [Fact]
@@ -215,6 +319,10 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             0,
             connection.DisposeCallCount);
+
+        Assert.Equal(
+            0,
+            manager.ReplacementCount);
     }
 
     [Fact]
@@ -279,6 +387,65 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             0,
             replacementConnection.DisposeCallCount);
+
+        Assert.Equal(
+            1,
+            manager.ReplacementCount);
+    }
+
+    [Fact]
+    public async Task ReplaceFaultedAsync_ShouldAdvanceTimestamp()
+    {
+        // Arrange
+        var previousConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var replacementConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            previousConnection);
+
+        factory.EnqueueConnection(
+            replacementConnection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        previousConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        DateTimeOffset faultTimestamp =
+            manager.LastStateChangeUtc
+            ?? throw new InvalidOperationException(
+                "The fault timestamp was not recorded.");
+
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                20));
+
+        // Act
+        await manager.ReplaceFaultedAsync();
+
+        // Assert
+        Assert.NotNull(
+            manager.LastStateChangeUtc);
+
+        Assert.True(
+            manager.LastStateChangeUtc.Value
+            > faultTimestamp);
+
+        Assert.Equal(
+            1,
+            manager.ReplacementCount);
     }
 
     [Fact]
@@ -311,6 +478,9 @@ public sealed class TransportConnectionManagerTests
         previousConnection.TransitionTo(
             TransportConnectionState.Faulted);
 
+        DateTimeOffset? faultTimestamp =
+            manager.LastStateChangeUtc;
+
         // Act
         Task Act()
         {
@@ -342,6 +512,210 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             2,
             factory.ConnectCallCount);
+
+        Assert.Equal(
+            0,
+            manager.ReplacementCount);
+
+        Assert.Equal(
+            faultTimestamp,
+            manager.LastStateChangeUtc);
+    }
+
+    [Fact]
+    public async Task DetachedPreviousConnectionStateChange_ShouldBeIgnored()
+    {
+        // Arrange
+        var previousConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var replacementConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            previousConnection);
+
+        factory.EnqueueConnection(
+            replacementConnection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        previousConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        await manager.ReplaceFaultedAsync();
+
+        DateTimeOffset replacementTimestamp =
+            manager.LastStateChangeUtc
+            ?? throw new InvalidOperationException(
+                "The replacement timestamp was not recorded.");
+
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                20));
+
+        // Act
+        previousConnection.TransitionTo(
+            TransportConnectionState.Connected);
+
+        // Assert
+        Assert.Same(
+            replacementConnection,
+            manager.CurrentConnection);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            manager.CurrentState);
+
+        Assert.Equal(
+            replacementTimestamp,
+            manager.LastStateChangeUtc);
+
+        Assert.Equal(
+            1,
+            manager.ReplacementCount);
+    }
+
+    [Fact]
+    public async Task ReplacementConnectionStateChange_ShouldAdvanceTimestamp()
+    {
+        // Arrange
+        var previousConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var replacementConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            previousConnection);
+
+        factory.EnqueueConnection(
+            replacementConnection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        previousConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        await manager.ReplaceFaultedAsync();
+
+        DateTimeOffset replacementTimestamp =
+            manager.LastStateChangeUtc
+            ?? throw new InvalidOperationException(
+                "The replacement timestamp was not recorded.");
+
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                20));
+
+        // Act
+        replacementConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        // Assert
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            manager.CurrentState);
+
+        Assert.NotNull(
+            manager.LastStateChangeUtc);
+
+        Assert.True(
+            manager.LastStateChangeUtc.Value
+            > replacementTimestamp);
+
+        Assert.Equal(
+            1,
+            manager.ReplacementCount);
+    }
+
+    [Fact]
+    public async Task MultipleSuccessfulReplacements_ShouldIncrementCount()
+    {
+        // Arrange
+        var firstConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var secondConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var thirdConnection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            firstConnection);
+
+        factory.EnqueueConnection(
+            secondConnection);
+
+        factory.EnqueueConnection(
+            thirdConnection);
+
+        await using var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        firstConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        await manager.ReplaceFaultedAsync();
+
+        secondConnection.TransitionTo(
+            TransportConnectionState.Faulted);
+
+        // Act
+        await manager.ReplaceFaultedAsync();
+
+        // Assert
+        Assert.Same(
+            thirdConnection,
+            manager.CurrentConnection);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            manager.CurrentState);
+
+        Assert.Equal(
+            2,
+            manager.ReplacementCount);
+
+        Assert.Equal(
+            1,
+            firstConnection.DisposeCallCount);
+
+        Assert.Equal(
+            1,
+            secondConnection.DisposeCallCount);
+
+        Assert.Equal(
+            0,
+            thirdConnection.DisposeCallCount);
     }
 
     [Fact]
@@ -375,6 +749,90 @@ public sealed class TransportConnectionManagerTests
         Assert.Equal(
             TransportConnectionState.Closed,
             connection.State);
+
+        Assert.Null(
+            manager.CurrentConnection);
+
+        Assert.Null(
+            manager.CurrentState);
+
+        Assert.Equal(
+            0,
+            manager.ReplacementCount);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ShouldNotRecordDetachedConnectionCloseTransition()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        DateTimeOffset timestampBeforeDisposal =
+            manager.LastStateChangeUtc
+            ?? throw new InvalidOperationException(
+                "The initial timestamp was not established.");
+
+        await Task.Delay(
+            TimeSpan.FromMilliseconds(
+                20));
+
+        // Act
+        await manager.DisposeAsync();
+
+        // Assert
+        Assert.Equal(
+            timestampBeforeDisposal,
+            manager.LastStateChangeUtc);
+
+        Assert.Null(
+            manager.CurrentConnection);
+
+        Assert.Null(
+            manager.CurrentState);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_RepeatedCall_ShouldDisposeConnectionOnce()
+    {
+        // Arrange
+        var connection =
+            new TestTransportConnection(
+                TransportConnectionState.Connected);
+
+        var factory =
+            new TestTransportFactory();
+
+        factory.EnqueueConnection(
+            connection);
+
+        var manager =
+            new TransportConnectionManager(
+                factory);
+
+        await manager.ConnectAsync();
+
+        // Act
+        await manager.DisposeAsync();
+        await manager.DisposeAsync();
+
+        // Assert
+        Assert.Equal(
+            1,
+            connection.DisposeCallCount);
 
         Assert.Null(
             manager.CurrentConnection);
