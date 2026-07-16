@@ -1,11 +1,11 @@
 ﻿using System.Buffers.Binary;
-using Hase.Protocol;
 
-namespace Hase.ProtocolExplorer.Transport;
+namespace Hase.Protocol;
 
 /// <summary>
 /// Encodes and decodes complete protocol envelopes for transport.
-///
+/// </summary>
+/// <remarks>
 /// Frame layout:
 ///
 /// Byte 0      Protocol major version
@@ -15,11 +15,14 @@ namespace Hase.ProtocolExplorer.Transport;
 /// Bytes 4-7   Correlation identifier, little-endian
 /// Bytes 8-11  Payload length, little-endian
 /// Bytes 12-n  Payload
-/// </summary>
-internal sealed class ProtocolEnvelopeByteCodec
+/// </remarks>
+public sealed class ProtocolEnvelopeByteCodec
 {
     private const int HeaderLength = 12;
 
+    /// <summary>
+    /// Encodes a protocol envelope into its transport-frame representation.
+    /// </summary>
     public byte[] Encode(
         ProtocolEnvelope envelope)
     {
@@ -28,8 +31,8 @@ internal sealed class ProtocolEnvelopeByteCodec
 
         int frameLength =
             checked(
-                HeaderLength +
-                envelope.PayloadLength);
+                HeaderLength
+                + envelope.PayloadLength);
 
         byte[] frame =
             new byte[frameLength];
@@ -69,15 +72,18 @@ internal sealed class ProtocolEnvelopeByteCodec
         return frame;
     }
 
+    /// <summary>
+    /// Decodes a complete transport frame into a protocol envelope.
+    /// </summary>
     public ProtocolEnvelope Decode(
         ReadOnlyMemory<byte> frame)
     {
         if (frame.Length < HeaderLength)
         {
             throw new InvalidDataException(
-                $"A protocol frame must contain at least " +
-                $"{HeaderLength} bytes, but only " +
-                $"{frame.Length} bytes were supplied.");
+                $"A protocol frame must contain at least "
+                + $"{HeaderLength} bytes, but only "
+                + $"{frame.Length} bytes were supplied.");
         }
 
         ReadOnlySpan<byte> frameSpan =
@@ -94,11 +100,12 @@ internal sealed class ProtocolEnvelopeByteCodec
         ProtocolMessageRole role =
             (ProtocolMessageRole)encodedRole;
 
-        if (!Enum.IsDefined(role))
+        if (!Enum.IsDefined(
+                role))
         {
             throw new InvalidDataException(
-                $"Unknown protocol message role " +
-                $"'{encodedRole}'.");
+                $"Unknown protocol message role "
+                + $"'{encodedRole}'.");
         }
 
         byte encodedMessageType =
@@ -107,11 +114,12 @@ internal sealed class ProtocolEnvelopeByteCodec
         ProtocolMessageType messageType =
             (ProtocolMessageType)encodedMessageType;
 
-        if (!Enum.IsDefined(messageType))
+        if (!Enum.IsDefined(
+                messageType))
         {
             throw new InvalidDataException(
-                $"Unknown protocol message type " +
-                $"'{encodedMessageType}'.");
+                $"Unknown protocol message type "
+                + $"'{encodedMessageType}'.");
         }
 
         uint correlationIdValue =
@@ -129,9 +137,9 @@ internal sealed class ProtocolEnvelopeByteCodec
         if (encodedPayloadLength > int.MaxValue)
         {
             throw new InvalidDataException(
-                $"The encoded payload length " +
-                $"'{encodedPayloadLength}' exceeds the " +
-                "supported maximum.");
+                $"The encoded payload length "
+                + $"'{encodedPayloadLength}' exceeds the "
+                + "supported maximum.");
         }
 
         int payloadLength =
@@ -143,8 +151,8 @@ internal sealed class ProtocolEnvelopeByteCodec
         {
             expectedFrameLength =
                 checked(
-                    HeaderLength +
-                    payloadLength);
+                    HeaderLength
+                    + payloadLength);
         }
         catch (OverflowException exception)
         {
@@ -153,13 +161,14 @@ internal sealed class ProtocolEnvelopeByteCodec
                 exception);
         }
 
-        if (frame.Length != expectedFrameLength)
+        if (frame.Length
+            != expectedFrameLength)
         {
             throw new InvalidDataException(
-                $"The protocol frame contains " +
-                $"{frame.Length} bytes, but the header declares " +
-                $"{payloadLength} payload bytes and therefore " +
-                $"requires {expectedFrameLength} frame bytes.");
+                $"The protocol frame contains "
+                + $"{frame.Length} bytes, but the header declares "
+                + $"{payloadLength} payload bytes and therefore "
+                + $"requires {expectedFrameLength} frame bytes.");
         }
 
         ReadOnlyMemory<byte> payload =
