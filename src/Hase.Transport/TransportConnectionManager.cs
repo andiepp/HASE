@@ -19,6 +19,10 @@ public sealed class TransportConnectionManager
 
     private ITransportConnection? _currentConnection;
 
+    private DateTimeOffset? _lastStateChangeUtc;
+
+    private int _replacementCount;
+
     private bool _disposed;
 
     /// <summary>
@@ -51,6 +55,20 @@ public sealed class TransportConnectionManager
         _currentConnection?.State;
 
     /// <summary>
+    /// Gets the UTC time of the most recently observed connection-state
+    /// establishment or transition.
+    /// </summary>
+    public DateTimeOffset? LastStateChangeUtc =>
+        _lastStateChangeUtc;
+
+    /// <summary>
+    /// Gets the number of successfully completed faulted-connection
+    /// replacements.
+    /// </summary>
+    public int ReplacementCount =>
+        _replacementCount;
+
+    /// <summary>
     /// Creates and owns the initial transport connection.
     /// </summary>
     /// <exception cref="InvalidOperationException">
@@ -79,10 +97,14 @@ public sealed class TransportConnectionManager
                 await _factory.ConnectAsync(
                     cancellationToken);
 
-            _currentConnection =
-                connection
-                ?? throw new InvalidOperationException(
+            if (connection is null)
+            {
+                throw new InvalidOperationException(
                     "The transport factory returned a null connection.");
+            }
+
+            AttachConnection(
+                connection);
 
             return connection;
         }
@@ -135,8 +157,13 @@ public sealed class TransportConnectionManager
                     "The transport factory returned a null connection.");
             }
 
-            _currentConnection =
-                replacementConnection;
+            DetachConnection(
+                previousConnection);
+
+            AttachConnection(
+                replacementConnection);
+
+            _replacementCount++;
 
             await DisposeConnectionAsync(
                 previousConnection);
@@ -174,11 +201,14 @@ public sealed class TransportConnectionManager
             ITransportConnection? connection =
                 _currentConnection;
 
-            _currentConnection =
-                null;
-
             if (connection is not null)
             {
+                DetachConnection(
+                    connection);
+
+                _currentConnection =
+                    null;
+
                 await DisposeConnectionAsync(
                     connection);
             }
@@ -188,6 +218,41 @@ public sealed class TransportConnectionManager
             _operationLock.Release();
             _operationLock.Dispose();
         }
+    }
+
+    private void AttachConnection(
+        ITransportConnection connection)
+    {
+        _currentConnection =
+            connection;
+
+        connection.StateChanged +=
+            OnConnectionStateChanged;
+
+        _lastStateChangeUtc =
+            DateTimeOffset.UtcNow;
+    }
+
+    private void DetachConnection(
+        ITransportConnection connection)
+    {
+        connection.StateChanged -=
+            OnConnectionStateChanged;
+    }
+
+    private void OnConnectionStateChanged(
+        object? sender,
+        TransportConnectionStateChangedEventArgs eventArgs)
+    {
+        if (!ReferenceEquals(
+                sender,
+                _currentConnection))
+        {
+            return;
+        }
+
+        _lastStateChangeUtc =
+            DateTimeOffset.UtcNow;
     }
 
     private static async ValueTask DisposeConnectionAsync(
