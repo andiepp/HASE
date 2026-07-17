@@ -15,8 +15,8 @@ technology.
 **Current Phase:** Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
 The core architecture, runtime model, simulation framework, Protocol Version 1,
-runtime integration, Protocol Explorer, initial production transport lifecycle,
-and initial runtime endpoint synchronization are implemented.
+runtime integration, Protocol Explorer, production transport lifecycle, runtime
+endpoint synchronization, and automatic connection recovery are implemented.
 
 Phase 6 has established:
 
@@ -25,14 +25,24 @@ Phase 6 has established:
 - explicit transport connection lifecycle and health tracking;
 - runtime endpoint connection coordination;
 - strict endpoint-descriptor compatibility validation;
-- initial readable-property synchronization;
-- successful and failed end-to-end runtime, protocol, and transport integration.
+- readable-property synchronization;
+- automatic initial connection retry;
+- automatic recovery after transport faults;
+- complete descriptor and property resynchronization after reconnect;
+- preservation of cached property values while disconnected;
+- successful and failed end-to-end runtime, protocol, transport, and reconnect
+  integration tests.
 
-The project can now discover a physical endpoint, retrieve its descriptor, read
-live engineering properties, validate complete request/response transactions
-through Protocol Version 1 over framed TCP, establish a managed runtime
+The project can discover a physical endpoint, retrieve its descriptor, read live
+engineering properties, validate complete request/response transactions through
+Protocol Version 1 over framed TCP, establish and supervise a managed runtime
 connection, validate the physical descriptor, populate readable runtime property
 caches, and publish `Ready` only after synchronization completes successfully.
+
+If the initial connection fails, supervision continues according to the
+configured retry policy. If an established transport connection faults, HASE
+replaces the failed transport, retrieves and validates the descriptor again,
+resynchronizes all readable properties, and returns the endpoint to `Ready`.
 
 ---
 
@@ -173,6 +183,7 @@ Phase 5 completion baseline:
 - Transport health-change notifications
 - `TransportConnectionManager`
 - Current-connection ownership
+- Faulted-connection replacement
 - Connection-state timestamps
 - Connection disposal behavior
 - Fault propagation
@@ -183,6 +194,7 @@ Phase 5 completion baseline:
   - `Connecting`
   - `Synchronizing`
   - `Ready`
+  - `Reconnecting`
   - `Faulted`
 - Separation of transport connection failure from synchronization failure
 - Cancellation handling for connection and synchronization
@@ -213,6 +225,36 @@ Phase 5 completion baseline:
 - Preservation of values received before a later failure
 - `Ready` publication only after descriptor and property synchronization complete
 
+### Completed Automatic Connection Recovery
+
+- `IRuntimeEndpointReconnectPolicy`
+- `DefaultRuntimeEndpointReconnectPolicy`
+- `RuntimeEndpointConnectionSupervisor`
+- Immediate first retry
+- One-second second retry
+- Two-second third retry
+- Five-second fourth retry
+- Ten-second maximum retry delay
+- Automatic retry after initial connection failure
+- Automatic detection of established transport faults
+- Automatic replacement of faulted transport connections
+- Reuse of a connected transport after synchronization-only failure
+- Complete descriptor retrieval after reconnect
+- Complete descriptor compatibility validation after reconnect
+- Complete readable-property synchronization after reconnect
+- Retry after transport replacement failure
+- Retry after synchronization failure
+- Retry-attempt reset after successful recovery
+- Cached-property preservation while faulted
+- Cached-property preservation while reconnecting
+- Cached-property preservation after supervision cancellation
+- One supervision task per supervisor instance
+- Cancellation during initial connection
+- Cancellation during transport replacement
+- Cancellation during endpoint synchronization
+- Cancellation during retry delay
+- Cancellation ending in `Disconnected`
+
 ### Completed Runtime Transport Integration Tests
 
 - Real coordinator with real protocol synchronizer
@@ -226,8 +268,23 @@ Phase 5 completion baseline:
 - Property synchronization failure propagation
 - Verification that failed synchronization prevents `Ready`
 - Verification that failed synchronization ends in `Faulted`
-- Verification that the established transport remains available after a
+- Verification that an established transport remains available after a
   synchronization failure
+- Faulted transport replacement
+- Reconnect cancellation behavior
+- Reconnect replacement-failure behavior
+- Reconnect synchronization-failure behavior
+- Synchronization retry over an already-connected transport
+- Supervisor single-task behavior
+- Initial connection retry behavior
+- Repeated reconnect retry behavior
+- Retry-attempt reset behavior
+- Retry-delay cancellation behavior
+- Real-protocol automatic reconnect
+- Descriptor reread after automatic reconnect
+- Property reread after automatic reconnect
+- Cache preservation during automatic reconnect
+- Cache update after successful resynchronization
 
 ### Completed Physical Endpoint Foundations
 
@@ -288,6 +345,10 @@ C-006 validates:
 - Plausible engineering ranges
 - Round-trip communication
 
+### Phase 6 Quality Baseline
+
+- **616 automated tests passing**
+
 ---
 
 # Current Architecture
@@ -302,7 +363,7 @@ Implemented components:
 - Hase.Runtime.Transport
 - HASE.ProtocolExplorer
 - ESP32 physical endpoint
-   
+
 The architecture currently provides:
 
 - Transport-independent runtime abstractions
@@ -313,17 +374,22 @@ The architecture currently provides:
 - Live physical property access
 - Managed runtime transport connections
 - Runtime endpoint lifecycle coordination
+- Automatic connection supervision
+- Configurable reconnect policy
 - Strict physical/runtime descriptor validation
-- Initial runtime property-cache synchronization
+- Runtime property-cache synchronization
+- Cache preservation across temporary connection failures
 - Layered separation between protocol, transport, runtime coordination,
   physical services, and hardware
 
-The current connection and synchronization flow is:
+The current initial connection and synchronization flow is:
 
 ```text
-TransportConnectionManager
+RuntimeEndpointConnectionSupervisor
         ↓
-RuntimeEndpointConnectionCoordinator
+RuntimeEndpointConnectionCoordinator.ConnectAsync
+        ↓
+TransportConnectionManager.ConnectAsync
         ↓
 ProtocolRuntimeEndpointSynchronizer
         ↓

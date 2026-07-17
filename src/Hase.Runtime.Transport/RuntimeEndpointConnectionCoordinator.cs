@@ -9,11 +9,11 @@ namespace Hase.Runtime.Transport;
 /// lifecycle above the transport connection manager.
 /// </summary>
 /// <remarks>
-/// This implementation establishes the transport connection, invokes the
-/// configured endpoint synchronizer, and transitions the runtime endpoint
-/// to ready state after successful synchronization.
+/// This implementation establishes or replaces the transport connection,
+/// invokes the configured endpoint synchronizer, and transitions the runtime
+/// endpoint to ready state after successful synchronization.
 ///
-/// It does not perform automatic reconnect, retry, or retry backoff.
+/// It does not perform automatic retry or retry backoff.
 /// </remarks>
 public sealed class RuntimeEndpointConnectionCoordinator
     : IAsyncDisposable
@@ -76,10 +76,6 @@ public sealed class RuntimeEndpointConnectionCoordinator
     /// Establishes the initial transport connection and synchronizes the
     /// runtime endpoint.
     /// </summary>
-    /// <remarks>
-    /// Successful completion transitions the runtime endpoint to
-    /// <see cref="EndpointConnectionState.Ready"/>.
-    /// </remarks>
     public async Task<ITransportConnection> ConnectAsync(
         CancellationToken cancellationToken = default)
     {
@@ -118,6 +114,119 @@ public sealed class RuntimeEndpointConnectionCoordinator
             throw;
         }
 
+        await SynchronizeAsync(
+            connection,
+            cancellationToken);
+
+        return connection;
+    }
+
+    /// <summary>
+    /// Recovers a faulted runtime endpoint and completely resynchronizes it.
+    /// </summary>
+    /// <remarks>
+    /// A faulted transport connection is replaced before synchronization.
+    /// An already-connected transport is retained when only the previous
+    /// synchronization attempt failed.
+    /// </remarks>
+    public async Task<ITransportConnection> ReconnectAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+
+        UpdateRuntimeStatus(
+            EndpointConnectionState.Reconnecting,
+            DateTimeOffset.UtcNow,
+            "Recovering the runtime endpoint connection.");
+
+        ITransportConnection connection;
+
+        try
+        {
+            connection =
+                await GetRecoveryConnectionAsync(
+                    cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            UpdateRuntimeStatus(
+                EndpointConnectionState.Disconnected,
+                DateTimeOffset.UtcNow,
+                "The transport reconnection attempt was cancelled.");
+
+            throw;
+        }
+        catch
+        {
+            UpdateRuntimeStatus(
+                EndpointConnectionState.Faulted,
+                DateTimeOffset.UtcNow,
+                "The transport reconnection attempt failed.");
+
+            throw;
+        }
+
+        await SynchronizeAsync(
+            connection,
+            cancellationToken);
+
+        return connection;
+    }
+
+    /// <summary>
+    /// Stops lifecycle coordination.
+    /// </summary>
+    public ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        _disposed =
+            true;
+
+        _connectionManager.HealthChanged -=
+            OnTransportHealthChanged;
+
+        return ValueTask.CompletedTask;
+    }
+
+    private Task<ITransportConnection> GetRecoveryConnectionAsync(
+        CancellationToken cancellationToken)
+    {
+        ITransportConnection connection =
+            _connectionManager.CurrentConnection
+            ?? throw new InvalidOperationException(
+                "The transport connection manager does not own "
+                + "a connection to recover.");
+
+        return connection.State switch
+        {
+            TransportConnectionState.Faulted =>
+                _connectionManager.ReplaceFaultedAsync(
+                    cancellationToken),
+
+            TransportConnectionState.Connected =>
+                Task.FromResult(
+                    connection),
+
+            TransportConnectionState.Closed =>
+                throw new InvalidOperationException(
+                    "A closed transport connection cannot be recovered."),
+
+            _ =>
+                throw new InvalidOperationException(
+                    $"Unsupported transport connection state "
+                    + $"'{connection.State}'.")
+        };
+    }
+
+    private async Task SynchronizeAsync(
+        ITransportConnection connection,
+        CancellationToken cancellationToken)
+    {
         UpdateRuntimeStatus(
             EndpointConnectionState.Synchronizing,
             _connectionManager.LastStateChangeUtc,
@@ -154,27 +263,6 @@ public sealed class RuntimeEndpointConnectionCoordinator
             EndpointConnectionState.Ready,
             DateTimeOffset.UtcNow,
             "The endpoint is connected, synchronized, and ready.");
-
-        return connection;
-    }
-
-    /// <summary>
-    /// Stops lifecycle coordination.
-    /// </summary>
-    public ValueTask DisposeAsync()
-    {
-        if (_disposed)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        _disposed =
-            true;
-
-        _connectionManager.HealthChanged -=
-            OnTransportHealthChanged;
-
-        return ValueTask.CompletedTask;
     }
 
     private void ApplyInitialHealth(

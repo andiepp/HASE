@@ -128,6 +128,25 @@ Completion baseline
 - Successful integration tests
 - Failure integration tests
 
+### Automatic connection recovery
+
+- `RuntimeEndpointConnectionSupervisor`
+- `IRuntimeEndpointReconnectPolicy`
+- Default retry policy
+- Immediate first retry
+- Retry delays of 1 second, 2 seconds, and 5 seconds
+- Maximum retry delay of 10 seconds
+- Automatic retry after initial connection failure
+- Automatic transport replacement after connection fault
+- Full descriptor resynchronization after reconnect
+- Full readable-property resynchronization after reconnect
+- Synchronization retry over an already-connected transport
+- Retry-attempt reset after successful recovery
+- Cached-property preservation while disconnected
+- Single supervision task per supervisor
+- Cancellation ending in `Disconnected`
+- Automatic-reconnect integration tests
+
 ### Physical hardware
 
 - ESP32 endpoint
@@ -138,16 +157,9 @@ Completion baseline
 
 ### Quality
 
-- 593 automated tests
+- 616 automated tests
 
 ## Remaining
-
-### Connection recovery
-
-- Automatic reconnect
-- Retry policy
-- Backoff strategy
-- Endpoint resynchronization
 
 ### Diagnostics
 
