@@ -39,7 +39,21 @@ namespace
 HasePhysicalPropertyService::HasePhysicalPropertyService(
     HaseBme280Sensor& sensor)
     : _sensor(
-        sensor)
+        sensor),
+      _ownedStatusLed(),
+      _statusLed(
+        &_ownedStatusLed)
+{
+}
+
+HasePhysicalPropertyService::HasePhysicalPropertyService(
+    HaseBme280Sensor& sensor,
+    HaseStatusLed& statusLed)
+    : _sensor(
+        sensor),
+      _ownedStatusLed(),
+      _statusLed(
+        &statusLed)
 {
 }
 
@@ -108,4 +122,125 @@ HasePhysicalPropertyReadResult
     return
         HasePhysicalPropertyReadResult::
             PropertyNotFound;
+}
+
+HasePhysicalPropertyReadResult
+    HasePhysicalPropertyService::readBoolean(
+        const char* instrumentId,
+        const char* propertyId,
+        bool& value)
+{
+    value =
+        false;
+
+    if (instrumentId == nullptr
+        || strcmp(
+               instrumentId,
+               ControllerInstrumentId)
+            != 0)
+    {
+        return
+            HasePhysicalPropertyReadResult::
+                InstrumentNotFound;
+    }
+
+    if (propertyId == nullptr
+        || strcmp(
+               propertyId,
+               StatusLedEnabledPropertyId)
+            != 0)
+    {
+        return
+            HasePhysicalPropertyReadResult::
+                PropertyNotFound;
+    }
+
+    if (_statusLed == nullptr)
+    {
+        return
+            HasePhysicalPropertyReadResult::
+                SensorUnavailable;
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        _statusLed->begin();
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        return
+            HasePhysicalPropertyReadResult::
+                SensorUnavailable;
+    }
+
+    value =
+        _statusLed->isEnabled();
+
+    return
+        HasePhysicalPropertyReadResult::
+            Success;
+}
+
+HasePhysicalPropertyWriteResult
+    HasePhysicalPropertyService::writeBoolean(
+        const char* instrumentId,
+        const char* propertyId,
+        bool value)
+{
+    if (instrumentId == nullptr
+        || strcmp(
+               instrumentId,
+               ControllerInstrumentId)
+            != 0)
+    {
+        return
+            HasePhysicalPropertyWriteResult::
+                InstrumentNotFound;
+    }
+
+    if (propertyId == nullptr
+        || strcmp(
+               propertyId,
+               StatusLedEnabledPropertyId)
+            != 0)
+    {
+        return
+            HasePhysicalPropertyWriteResult::
+                PropertyNotFound;
+    }
+
+    if (_statusLed == nullptr)
+    {
+        return
+            HasePhysicalPropertyWriteResult::
+                HardwareUnavailable;
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        _statusLed->begin();
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        return
+            HasePhysicalPropertyWriteResult::
+                HardwareUnavailable;
+    }
+
+    _statusLed->setEnabled(
+        value);
+
+    if (_statusLed->isEnabled()
+        != value)
+    {
+        return
+            HasePhysicalPropertyWriteResult::
+                HardwareUnavailable;
+    }
+
+    return
+        HasePhysicalPropertyWriteResult::
+            Success;
 }

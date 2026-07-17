@@ -4,7 +4,7 @@
 
 #include "HaseProtocolEnvelope.h"
 
-class HaseReadPropertyResponseHandler
+class HaseWritePropertyResponseHandler
 {
 public:
     static constexpr uint8_t SuccessResultCode =
@@ -25,6 +25,9 @@ public:
     static constexpr uint8_t PropertyValueMarker =
         1;
 
+    static constexpr uint8_t BooleanVariantType =
+        1;
+
     static constexpr uint8_t GoodPropertyQuality =
         0;
 
@@ -37,16 +40,8 @@ public:
     static constexpr uint8_t ResponseRole =
         2;
 
-    static constexpr uint8_t ReadPropertyResponseMessageType =
-        11;
-
-    static bool CreateDoubleSuccessResponse(
-        const HaseProtocolEnvelope& request,
-        double value,
-        int64_t unixTimeMilliseconds,
-        uint8_t* responseFrame,
-        size_t responseFrameCapacity,
-        uint32_t& responseFrameLength);
+    static constexpr uint8_t WritePropertyResponseMessageType =
+        21;
 
     static bool CreateBooleanSuccessResponse(
         const HaseProtocolEnvelope& request,
@@ -65,27 +60,6 @@ public:
         uint32_t& responseFrameLength);
 
 private:
-    static constexpr uint8_t BooleanVariantType =
-        1;
-
-    static constexpr uint8_t DoubleVariantType =
-        4;
-
-    static bool WriteResponsePrefix(
-        class HaseBinaryProtocolWriter& writer);
-
-    static bool WriteResponseSuffix(
-        class HaseBinaryProtocolWriter& writer,
-        int64_t unixTimeMilliseconds);
-
-    static bool EncodeSuccessResponse(
-        const HaseProtocolEnvelope& request,
-        class HaseBinaryProtocolWriter& writer,
-        const uint8_t* payload,
-        uint8_t* responseFrame,
-        size_t responseFrameCapacity,
-        uint32_t& responseFrameLength);
-
-    HaseReadPropertyResponseHandler() =
+    HaseWritePropertyResponseHandler() =
         delete;
 };

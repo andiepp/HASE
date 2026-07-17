@@ -20,6 +20,13 @@ bool HaseDataDescriptorSerializer::Write(
                 writer,
                 numericDescriptor);
         }
+
+        case HaseDataDescriptorType::Boolean:
+        {
+            return writer.writeByte(
+                static_cast<uint8_t>(
+                    HaseDataDescriptorType::Boolean));
+        }
     }
 
     return false;

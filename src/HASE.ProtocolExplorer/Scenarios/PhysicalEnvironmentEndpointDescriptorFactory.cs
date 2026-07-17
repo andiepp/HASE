@@ -14,11 +14,15 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
 {
     public static readonly EndpointId EndpointId =
         new(
-            "ideaspark-esp32-01");
+            "doit-esp32-devkitc-v4-01");
 
     public static readonly InstrumentId InstrumentId =
         new(
             "environment-sensor-01");
+
+    public static readonly InstrumentId ControllerInstrumentId =
+        new(
+            "controller-01");
 
     public static readonly PropertyId TemperaturePropertyId =
         new(
@@ -32,9 +36,13 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
         new(
             "physical.environment-sensor.air-pressure");
 
+    public static readonly PropertyId StatusLedEnabledPropertyId =
+        new(
+            "physical.controller.status-led-enabled");
+
     public static EndpointDescriptor Create()
     {
-        var temperature =
+        PropertyDescriptor temperature =
             CreateNumericProperty(
                 TemperaturePropertyId,
                 new DescriptorPath(
@@ -51,7 +59,7 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                 resolution:
                     0.1);
 
-        var relativeHumidity =
+        PropertyDescriptor relativeHumidity =
             CreateNumericProperty(
                 RelativeHumidityPropertyId,
                 new DescriptorPath(
@@ -68,7 +76,7 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                 resolution:
                     0.1);
 
-        var airPressure =
+        PropertyDescriptor airPressure =
             CreateNumericProperty(
                 AirPressurePropertyId,
                 new DescriptorPath(
@@ -85,7 +93,7 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                 resolution:
                     0.1);
 
-        var instrument =
+        var environmentSensor =
             new InstrumentDescriptor(
                 InstrumentId,
                 "BME280 Environment Sensor",
@@ -114,20 +122,63 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                         ])
             };
 
+        var statusLedEnabled =
+            new PropertyDescriptor(
+                StatusLedEnabledPropertyId,
+                new DescriptorPath(
+                    "Controller",
+                    "StatusLedEnabled"),
+                "Status LED Enabled",
+                new BooleanDataDescriptor())
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite,
+                Description =
+                    "Controls the active-low status LED on GPIO16."
+            };
+
+        var controller =
+            new InstrumentDescriptor(
+                ControllerInstrumentId,
+                "ESP32 GPIO Controller",
+                new InstrumentKind(
+                    "controller"))
+            {
+                Metadata =
+                    new InstrumentMetadata
+                    {
+                        Manufacturer =
+                            "Espressif Systems",
+                        Model =
+                            "ESP32",
+                        Description =
+                            "GPIO controller provided by the ESP32. "
+                            + "The status LED output uses GPIO16 with "
+                            + "active-low behavior."
+                    },
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            statusLedEnabled
+                        ])
+            };
+
         return new EndpointDescriptor(
             EndpointId,
             [
-                instrument
+                environmentSensor,
+                controller
             ])
         {
             Metadata =
                 new EndpointMetadata
                 {
                     DisplayName =
-                        "DOIT ESP32 DEVKIT V4 Environment Endpoint",
+                        "DOIT ESP32 DEVKITC V4 Environment Endpoint",
                     Description =
                         "Physical HASE endpoint running on a "
-                        + "DOIT ESP32 DEVKIT V4 board."
+                        + "DOIT ESP32 DEVKITC V4 board."
                 }
         };
     }

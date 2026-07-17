@@ -6,6 +6,15 @@
 
 namespace
 {
+    constexpr uint8_t BooleanVariantType =
+        1;
+
+    constexpr uint8_t FalseBooleanValue =
+        0;
+
+    constexpr uint8_t TrueBooleanValue =
+        1;
+
     bool SkipRequiredString(
         HaseBinaryProtocolReader& reader)
     {
@@ -49,6 +58,56 @@ namespace
         return reader.fullyConsumed();
     }
 
+    bool IsValidWritePropertyRequestPayload(
+        const HaseProtocolEnvelope& envelope)
+    {
+        HaseBinaryProtocolReader reader(
+            envelope.payload,
+            envelope.payloadLength);
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        uint8_t variantType =
+            0;
+
+        if (!reader.readByte(
+                variantType)
+            || variantType
+                != BooleanVariantType)
+        {
+            return false;
+        }
+
+        uint8_t encodedValue =
+            0;
+
+        if (!reader.readByte(
+                encodedValue))
+        {
+            return false;
+        }
+
+        if (encodedValue
+                != FalseBooleanValue
+            && encodedValue
+                != TrueBooleanValue)
+        {
+            return false;
+        }
+
+        return reader.fullyConsumed();
+    }
+
     bool IsValidReadEndpointDescriptorRequestPayload(
         const HaseProtocolEnvelope& envelope)
     {
@@ -75,7 +134,8 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
             != SupportedMinorVersion)
     {
         return
-            HaseProtocolDispatchResult::UnsupportedVersion;
+            HaseProtocolDispatchResult::
+                UnsupportedVersion;
     }
 
     if (envelope.messageType
@@ -115,6 +175,24 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
     }
 
     if (envelope.messageType
+        == WritePropertyRequestMessageType)
+    {
+        if (envelope.role
+                != RequestRole
+            || !IsValidWritePropertyRequestPayload(
+                envelope))
+        {
+            return
+                HaseProtocolDispatchResult::
+                    InvalidWritePropertyRequest;
+        }
+
+        return
+            HaseProtocolDispatchResult::
+                WritePropertyRequestRecognized;
+    }
+
+    if (envelope.messageType
         == ReadEndpointDescriptorRequestMessageType)
     {
         if (envelope.role
@@ -133,5 +211,6 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
     }
 
     return
-        HaseProtocolDispatchResult::UnsupportedMessage;
+        HaseProtocolDispatchResult::
+            UnsupportedMessage;
 }

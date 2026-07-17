@@ -4,8 +4,8 @@ namespace
 {
     const HaseEndpointMetadata EndpointMetadata =
     {
-        "DOIT ESP32 DEVKIT V4 Environment Endpoint",
-        "Physical HASE endpoint running on a DOIT ESP32 DEVKIT V4 board."
+        "DOIT ESP32 DEVKITC V4 Environment Endpoint",
+        "Physical HASE endpoint running on a DOIT ESP32 DEVKITC V4 board."
     };
 
     const HaseInstrumentMetadata EnvironmentSensorMetadata =
@@ -17,6 +17,17 @@ namespace
         nullptr,
         "Temperature, relative-humidity, and air-pressure sensor "
         "connected to the ESP32 through I2C."
+    };
+
+    const HaseInstrumentMetadata ControllerMetadata =
+    {
+        "Espressif Systems",
+        "ESP32",
+        nullptr,
+        nullptr,
+        nullptr,
+        "GPIO controller provided by the ESP32. "
+        "The status LED output uses GPIO16 with active-low behavior."
     };
 
     const HasePropertyDescriptor EnvironmentSensorProperties[] =
@@ -98,6 +109,19 @@ namespace
         }
     };
 
+    const HasePropertyDescriptor ControllerProperties[] =
+    {
+        {
+            "physical.controller.status-led-enabled",
+            "Controller.StatusLedEnabled",
+            "Status LED Enabled",
+            "Controls the active-low status LED on GPIO16.",
+            HasePropertyAccessMode::ReadWrite,
+            HaseDataDescriptorType::Boolean,
+            {}
+        }
+    };
+
     const HaseInstrumentDescriptor Instruments[] =
     {
         {
@@ -109,15 +133,26 @@ namespace
             3,
             0,
             0
+        },
+
+        {
+            "controller-01",
+            "ESP32 GPIO Controller",
+            "controller",
+            ControllerMetadata,
+            ControllerProperties,
+            1,
+            0,
+            0
         }
     };
 
     const HaseEndpointDescriptor EndpointDescriptor =
     {
-        "ideaspark-esp32-01",
+        "doit-esp32-devkitc-v4-01",
         EndpointMetadata,
         Instruments,
-        1
+        2
     };
 }
 

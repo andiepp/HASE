@@ -13,6 +13,7 @@ internal sealed class DataDescriptorSerializer
 
     private const byte StringDescriptorType = 1;
     private const byte NumericDescriptorType = 2;
+    private const byte BooleanDescriptorType = 3;
 
     /// <summary>
     /// Writes a data descriptor to the supplied protocol writer.
@@ -27,19 +28,28 @@ internal sealed class DataDescriptorSerializer
         switch (descriptor)
         {
             case StringDataDescriptor:
-                writer.WriteByte(StringDescriptorType);
+                writer.WriteByte(
+                    StringDescriptorType);
+
                 break;
 
             case NumericDataDescriptor numericDescriptor:
                 WriteNumericDescriptor(
                     writer,
                     numericDescriptor);
+
+                break;
+
+            case BooleanDataDescriptor:
+                writer.WriteByte(
+                    BooleanDescriptorType);
+
                 break;
 
             default:
                 throw new NotSupportedException(
-                    $"Data descriptor type " +
-                    $"'{descriptor.GetType().Name}' is not supported.");
+                    $"Data descriptor type "
+                    + $"'{descriptor.GetType().Name}' is not supported.");
         }
     }
 
@@ -60,11 +70,15 @@ internal sealed class DataDescriptorSerializer
                 new StringDataDescriptor(),
 
             NumericDescriptorType =>
-                ReadNumericDescriptor(reader),
+                ReadNumericDescriptor(
+                    reader),
+
+            BooleanDescriptorType =>
+                new BooleanDataDescriptor(),
 
             _ => throw new InvalidDataException(
-                $"Unknown data descriptor type " +
-                $"'{descriptorType}'.")
+                $"Unknown data descriptor type "
+                + $"'{descriptorType}'.")
         };
     }
 
@@ -72,7 +86,8 @@ internal sealed class DataDescriptorSerializer
         BinaryProtocolWriter writer,
         NumericDataDescriptor descriptor)
     {
-        writer.WriteByte(NumericDescriptorType);
+        writer.WriteByte(
+            NumericDescriptorType);
 
         writer.WriteString(
             descriptor.Quantity.Id);
@@ -101,21 +116,25 @@ internal sealed class DataDescriptorSerializer
     private static NumericDataDescriptor ReadNumericDescriptor(
         BinaryProtocolReader reader)
     {
-        Quantity quantity = new(
-            reader.ReadString(),
-            reader.ReadString());
+        Quantity quantity =
+            new(
+                reader.ReadString(),
+                reader.ReadString());
 
-        Unit nativeUnit = new(
-            reader.ReadString(),
-            reader.ReadString(),
-            reader.ReadString(),
-            quantity);
+        Unit nativeUnit =
+            new(
+                reader.ReadString(),
+                reader.ReadString(),
+                reader.ReadString(),
+                quantity);
 
         ValueRange? range =
-            ReadOptionalRange(reader);
+            ReadOptionalRange(
+                reader);
 
         Resolution? resolution =
-            ReadOptionalResolution(reader);
+            ReadOptionalResolution(
+                reader);
 
         return new NumericDataDescriptor(
             quantity,
@@ -130,13 +149,20 @@ internal sealed class DataDescriptorSerializer
     {
         if (range is null)
         {
-            writer.WriteByte(NullMarker);
+            writer.WriteByte(
+                NullMarker);
+
             return;
         }
 
-        writer.WriteByte(ValueMarker);
-        writer.WriteDouble(range.Minimum);
-        writer.WriteDouble(range.Maximum);
+        writer.WriteByte(
+            ValueMarker);
+
+        writer.WriteDouble(
+            range.Minimum);
+
+        writer.WriteDouble(
+            range.Maximum);
     }
 
     private static ValueRange? ReadOptionalRange(
@@ -147,11 +173,13 @@ internal sealed class DataDescriptorSerializer
 
         return marker switch
         {
-            NullMarker => null,
+            NullMarker =>
+                null,
 
-            ValueMarker => new ValueRange(
-                reader.ReadDouble(),
-                reader.ReadDouble()),
+            ValueMarker =>
+                new ValueRange(
+                    reader.ReadDouble(),
+                    reader.ReadDouble()),
 
             _ => throw new InvalidDataException(
                 $"Invalid optional range marker '{marker}'.")
@@ -164,12 +192,17 @@ internal sealed class DataDescriptorSerializer
     {
         if (resolution is null)
         {
-            writer.WriteByte(NullMarker);
+            writer.WriteByte(
+                NullMarker);
+
             return;
         }
 
-        writer.WriteByte(ValueMarker);
-        writer.WriteDouble(resolution.Value);
+        writer.WriteByte(
+            ValueMarker);
+
+        writer.WriteDouble(
+            resolution.Value);
     }
 
     private static Resolution? ReadOptionalResolution(
@@ -180,10 +213,12 @@ internal sealed class DataDescriptorSerializer
 
         return marker switch
         {
-            NullMarker => null,
+            NullMarker =>
+                null,
 
-            ValueMarker => new Resolution(
-                reader.ReadDouble()),
+            ValueMarker =>
+                new Resolution(
+                    reader.ReadDouble()),
 
             _ => throw new InvalidDataException(
                 $"Invalid optional resolution marker '{marker}'.")

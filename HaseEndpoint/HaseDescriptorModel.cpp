@@ -39,3 +39,9 @@ static_assert(
         HaseDataDescriptorType::Numeric)
         == 2,
     "Unexpected numeric data-descriptor encoding.");
+
+static_assert(
+    static_cast<uint8_t>(
+        HaseDataDescriptorType::Boolean)
+        == 3,
+    "Unexpected Boolean data-descriptor encoding.");

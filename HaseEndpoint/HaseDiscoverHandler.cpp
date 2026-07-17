@@ -5,13 +5,16 @@
 namespace
 {
     constexpr size_t DiscoveryPayloadCapacity =
-        128;
+        192;
 
     const char* EndpointIdentifier =
-        "ideaspark-esp32-01";
+        "doit-esp32-devkitc-v4-01";
 
-    const char* InstrumentIdentifier =
+    const char* EnvironmentSensorInstrumentIdentifier =
         "environment-sensor-01";
+
+    const char* ControllerInstrumentIdentifier =
+        "controller-01";
 }
 
 bool HaseDiscoverHandler::CreateResponse(
@@ -42,13 +45,19 @@ bool HaseDiscoverHandler::CreateResponse(
     }
 
     if (!writer.writeCount(
-            1))
+            2))
     {
         return false;
     }
 
     if (!writer.writeString(
-            InstrumentIdentifier))
+            EnvironmentSensorInstrumentIdentifier))
+    {
+        return false;
+    }
+
+    if (!writer.writeString(
+            ControllerInstrumentIdentifier))
     {
         return false;
     }
@@ -96,5 +105,5 @@ const char* HaseDiscoverHandler::EndpointId()
 
 const char* HaseDiscoverHandler::InstrumentId()
 {
-    return InstrumentIdentifier;
+    return EnvironmentSensorInstrumentIdentifier;
 }

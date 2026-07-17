@@ -1,4 +1,4 @@
-#include "HaseReadPropertyResponseHandler.h"
+#include "HaseWritePropertyResponseHandler.h"
 
 #include "HaseBinaryProtocolWriter.h"
 #include "HaseProtocolSerializationHelper.h"
@@ -19,20 +19,20 @@ namespace
         HaseProtocolEnvelope response;
 
         response.majorVersion =
-            HaseReadPropertyResponseHandler::
+            HaseWritePropertyResponseHandler::
                 ProtocolMajorVersion;
 
         response.minorVersion =
-            HaseReadPropertyResponseHandler::
+            HaseWritePropertyResponseHandler::
                 ProtocolMinorVersion;
 
         response.role =
-            HaseReadPropertyResponseHandler::
+            HaseWritePropertyResponseHandler::
                 ResponseRole;
 
         response.messageType =
-            HaseReadPropertyResponseHandler::
-                ReadPropertyResponseMessageType;
+            HaseWritePropertyResponseHandler::
+                WritePropertyResponseMessageType;
 
         response.correlationId =
             request.correlationId;
@@ -51,65 +51,7 @@ namespace
     }
 }
 
-bool HaseReadPropertyResponseHandler::
-    CreateDoubleSuccessResponse(
-        const HaseProtocolEnvelope& request,
-        double value,
-        int64_t unixTimeMilliseconds,
-        uint8_t* responseFrame,
-        size_t responseFrameCapacity,
-        uint32_t& responseFrameLength)
-{
-    responseFrameLength =
-        0;
-
-    if (responseFrame == nullptr)
-    {
-        return false;
-    }
-
-    uint8_t payload[
-        ResponsePayloadCapacity];
-
-    HaseBinaryProtocolWriter writer(
-        payload,
-        sizeof(payload));
-
-    if (!WriteResponsePrefix(
-            writer))
-    {
-        return false;
-    }
-
-    if (!writer.writeByte(
-            DoubleVariantType))
-    {
-        return false;
-    }
-
-    if (!writer.writeDouble(
-            value))
-    {
-        return false;
-    }
-
-    if (!WriteResponseSuffix(
-            writer,
-            unixTimeMilliseconds))
-    {
-        return false;
-    }
-
-    return EncodeSuccessResponse(
-        request,
-        writer,
-        payload,
-        responseFrame,
-        responseFrameCapacity,
-        responseFrameLength);
-}
-
-bool HaseReadPropertyResponseHandler::
+bool HaseWritePropertyResponseHandler::
     CreateBooleanSuccessResponse(
         const HaseProtocolEnvelope& request,
         bool value,
@@ -133,8 +75,22 @@ bool HaseReadPropertyResponseHandler::
         payload,
         sizeof(payload));
 
-    if (!WriteResponsePrefix(
-            writer))
+    if (!writer.writeByte(
+            SuccessResultCode))
+    {
+        return false;
+    }
+
+    if (!HaseProtocolSerializationHelper::
+            WriteOptionalString(
+                writer,
+                nullptr))
+    {
+        return false;
+    }
+
+    if (!writer.writeByte(
+            PropertyValueMarker))
     {
         return false;
     }
@@ -153,23 +109,34 @@ bool HaseReadPropertyResponseHandler::
         return false;
     }
 
-    if (!WriteResponseSuffix(
-            writer,
+    if (!writer.writeInt64(
             unixTimeMilliseconds))
     {
         return false;
     }
 
-    return EncodeSuccessResponse(
+    if (!writer.writeByte(
+            GoodPropertyQuality))
+    {
+        return false;
+    }
+
+    if (!writer.succeeded())
+    {
+        return false;
+    }
+
+    return EncodeResponse(
         request,
-        writer,
         payload,
+        static_cast<uint32_t>(
+            writer.length()),
         responseFrame,
         responseFrameCapacity,
         responseFrameLength);
 }
 
-bool HaseReadPropertyResponseHandler::
+bool HaseWritePropertyResponseHandler::
     CreateFailureResponse(
         const HaseProtocolEnvelope& request,
         uint8_t resultCode,
@@ -214,67 +181,6 @@ bool HaseReadPropertyResponseHandler::
         return false;
     }
 
-    if (!writer.succeeded())
-    {
-        return false;
-    }
-
-    return EncodeResponse(
-        request,
-        payload,
-        static_cast<uint32_t>(
-            writer.length()),
-        responseFrame,
-        responseFrameCapacity,
-        responseFrameLength);
-}
-
-bool HaseReadPropertyResponseHandler::
-    WriteResponsePrefix(
-        HaseBinaryProtocolWriter& writer)
-{
-    if (!writer.writeByte(
-            SuccessResultCode))
-    {
-        return false;
-    }
-
-    if (!HaseProtocolSerializationHelper::
-            WriteOptionalString(
-                writer,
-                nullptr))
-    {
-        return false;
-    }
-
-    return writer.writeByte(
-        PropertyValueMarker);
-}
-
-bool HaseReadPropertyResponseHandler::
-    WriteResponseSuffix(
-        HaseBinaryProtocolWriter& writer,
-        int64_t unixTimeMilliseconds)
-{
-    if (!writer.writeInt64(
-            unixTimeMilliseconds))
-    {
-        return false;
-    }
-
-    return writer.writeByte(
-        GoodPropertyQuality);
-}
-
-bool HaseReadPropertyResponseHandler::
-    EncodeSuccessResponse(
-        const HaseProtocolEnvelope& request,
-        HaseBinaryProtocolWriter& writer,
-        const uint8_t* payload,
-        uint8_t* responseFrame,
-        size_t responseFrameCapacity,
-        uint32_t& responseFrameLength)
-{
     if (!writer.succeeded())
     {
         return false;

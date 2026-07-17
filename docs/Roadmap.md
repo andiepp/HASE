@@ -60,6 +60,7 @@ Implemented
 - Serialization helpers
 - Variant serialization
 - Property value serialization
+- Boolean data descriptors
 
 ---
 
@@ -75,6 +76,9 @@ Implemented
 - Property write
 - Command execution
 - Events
+- String data-descriptor encoding
+- Numeric data-descriptor encoding
+- Boolean data-descriptor encoding with discriminator `0x03`
 
 Protocol Version 1 is feature complete.
 
@@ -208,39 +212,88 @@ Completion baseline
 - Recovery diagnostic composition tests
 - C-007 aggregate diagnostic output
 
-### Physical hardware
+### Boolean descriptor architecture extension
 
-- ESP32 endpoint
-- BME280 support
+- `BooleanDataDescriptor`
+- Protocol Version 1 Boolean descriptor discriminator `0x03`
+- Boolean descriptor serialization and deserialization
+- Boolean descriptor round-trip tests
+- Boolean `ReadWrite` property-descriptor round trip
+- Existing String and Numeric discriminator preservation
+- Matching ESP32 Boolean descriptor encoding
+
+### Physical endpoint
+
+- DOIT ESP32 DEVKITC V4 endpoint
+- Endpoint ID `doit-esp32-devkitc-v4-01`
+- BME280 environment-sensor instrument
+- ESP32 GPIO controller instrument
 - Physical TCP communication
-- Physical descriptor exchange
-- Physical property reads
-- C-007 automatic-reconnect scenario
-- One-second physical connectivity probe
-- Three-second probe timeout
-- Three-second TCP connection-attempt timeout
-- Physical fault detection after ESP32 reset
-- Physical cache preservation during connection loss
-- Physical descriptor and property resynchronization
-- Repeated ESP32 reset recovery
-- Recovery when the ESP32 is unavailable at startup
-- Clean physical-scenario cancellation with Ctrl+C
-- Physical validation of bounded TCP connection attempts
-- Physical transport tracing during synchronization and probes
-- Physical failed and cancelled exchange tracing
-- Physical tracing across transport replacement and resynchronization
-- Physical aggregate diagnostic output
-- Physical exchange-count and byte-total validation
-- Physical diagnostic preservation across connection replacement
-- Physical recovery-statistics validation after reconnect
+- Physical discovery of both instruments
+- Strict physical descriptor validation
+- Physical temperature reads
+- Physical relative-humidity reads
+- Physical air-pressure reads
+- Physical Boolean status-LED reads
+- GPIO16 active-low status LED
+- Initial LED value `false`
+- Initial GPIO16 state high
+- Initial LED state off
+
+### Physical WriteProperty
+
+- `physical.controller.status-led-enabled`
+- Boolean `ReadWrite` access
+- ESP32 Boolean request decoding
+- Strict Boolean variant validation
+- ESP32 WriteProperty message dispatch
+- Physical property-target validation
+- GPIO16 active-low state application
+- WriteProperty success-response serialization
+- Applied Boolean value returned in successful responses
+- Truthful UTC timestamps
+- `PropertyQuality.Good`
+- Unknown-property `NotFound` responses
+- Invalid-value-type `InvalidRequest` responses
+- Rejected writes leave hardware state unchanged
+- Physical write-then-read verification
+- Final scenario state is LED off
+
+### Physical capability scenarios
+
+- C-003 physical TCP connectivity
+- C-004 physical discovery
+- C-005 strict complete descriptor validation
+- C-006 physical BME280 property reads
+- C-007 automatic reconnect, tracing, and diagnostics
+- C-008 physical Boolean WriteProperty and read-back
+- C-009 rejected physical WriteProperty validation
+
+### Physical validation
+
+- Automatic reconnect validated after ESP32 reset
+- Descriptor and property resynchronization
+- Cached-value preservation during connection loss
+- TCP connection timeout validation
+- Transport exchange tracing across replacement
+- Runtime transport diagnostics across replacement
+- Full endpoint rename validation
+- Two-instrument discovery validation
+- GPIO16 active-low electrical behavior
+- Boolean write `false → true → false`
+- Boolean read-back after each write
+- Unknown-property rejection
+- Invalid-value-type rejection
+- Unchanged state after rejected writes
 
 ### Quality
 
-- 710 automated tests
+- 714 automated tests
 - Automatic reconnect validated with real ESP32 hardware
 - TCP connection timeout validated with real ESP32 hardware
 - Transport exchange tracing validated with real ESP32 hardware
 - Runtime transport diagnostics validated with real ESP32 hardware
+- Physical Boolean WriteProperty validated with real ESP32 hardware
 
 ## Remaining
 
@@ -252,7 +305,7 @@ Completion baseline
 
 - Serial
 - BLE
-- MQTT (evaluation)
+- MQTT evaluation
 
 ### Discovery
 
@@ -261,7 +314,6 @@ Completion baseline
 
 ### Physical capabilities
 
-- WriteProperty
 - ExecuteCommand
 - EventNotification
 

@@ -83,7 +83,10 @@ enum class HaseDataDescriptorType : uint8_t
         1,
 
     Numeric =
-        2
+        2,
+
+    Boolean =
+        3
 };
 
 struct HasePropertyDescriptor

@@ -17,14 +17,18 @@ internal sealed class CapabilityC004Scenario
         4096;
 
     private const string ExpectedEndpointId =
-        "ideaspark-esp32-01";
+        "doit-esp32-devkitc-v4-01";
 
-    private const string ExpectedInstrumentId =
+    private const string ExpectedEnvironmentSensorInstrumentId =
         "environment-sensor-01";
+
+    private const string ExpectedControllerInstrumentId =
+        "controller-01";
 
     private static readonly CorrelationId
         DiscoveryCorrelationId =
-        new(104);
+        new(
+            104);
 
     public string Name =>
         "c004";
@@ -143,8 +147,8 @@ internal sealed class CapabilityC004Scenario
                 payloadCodec.Decode(
                     responseEnvelope);
 
-            if (responseMessage is not DiscoverResponse
-                response)
+            if (responseMessage
+                is not DiscoverResponse response)
             {
                 throw new InvalidDataException(
                     "The ESP32 response did not decode as a "
@@ -164,13 +168,13 @@ internal sealed class CapabilityC004Scenario
         }
         finally
         {
-            if (connection is IAsyncDisposable
-                asyncDisposable)
+            if (connection
+                is IAsyncDisposable asyncDisposable)
             {
                 await asyncDisposable.DisposeAsync();
             }
-            else if (connection is IDisposable
-                     disposable)
+            else if (connection
+                     is IDisposable disposable)
             {
                 disposable.Dispose();
             }
@@ -201,23 +205,37 @@ internal sealed class CapabilityC004Scenario
         }
 
         if (response.InstrumentIds.Count
-            != 1)
+            != 2)
         {
             throw new InvalidDataException(
-                "The DiscoverResponse must contain exactly one "
-                + "instrument identifier.");
+                "The DiscoverResponse must contain exactly two "
+                + "instrument identifiers.");
         }
 
-        var expectedInstrumentId =
+        var expectedEnvironmentSensorInstrumentId =
             new InstrumentId(
-                ExpectedInstrumentId);
+                ExpectedEnvironmentSensorInstrumentId);
 
         if (response.InstrumentIds[0]
-            != expectedInstrumentId)
+            != expectedEnvironmentSensorInstrumentId)
         {
             throw new InvalidDataException(
-                $"Expected instrument '{ExpectedInstrumentId}', but "
+                "Expected first instrument "
+                + $"'{ExpectedEnvironmentSensorInstrumentId}', but "
                 + $"received '{response.InstrumentIds[0].Value}'.");
+        }
+
+        var expectedControllerInstrumentId =
+            new InstrumentId(
+                ExpectedControllerInstrumentId);
+
+        if (response.InstrumentIds[1]
+            != expectedControllerInstrumentId)
+        {
+            throw new InvalidDataException(
+                "Expected second instrument "
+                + $"'{ExpectedControllerInstrumentId}', but "
+                + $"received '{response.InstrumentIds[1].Value}'.");
         }
     }
 
@@ -237,8 +255,8 @@ internal sealed class CapabilityC004Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Discover a physical ESP32-WROOM endpoint through "
-            + "HASE Protocol Version 1 over framed TCP.");
+            "Discover the physical DOIT ESP32 DEVKITC V4 endpoint "
+            + "through HASE Protocol Version 1 over framed TCP.");
 
         Console.WriteLine();
     }
@@ -297,13 +315,15 @@ internal sealed class CapabilityC004Scenario
         Console.Write(
             "Bytes        :");
 
-        foreach (byte value in bytes)
+        foreach (byte value
+                 in bytes)
         {
             Console.Write(
                 $" {value:X2}");
         }
 
         Console.WriteLine();
+
         Console.WriteLine();
     }
 

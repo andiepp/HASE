@@ -8,6 +8,8 @@
 #include "HaseDiscoverHandler.h"
 #include "HasePhysicalEndpointDescriptor.h"
 #include "HasePhysicalPropertyService.h"
+#include "HasePhysicalReadPropertyHandler.h"
+#include "HasePhysicalWritePropertyHandler.h"
 #include "HaseProtocolDispatcher.h"
 #include "HaseProtocolEnvelope.h"
 #include "HaseReadEndpointDescriptorHandler.h"
@@ -82,6 +84,9 @@ bool processDiscoverRequest(
 bool processReadPropertyRequest(
     const HaseProtocolEnvelope& envelope);
 
+bool processWritePropertyRequest(
+    const HaseProtocolEnvelope& envelope);
+
 bool processReadEndpointDescriptorRequest(
     const HaseProtocolEnvelope& envelope);
 
@@ -115,6 +120,11 @@ void setup()
 
     Serial.println(
         "===================");
+
+    Serial.println();
+
+    Serial.println(
+        "Firmware capability: C-008 WriteProperty");
 
     Serial.println();
 
@@ -525,6 +535,16 @@ bool processProtocolFrame(
         }
 
         case HaseProtocolDispatchResult::
+            WritePropertyRequestRecognized:
+
+        case HaseProtocolDispatchResult::
+            InvalidWritePropertyRequest:
+        {
+            return processWritePropertyRequest(
+                envelope);
+        }
+
+        case HaseProtocolDispatchResult::
             ReadEndpointDescriptorRequestRecognized:
         {
             return processReadEndpointDescriptorRequest(
@@ -632,94 +652,92 @@ bool processReadPropertyRequest(
         return true;
     }
 
-    double value = 0.0;
+    uint32_t responseLength =
+        0;
 
-    HasePhysicalPropertyReadResult readResult =
-        physicalPropertyService.readDouble(
-            request.instrumentId,
-            request.propertyId,
-            value);
-
-    switch (readResult)
-    {
-        case HasePhysicalPropertyReadResult::Success:
-        {
-            int64_t timestamp;
-
-            if (!utcClock.tryGetUnixTimeMilliseconds(
-                    timestamp))
-            {
-                break;
-            }
-
-            uint32_t responseLength = 0;
-
-            if (!HaseReadPropertyResponseHandler::
-                    CreateSuccessResponse(
-                        envelope,
-                        value,
-                        timestamp,
-                        responseBuffer,
-                        sizeof(responseBuffer),
-                        responseLength))
-            {
-                return true;
-            }
-
-            transport.writeFrame(
-                responseBuffer,
-                responseLength);
-
-            return true;
-        }
-
-        case HasePhysicalPropertyReadResult::
-            InstrumentNotFound:
-
-        case HasePhysicalPropertyReadResult::
-            PropertyNotFound:
-        {
-            uint32_t responseLength = 0;
-
-            HaseReadPropertyResponseHandler::
-                CreateFailureResponse(
-                    envelope,
-                    HaseReadPropertyResponseHandler::
-                        NotFoundResultCode,
-                    "Property not found",
-                    responseBuffer,
-                    sizeof(responseBuffer),
-                    responseLength);
-
-            transport.writeFrame(
-                responseBuffer,
-                responseLength);
-
-            return true;
-        }
-
-        case HasePhysicalPropertyReadResult::
-            SensorUnavailable:
-        {
-            break;
-        }
-    }
-
-    uint32_t responseLength = 0;
-
-    HaseReadPropertyResponseHandler::
-        CreateFailureResponse(
+    bool responseCreated =
+        HasePhysicalReadPropertyHandler::CreateResponse(
             envelope,
-            HaseReadPropertyResponseHandler::
-                InternalErrorResultCode,
-            "Sensor unavailable",
+            request,
+            physicalPropertyService,
+            utcClock,
             responseBuffer,
             sizeof(responseBuffer),
             responseLength);
 
-    transport.writeFrame(
+    if (!responseCreated)
+    {
+        Serial.println(
+            "Failed to create ReadPropertyResponse.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    if (!transport.writeFrame(
+            responseBuffer,
+            responseLength))
+    {
+        Serial.println(
+            "Failed to write ReadPropertyResponse. "
+            "Closing client connection.");
+
+        transport.disconnectClient();
+    }
+
+    return true;
+}
+
+bool processWritePropertyRequest(
+    const HaseProtocolEnvelope& envelope)
+{
+    uint32_t responseLength =
+        0;
+
+    bool responseCreated =
+        HasePhysicalWritePropertyHandler::CreateResponse(
+            envelope,
+            physicalPropertyService,
+            utcClock,
+            responseBuffer,
+            sizeof(responseBuffer),
+            responseLength);
+
+    if (!responseCreated)
+    {
+        Serial.println(
+            "Failed to create WritePropertyResponse.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    if (!transport.writeFrame(
+            responseBuffer,
+            responseLength))
+    {
+        Serial.println(
+            "Failed to write WritePropertyResponse. "
+            "Closing client connection.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    printPayload(
+        "Responded",
         responseBuffer,
         responseLength);
+
+    Serial.println();
+
+    Serial.println(
+        "WritePropertyResponse sent.");
+
+    Serial.println();
 
     return true;
 }
@@ -854,6 +872,13 @@ void printDispatchResult(
     Serial.print(
         "Result : ");
 
+    Serial.print(
+        static_cast<uint8_t>(
+            result));
+
+    Serial.print(
+        " - ");
+
     switch (result)
     {
         case HaseProtocolDispatchResult::
@@ -870,6 +895,15 @@ void printDispatchResult(
         {
             Serial.println(
                 "ReadPropertyRequest recognized");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
+            WritePropertyRequestRecognized:
+        {
+            Serial.println(
+                "WritePropertyRequest recognized");
 
             break;
         }
@@ -906,6 +940,15 @@ void printDispatchResult(
         {
             Serial.println(
                 "Invalid ReadPropertyRequest");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
+            InvalidWritePropertyRequest:
+        {
+            Serial.println(
+                "Invalid WritePropertyRequest");
 
             break;
         }
