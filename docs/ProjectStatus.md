@@ -302,7 +302,7 @@ Implemented components:
 - Hase.Runtime.Transport
 - HASE.ProtocolExplorer
 - ESP32 physical endpoint
-
+   
 The architecture currently provides:
 
 - Transport-independent runtime abstractions
