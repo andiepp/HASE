@@ -16,6 +16,8 @@ public:
     void setEnabled(
         bool enabled);
 
+    bool toggleEnabled();
+
 private:
     static constexpr uint8_t Pin =
         16;

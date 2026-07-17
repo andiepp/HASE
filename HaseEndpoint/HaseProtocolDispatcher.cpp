@@ -6,6 +6,9 @@
 
 namespace
 {
+    constexpr uint8_t NullVariantType =
+        0;
+
     constexpr uint8_t BooleanVariantType =
         1;
 
@@ -108,6 +111,39 @@ namespace
         return reader.fullyConsumed();
     }
 
+    bool IsValidExecuteCommandRequestPayload(
+        const HaseProtocolEnvelope& envelope)
+    {
+        HaseBinaryProtocolReader reader(
+            envelope.payload,
+            envelope.payloadLength);
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        if (!SkipRequiredString(
+                reader))
+        {
+            return false;
+        }
+
+        uint8_t variantType =
+            0xFF;
+
+        if (!reader.readByte(
+                variantType)
+            || variantType
+                != NullVariantType)
+        {
+            return false;
+        }
+
+        return reader.fullyConsumed();
+    }
+
     bool IsValidReadEndpointDescriptorRequestPayload(
         const HaseProtocolEnvelope& envelope)
     {
@@ -190,6 +226,24 @@ HaseProtocolDispatchResult HaseProtocolDispatcher::Dispatch(
         return
             HaseProtocolDispatchResult::
                 WritePropertyRequestRecognized;
+    }
+
+    if (envelope.messageType
+        == ExecuteCommandRequestMessageType)
+    {
+        if (envelope.role
+                != RequestRole
+            || !IsValidExecuteCommandRequestPayload(
+                envelope))
+        {
+            return
+                HaseProtocolDispatchResult::
+                    InvalidExecuteCommandRequest;
+        }
+
+        return
+            HaseProtocolDispatchResult::
+                ExecuteCommandRequestRecognized;
     }
 
     if (envelope.messageType

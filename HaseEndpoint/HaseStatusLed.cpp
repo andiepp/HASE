@@ -52,3 +52,18 @@ void HaseStatusLed::setEnabled(
     _enabled =
         enabled;
 }
+
+bool HaseStatusLed::toggleEnabled()
+{
+    if (!_initialized)
+    {
+        return
+            _enabled;
+    }
+
+    setEnabled(
+        !_enabled);
+
+    return
+        _enabled;
+}

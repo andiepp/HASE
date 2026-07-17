@@ -1,5 +1,6 @@
 #include "HaseInstrumentDescriptorSerializer.h"
 
+#include "HaseCommandDescriptorSerializer.h"
 #include "HaseInstrumentMetadataSerializer.h"
 #include "HasePropertyDescriptorSerializer.h"
 
@@ -20,11 +21,16 @@ bool HaseInstrumentDescriptorSerializer::Write(
         return false;
     }
 
-    // Command and event descriptor structures have not yet been added to the
-    // ESP32 descriptor model. Until they are available, a descriptor claiming
-    // to contain commands or events cannot be serialized completely.
-    if (descriptor.commandCount != 0
-        || descriptor.eventCount != 0)
+    if (descriptor.commandCount > 0
+        && descriptor.commands == nullptr)
+    {
+        return false;
+    }
+
+    // Event descriptor structures have not yet been added to the ESP32
+    // descriptor model. Until they are available, a descriptor claiming to
+    // contain events cannot be serialized completely.
+    if (descriptor.eventCount != 0)
     {
         return false;
     }
@@ -76,6 +82,18 @@ bool HaseInstrumentDescriptorSerializer::Write(
             descriptor.commandCount))
     {
         return false;
+    }
+
+    for (uint16_t index = 0;
+         index < descriptor.commandCount;
+         ++index)
+    {
+        if (!HaseCommandDescriptorSerializer::Write(
+                writer,
+                descriptor.commands[index]))
+        {
+            return false;
+        }
     }
 
     if (!writer.writeCount(

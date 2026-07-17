@@ -1,4 +1,5 @@
-﻿using Hase.Core.Domain.Data;
+﻿using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
@@ -39,6 +40,11 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
     public static readonly PropertyId StatusLedEnabledPropertyId =
         new(
             "physical.controller.status-led-enabled");
+
+    public static readonly DescriptorPath ToggleStatusLedCommandPath =
+        new(
+            "Controller",
+            "ToggleStatusLed");
 
     public static EndpointDescriptor Create()
     {
@@ -137,6 +143,16 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                     "Controls the active-low status LED on GPIO16."
             };
 
+        var toggleStatusLed =
+            new CommandDescriptor(
+                ToggleStatusLedCommandPath,
+                "Toggle Status LED")
+            {
+                Description =
+                    "Toggles the active-low status LED on GPIO16 "
+                    + "and returns its new enabled state."
+            };
+
         var controller =
             new InstrumentDescriptor(
                 ControllerInstrumentId,
@@ -161,6 +177,10 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                         properties:
                         [
                             statusLedEnabled
+                        ],
+                        commands:
+                        [
+                            toggleStatusLed
                         ])
             };
 

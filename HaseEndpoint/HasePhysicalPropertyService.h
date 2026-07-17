@@ -27,6 +27,17 @@ enum class HasePhysicalPropertyWriteResult : uint8_t
     HardwareUnavailable
 };
 
+enum class HasePhysicalCommandExecutionResult : uint8_t
+{
+    Success,
+
+    InstrumentNotFound,
+
+    CommandNotFound,
+
+    HardwareUnavailable
+};
+
 class HasePhysicalPropertyService
 {
 public:
@@ -52,6 +63,11 @@ public:
         const char* propertyId,
         bool value);
 
+    HasePhysicalCommandExecutionResult toggleStatusLed(
+        const char* instrumentId,
+        const char* commandPath,
+        bool& enabled);
+
 private:
     static constexpr const char* EnvironmentSensorInstrumentId =
         "environment-sensor-01";
@@ -61,6 +77,9 @@ private:
 
     static constexpr const char* StatusLedEnabledPropertyId =
         "physical.controller.status-led-enabled";
+
+    static constexpr const char* ToggleStatusLedCommandPath =
+        "Controller.ToggleStatusLed";
 
     HaseBme280Sensor& _sensor;
 

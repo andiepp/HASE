@@ -239,6 +239,8 @@ Completion baseline
 - Initial LED value `false`
 - Initial GPIO16 state high
 - Initial LED state off
+- Physical command descriptor discovery
+- `Controller.ToggleStatusLed` command
 
 ### Physical WriteProperty
 
@@ -259,6 +261,24 @@ Completion baseline
 - Physical write-then-read verification
 - Final scenario state is LED off
 
+### Physical ExecuteCommand
+
+- `Controller.ToggleStatusLed`
+- Null command argument contract
+- Boolean new-state return value
+- ESP32 ExecuteCommand request decoding
+- Strict null-variant validation
+- ESP32 ExecuteCommand message dispatch
+- Physical instrument and command-path validation
+- GPIO16 active-low toggle execution
+- ExecuteCommand success-response serialization
+- Shared authoritative state for property and command operations
+- Unknown-command `NotFound` responses
+- Non-null-argument `InvalidRequest` responses
+- Rejected commands leave hardware state unchanged
+- Command return and property-readback verification
+- Final scenario state is LED off
+
 ### Physical capability scenarios
 
 - C-003 physical TCP connectivity
@@ -268,6 +288,8 @@ Completion baseline
 - C-007 automatic reconnect, tracing, and diagnostics
 - C-008 physical Boolean WriteProperty and read-back
 - C-009 rejected physical WriteProperty validation
+- C-010 physical ExecuteCommand and property read-back
+- C-011 rejected physical ExecuteCommand validation
 
 ### Physical validation
 
@@ -285,6 +307,12 @@ Completion baseline
 - Unknown-property rejection
 - Invalid-value-type rejection
 - Unchanged state after rejected writes
+- Command toggle `false → true → false`
+- Boolean command return after each toggle
+- Property read-back after each command
+- Unknown-command rejection
+- Non-null-command-argument rejection
+- Unchanged state after rejected commands
 
 ### Quality
 
@@ -294,6 +322,7 @@ Completion baseline
 - Transport exchange tracing validated with real ESP32 hardware
 - Runtime transport diagnostics validated with real ESP32 hardware
 - Physical Boolean WriteProperty validated with real ESP32 hardware
+- Physical ExecuteCommand validated with real ESP32 hardware
 
 ## Remaining
 
@@ -314,7 +343,6 @@ Completion baseline
 
 ### Physical capabilities
 
-- ExecuteCommand
 - EventNotification
 
 ---

@@ -17,8 +17,8 @@ technology.
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 runtime integration, Protocol Explorer, production TCP transport, runtime
 endpoint synchronization, automatic connection recovery, connection statistics,
-transport tracing, runtime transport diagnostics, Boolean data descriptors, and
-physical property reads and writes are implemented.
+transport tracing, runtime transport diagnostics, Boolean data descriptors,
+physical property access, and physical command execution are implemented.
 
 Phase 6 has established:
 
@@ -28,13 +28,14 @@ Phase 6 has established:
 - an ESP32 GPIO controller instrument;
 - explicit transport connection lifecycle and health tracking;
 - automatic initial connection retry and fault recovery;
-- complete descriptor and property resynchronization;
+- complete descriptor and readable-property resynchronization;
 - cached-value preservation during connection loss;
 - bounded TCP connection attempts;
 - transport exchange tracing;
 - aggregate runtime transport diagnostics;
 - physical Boolean ReadProperty and WriteProperty behavior;
-- successful positive and negative physical validation.
+- physical ExecuteCommand behavior;
+- positive and negative validation with real ESP32 hardware.
 
 The physical endpoint identity is:
 

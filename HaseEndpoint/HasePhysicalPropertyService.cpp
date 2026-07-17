@@ -244,3 +244,69 @@ HasePhysicalPropertyWriteResult
         HasePhysicalPropertyWriteResult::
             Success;
 }
+
+HasePhysicalCommandExecutionResult
+    HasePhysicalPropertyService::toggleStatusLed(
+        const char* instrumentId,
+        const char* commandPath,
+        bool& enabled)
+{
+    enabled =
+        false;
+
+    if (instrumentId == nullptr
+        || strcmp(
+               instrumentId,
+               ControllerInstrumentId)
+            != 0)
+    {
+        return
+            HasePhysicalCommandExecutionResult::
+                InstrumentNotFound;
+    }
+
+    if (commandPath == nullptr
+        || strcmp(
+               commandPath,
+               ToggleStatusLedCommandPath)
+            != 0)
+    {
+        return
+            HasePhysicalCommandExecutionResult::
+                CommandNotFound;
+    }
+
+    if (_statusLed == nullptr)
+    {
+        return
+            HasePhysicalCommandExecutionResult::
+                HardwareUnavailable;
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        _statusLed->begin();
+    }
+
+    if (!_statusLed->isInitialized())
+    {
+        return
+            HasePhysicalCommandExecutionResult::
+                HardwareUnavailable;
+    }
+
+    enabled =
+        _statusLed->toggleEnabled();
+
+    if (_statusLed->isEnabled()
+        != enabled)
+    {
+        return
+            HasePhysicalCommandExecutionResult::
+                HardwareUnavailable;
+    }
+
+    return
+        HasePhysicalCommandExecutionResult::
+            Success;
+}

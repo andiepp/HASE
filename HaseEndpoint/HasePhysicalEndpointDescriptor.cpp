@@ -122,6 +122,16 @@ namespace
         }
     };
 
+    const HaseCommandDescriptor ControllerCommands[] =
+    {
+        {
+            "Controller.ToggleStatusLed",
+            "Toggle Status LED",
+            "Toggles the active-low status LED on GPIO16 "
+            "and returns its new enabled state."
+        }
+    };
+
     const HaseInstrumentDescriptor Instruments[] =
     {
         {
@@ -131,6 +141,7 @@ namespace
             EnvironmentSensorMetadata,
             EnvironmentSensorProperties,
             3,
+            nullptr,
             0,
             0
         },
@@ -142,7 +153,8 @@ namespace
             ControllerMetadata,
             ControllerProperties,
             1,
-            0,
+            ControllerCommands,
+            1,
             0
         }
     };

@@ -14,6 +14,8 @@ enum class HaseProtocolDispatchResult : uint8_t
 
     WritePropertyRequestRecognized,
 
+    ExecuteCommandRequestRecognized,
+
     ReadEndpointDescriptorRequestRecognized,
 
     UnsupportedVersion,
@@ -23,6 +25,8 @@ enum class HaseProtocolDispatchResult : uint8_t
     InvalidReadPropertyRequest,
 
     InvalidWritePropertyRequest,
+
+    InvalidExecuteCommandRequest,
 
     InvalidReadEndpointDescriptorRequest,
 
@@ -53,6 +57,9 @@ private:
 
     static constexpr uint8_t WritePropertyRequestMessageType =
         20;
+
+    static constexpr uint8_t ExecuteCommandRequestMessageType =
+        30;
 
     static constexpr uint8_t ReadEndpointDescriptorRequestMessageType =
         52;
