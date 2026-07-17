@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
     <ProjectReference Include="..\..\src\Hase.Simulation.Runtime\Hase.Simulation.Runtime.csproj" />
   </ItemGroup>
 
