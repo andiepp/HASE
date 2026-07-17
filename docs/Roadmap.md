@@ -154,10 +154,20 @@ Completion baseline
 - Physical TCP communication
 - Physical descriptor exchange
 - Physical property reads
+- C-007 automatic-reconnect scenario
+- One-second physical connectivity probe
+- Three-second probe timeout
+- Physical fault detection after ESP32 reset
+- Physical cache preservation during connection loss
+- Physical descriptor and property resynchronization
+- Repeated ESP32 reset recovery
+- Recovery when the ESP32 is unavailable at startup
+- Clean physical-scenario cancellation with Ctrl+C
 
 ### Quality
 
 - 616 automated tests
+- Automatic reconnect validated with real ESP32 hardware
 
 ## Remaining
 
@@ -166,6 +176,8 @@ Completion baseline
 - Transport tracing
 - Diagnostics
 - Connection statistics
+- Retry statistics
+- Configurable TCP connection-attempt timeout
 
 ### Additional transports
 

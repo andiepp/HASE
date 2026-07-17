@@ -31,7 +31,8 @@ Phase 6 has established:
 - complete descriptor and property resynchronization after reconnect;
 - preservation of cached property values while disconnected;
 - successful and failed end-to-end runtime, protocol, transport, and reconnect
-  integration tests.
+  integration tests;
+- successful automatic-reconnect validation with real ESP32 hardware.
 
 The project can discover a physical endpoint, retrieve its descriptor, read live
 engineering properties, validate complete request/response transactions through
@@ -43,6 +44,9 @@ If the initial connection fails, supervision continues according to the
 configured retry policy. If an established transport connection faults, HASE
 replaces the failed transport, retrieves and validates the descriptor again,
 resynchronizes all readable properties, and returns the endpoint to `Ready`.
+
+This behavior has been demonstrated with a physical ESP32/BME280 endpoint across
+multiple ESP32 resets, including startup while the ESP32 was unavailable.
 
 ---
 
@@ -102,23 +106,16 @@ Highlights:
 
 Highlights:
 
-### Binary Protocol
-
-- BinaryProtocolReader
-- BinaryProtocolWriter
-- BinaryProtocolPayloadCodec
-- ProtocolEnvelopeByteCodec
-
-### Serialization
-
+- Binary protocol reader and writer
+- Protocol payload codec
+- Protocol envelope byte codec
 - Descriptor serializers
-- VariantSerializer
-- PropertyValueSerializer
+- Variant serialization
+- Property-value serialization
 - Protocol serialization helpers
+- Protocol message model
 
-### Protocol Messages
-
-Implemented support for:
+Implemented message support:
 
 - Discover
 - ReadEndpointDescriptor
@@ -331,6 +328,7 @@ Completed scenarios include:
 - C-004 physical discovery
 - C-005 physical endpoint-descriptor exchange
 - C-006 physical property reads
+- C-007 physical automatic reconnect
 
 C-006 validates:
 
@@ -345,60 +343,22 @@ C-006 validates:
 - Plausible engineering ranges
 - Round-trip communication
 
-### Phase 6 Quality Baseline
+C-007 provides:
 
-- **616 automated tests passing**
+- Long-running runtime endpoint supervision
+- Runtime endpoint lifecycle-state output
+- One-second temperature connectivity probe
+- Three-second connectivity-probe timeout
+- Initial connection retry
+- Automatic recovery after TCP failure
+- Cached-property output during connection loss
+- Descriptor and property resynchronization after reconnect
+- Continued probing after successful recovery
+- Ctrl+C cancellation
 
----
+### Physical Automatic-Reconnect Validation
 
-# Current Architecture
-
-Implemented components:
-
-- Hase.Core
-- Hase.Runtime
-- Hase.Simulation
-- Hase.Protocol
-- Hase.Transport
-- Hase.Runtime.Transport
-- HASE.ProtocolExplorer
-- ESP32 physical endpoint
-
-The architecture currently provides:
-
-- Transport-independent runtime abstractions
-- Protocol-independent transport abstractions
-- Binary Protocol Version 1
-- Simulation and physical endpoint execution
-- Descriptor-driven endpoint discovery
-- Live physical property access
-- Managed runtime transport connections
-- Runtime endpoint lifecycle coordination
-- Automatic connection supervision
-- Configurable reconnect policy
-- Strict physical/runtime descriptor validation
-- Runtime property-cache synchronization
-- Cache preservation across temporary connection failures
-- Layered separation between protocol, transport, runtime coordination,
-  physical services, and hardware
-
-The current initial connection and synchronization flow is:
+C-007 was validated against the real ESP32/BME280 endpoint at:
 
 ```text
-RuntimeEndpointConnectionSupervisor
-        ↓
-RuntimeEndpointConnectionCoordinator.ConnectAsync
-        ↓
-TransportConnectionManager.ConnectAsync
-        ↓
-ProtocolRuntimeEndpointSynchronizer
-        ↓
-ReadEndpointDescriptorRequest
-        ↓
-EndpointDescriptorCompatibilityValidator
-        ↓
-ReadPropertyRequest for every readable property
-        ↓
-RuntimeProperty.CurrentValue update
-        ↓
-EndpointConnectionState.Ready
+192.168.0.223:5000
