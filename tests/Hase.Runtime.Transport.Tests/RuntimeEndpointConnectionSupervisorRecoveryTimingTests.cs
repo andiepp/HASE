@@ -7,18 +7,20 @@ using Xunit;
 
 namespace Hase.Runtime.Transport.Tests;
 
-public sealed class RuntimeEndpointConnectionSupervisorRetryTests
+public sealed class RuntimeEndpointConnectionSupervisorRecoveryTimingTests
 {
     [Fact]
-    public async Task RunAsync_ReconnectFailures_ShouldRetryAndResetAttemptAfterSuccess()
+    public async Task GetStatistics_RecoveryWithFailure_ShouldRecordTotalTiming()
     {
+        var timeProvider =
+            new TestTimeProvider(
+                DateTimeOffset.FromUnixTimeMilliseconds(
+                    1_750_000_000_000));
+
         var initialConnection =
             new TestTransportConnection();
 
-        var firstReplacementConnection =
-            new TestTransportConnection();
-
-        var secondReplacementConnection =
+        var replacementConnection =
             new TestTransportConnection();
 
         var factory =
@@ -29,17 +31,16 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
 
         factory.EnqueueFailure(
             new IOException(
-                "First reconnect attempt failed."));
-
-        factory.EnqueueFailure(
-            new IOException(
-                "Second reconnect attempt failed."));
-
-        factory.EnqueueConnection(
-            firstReplacementConnection);
+                "First recovery attempt failed."),
+            () => timeProvider.Advance(
+                TimeSpan.FromSeconds(
+                    2)));
 
         factory.EnqueueConnection(
-            secondReplacementConnection);
+            replacementConnection,
+            () => timeProvider.Advance(
+                TimeSpan.FromSeconds(
+                    3)));
 
         await using var connectionManager =
             new TransportConnectionManager(
@@ -49,7 +50,10 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
             CreateRuntimeEndpoint();
 
         var synchronizer =
-            new TestRuntimeEndpointSynchronizer();
+            new TestRuntimeEndpointSynchronizer(
+                () => timeProvider.Advance(
+                    TimeSpan.FromSeconds(
+                        1)));
 
         await using var coordinator =
             new RuntimeEndpointConnectionCoordinator(
@@ -57,13 +61,11 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
                 runtimeEndpoint,
                 synchronizer);
 
-        var reconnectPolicy =
-            new TestReconnectPolicy();
-
         var supervisor =
             new RuntimeEndpointConnectionSupervisor(
                 coordinator,
-                reconnectPolicy);
+                new ImmediateReconnectPolicy(),
+                timeProvider);
 
         using var cancellationTokenSource =
             new CancellationTokenSource();
@@ -74,95 +76,72 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
 
         await synchronizer.InitialSynchronizationCompleted;
 
+        DateTimeOffset expectedStartedAtUtc =
+            timeProvider.GetUtcNow();
+
         initialConnection.TransitionTo(
             TransportConnectionState.Faulted);
 
-        await synchronizer.FirstRecoverySynchronizationCompleted;
+        await synchronizer.RecoverySynchronizationCompleted;
 
-        await WaitForSuccessfulRecoveryCountAsync(
-            supervisor,
-            expectedCount:
-                1);
-
-        Assert.Equal(
-            EndpointConnectionState.Ready,
-            runtimeEndpoint.ConnectionStatus.State);
-
-        Assert.Same(
-            firstReplacementConnection,
-            connectionManager.CurrentConnection);
+        RuntimeEndpointConnectionStatistics statistics =
+            await WaitForSuccessfulRecoveryAsync(
+                supervisor);
 
         Assert.Equal(
-            new[] { 0, 1, 2 },
-            reconnectPolicy.RetryAttempts);
+            expectedStartedAtUtc,
+            statistics.LastRecoveryStartedAtUtc);
 
         Assert.Equal(
-            4,
-            factory.ConnectCallCount);
+            expectedStartedAtUtc.AddSeconds(
+                6),
+            statistics.LastRecoveryCompletedAtUtc);
+
+        Assert.Equal(
+            TimeSpan.FromSeconds(
+                6),
+            statistics.LastRecoveryDuration);
 
         Assert.Equal(
             1,
-            connectionManager.ReplacementCount);
+            statistics.InitialConnectionAttemptCount);
 
-        firstReplacementConnection.TransitionTo(
-            TransportConnectionState.Faulted);
+        Assert.Equal(
+            0,
+            statistics.InitialConnectionFailureCount);
 
-        await synchronizer.SecondRecoverySynchronizationCompleted;
+        Assert.Equal(
+            2,
+            statistics.ReconnectAttemptCount);
 
-        await WaitForSuccessfulRecoveryCountAsync(
-            supervisor,
-            expectedCount:
-                2);
+        Assert.Equal(
+            1,
+            statistics.ReconnectFailureCount);
+
+        Assert.Equal(
+            1,
+            statistics.SuccessfulRecoveryCount);
+
+        Assert.Same(
+            replacementConnection,
+            connectionManager.CurrentConnection);
 
         Assert.Equal(
             EndpointConnectionState.Ready,
             runtimeEndpoint.ConnectionStatus.State);
-
-        Assert.Same(
-            secondReplacementConnection,
-            connectionManager.CurrentConnection);
-
-        Assert.Equal(
-            new[] { 0, 1, 2, 0 },
-            reconnectPolicy.RetryAttempts);
-
-        Assert.Equal(
-            5,
-            factory.ConnectCallCount);
-
-        Assert.Equal(
-            2,
-            connectionManager.ReplacementCount);
-
-        Assert.Equal(
-            3,
-            synchronizer.SynchronizeCallCount);
-
-        Assert.False(
-            supervisionTask.IsCompleted);
 
         cancellationTokenSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             async () => await supervisionTask);
-
-        Assert.Equal(
-            EndpointConnectionState.Disconnected,
-            runtimeEndpoint.ConnectionStatus.State);
     }
 
-    private static async Task WaitForSuccessfulRecoveryCountAsync(
-        RuntimeEndpointConnectionSupervisor supervisor,
-        long expectedCount)
+    private static async Task<RuntimeEndpointConnectionStatistics>
+        WaitForSuccessfulRecoveryAsync(
+            RuntimeEndpointConnectionSupervisor supervisor)
     {
         ArgumentNullException.ThrowIfNull(
             supervisor);
-
-        if (expectedCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(expectedCount));
-        }
 
         using var timeoutCancellationTokenSource =
             new CancellationTokenSource(
@@ -177,10 +156,9 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
             RuntimeEndpointConnectionStatistics statistics =
                 supervisor.GetStatistics();
 
-            if (statistics.SuccessfulRecoveryCount
-                == expectedCount)
+            if (statistics.SuccessfulRecoveryCount == 1)
             {
-                return;
+                return statistics;
             }
 
             await Task.Yield();
@@ -198,18 +176,64 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
                     "Endpoint")));
     }
 
-    private sealed class TestReconnectPolicy
+    private sealed class TestTimeProvider
+        : TimeProvider
+    {
+        private DateTimeOffset _utcNow;
+        private long _timestamp;
+
+        public TestTimeProvider(
+            DateTimeOffset utcNow)
+        {
+            if (utcNow.Offset != TimeSpan.Zero)
+            {
+                throw new ArgumentException(
+                    "The initial time must be expressed in UTC.",
+                    nameof(utcNow));
+            }
+
+            _utcNow =
+                utcNow;
+        }
+
+        public override long TimestampFrequency =>
+            TimeSpan.TicksPerSecond;
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
+
+        public override long GetTimestamp()
+        {
+            return _timestamp;
+        }
+
+        public void Advance(
+            TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(duration));
+            }
+
+            _utcNow =
+                _utcNow.Add(
+                    duration);
+
+            _timestamp +=
+                duration.Ticks;
+        }
+    }
+
+    private sealed class ImmediateReconnectPolicy
         : IRuntimeEndpointReconnectPolicy
     {
-        public List<int> RetryAttempts
-        {
-            get;
-        } = [];
-
         public TimeSpan GetDelay(
             int retryAttempt)
         {
-            RetryAttempts.Add(
+            ArgumentOutOfRangeException.ThrowIfNegative(
                 retryAttempt);
 
             return TimeSpan.Zero;
@@ -225,14 +249,9 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
                 Task<ITransportConnection>>> _results =
             new();
 
-        public int ConnectCallCount
-        {
-            get;
-            private set;
-        }
-
         public void EnqueueConnection(
-            ITransportConnection connection)
+            ITransportConnection connection,
+            Action? beforeCompletion = null)
         {
             ArgumentNullException.ThrowIfNull(
                 connection);
@@ -242,13 +261,16 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
+                    beforeCompletion?.Invoke();
+
                     return Task.FromResult(
                         connection);
                 });
         }
 
         public void EnqueueFailure(
-            Exception exception)
+            Exception exception,
+            Action? beforeCompletion = null)
         {
             ArgumentNullException.ThrowIfNull(
                 exception);
@@ -257,6 +279,8 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
                 cancellationToken =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+
+                    beforeCompletion?.Invoke();
 
                     return Task.FromException<ITransportConnection>(
                         exception);
@@ -267,8 +291,6 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            ConnectCallCount++;
 
             if (_results.Count == 0)
             {
@@ -289,35 +311,34 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
     private sealed class TestRuntimeEndpointSynchronizer
         : IRuntimeEndpointSynchronizer
     {
+        private readonly Action _beforeRecoveryCompletion;
+
         private readonly TaskCompletionSource<bool>
             _initialSynchronizationCompleted =
             new(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
         private readonly TaskCompletionSource<bool>
-            _firstRecoverySynchronizationCompleted =
+            _recoverySynchronizationCompleted =
             new(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
-        private readonly TaskCompletionSource<bool>
-            _secondRecoverySynchronizationCompleted =
-            new(
-                TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _synchronizeCallCount;
 
-        public int SynchronizeCallCount
+        public TestRuntimeEndpointSynchronizer(
+            Action beforeRecoveryCompletion)
         {
-            get;
-            private set;
+            _beforeRecoveryCompletion =
+                beforeRecoveryCompletion
+                ?? throw new ArgumentNullException(
+                    nameof(beforeRecoveryCompletion));
         }
 
         public Task InitialSynchronizationCompleted =>
             _initialSynchronizationCompleted.Task;
 
-        public Task FirstRecoverySynchronizationCompleted =>
-            _firstRecoverySynchronizationCompleted.Task;
-
-        public Task SecondRecoverySynchronizationCompleted =>
-            _secondRecoverySynchronizationCompleted.Task;
+        public Task RecoverySynchronizationCompleted =>
+            _recoverySynchronizationCompleted.Task;
 
         public Task SynchronizeAsync(
             ITransportConnection connection,
@@ -332,24 +353,19 @@ public sealed class RuntimeEndpointConnectionSupervisorRetryTests
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            SynchronizeCallCount++;
+            _synchronizeCallCount++;
 
-            switch (SynchronizeCallCount)
+            if (_synchronizeCallCount == 1)
             {
-                case 1:
-                    _initialSynchronizationCompleted.TrySetResult(
-                        true);
-                    break;
+                _initialSynchronizationCompleted.TrySetResult(
+                    true);
+            }
+            else if (_synchronizeCallCount == 2)
+            {
+                _beforeRecoveryCompletion();
 
-                case 2:
-                    _firstRecoverySynchronizationCompleted.TrySetResult(
-                        true);
-                    break;
-
-                case 3:
-                    _secondRecoverySynchronizationCompleted.TrySetResult(
-                        true);
-                    break;
+                _recoverySynchronizationCompleted.TrySetResult(
+                    true);
             }
 
             return Task.CompletedTask;

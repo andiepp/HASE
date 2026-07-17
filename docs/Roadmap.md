@@ -147,6 +147,22 @@ Completion baseline
 - Cancellation ending in `Disconnected`
 - Automatic-reconnect integration tests
 
+### Connection and recovery statistics
+
+- Immutable `RuntimeEndpointConnectionStatistics` snapshots
+- Thread-safe statistics access
+- Initial connection-attempt count
+- Initial connection-failure count
+- Reconnect-attempt count
+- Reconnect-failure count
+- Successful-recovery count
+- Last recovery start time in UTC
+- Last successful recovery completion time in UTC
+- Monotonic total recovery duration
+- `.NET TimeProvider` integration
+- Deterministic recovery-timing tests
+- Recovery-cancellation statistics semantics
+
 ### Physical hardware
 
 - ESP32 endpoint
@@ -166,7 +182,7 @@ Completion baseline
 
 ### Quality
 
-- 616 automated tests
+- 629 automated tests
 - Automatic reconnect validated with real ESP32 hardware
 
 ## Remaining
@@ -174,9 +190,8 @@ Completion baseline
 ### Diagnostics
 
 - Transport tracing
-- Diagnostics
-- Connection statistics
-- Retry statistics
+- Runtime transport diagnostics
+- Statistics-change notifications when required by a consumer
 - Configurable TCP connection-attempt timeout
 
 ### Additional transports

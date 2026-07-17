@@ -17,6 +17,7 @@ public sealed class RuntimeEndpointConnectionSupervisor
 {
     private readonly RuntimeEndpointConnectionCoordinator _coordinator;
     private readonly IRuntimeEndpointReconnectPolicy _reconnectPolicy;
+    private readonly TimeProvider _timeProvider;
 
     private readonly SemaphoreSlim _statusChanged =
         new(
@@ -27,12 +28,37 @@ public sealed class RuntimeEndpointConnectionSupervisor
 
     private Task? _supervisionTask;
 
+    private long _initialConnectionAttemptCount;
+    private long _initialConnectionFailureCount;
+    private long _reconnectAttemptCount;
+    private long _reconnectFailureCount;
+    private long _successfulRecoveryCount;
+
+    private DateTimeOffset? _lastRecoveryStartedAtUtc;
+    private DateTimeOffset? _lastRecoveryCompletedAtUtc;
+    private TimeSpan? _lastRecoveryDuration;
+
+    /// <summary>
+    /// Initializes a runtime endpoint connection supervisor using the system
+    /// time provider.
+    /// </summary>
+    public RuntimeEndpointConnectionSupervisor(
+        RuntimeEndpointConnectionCoordinator coordinator,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy)
+        : this(
+            coordinator,
+            reconnectPolicy,
+            TimeProvider.System)
+    {
+    }
+
     /// <summary>
     /// Initializes a runtime endpoint connection supervisor.
     /// </summary>
     public RuntimeEndpointConnectionSupervisor(
         RuntimeEndpointConnectionCoordinator coordinator,
-        IRuntimeEndpointReconnectPolicy reconnectPolicy)
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        TimeProvider timeProvider)
     {
         _coordinator =
             coordinator
@@ -43,6 +69,11 @@ public sealed class RuntimeEndpointConnectionSupervisor
             reconnectPolicy
             ?? throw new ArgumentNullException(
                 nameof(reconnectPolicy));
+
+        _timeProvider =
+            timeProvider
+            ?? throw new ArgumentNullException(
+                nameof(timeProvider));
     }
 
     /// <summary>
@@ -58,13 +89,14 @@ public sealed class RuntimeEndpointConnectionSupervisor
         _reconnectPolicy;
 
     /// <summary>
+    /// Gets the time provider used for recovery timing.
+    /// </summary>
+    public TimeProvider TimeProvider =>
+        _timeProvider;
+
+    /// <summary>
     /// Starts supervision or returns the already existing supervision task.
     /// </summary>
-    /// <remarks>
-    /// The cancellation token supplied to the first call owns the supervision
-    /// loop. Tokens supplied by later calls are ignored because those calls
-    /// join the existing loop.
-    /// </remarks>
     public Task RunAsync(
         CancellationToken cancellationToken = default)
     {
@@ -75,6 +107,25 @@ public sealed class RuntimeEndpointConnectionSupervisor
                     cancellationToken);
 
             return _supervisionTask;
+        }
+    }
+
+    /// <summary>
+    /// Gets an immutable snapshot of the current supervision statistics.
+    /// </summary>
+    public RuntimeEndpointConnectionStatistics GetStatistics()
+    {
+        lock (_syncRoot)
+        {
+            return new RuntimeEndpointConnectionStatistics(
+                _initialConnectionAttemptCount,
+                _initialConnectionFailureCount,
+                _reconnectAttemptCount,
+                _reconnectFailureCount,
+                _successfulRecoveryCount,
+                _lastRecoveryStartedAtUtc,
+                _lastRecoveryCompletedAtUtc,
+                _lastRecoveryDuration);
         }
     }
 
@@ -121,7 +172,7 @@ public sealed class RuntimeEndpointConnectionSupervisor
             _coordinator.RuntimeEndpoint.UpdateConnectionStatus(
                 new EndpointConnectionStatus(
                     EndpointConnectionState.Disconnected,
-                    DateTimeOffset.UtcNow,
+                    _timeProvider.GetUtcNow(),
                     "Endpoint connection supervision was cancelled."));
 
             throw;
@@ -136,6 +187,8 @@ public sealed class RuntimeEndpointConnectionSupervisor
     private async Task ConnectWithRetryAsync(
         CancellationToken cancellationToken)
     {
+        RecordInitialConnectionAttempt();
+
         try
         {
             await _coordinator.ConnectAsync(
@@ -150,6 +203,7 @@ public sealed class RuntimeEndpointConnectionSupervisor
         }
         catch
         {
+            RecordInitialConnectionFailure();
         }
 
         int retryAttempt =
@@ -160,6 +214,8 @@ public sealed class RuntimeEndpointConnectionSupervisor
             await DelayBeforeAttemptAsync(
                 retryAttempt,
                 cancellationToken);
+
+            RecordInitialConnectionAttempt();
 
             try
             {
@@ -175,6 +231,8 @@ public sealed class RuntimeEndpointConnectionSupervisor
             }
             catch
             {
+                RecordInitialConnectionFailure();
+
                 retryAttempt++;
             }
         }
@@ -194,6 +252,15 @@ public sealed class RuntimeEndpointConnectionSupervisor
     private async Task RecoverWithRetryAsync(
         CancellationToken cancellationToken)
     {
+        DateTimeOffset recoveryStartedAtUtc =
+            _timeProvider.GetUtcNow();
+
+        long recoveryStartTimestamp =
+            _timeProvider.GetTimestamp();
+
+        RecordRecoveryStarted(
+            recoveryStartedAtUtc);
+
         int retryAttempt =
             0;
 
@@ -203,10 +270,24 @@ public sealed class RuntimeEndpointConnectionSupervisor
                 retryAttempt,
                 cancellationToken);
 
+            RecordReconnectAttempt();
+
             try
             {
                 await _coordinator.ReconnectAsync(
                     cancellationToken);
+
+                DateTimeOffset recoveryCompletedAtUtc =
+                    _timeProvider.GetUtcNow();
+
+                TimeSpan recoveryDuration =
+                    _timeProvider.GetElapsedTime(
+                        recoveryStartTimestamp,
+                        _timeProvider.GetTimestamp());
+
+                RecordSuccessfulRecovery(
+                    recoveryCompletedAtUtc,
+                    recoveryDuration);
 
                 return;
             }
@@ -217,6 +298,8 @@ public sealed class RuntimeEndpointConnectionSupervisor
             }
             catch
             {
+                RecordReconnectFailure();
+
                 retryAttempt++;
             }
         }
@@ -235,6 +318,64 @@ public sealed class RuntimeEndpointConnectionSupervisor
             await Task.Delay(
                 delay,
                 cancellationToken);
+        }
+    }
+
+    private void RecordInitialConnectionAttempt()
+    {
+        lock (_syncRoot)
+        {
+            _initialConnectionAttemptCount++;
+        }
+    }
+
+    private void RecordInitialConnectionFailure()
+    {
+        lock (_syncRoot)
+        {
+            _initialConnectionFailureCount++;
+        }
+    }
+
+    private void RecordRecoveryStarted(
+        DateTimeOffset startedAtUtc)
+    {
+        lock (_syncRoot)
+        {
+            _lastRecoveryStartedAtUtc =
+                startedAtUtc;
+        }
+    }
+
+    private void RecordReconnectAttempt()
+    {
+        lock (_syncRoot)
+        {
+            _reconnectAttemptCount++;
+        }
+    }
+
+    private void RecordReconnectFailure()
+    {
+        lock (_syncRoot)
+        {
+            _reconnectFailureCount++;
+        }
+    }
+
+    private void RecordSuccessfulRecovery(
+        DateTimeOffset completedAtUtc,
+        TimeSpan duration)
+    {
+        lock (_syncRoot)
+        {
+            _successfulRecoveryCount++;
+
+            _lastRecoveryCompletedAtUtc =
+                completedAtUtc;
+
+            _lastRecoveryDuration =
+                duration;
         }
     }
 }

@@ -16,7 +16,8 @@ technology.
 
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 runtime integration, Protocol Explorer, production transport lifecycle, runtime
-endpoint synchronization, and automatic connection recovery are implemented.
+endpoint synchronization, automatic connection recovery, and connection
+statistics are implemented.
 
 Phase 6 has established:
 
@@ -30,23 +31,23 @@ Phase 6 has established:
 - automatic recovery after transport faults;
 - complete descriptor and property resynchronization after reconnect;
 - preservation of cached property values while disconnected;
-- successful and failed end-to-end runtime, protocol, transport, and reconnect
-  integration tests;
-- successful automatic-reconnect validation with real ESP32 hardware.
+- thread-safe connection and recovery statistics;
+- successful end-to-end automatic reconnect with real ESP32 hardware.
 
 The project can discover a physical endpoint, retrieve its descriptor, read live
 engineering properties, validate complete request/response transactions through
 Protocol Version 1 over framed TCP, establish and supervise a managed runtime
-connection, validate the physical descriptor, populate readable runtime property
-caches, and publish `Ready` only after synchronization completes successfully.
+connection, populate readable runtime property caches, and publish `Ready` only
+after synchronization completes successfully.
 
 If the initial connection fails, supervision continues according to the
 configured retry policy. If an established transport connection faults, HASE
 replaces the failed transport, retrieves and validates the descriptor again,
 resynchronizes all readable properties, and returns the endpoint to `Ready`.
 
-This behavior has been demonstrated with a physical ESP32/BME280 endpoint across
-multiple ESP32 resets, including startup while the ESP32 was unavailable.
+Applications can obtain an immutable snapshot of accumulated initial connection
+attempts, recovery attempts, failures, successful recoveries, and the timing of
+the most recent recovery sequence.
 
 ---
 
@@ -252,6 +253,38 @@ Phase 5 completion baseline:
 - Cancellation during retry delay
 - Cancellation ending in `Disconnected`
 
+### Completed Connection and Recovery Statistics
+
+- Immutable `RuntimeEndpointConnectionStatistics`
+- Thread-safe `GetStatistics()` snapshot access
+- Initial connection-attempt count
+- Initial connection-failure count
+- Reconnect-attempt count
+- Reconnect-failure count
+- Successful-recovery count
+- Last recovery start timestamp
+- Last successful recovery completion timestamp
+- Last successful recovery duration
+- UTC validation for recovery timestamps
+- Non-negative validation for counters and duration
+- Standard .NET `TimeProvider` integration
+- Existing two-argument supervisor constructor preserved
+- Injectable time provider for deterministic tests
+- Monotonic duration measurement through timestamp values
+- Recovery duration includes:
+  - retry-policy delays;
+  - failed transport attempts;
+  - successful transport establishment;
+  - descriptor synchronization;
+  - readable-property synchronization.
+- A failed retry does not reset the recovery start time.
+- A successful recovery updates completion time and duration.
+- Cancellation does not count as a reconnect failure.
+- Cancellation does not count as a successful recovery.
+- Cancellation preserves the recorded recovery start.
+- Cancellation does not create a completion time or duration when no recovery
+  completed.
+
 ### Completed Runtime Transport Integration Tests
 
 - Real coordinator with real protocol synchronizer
@@ -282,6 +315,10 @@ Phase 5 completion baseline:
 - Property reread after automatic reconnect
 - Cache preservation during automatic reconnect
 - Cache update after successful resynchronization
+- Initial connection statistics
+- Recovery counter statistics
+- Deterministic recovery timing
+- Recovery cancellation statistics
 
 ### Completed Physical Endpoint Foundations
 
@@ -329,19 +366,6 @@ Completed scenarios include:
 - C-005 physical endpoint-descriptor exchange
 - C-006 physical property reads
 - C-007 physical automatic reconnect
-
-C-006 validates:
-
-- Temperature
-- Relative humidity
-- Air pressure
-- Protocol result
-- Correlation identifiers
-- Variant type
-- UTC timestamps
-- Property quality
-- Plausible engineering ranges
-- Round-trip communication
 
 C-007 provides:
 
