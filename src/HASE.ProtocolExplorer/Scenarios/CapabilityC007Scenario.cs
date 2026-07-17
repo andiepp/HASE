@@ -107,9 +107,10 @@ internal sealed class CapabilityC007Scenario
                 coordinator,
                 new DefaultRuntimeEndpointReconnectPolicy());
 
-        var statusObserver =
+        using var statusObserver =
             new ConsoleConnectionStatusObserver(
-                runtimeEndpoint);
+                runtimeEndpoint,
+                connectionManager);
 
         runtimeEndpoint.SubscribeConnectionStatus(
             statusObserver);
@@ -374,17 +375,36 @@ internal sealed class CapabilityC007Scenario
     }
 
     private sealed class ConsoleConnectionStatusObserver
-        : IEndpointConnectionStatusObserver
+        : IEndpointConnectionStatusObserver,
+          ITransportExchangeTraceObserver,
+          IDisposable
     {
         private readonly RuntimeEndpoint _runtimeEndpoint;
+        private readonly TransportConnectionManager _connectionManager;
+
+        private readonly HashSet<ITransportExchangeTraceSource>
+            _traceSources =
+            new(
+                ReferenceEqualityComparer.Instance);
+
+        private readonly object _syncRoot =
+            new();
+
+        private bool _disposed;
 
         public ConsoleConnectionStatusObserver(
-            RuntimeEndpoint runtimeEndpoint)
+            RuntimeEndpoint runtimeEndpoint,
+            TransportConnectionManager connectionManager)
         {
             _runtimeEndpoint =
                 runtimeEndpoint
                 ?? throw new ArgumentNullException(
                     nameof(runtimeEndpoint));
+
+            _connectionManager =
+                connectionManager
+                ?? throw new ArgumentNullException(
+                    nameof(connectionManager));
         }
 
         public void OnEndpointConnectionStatusChanged(
@@ -399,6 +419,8 @@ internal sealed class CapabilityC007Scenario
             {
                 return;
             }
+
+            EnsureCurrentTraceSubscription();
 
             string timestamp =
                 (change.CurrentStatus.ChangedAtUtc
@@ -426,6 +448,93 @@ internal sealed class CapabilityC007Scenario
                 WriteCachedProperties(
                     _runtimeEndpoint);
             }
+        }
+
+        public void OnTransportExchangeCompleted(
+            TransportExchangeTrace trace)
+        {
+            ArgumentNullException.ThrowIfNull(
+                trace);
+
+            Console.WriteLine(
+                $"[{trace.CompletedAtUtc:O}] "
+                + $"Transport exchange #{trace.SequenceNumber}: "
+                + $"{trace.Outcome}");
+
+            Console.WriteLine(
+                $"  Duration : "
+                + $"{trace.Duration.TotalMilliseconds:0.000} ms");
+
+            Console.WriteLine(
+                $"  Bytes    : request {trace.RequestByteCount}, "
+                + $"response {trace.ResponseByteCount}");
+
+            Console.WriteLine(
+                $"  State    : {trace.ConnectionState}");
+
+            if (trace.ExceptionType is not null)
+            {
+                Console.WriteLine(
+                    $"  Exception: {trace.ExceptionType}");
+
+                if (trace.ExceptionMessage is not null)
+                {
+                    Console.WriteLine(
+                        $"  Message  : {trace.ExceptionMessage}");
+                }
+            }
+
+            Console.WriteLine();
+        }
+
+        public void Dispose()
+        {
+            ITransportExchangeTraceSource[] traceSources;
+
+            lock (_syncRoot)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed =
+                    true;
+
+                traceSources =
+                    _traceSources.ToArray();
+
+                _traceSources.Clear();
+            }
+
+            foreach (ITransportExchangeTraceSource traceSource
+                     in traceSources)
+            {
+                traceSource.UnsubscribeTrace(
+                    this);
+            }
+        }
+
+        private void EnsureCurrentTraceSubscription()
+        {
+            if (_connectionManager.CurrentConnection
+                is not ITransportExchangeTraceSource traceSource)
+            {
+                return;
+            }
+
+            lock (_syncRoot)
+            {
+                if (_disposed
+                    || !_traceSources.Add(
+                        traceSource))
+                {
+                    return;
+                }
+            }
+
+            traceSource.SubscribeTrace(
+                this);
         }
 
         private static void WriteCachedProperties(

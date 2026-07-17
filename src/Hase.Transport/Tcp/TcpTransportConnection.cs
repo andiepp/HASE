@@ -8,11 +8,17 @@ namespace Hase.Transport.Tcp;
 /// </summary>
 public sealed class TcpTransportConnection
     : ITransportConnection,
+      ITransportExchangeTraceSource,
       IAsyncDisposable
 {
     private readonly TcpClient _client;
     private readonly NetworkStream _stream;
     private readonly int _maximumPayloadLength;
+    private readonly TimeProvider _timeProvider;
+
+    private readonly TransportExchangeTracePublisher _tracePublisher =
+        new();
+
     private readonly SemaphoreSlim _exchangeLock =
         new(
             initialCount: 1,
@@ -21,22 +27,28 @@ public sealed class TcpTransportConnection
     private TransportConnectionState _state =
         TransportConnectionState.Connected;
 
-    /// <summary>
-    /// Initializes a transport connection over an already-connected
-    /// TCP client.
-    /// </summary>
-    /// <param name="client">
-    /// Connected TCP client. Ownership is transferred to this instance.
-    /// </param>
-    /// <param name="maximumPayloadLength">
-    /// Maximum accepted response payload length in bytes.
-    /// </param>
+    private long _exchangeSequenceNumber;
+
     public TcpTransportConnection(
         TcpClient client,
         int maximumPayloadLength)
+        : this(
+            client,
+            maximumPayloadLength,
+            TimeProvider.System)
+    {
+    }
+
+    internal TcpTransportConnection(
+        TcpClient client,
+        int maximumPayloadLength,
+        TimeProvider timeProvider)
     {
         ArgumentNullException.ThrowIfNull(
             client);
+
+        ArgumentNullException.ThrowIfNull(
+            timeProvider);
 
         if (maximumPayloadLength < 0)
         {
@@ -54,6 +66,9 @@ public sealed class TcpTransportConnection
 
         _maximumPayloadLength =
             maximumPayloadLength;
+
+        _timeProvider =
+            timeProvider;
     }
 
     /// <inheritdoc />
@@ -64,6 +79,22 @@ public sealed class TcpTransportConnection
     /// <inheritdoc />
     public TransportConnectionState State =>
         _state;
+
+    /// <inheritdoc />
+    public void SubscribeTrace(
+        ITransportExchangeTraceObserver observer)
+    {
+        _tracePublisher.Subscribe(
+            observer);
+    }
+
+    /// <inheritdoc />
+    public void UnsubscribeTrace(
+        ITransportExchangeTraceObserver observer)
+    {
+        _tracePublisher.Unsubscribe(
+            observer);
+    }
 
     /// <inheritdoc />
     public async Task<byte[]> ExchangeAsync(
@@ -80,9 +111,33 @@ public sealed class TcpTransportConnection
         await _exchangeLock.WaitAsync(
             cancellationToken);
 
+        long sequenceNumber =
+            0;
+
+        DateTimeOffset startedAtUtc =
+            default;
+
+        long startedTimestamp =
+            0;
+
+        bool exchangeStarted =
+            false;
+
         try
         {
             ThrowIfUnavailable();
+
+            sequenceNumber =
+                ++_exchangeSequenceNumber;
+
+            startedAtUtc =
+                _timeProvider.GetUtcNow();
+
+            startedTimestamp =
+                _timeProvider.GetTimestamp();
+
+            exchangeStarted =
+                true;
 
             byte[] requestFrame =
                 TcpFrameCodec.Encode(
@@ -95,20 +150,64 @@ public sealed class TcpTransportConnection
             await _stream.FlushAsync(
                 cancellationToken);
 
-            return await TcpFrameReader.ReadAsync(
-                _stream,
-                _maximumPayloadLength,
-                cancellationToken);
+            byte[] response =
+                await TcpFrameReader.ReadAsync(
+                    _stream,
+                    _maximumPayloadLength,
+                    cancellationToken);
+
+            PublishTrace(
+                sequenceNumber,
+                startedAtUtc,
+                startedTimestamp,
+                request.Length,
+                response.Length,
+                TransportExchangeOutcome.Succeeded);
+
+            return response;
         }
         catch (ObjectDisposedException)
             when (_state == TransportConnectionState.Closed)
         {
             throw;
         }
-        catch
+        catch (OperationCanceledException exception)
         {
             TransitionTo(
                 TransportConnectionState.Faulted);
+
+            if (exchangeStarted)
+            {
+                PublishTrace(
+                    sequenceNumber,
+                    startedAtUtc,
+                    startedTimestamp,
+                    request.Length,
+                    responseByteCount:
+                        0,
+                    TransportExchangeOutcome.Cancelled,
+                    exception);
+            }
+
+            throw;
+        }
+        catch (Exception exception)
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            if (exchangeStarted)
+            {
+                PublishTrace(
+                    sequenceNumber,
+                    startedAtUtc,
+                    startedTimestamp,
+                    request.Length,
+                    responseByteCount:
+                        0,
+                    TransportExchangeOutcome.Failed,
+                    exception);
+            }
 
             throw;
         }
@@ -136,6 +235,39 @@ public sealed class TcpTransportConnection
             TransportConnectionState.Closed);
 
         return ValueTask.CompletedTask;
+    }
+
+    private void PublishTrace(
+        long sequenceNumber,
+        DateTimeOffset startedAtUtc,
+        long startedTimestamp,
+        int requestByteCount,
+        int responseByteCount,
+        TransportExchangeOutcome outcome,
+        Exception? exception = null)
+    {
+        DateTimeOffset completedAtUtc =
+            _timeProvider.GetUtcNow();
+
+        TimeSpan duration =
+            _timeProvider.GetElapsedTime(
+                startedTimestamp,
+                _timeProvider.GetTimestamp());
+
+        _tracePublisher.Publish(
+            new TransportExchangeTrace(
+                sequenceNumber,
+                startedAtUtc,
+                completedAtUtc,
+                duration,
+                requestByteCount,
+                responseByteCount,
+                outcome,
+                _state,
+                exceptionType:
+                    exception?.GetType().FullName,
+                exceptionMessage:
+                    exception?.Message));
     }
 
     private void ThrowIfUnavailable()

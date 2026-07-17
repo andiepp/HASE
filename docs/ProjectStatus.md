@@ -17,7 +17,8 @@ technology.
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 runtime integration, Protocol Explorer, production transport lifecycle, runtime
 endpoint synchronization, automatic connection recovery, connection statistics,
-and configurable TCP connection-attempt timeout are implemented.
+configurable TCP connection-attempt timeout, and transport exchange tracing are
+implemented.
 
 Phase 6 has established:
 
@@ -33,6 +34,7 @@ Phase 6 has established:
 - preservation of cached property values while disconnected;
 - thread-safe connection and recovery statistics;
 - bounded TCP connection-attempt duration;
+- transport-independent exchange diagnostics without raw payload capture;
 - successful automatic-reconnect validation with real ESP32 hardware.
 
 The project can discover a physical endpoint, retrieve its descriptor, read live
@@ -197,6 +199,29 @@ The TCP connection timeout and reconnect delay have different responsibilities:
 - Connection timeout limits one `TcpClient.ConnectAsync` operation.
 - Reconnect policy controls the pause between completed attempts.
 
+### Completed Transport Exchange Tracing
+
+- Transport-independent `TransportExchangeTrace`
+- `TransportExchangeOutcome` values for succeeded, failed, and cancelled exchanges
+- Optional `ITransportExchangeTraceSource` capability
+- Optional `ITransportExchangeTraceObserver` capability
+- Thread-safe observer subscription and publication
+- Duplicate-subscription protection
+- Harmless unknown unsubscription
+- Snapshot-based publication that permits self-unsubscription
+- Observer-exception isolation
+- Per-connection exchange sequence numbers
+- UTC exchange start and completion timestamps
+- Monotonic exchange-duration measurement through `.NET TimeProvider`
+- Request and response byte counts
+- Transport state captured after exchange completion
+- Exception type and message for failed and cancelled exchanges
+- No raw request or response payload capture
+- Trace publication for successful TCP exchanges
+- Trace publication for failed TCP exchanges
+- Trace publication for exchanges cancelled after execution begins
+- No trace for pre-cancelled exchanges that never begin
+
 ### Completed Transport Lifecycle Foundations
 
 - Explicit transport connection states
@@ -334,6 +359,10 @@ The TCP connection timeout and reconnect delay have different responsibilities:
 - TCP connection-timeout validation
 - Caller-cancellation preservation
 - Infinite-timeout validation
+- Successful-exchange trace validation
+- Failed-exchange trace validation
+- Cancelled-exchange trace validation
+- Trace publisher concurrency and observer-isolation validation
 
 ### Completed Physical Endpoint Foundations
 
@@ -395,6 +424,8 @@ C-007 provides:
 - Descriptor and property resynchronization after reconnect
 - Continued probing after successful recovery
 - Ctrl+C cancellation
+- Live transport exchange tracing
+- Dynamic tracing of replacement transport connections
 
 ### Physical Automatic-Reconnect Validation
 

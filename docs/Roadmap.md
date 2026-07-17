@@ -170,6 +170,22 @@ Completion baseline
 - Deterministic recovery-timing tests
 - Recovery-cancellation statistics semantics
 
+### Transport exchange tracing
+
+- Transport-independent `TransportExchangeTrace`
+- Explicit succeeded, failed, and cancelled outcomes
+- Optional trace-source and trace-observer interfaces
+- Thread-safe observer subscription and publication
+- Observer-failure isolation
+- Per-connection exchange sequence numbers
+- UTC exchange timestamps
+- Monotonic exchange-duration measurement
+- Request and response byte counts
+- Transport state at exchange completion
+- Exception type and message for failed and cancelled exchanges
+- No raw request or response payload capture
+- Successful, failed, and cancelled TCP exchange tests
+
 ### Physical hardware
 
 - ESP32 endpoint
@@ -188,18 +204,21 @@ Completion baseline
 - Recovery when the ESP32 is unavailable at startup
 - Clean physical-scenario cancellation with Ctrl+C
 - Physical validation of bounded TCP connection attempts
+- Physical transport tracing during synchronization and probes
+- Physical failed and cancelled exchange tracing
+- Physical tracing across transport replacement and resynchronization
 
 ### Quality
 
-- 639 automated tests
+- 672 automated tests
 - Automatic reconnect validated with real ESP32 hardware
 - TCP connection timeout validated with real ESP32 hardware
+- Transport exchange tracing validated with real ESP32 hardware
 
 ## Remaining
 
 ### Diagnostics
 
-- Transport tracing
 - Runtime transport diagnostics
 - Statistics-change notifications when required by a consumer
 
