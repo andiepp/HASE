@@ -17,8 +17,8 @@ technology.
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 runtime integration, Protocol Explorer, production transport lifecycle, runtime
 endpoint synchronization, automatic connection recovery, connection statistics,
-configurable TCP connection-attempt timeout, and transport exchange tracing are
-implemented.
+configurable TCP connection-attempt timeout, transport exchange tracing, and
+runtime transport diagnostics are implemented.
 
 Phase 6 has established:
 
@@ -34,8 +34,11 @@ Phase 6 has established:
 - preservation of cached property values while disconnected;
 - thread-safe connection and recovery statistics;
 - bounded TCP connection-attempt duration;
-- transport-independent exchange diagnostics without raw payload capture;
-- successful automatic-reconnect validation with real ESP32 hardware.
+- transport-independent exchange tracing without raw payload capture;
+- thread-safe aggregate exchange statistics;
+- combined runtime endpoint connection diagnostics;
+- successful reconnect, tracing, and diagnostic validation with real ESP32
+  hardware.
 
 The project can discover a physical endpoint, retrieve its descriptor, read live
 engineering properties, validate complete request/response transactions through
@@ -51,6 +54,10 @@ resynchronizes all readable properties, and returns the endpoint to `Ready`.
 TCP connection-attempt duration is configured independently from reconnect
 backoff. This prevents one operating-system connection attempt from remaining
 pending longer than the application permits.
+
+Transport diagnostics combine current transport health, endpoint connection and
+recovery statistics, and aggregate exchange statistics in immutable snapshots.
+Exchange statistics remain cumulative across transport replacement.
 
 ---
 
@@ -199,29 +206,6 @@ The TCP connection timeout and reconnect delay have different responsibilities:
 - Connection timeout limits one `TcpClient.ConnectAsync` operation.
 - Reconnect policy controls the pause between completed attempts.
 
-### Completed Transport Exchange Tracing
-
-- Transport-independent `TransportExchangeTrace`
-- `TransportExchangeOutcome` values for succeeded, failed, and cancelled exchanges
-- Optional `ITransportExchangeTraceSource` capability
-- Optional `ITransportExchangeTraceObserver` capability
-- Thread-safe observer subscription and publication
-- Duplicate-subscription protection
-- Harmless unknown unsubscription
-- Snapshot-based publication that permits self-unsubscription
-- Observer-exception isolation
-- Per-connection exchange sequence numbers
-- UTC exchange start and completion timestamps
-- Monotonic exchange-duration measurement through `.NET TimeProvider`
-- Request and response byte counts
-- Transport state captured after exchange completion
-- Exception type and message for failed and cancelled exchanges
-- No raw request or response payload capture
-- Trace publication for successful TCP exchanges
-- Trace publication for failed TCP exchanges
-- Trace publication for exchanges cancelled after execution begins
-- No trace for pre-cancelled exchanges that never begin
-
 ### Completed Transport Lifecycle Foundations
 
 - Explicit transport connection states
@@ -324,6 +308,68 @@ The TCP connection timeout and reconnect delay have different responsibilities:
 - Cancellation remains distinct from connection failure
 - Cancellation does not increment failure or successful-recovery counters
 
+### Completed Transport Exchange Tracing
+
+- Transport-independent `TransportExchangeTrace`
+- `TransportExchangeOutcome` values for succeeded, failed, and cancelled exchanges
+- Optional `ITransportExchangeTraceSource` capability
+- Optional `ITransportExchangeTraceObserver` capability
+- Thread-safe observer subscription and publication
+- Duplicate-subscription protection
+- Harmless unknown unsubscription
+- Snapshot-based publication that permits self-unsubscription
+- Observer-exception isolation
+- Per-connection exchange sequence numbers
+- UTC exchange start and completion timestamps
+- Monotonic exchange-duration measurement through `.NET TimeProvider`
+- Request and response byte counts
+- Transport state captured after exchange completion
+- Exception type and message for failed and cancelled exchanges
+- No raw request or response payload capture
+- Trace publication for successful TCP exchanges
+- Trace publication for failed TCP exchanges
+- Trace publication for exchanges cancelled after execution begins
+- No trace for pre-cancelled exchanges that never begin
+
+### Completed Runtime Transport Diagnostics
+
+- Immutable `TransportExchangeStatistics`
+- Empty exchange-statistics snapshot
+- Completed exchange count
+- Successful exchange count
+- Failed exchange count
+- Cancelled exchange count
+- Aggregate request-byte count
+- Aggregate response-byte count
+- Aggregate monotonic exchange duration
+- Most recent exchange completion timestamp
+- Most recent exchange outcome
+- Strict count-consistency validation
+- UTC timestamp validation
+- Thread-safe `TransportExchangeStatisticsCollector`
+- Immutable statistics access during concurrent publication
+- Collection of successful, failed, and cancelled traces
+- Preservation of previously returned snapshots
+- Automatic collector subscription by `TransportConnectionManager`
+- Optional tracing-capability detection
+- Compatibility with connections that do not expose tracing
+- Collector unsubscription during connection replacement
+- Collector unsubscription during manager disposal
+- Aggregate exchange statistics preserved across replacement connections
+- `TransportConnectionManager.GetExchangeStatistics()`
+- Immutable `RuntimeEndpointConnectionDiagnostics`
+- Combined transport health
+- Combined endpoint connection and recovery statistics
+- Combined aggregate exchange statistics
+- Empty combined diagnostic snapshot
+- `RuntimeEndpointConnectionSupervisor.GetDiagnostics()` extension
+- On-demand diagnostic composition without duplicated mutable state
+- Connected-state combined diagnostic tests
+- Recovery combined diagnostic tests
+- Exchange totals spanning original and replacement connections
+- C-007 aggregate diagnostic output
+- Physical aggregate diagnostic validation across an ESP32 reset
+
 ### Completed Runtime Transport Integration Tests
 
 - Real coordinator with real protocol synchronizer
@@ -363,6 +409,13 @@ The TCP connection timeout and reconnect delay have different responsibilities:
 - Failed-exchange trace validation
 - Cancelled-exchange trace validation
 - Trace publisher concurrency and observer-isolation validation
+- Exchange-statistics validation
+- Concurrent exchange-statistics collection
+- Manager exchange-statistics integration
+- Exchange-statistics preservation across replacement
+- Combined runtime diagnostic snapshot validation
+- Connected runtime diagnostic composition
+- Recovery runtime diagnostic composition
 
 ### Completed Physical Endpoint Foundations
 
@@ -409,7 +462,7 @@ Completed scenarios include:
 - C-004 physical discovery
 - C-005 physical endpoint-descriptor exchange
 - C-006 physical property reads
-- C-007 physical automatic reconnect
+- C-007 physical automatic reconnect, tracing, and diagnostics
 
 C-007 provides:
 
@@ -426,8 +479,15 @@ C-007 provides:
 - Ctrl+C cancellation
 - Live transport exchange tracing
 - Dynamic tracing of replacement transport connections
+- Aggregate transport health output
+- Initial connection-attempt and failure counts
+- Reconnect-attempt, failure, and success counts
+- Completed, successful, failed, and cancelled exchange counts
+- Aggregate request and response byte counts
+- Aggregate exchange duration
+- Last successful recovery timing
 
-### Physical Automatic-Reconnect Validation
+### Physical Automatic-Reconnect, Tracing, and Diagnostic Validation
 
 C-007 was validated against the real ESP32/BME280 endpoint at:
 

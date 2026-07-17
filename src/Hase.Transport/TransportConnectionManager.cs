@@ -12,6 +12,10 @@ public sealed class TransportConnectionManager
 {
     private readonly ITransportFactory _factory;
 
+    private readonly TransportExchangeStatisticsCollector
+        _exchangeStatisticsCollector =
+            new();
+
     private readonly SemaphoreSlim _operationLock =
         new(
             initialCount: 1,
@@ -93,6 +97,15 @@ public sealed class TransportConnectionManager
                 _lastStateChangeUtc,
             replacementCount:
                 _replacementCount);
+    }
+
+    /// <summary>
+    /// Creates an immutable snapshot of aggregate exchange statistics for all
+    /// trace-capable connections owned by this manager.
+    /// </summary>
+    public TransportExchangeStatistics GetExchangeStatistics()
+    {
+        return _exchangeStatisticsCollector.GetStatistics();
     }
 
     /// <summary>
@@ -279,6 +292,13 @@ public sealed class TransportConnectionManager
         connection.StateChanged +=
             OnConnectionStateChanged;
 
+        if (connection
+            is ITransportExchangeTraceSource traceSource)
+        {
+            traceSource.SubscribeTrace(
+                _exchangeStatisticsCollector);
+        }
+
         _lastStateChangeUtc =
             DateTimeOffset.UtcNow;
     }
@@ -288,6 +308,13 @@ public sealed class TransportConnectionManager
     {
         connection.StateChanged -=
             OnConnectionStateChanged;
+
+        if (connection
+            is ITransportExchangeTraceSource traceSource)
+        {
+            traceSource.UnsubscribeTrace(
+                _exchangeStatisticsCollector);
+        }
     }
 
     private void OnConnectionStateChanged(

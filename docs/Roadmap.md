@@ -186,6 +186,28 @@ Completion baseline
 - No raw request or response payload capture
 - Successful, failed, and cancelled TCP exchange tests
 
+### Runtime transport diagnostics
+
+- Immutable `TransportExchangeStatistics` snapshots
+- Successful, failed, cancelled, and completed exchange counts
+- Aggregate request and response byte counts
+- Aggregate monotonic exchange duration
+- Most recent exchange completion and outcome
+- Thread-safe `TransportExchangeStatisticsCollector`
+- Immutable snapshot access during concurrent trace publication
+- Automatic collection from trace-capable manager connections
+- Optional-capability compatibility for connections without tracing
+- Collector detachment from replaced and disposed connections
+- Aggregate statistics preserved across connection replacement
+- Immutable `RuntimeEndpointConnectionDiagnostics`
+- Combined transport-health snapshot
+- Combined connection and recovery statistics
+- Combined transport-exchange statistics
+- `RuntimeEndpointConnectionSupervisor.GetDiagnostics()` extension
+- Connected-state diagnostic composition tests
+- Recovery diagnostic composition tests
+- C-007 aggregate diagnostic output
+
 ### Physical hardware
 
 - ESP32 endpoint
@@ -207,19 +229,23 @@ Completion baseline
 - Physical transport tracing during synchronization and probes
 - Physical failed and cancelled exchange tracing
 - Physical tracing across transport replacement and resynchronization
+- Physical aggregate diagnostic output
+- Physical exchange-count and byte-total validation
+- Physical diagnostic preservation across connection replacement
+- Physical recovery-statistics validation after reconnect
 
 ### Quality
 
-- 672 automated tests
+- 710 automated tests
 - Automatic reconnect validated with real ESP32 hardware
 - TCP connection timeout validated with real ESP32 hardware
 - Transport exchange tracing validated with real ESP32 hardware
+- Runtime transport diagnostics validated with real ESP32 hardware
 
 ## Remaining
 
 ### Diagnostics
 
-- Runtime transport diagnostics
 - Statistics-change notifications when required by a consumer
 
 ### Additional transports

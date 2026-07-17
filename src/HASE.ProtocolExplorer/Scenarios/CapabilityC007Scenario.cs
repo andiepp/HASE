@@ -110,7 +110,8 @@ internal sealed class CapabilityC007Scenario
         using var statusObserver =
             new ConsoleConnectionStatusObserver(
                 runtimeEndpoint,
-                connectionManager);
+                connectionManager,
+                supervisor);
 
         runtimeEndpoint.SubscribeConnectionStatus(
             statusObserver);
@@ -380,7 +381,10 @@ internal sealed class CapabilityC007Scenario
           IDisposable
     {
         private readonly RuntimeEndpoint _runtimeEndpoint;
+
         private readonly TransportConnectionManager _connectionManager;
+
+        private readonly RuntimeEndpointConnectionSupervisor _supervisor;
 
         private readonly HashSet<ITransportExchangeTraceSource>
             _traceSources =
@@ -394,7 +398,8 @@ internal sealed class CapabilityC007Scenario
 
         public ConsoleConnectionStatusObserver(
             RuntimeEndpoint runtimeEndpoint,
-            TransportConnectionManager connectionManager)
+            TransportConnectionManager connectionManager,
+            RuntimeEndpointConnectionSupervisor supervisor)
         {
             _runtimeEndpoint =
                 runtimeEndpoint
@@ -405,6 +410,11 @@ internal sealed class CapabilityC007Scenario
                 connectionManager
                 ?? throw new ArgumentNullException(
                     nameof(connectionManager));
+
+            _supervisor =
+                supervisor
+                ?? throw new ArgumentNullException(
+                    nameof(supervisor));
         }
 
         public void OnEndpointConnectionStatusChanged(
@@ -484,6 +494,9 @@ internal sealed class CapabilityC007Scenario
                 }
             }
 
+            WriteDiagnostics(
+                _supervisor.GetDiagnostics());
+
             Console.WriteLine();
         }
 
@@ -535,6 +548,75 @@ internal sealed class CapabilityC007Scenario
 
             traceSource.SubscribeTrace(
                 this);
+        }
+
+        private static void WriteDiagnostics(
+            RuntimeEndpointConnectionDiagnostics diagnostics)
+        {
+            TransportConnectionHealthSnapshot health =
+                diagnostics.TransportHealth;
+
+            RuntimeEndpointConnectionStatistics connectionStatistics =
+                diagnostics.ConnectionStatistics;
+
+            TransportExchangeStatistics exchangeStatistics =
+                diagnostics.ExchangeStatistics;
+
+            Console.WriteLine(
+                "  Aggregate diagnostics:");
+
+            Console.WriteLine(
+                $"    Transport    : "
+                + $"connection {health.HasConnection}, "
+                + $"state {health.State?.ToString() ?? "<none>"}, "
+                + $"replacements {health.ReplacementCount}");
+
+            Console.WriteLine(
+                $"    Connection   : "
+                + $"initial attempts "
+                + $"{connectionStatistics.InitialConnectionAttemptCount}, "
+                + $"initial failures "
+                + $"{connectionStatistics.InitialConnectionFailureCount}");
+
+            Console.WriteLine(
+                $"    Recovery     : "
+                + $"attempts "
+                + $"{connectionStatistics.ReconnectAttemptCount}, "
+                + $"failures "
+                + $"{connectionStatistics.ReconnectFailureCount}, "
+                + $"successful "
+                + $"{connectionStatistics.SuccessfulRecoveryCount}");
+
+            Console.WriteLine(
+                $"    Exchanges    : "
+                + $"completed "
+                + $"{exchangeStatistics.CompletedExchangeCount}, "
+                + $"successful "
+                + $"{exchangeStatistics.SuccessfulExchangeCount}, "
+                + $"failed "
+                + $"{exchangeStatistics.FailedExchangeCount}, "
+                + $"cancelled "
+                + $"{exchangeStatistics.CancelledExchangeCount}");
+
+            Console.WriteLine(
+                $"    Bytes        : "
+                + $"request "
+                + $"{exchangeStatistics.TotalRequestByteCount}, "
+                + $"response "
+                + $"{exchangeStatistics.TotalResponseByteCount}");
+
+            Console.WriteLine(
+                $"    Total time   : "
+                + $"{exchangeStatistics.TotalDuration.TotalMilliseconds:0.000} ms");
+
+            if (connectionStatistics.LastRecoveryCompletedAtUtc.HasValue)
+            {
+                Console.WriteLine(
+                    $"    Last recovery: "
+                    + $"{connectionStatistics.LastRecoveryCompletedAtUtc:O}, "
+                    + $"{connectionStatistics.LastRecoveryDuration}"
+                    + $"");
+            }
         }
 
         private static void WriteCachedProperties(
