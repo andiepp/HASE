@@ -16,8 +16,8 @@ technology.
 
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 runtime integration, Protocol Explorer, production transport lifecycle, runtime
-endpoint synchronization, automatic connection recovery, and connection
-statistics are implemented.
+endpoint synchronization, automatic connection recovery, connection statistics,
+and configurable TCP connection-attempt timeout are implemented.
 
 Phase 6 has established:
 
@@ -32,7 +32,8 @@ Phase 6 has established:
 - complete descriptor and property resynchronization after reconnect;
 - preservation of cached property values while disconnected;
 - thread-safe connection and recovery statistics;
-- successful end-to-end automatic reconnect with real ESP32 hardware.
+- bounded TCP connection-attempt duration;
+- successful automatic-reconnect validation with real ESP32 hardware.
 
 The project can discover a physical endpoint, retrieve its descriptor, read live
 engineering properties, validate complete request/response transactions through
@@ -45,9 +46,9 @@ configured retry policy. If an established transport connection faults, HASE
 replaces the failed transport, retrieves and validates the descriptor again,
 resynchronizes all readable properties, and returns the endpoint to `Ready`.
 
-Applications can obtain an immutable snapshot of accumulated initial connection
-attempts, recovery attempts, failures, successful recoveries, and the timing of
-the most recent recovery sequence.
+TCP connection-attempt duration is configured independently from reconnect
+backoff. This prevents one operating-system connection attempt from remaining
+pending longer than the application permits.
 
 ---
 
@@ -174,6 +175,28 @@ Phase 5 completion baseline:
 - Reusable `ProtocolEnvelopeByteCodec` in `Hase.Protocol`
 - Removal of the Protocol Explorer framing-code duplicate
 
+### Completed TCP Connection Timeout
+
+- `TcpTransportOptions.ConnectionTimeout`
+- Five-second default connection timeout
+- Explicit timeout constructor
+- `Timeout.InfiniteTimeSpan` support
+- Timeout limited to TCP connection establishment
+- Caller cancellation remains `OperationCanceledException`
+- Connection timeout becomes `TimeoutException`
+- Timeout exception identifies the target host and port
+- Incomplete `TcpClient` disposal after failure
+- Existing successful connection behavior preserved
+- Internal deterministic TCP connector seam
+- Timeout behavior tested without unreachable network dependencies
+- C-007 configured with a three-second connection timeout
+- Physical ESP32 reset and recovery validated with bounded attempts
+
+The TCP connection timeout and reconnect delay have different responsibilities:
+
+- Connection timeout limits one `TcpClient.ConnectAsync` operation.
+- Reconnect policy controls the pause between completed attempts.
+
 ### Completed Transport Lifecycle Foundations
 
 - Explicit transport connection states
@@ -270,20 +293,11 @@ Phase 5 completion baseline:
 - Standard .NET `TimeProvider` integration
 - Existing two-argument supervisor constructor preserved
 - Injectable time provider for deterministic tests
-- Monotonic duration measurement through timestamp values
-- Recovery duration includes:
-  - retry-policy delays;
-  - failed transport attempts;
-  - successful transport establishment;
-  - descriptor synchronization;
-  - readable-property synchronization.
-- A failed retry does not reset the recovery start time.
-- A successful recovery updates completion time and duration.
-- Cancellation does not count as a reconnect failure.
-- Cancellation does not count as a successful recovery.
-- Cancellation preserves the recorded recovery start.
-- Cancellation does not create a completion time or duration when no recovery
-  completed.
+- Monotonic duration measurement
+- Recovery duration includes retry delays, failed attempts, transport
+  establishment, and synchronization
+- Cancellation remains distinct from connection failure
+- Cancellation does not increment failure or successful-recovery counters
 
 ### Completed Runtime Transport Integration Tests
 
@@ -292,14 +306,12 @@ Phase 5 completion baseline:
 - Real protocol-envelope byte codec
 - Real loopback byte transport
 - Real runtime protocol dispatcher
-- Successful descriptor synchronization
-- Successful property synchronization
-- Verification that the runtime cache is populated before `Ready`
+- Successful descriptor and property synchronization
+- Runtime cache populated before `Ready`
 - Property synchronization failure propagation
-- Verification that failed synchronization prevents `Ready`
-- Verification that failed synchronization ends in `Faulted`
-- Verification that an established transport remains available after a
-  synchronization failure
+- Failed synchronization prevents `Ready`
+- Failed synchronization ends in `Faulted`
+- Healthy transport retained after synchronization failure
 - Faulted transport replacement
 - Reconnect cancellation behavior
 - Reconnect replacement-failure behavior
@@ -319,6 +331,9 @@ Phase 5 completion baseline:
 - Recovery counter statistics
 - Deterministic recovery timing
 - Recovery cancellation statistics
+- TCP connection-timeout validation
+- Caller-cancellation preservation
+- Infinite-timeout validation
 
 ### Completed Physical Endpoint Foundations
 
@@ -373,6 +388,7 @@ C-007 provides:
 - Runtime endpoint lifecycle-state output
 - One-second temperature connectivity probe
 - Three-second connectivity-probe timeout
+- Three-second TCP connection-attempt timeout
 - Initial connection retry
 - Automatic recovery after TCP failure
 - Cached-property output during connection loss

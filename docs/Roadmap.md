@@ -115,6 +115,13 @@ Completion baseline
 - Connection lifecycle
 - Connection health
 - Connection notifications
+- Configurable TCP connection-attempt timeout
+- Five-second default TCP connection timeout
+- Explicit TCP timeout configuration
+- Infinite operating-system timeout option
+- Caller-cancellation preservation
+- `TimeoutException` for connection-attempt timeout
+- Deterministic TCP timeout tests
 
 ### Runtime synchronization
 
@@ -173,17 +180,20 @@ Completion baseline
 - C-007 automatic-reconnect scenario
 - One-second physical connectivity probe
 - Three-second probe timeout
+- Three-second TCP connection-attempt timeout
 - Physical fault detection after ESP32 reset
 - Physical cache preservation during connection loss
 - Physical descriptor and property resynchronization
 - Repeated ESP32 reset recovery
 - Recovery when the ESP32 is unavailable at startup
 - Clean physical-scenario cancellation with Ctrl+C
+- Physical validation of bounded TCP connection attempts
 
 ### Quality
 
-- 629 automated tests
+- 639 automated tests
 - Automatic reconnect validated with real ESP32 hardware
+- TCP connection timeout validated with real ESP32 hardware
 
 ## Remaining
 
@@ -192,7 +202,6 @@ Completion baseline
 - Transport tracing
 - Runtime transport diagnostics
 - Statistics-change notifications when required by a consumer
-- Configurable TCP connection-attempt timeout
 
 ### Additional transports
 

@@ -23,6 +23,10 @@ internal sealed class CapabilityC007Scenario
     private const int MaximumPayloadLength =
         4096;
 
+    private static readonly TimeSpan ConnectionTimeout =
+        TimeSpan.FromSeconds(
+            3);
+
     private static readonly TimeSpan ProbeInterval =
         TimeSpan.FromSeconds(
             1);
@@ -76,7 +80,8 @@ internal sealed class CapabilityC007Scenario
         var options =
             new TcpTransportOptions(
                 host,
-                TcpPort);
+                TcpPort,
+                ConnectionTimeout);
 
         ITransportFactory transportFactory =
             new TcpTransportFactory(
@@ -343,16 +348,22 @@ internal sealed class CapabilityC007Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            $"Host           : {host}");
+            $"Host               : {host}");
 
         Console.WriteLine(
-            $"Port           : {TcpPort}");
+            $"Port               : {TcpPort}");
 
         Console.WriteLine(
-            $"Probe interval : {ProbeInterval.TotalSeconds:0} second");
+            $"Connection timeout : "
+            + $"{ConnectionTimeout.TotalSeconds:0} seconds");
 
         Console.WriteLine(
-            $"Probe timeout  : {ProbeTimeout.TotalSeconds:0} seconds");
+            $"Probe interval     : "
+            + $"{ProbeInterval.TotalSeconds:0} second");
+
+        Console.WriteLine(
+            $"Probe timeout      : "
+            + $"{ProbeTimeout.TotalSeconds:0} seconds");
 
         Console.WriteLine();
 
@@ -408,14 +419,9 @@ internal sealed class CapabilityC007Scenario
             }
 
             if (change.CurrentStatus.State
-                == EndpointConnectionState.Ready)
-            {
-                WriteCachedProperties(
-                    _runtimeEndpoint);
-            }
-            else if (change.CurrentStatus.State
-                     is EndpointConnectionState.Faulted
-                     or EndpointConnectionState.Reconnecting)
+                is EndpointConnectionState.Ready
+                or EndpointConnectionState.Faulted
+                or EndpointConnectionState.Reconnecting)
             {
                 WriteCachedProperties(
                     _runtimeEndpoint);
