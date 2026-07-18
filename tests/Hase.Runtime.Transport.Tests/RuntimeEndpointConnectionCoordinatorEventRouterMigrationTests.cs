@@ -12,7 +12,8 @@ using Xunit;
 
 namespace Hase.Runtime.Transport.Tests;
 
-public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
+public sealed class
+    RuntimeEndpointConnectionCoordinatorEventRouterMigrationTests
 {
     private static readonly InstrumentId ControllerInstrumentId =
         new(
@@ -24,78 +25,19 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             "ButtonPressed");
 
     [Fact]
-    public async Task SubscribeBeforeConnect_EventNotification_ShouldDeliver()
+    public async Task ReconnectAsync_ReplacementDuplexSession_ShouldContinueRoutingRuntimeEvents()
     {
         // Arrange
-        var transportConnection =
+        var initialConnection =
+            new TestDuplexTransportConnection();
+
+        var replacementConnection =
             new TestDuplexTransportConnection();
 
         var transportFactory =
-            new TestTransportFactory(
-                transportConnection);
-
-        await using var connectionManager =
-            new TransportConnectionManager(
-                transportFactory);
-
-        RuntimeEndpoint runtimeEndpoint =
-            CreateRuntimeEndpoint();
-
-        var synchronizer =
-            new TestProtocolSynchronizer();
-
-        var observer =
-            new RecordingNotificationObserver();
-
-        EventNotification expectedNotification =
-            CreateNotification();
-
-        await using (
-            var coordinator =
-                new RuntimeEndpointConnectionCoordinator(
-                    connectionManager,
-                    runtimeEndpoint,
-                    synchronizer))
-        {
-            coordinator.SubscribeNotification(
-                observer);
-
-            await coordinator.ConnectAsync();
-
-            // Act
-            transportConnection.QueueReceivedMessage(
-                expectedNotification);
-
-            ProtocolMessage actualNotification =
-                await observer.NotificationReceived;
-
-            // Assert
-            Assert.Equal(
-                expectedNotification,
-                actualNotification);
-
-            Assert.Equal(
-                1,
-                observer.NotificationCount);
-
-            Assert.Equal(
-                EndpointConnectionState.Ready,
-                runtimeEndpoint.ConnectionStatus.State);
-        }
-
-        await transportConnection.ReceiveStopped;
-    }
-
-    [Fact]
-    public async Task ConnectAsync_MatchingEventNotification_ShouldPublishRuntimeEvent()
-    {
-        // Arrange
-        var transportConnection =
-            new TestDuplexTransportConnection();
-
-        var transportFactory =
-            new TestTransportFactory(
-                transportConnection);
+            new QueuedTransportFactory(
+                initialConnection,
+                replacementConnection);
 
         await using var connectionManager =
             new TransportConnectionManager(
@@ -117,8 +59,27 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         var synchronizer =
             new TestProtocolSynchronizer();
 
-        EventNotification notification =
-            CreateNotification();
+        EventNotification initialNotification =
+            CreateNotification(
+                new DateTimeOffset(
+                    2026,
+                    7,
+                    18,
+                    13,
+                    0,
+                    0,
+                    TimeSpan.Zero));
+
+        EventNotification replacementNotification =
+            CreateNotification(
+                new DateTimeOffset(
+                    2026,
+                    7,
+                    18,
+                    13,
+                    1,
+                    0,
+                    TimeSpan.Zero));
 
         await using (
             var coordinator =
@@ -129,53 +90,98 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         {
             await coordinator.ConnectAsync();
 
-            // Act
-            transportConnection.QueueReceivedMessage(
-                notification);
+            await initialConnection.ReceiveStarted;
 
-            RuntimeEventOccurrence occurrence =
-                await eventObserver.EventOccurred;
+            initialConnection.QueueReceivedMessage(
+                initialNotification);
 
-            // Assert
+            RuntimeEventOccurrence initialOccurrence =
+                await eventObserver.FirstOccurrence;
+
             Assert.Same(
                 runtimeEvent,
-                occurrence.Event);
+                initialOccurrence.Event);
 
             Assert.Equal(
-                notification.TimestampUtc,
-                occurrence.TimestampUtc);
+                initialNotification.TimestampUtc,
+                initialOccurrence.TimestampUtc);
 
             Assert.Null(
-                occurrence.Value);
+                initialOccurrence.Value);
 
             Assert.Equal(
                 1,
                 eventObserver.OccurrenceCount);
 
+            initialConnection.Fault(
+                new IOException(
+                    "The simulated initial duplex session failed."));
+
+            await initialConnection.ReceiveStopped;
+
+            Assert.Equal(
+                EndpointConnectionState.Faulted,
+                runtimeEndpoint.ConnectionStatus.State);
+
+            await coordinator.ReconnectAsync();
+
+            await replacementConnection.ReceiveStarted;
+
             Assert.Equal(
                 EndpointConnectionState.Ready,
                 runtimeEndpoint.ConnectionStatus.State);
+
+            replacementConnection.QueueReceivedMessage(
+                replacementNotification);
+
+            RuntimeEventOccurrence replacementOccurrence =
+                await eventObserver.SecondOccurrence;
+
+            Assert.Same(
+                runtimeEvent,
+                replacementOccurrence.Event);
+
+            Assert.Equal(
+                replacementNotification.TimestampUtc,
+                replacementOccurrence.TimestampUtc);
+
+            Assert.Null(
+                replacementOccurrence.Value);
+
+            Assert.Equal(
+                2,
+                eventObserver.OccurrenceCount);
+
+            Assert.Equal(
+                2,
+                synchronizer.SynchronizationCount);
+
+            Assert.Equal(
+                2,
+                transportFactory.ConnectCallCount);
+
+            Assert.Equal(
+                1,
+                connectionManager.ReplacementCount);
         }
 
         runtimeEvent.Unsubscribe(
             eventObserver);
 
-        await transportConnection.ReceiveStopped;
+        await replacementConnection.ReceiveStopped;
+
+        Assert.True(
+            replacementConnection.ReceivedCancellationToken
+                .IsCancellationRequested);
     }
 
-    private static EventNotification CreateNotification()
+    private static EventNotification CreateNotification(
+        DateTimeOffset timestampUtc)
     {
         return new EventNotification(
             ControllerInstrumentId,
             ButtonPressedPath,
-            new DateTimeOffset(
-                2026,
-                7,
-                18,
-                12,
-                0,
-                0,
-                TimeSpan.Zero),
+            timestampUtc,
             null);
     }
 
@@ -205,10 +211,10 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
                         ])
             };
 
-        var descriptor =
+        var endpointDescriptor =
             new EndpointDescriptor(
                 new EndpointId(
-                    "coordinator-notification-endpoint"),
+                    "coordinator-event-router-migration-endpoint"),
                 [
                     controllerInstrumentDescriptor
                 ])
@@ -217,10 +223,10 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
                     new EndpointMetadata
                     {
                         DisplayName =
-                            "Coordinator Notification Endpoint",
+                            "Coordinator Event Router Migration Endpoint",
                         Description =
-                            "Endpoint used to verify coordinator-level "
-                            + "notification delivery and runtime event routing."
+                            "Endpoint used to verify runtime event routing "
+                            + "after duplex session replacement."
                     }
             };
 
@@ -228,7 +234,7 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             new RuntimeContext();
 
         return context.AddEndpoint(
-            descriptor);
+            endpointDescriptor);
     }
 
     private static RuntimeEvent GetButtonPressedRuntimeEvent(
@@ -250,6 +256,12 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         : IRuntimeEndpointSynchronizer,
           IRuntimeProtocolEndpointSynchronizer
     {
+        public int SynchronizationCount
+        {
+            get;
+            private set;
+        }
+
         public Task SynchronizeAsync(
             ITransportConnection connection,
             RuntimeEndpoint runtimeEndpoint,
@@ -273,37 +285,9 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            SynchronizationCount++;
+
             return Task.CompletedTask;
-        }
-    }
-
-    private sealed class RecordingNotificationObserver
-        : IProtocolNotificationObserver
-    {
-        private readonly TaskCompletionSource<ProtocolMessage>
-            _notificationReceived =
-                new(
-                    TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public Task<ProtocolMessage> NotificationReceived =>
-            _notificationReceived.Task;
-
-        public int NotificationCount
-        {
-            get;
-            private set;
-        }
-
-        public void OnProtocolNotification(
-            ProtocolMessage notification)
-        {
-            ArgumentNullException.ThrowIfNull(
-                notification);
-
-            NotificationCount++;
-
-            _notificationReceived.TrySetResult(
-                notification);
         }
     }
 
@@ -311,18 +295,26 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         : IRuntimeEventObserver
     {
         private readonly TaskCompletionSource<RuntimeEventOccurrence>
-            _eventOccurred =
+            _firstOccurrence =
                 new(
                     TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public Task<RuntimeEventOccurrence> EventOccurred =>
-            _eventOccurred.Task;
+        private readonly TaskCompletionSource<RuntimeEventOccurrence>
+            _secondOccurrence =
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public int OccurrenceCount
-        {
-            get;
-            private set;
-        }
+        private int _occurrenceCount;
+
+        public Task<RuntimeEventOccurrence> FirstOccurrence =>
+            _firstOccurrence.Task;
+
+        public Task<RuntimeEventOccurrence> SecondOccurrence =>
+            _secondOccurrence.Task;
+
+        public int OccurrenceCount =>
+            Volatile.Read(
+                ref _occurrenceCount);
 
         public void OnRuntimeEventOccurred(
             RuntimeEventOccurrence occurrence)
@@ -330,25 +322,44 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             ArgumentNullException.ThrowIfNull(
                 occurrence);
 
-            OccurrenceCount++;
+            int occurrenceCount =
+                Interlocked.Increment(
+                    ref _occurrenceCount);
 
-            _eventOccurred.TrySetResult(
-                occurrence);
+            if (occurrenceCount == 1)
+            {
+                _firstOccurrence.TrySetResult(
+                    occurrence);
+            }
+            else if (occurrenceCount == 2)
+            {
+                _secondOccurrence.TrySetResult(
+                    occurrence);
+            }
         }
     }
 
-    private sealed class TestTransportFactory
+    private sealed class QueuedTransportFactory
         : ITransportFactory
     {
-        private readonly ITransportConnection _connection;
+        private readonly Queue<ITransportConnection>
+            _connections;
 
-        public TestTransportFactory(
-            ITransportConnection connection)
+        public QueuedTransportFactory(
+            params ITransportConnection[] connections)
         {
-            _connection =
-                connection
-                ?? throw new ArgumentNullException(
-                    nameof(connection));
+            ArgumentNullException.ThrowIfNull(
+                connections);
+
+            _connections =
+                new Queue<ITransportConnection>(
+                    connections);
+        }
+
+        public int ConnectCallCount
+        {
+            get;
+            private set;
         }
 
         public Task<ITransportConnection> ConnectAsync(
@@ -356,13 +367,23 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            ConnectCallCount++;
+
+            if (!_connections.TryDequeue(
+                    out ITransportConnection? connection))
+            {
+                throw new InvalidOperationException(
+                    "No test transport connection remains.");
+            }
+
             return Task.FromResult(
-                _connection);
+                connection);
         }
     }
 
     private sealed class TestDuplexTransportConnection
-        : ITransportDuplexConnection
+        : ITransportDuplexConnection,
+          IAsyncDisposable
     {
         private readonly Channel<byte[]> _receivedFrames =
             Channel.CreateUnbounded<byte[]>(
@@ -380,28 +401,35 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         private readonly ProtocolEnvelopeByteCodec _envelopeByteCodec =
             new();
 
+        private readonly TaskCompletionSource _receiveStarted =
+            new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
         private readonly TaskCompletionSource _receiveStopped =
             new(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
+        private TransportConnectionState _state =
+            TransportConnectionState.Connected;
+
         public event EventHandler<
             TransportConnectionStateChangedEventArgs>?
-            StateChanged
-        {
-            add
-            {
-            }
-
-            remove
-            {
-            }
-        }
+            StateChanged;
 
         public TransportConnectionState State =>
-            TransportConnectionState.Connected;
+            _state;
+
+        public Task ReceiveStarted =>
+            _receiveStarted.Task;
 
         public Task ReceiveStopped =>
             _receiveStopped.Task;
+
+        public CancellationToken ReceivedCancellationToken
+        {
+            get;
+            private set;
+        }
 
         public Task<byte[]> ExchangeAsync(
             byte[] request,
@@ -416,19 +444,23 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException(
-                "No protocol request is expected by this notification test.");
+                "No protocol request is expected by this migration test.");
         }
 
         public async Task<byte[]> ReceiveAsync(
             CancellationToken cancellationToken = default)
         {
+            ReceivedCancellationToken =
+                cancellationToken;
+
+            _receiveStarted.TrySetResult();
+
             try
             {
                 return await _receivedFrames.Reader.ReadAsync(
                     cancellationToken);
             }
-            catch (OperationCanceledException)
-                when (cancellationToken.IsCancellationRequested)
+            catch
             {
                 _receiveStopped.TrySetResult();
 
@@ -456,6 +488,50 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
                 throw new InvalidOperationException(
                     "The notification frame could not be queued.");
             }
+        }
+
+        public void Fault(
+            Exception exception)
+        {
+            ArgumentNullException.ThrowIfNull(
+                exception);
+
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            _receivedFrames.Writer.TryComplete(
+                exception);
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            TransitionTo(
+                TransportConnectionState.Closed);
+
+            _receivedFrames.Writer.TryComplete();
+
+            return ValueTask.CompletedTask;
+        }
+
+        private void TransitionTo(
+            TransportConnectionState state)
+        {
+            TransportConnectionState previousState =
+                _state;
+
+            if (previousState == state)
+            {
+                return;
+            }
+
+            _state =
+                state;
+
+            StateChanged?.Invoke(
+                this,
+                new TransportConnectionStateChangedEventArgs(
+                    previousState,
+                    state));
         }
     }
 }
