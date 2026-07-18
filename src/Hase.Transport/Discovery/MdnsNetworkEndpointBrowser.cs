@@ -3,7 +3,6 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
-using Tmds.MDns;
 
 namespace Hase.Transport.Discovery;
 
@@ -16,98 +15,121 @@ public sealed class MdnsNetworkEndpointBrowser
     internal const string ServiceType =
         "_hase._tcp";
 
+    private readonly Func<
+        IMdnsServiceBrowser> _serviceBrowserFactory;
+
+    /// <summary>
+    /// Initializes an mDNS network endpoint browser.
+    /// </summary>
+    public MdnsNetworkEndpointBrowser()
+        : this(
+            static () =>
+                new TmdsMdnsServiceBrowser())
+    {
+    }
+
+    internal MdnsNetworkEndpointBrowser(
+        Func<IMdnsServiceBrowser> serviceBrowserFactory)
+    {
+        ArgumentNullException.ThrowIfNull(
+            serviceBrowserFactory);
+
+        _serviceBrowserFactory =
+            serviceBrowserFactory;
+    }
+
     /// <inheritdoc />
     public async IAsyncEnumerable<
         NetworkEndpointCandidate> BrowseAsync(
             [EnumeratorCancellation]
             CancellationToken cancellationToken = default)
     {
-        var channel =
-            Channel.CreateUnbounded<
-                NetworkEndpointCandidate>(
-                    new UnboundedChannelOptions
-                    {
-                        SingleReader = true,
-                        SingleWriter = false
-                    });
+        IMdnsServiceBrowser serviceBrowser =
+            _serviceBrowserFactory()
+            ?? throw new InvalidOperationException(
+                "The mDNS service browser factory returned null.");
 
-        var observedCandidates =
-            new HashSet<NetworkEndpointCandidate>();
-
-        var observedCandidatesLock =
-            new object();
-
-        var serviceBrowser =
-            new ServiceBrowser();
-
-        EventHandler<
-            ServiceAnnouncementEventArgs> announcementHandler =
-                (
-                    sender,
-                    eventArgs) =>
-                {
-                    IReadOnlyList<
-                        NetworkEndpointCandidate> candidates =
-                            CreateCandidates(
-                                eventArgs.Announcement.Instance,
-                                eventArgs.Announcement.Addresses,
-                                eventArgs.Announcement.Port);
-
-                    foreach (
-                        NetworkEndpointCandidate candidate
-                        in candidates)
-                    {
-                        bool added;
-
-                        lock (observedCandidatesLock)
-                        {
-                            added =
-                                observedCandidates.Add(
-                                    candidate);
-                        }
-
-                        if (added)
-                        {
-                            channel.Writer.TryWrite(
-                                candidate);
-                        }
-                    }
-                };
-
-        serviceBrowser.ServiceAdded +=
-            announcementHandler;
-
-        serviceBrowser.ServiceChanged +=
-            announcementHandler;
-
-        try
+        using (serviceBrowser)
         {
-            cancellationToken
-                .ThrowIfCancellationRequested();
+            var channel =
+                Channel.CreateUnbounded<
+                    NetworkEndpointCandidate>(
+                        new UnboundedChannelOptions
+                        {
+                            SingleReader = true,
+                            SingleWriter = false
+                        });
 
-            serviceBrowser.StartBrowse(
-                ServiceType,
-                useSynchronizationContext: false);
+            var observedCandidates =
+                new HashSet<
+                    NetworkEndpointCandidate>();
 
-            await foreach (
-                NetworkEndpointCandidate candidate
-                in channel.Reader.ReadAllAsync(
-                    cancellationToken))
+            var observedCandidatesLock =
+                new object();
+
+            EventHandler<
+                MdnsServiceAnnouncementEventArgs>
+                    announcementHandler =
+                        (
+                            sender,
+                            eventArgs) =>
+                        {
+                            IReadOnlyList<
+                                NetworkEndpointCandidate> candidates =
+                                    CreateCandidates(
+                                        eventArgs
+                                            .ServiceInstanceName,
+                                        eventArgs
+                                            .Addresses,
+                                        eventArgs
+                                            .Port);
+
+                            foreach (
+                                NetworkEndpointCandidate candidate
+                                in candidates)
+                            {
+                                bool added;
+
+                                lock (observedCandidatesLock)
+                                {
+                                    added =
+                                        observedCandidates.Add(
+                                            candidate);
+                                }
+
+                                if (added)
+                                {
+                                    channel.Writer.TryWrite(
+                                        candidate);
+                                }
+                            }
+                        };
+
+            serviceBrowser.AnnouncementReceived +=
+                announcementHandler;
+
+            try
             {
-                yield return candidate;
+                cancellationToken
+                    .ThrowIfCancellationRequested();
+
+                serviceBrowser.Start();
+
+                await foreach (
+                    NetworkEndpointCandidate candidate
+                    in channel.Reader.ReadAllAsync(
+                        cancellationToken))
+                {
+                    yield return candidate;
+                }
             }
-        }
-        finally
-        {
-            serviceBrowser.ServiceAdded -=
-                announcementHandler;
+            finally
+            {
+                serviceBrowser.AnnouncementReceived -=
+                    announcementHandler;
 
-            serviceBrowser.ServiceChanged -=
-                announcementHandler;
-
-            serviceBrowser.StopBrowse();
-
-            channel.Writer.TryComplete();
+                channel.Writer.TryComplete();
+            }
         }
     }
 
