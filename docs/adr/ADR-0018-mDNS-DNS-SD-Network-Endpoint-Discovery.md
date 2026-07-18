@@ -141,6 +141,7 @@ The service:
 
 - preserves rejected candidates for diagnostics;
 - deduplicates verified endpoints by authoritative `EndpointId`;
+- produces a unique endpoint inventory for the lifetime of one discovery session;
 - propagates cancellation;
 - does not create a runtime endpoint;
 - does not attach a verified endpoint;
@@ -164,6 +165,10 @@ DiscoverResponse.EndpointId
 ```
 
 This prevents repeated network advertisements from producing duplicate candidate work while still allowing multiple network candidates to be recognized as the same authoritative physical endpoint.
+
+Discovery is not a live presence-monitoring contract. An endpoint that disappears and returns with the same candidate address, port, and authoritative endpoint ID is not emitted again during the same discovery session.
+
+Live presence tracking would require explicit Added, Updated, and Removed endpoint events. That contract is deferred and is not part of Phase 6 network discovery.
 
 ## Protocol Explorer
 
@@ -218,6 +223,7 @@ Failure to initialize mDNS does not disable the existing explicitly addressed TC
 - Firewalls, access points, VLANs, and multicast filtering can prevent discovery.
 - A third-party .NET mDNS package is required.
 - Sequential verification can delay later candidates when an earlier candidate times out.
+- The unique-inventory result stream does not report live endpoint removal or reappearance.
 - DNS-SD discovery does not provide authentication, authorization, or encryption.
 - IPv6 candidates are currently ignored.
 
@@ -303,6 +309,8 @@ Result   : Verified
 Endpoint : doit-esp32-devkitc-v4-01
 ```
 
+During an additional physical reset test, the ESP32 returned with the same address, port, and authoritative endpoint ID. The active discovery session did not emit a duplicate result. This is the expected unique-inventory behavior.
+
 The verified automated-test baseline is:
 
 ```text
@@ -314,9 +322,9 @@ The verified automated-test baseline is:
 # Follow-up Work
 
 - keep Project Status and Roadmap synchronized with the accepted decision;
-- validate discovery during ESP32 reset;
 - validate advertisement recovery after Wi-Fi interruption;
 - decide whether bounded parallel verification is necessary;
+- design live discovery presence tracking with Added, Updated, and Removed events if required by a future endpoint-browser UI;
 - design explicit endpoint selection and runtime attachment;
 - validate discovery on Linux;
 - add IPv6 browsing and verification;

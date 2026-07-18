@@ -211,6 +211,10 @@ Unreachable, timed-out, non-HASE, and invalid-response candidates are isolated. 
 
 Network discovery does not create, attach, replace, or mutate runtime endpoints. Application or user selection is required before future attachment.
 
+One discovery session produces a unique endpoint inventory. An endpoint that disappears and returns with the same address, port, and authoritative endpoint ID is not emitted again during that session.
+
+Live presence tracking with Added, Updated, and Removed endpoint events is a separate future capability.
+
 The first implementation accepts IPv4 candidates. IPv6 remains backlog.
 
 Physical validation produced:
@@ -239,6 +243,8 @@ DiscoverResponse
     ->
 VerifiedNetworkEndpoint
 ```
+
+A physical ESP32 reset test confirmed the unique-inventory behavior: after the endpoint returned with the same candidate and authoritative identity, Protocol Explorer did not display a duplicate result. Ctrl+C still stopped discovery cleanly in PowerShell.
 
 ---
 
@@ -306,17 +312,17 @@ ADR-0001 through ADR-0018 are accepted. ADR-0017 defines duplex protocol health 
 
 # Current Limitations
 
-The current implementation intentionally excludes IPv6 discovery, authentication, authorization, encryption, automatic runtime attachment, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, and USB serial transport.
+The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic runtime attachment, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, and USB serial transport.
 
 ---
 
 # Immediate Next Steps
 
-1. Validate discovery behavior during ESP32 reset and Wi-Fi recovery.
+1. Validate advertisement recovery after Wi-Fi interruption.
 2. Decide whether sequential verification is sufficient.
-3. Design explicit endpoint selection and runtime attachment only after approval.
-4. Validate discovery on Linux.
-5. Decide whether IPv6 belongs in Phase 6.
+3. Keep live discovery presence tracking in backlog unless explicitly approved.
+4. Design explicit endpoint selection and runtime attachment only after approval.
+5. Validate discovery on Linux and decide whether IPv6 belongs in Phase 6.
 6. Continue Phase 6 only after explicit scope approval.
 
 ---

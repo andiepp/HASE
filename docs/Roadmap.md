@@ -216,18 +216,23 @@ Constraints:
 - candidate failures remain isolated;
 - cancellation stops browsing and verification;
 - discovered endpoints never replace runtime endpoints automatically;
+- one discovery session produces a unique endpoint inventory;
+- same-identity endpoint reappearance is not emitted again during that session;
+- live Added/Updated/Removed presence tracking remains backlog;
 - authentication and authorization remain out of scope.
 
 Physical capability C-015 covers IPv4 mDNS/DNS-SD discovery and Protocol Version 1 verification.
+
+A physical reset test confirmed that an endpoint returning with the same address, port, and authoritative identity is not emitted as a duplicate result. This is the intended unique-inventory behavior.
 
 Architecture: ADR-0018 - mDNS/DNS-SD Network Endpoint Discovery.
 
 ## 6.9 Remaining Phase 6 Work
 
-- validate reset behavior during active discovery;
 - validate Wi-Fi interruption and re-advertisement;
 - decide sequential versus bounded-parallel verification;
 - define discovery-result lifetime and diagnostics;
+- design live discovery presence events only if required by future tooling;
 - design explicit endpoint selection and runtime attachment;
 - validate Linux discovery;
 - decide IPv6 scope;
@@ -291,8 +296,8 @@ Next:
 # Current Priorities
 
 1. Commit ADR-0018 and the synchronized documentation state.
-2. Validate discovery recovery after ESP32 reset.
-3. Validate advertisement recovery after Wi-Fi interruption.
+2. Validate advertisement recovery after Wi-Fi interruption.
+3. Keep live discovery presence tracking in backlog.
 4. Decide verification concurrency.
 5. Validate Linux discovery.
 6. Decide whether IPv6 belongs in Phase 6.
