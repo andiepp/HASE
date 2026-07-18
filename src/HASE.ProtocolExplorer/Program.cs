@@ -50,7 +50,8 @@ internal static class Program
                     new CapabilityC009Scenario(),
                     new CapabilityC010Scenario(),
                     new CapabilityC011Scenario(),
-                    new CapabilityC012Scenario()
+                    new CapabilityC012Scenario(),
+                    new CapabilityC013Scenario()
                 ]);
 
         string scenarioName =
@@ -158,6 +159,9 @@ internal static class Program
 
         Console.WriteLine(
             "  c012 <ESP32 host or IP address>");
+
+        Console.WriteLine(
+            "  c013 <ESP32 host or IP address>");
 
         Console.WriteLine();
 
