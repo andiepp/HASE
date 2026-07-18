@@ -16,8 +16,11 @@ public static class RuntimeEndpointConnectionSupervisorDiagnosticsExtensions
         ArgumentNullException.ThrowIfNull(
             supervisor);
 
+        RuntimeEndpointConnectionCoordinator coordinator =
+            supervisor.Coordinator;
+
         Hase.Transport.TransportConnectionManager connectionManager =
-            supervisor.Coordinator.ConnectionManager;
+            coordinator.ConnectionManager;
 
         return new RuntimeEndpointConnectionDiagnostics(
             transportHealth:
@@ -25,6 +28,6 @@ public static class RuntimeEndpointConnectionSupervisorDiagnosticsExtensions
             connectionStatistics:
                 supervisor.GetStatistics(),
             exchangeStatistics:
-                connectionManager.GetExchangeStatistics());
+                coordinator.GetExchangeStatistics());
     }
 }

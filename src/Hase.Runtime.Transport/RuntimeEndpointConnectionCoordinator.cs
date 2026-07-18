@@ -22,6 +22,22 @@ public sealed class RuntimeEndpointConnectionCoordinator
     private readonly RuntimeEndpoint _runtimeEndpoint;
     private readonly IRuntimeEndpointSynchronizer _synchronizer;
 
+    private readonly TransportExchangeStatisticsCollector
+        _protocolExchangeStatisticsCollector =
+            new();
+
+    private readonly RuntimeProtocolNotificationSubscriptions
+        _notificationSubscriptions =
+            new();
+
+    private readonly ProtocolRuntimeEndpointEventRouter
+        _eventRouter;
+
+    private RuntimeProtocolConnectionBinding?
+        _protocolConnectionBinding;
+
+    private bool _usesProtocolExchangeStatistics;
+
     private bool _disposed;
 
     /// <summary>
@@ -47,6 +63,13 @@ public sealed class RuntimeEndpointConnectionCoordinator
             ?? throw new ArgumentNullException(
                 nameof(synchronizer));
 
+        _eventRouter =
+            new ProtocolRuntimeEndpointEventRouter(
+                _runtimeEndpoint);
+
+        _notificationSubscriptions.Subscribe(
+            _eventRouter);
+
         _connectionManager.HealthChanged +=
             OnTransportHealthChanged;
 
@@ -71,6 +94,50 @@ public sealed class RuntimeEndpointConnectionCoordinator
     /// </summary>
     public IRuntimeEndpointSynchronizer Synchronizer =>
         _synchronizer;
+
+    /// <summary>
+    /// Gets aggregate logical protocol-exchange statistics for duplex
+    /// sessions, or transport exchange statistics for legacy connections.
+    /// </summary>
+    public TransportExchangeStatistics GetExchangeStatistics()
+    {
+        if (_usesProtocolExchangeStatistics)
+        {
+            return _protocolExchangeStatisticsCollector
+                .GetStatistics();
+        }
+
+        return _connectionManager.GetExchangeStatistics();
+    }
+
+    /// <summary>
+    /// Subscribes an observer to unsolicited protocol notifications.
+    /// </summary>
+    /// <remarks>
+    /// The subscription is retained across duplex session replacement.
+    /// Runtime event notifications are also routed automatically into the
+    /// coordinator's runtime endpoint.
+    /// </remarks>
+    public void SubscribeNotification(
+        IProtocolNotificationObserver observer)
+    {
+        ThrowIfDisposed();
+
+        _notificationSubscriptions.Subscribe(
+            observer);
+    }
+
+    /// <summary>
+    /// Removes a protocol-notification observer.
+    /// </summary>
+    public void UnsubscribeNotification(
+        IProtocolNotificationObserver observer)
+    {
+        ThrowIfDisposed();
+
+        _notificationSubscriptions.Unsubscribe(
+            observer);
+    }
 
     /// <summary>
     /// Establishes the initial transport connection and synchronizes the
@@ -175,13 +242,13 @@ public sealed class RuntimeEndpointConnectionCoordinator
     }
 
     /// <summary>
-    /// Stops lifecycle coordination.
+    /// Stops lifecycle coordination and the active protocol receive pump.
     /// </summary>
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed)
         {
-            return ValueTask.CompletedTask;
+            return;
         }
 
         _disposed =
@@ -190,7 +257,19 @@ public sealed class RuntimeEndpointConnectionCoordinator
         _connectionManager.HealthChanged -=
             OnTransportHealthChanged;
 
-        return ValueTask.CompletedTask;
+        RuntimeProtocolConnectionBinding? binding =
+            _protocolConnectionBinding;
+
+        _protocolConnectionBinding =
+            null;
+
+        if (binding is not null)
+        {
+            await binding.DisposeAsync();
+
+            DetachProtocolConnectionServices(
+                binding);
+        }
     }
 
     private Task<ITransportConnection> GetRecoveryConnectionAsync(
@@ -234,9 +313,8 @@ public sealed class RuntimeEndpointConnectionCoordinator
 
         try
         {
-            await _synchronizer.SynchronizeAsync(
+            await SynchronizeThroughAvailableContractAsync(
                 connection,
-                _runtimeEndpoint,
                 cancellationToken);
         }
         catch (OperationCanceledException)
@@ -263,6 +341,109 @@ public sealed class RuntimeEndpointConnectionCoordinator
             EndpointConnectionState.Ready,
             DateTimeOffset.UtcNow,
             "The endpoint is connected, synchronized, and ready.");
+    }
+
+    private async Task SynchronizeThroughAvailableContractAsync(
+        ITransportConnection connection,
+        CancellationToken cancellationToken)
+    {
+        if (_synchronizer
+            is not IRuntimeProtocolEndpointSynchronizer protocolSynchronizer)
+        {
+            await _synchronizer.SynchronizeAsync(
+                connection,
+                _runtimeEndpoint,
+                cancellationToken);
+
+            return;
+        }
+
+        RuntimeProtocolConnectionBinding binding =
+            await GetOrCreateProtocolConnectionBindingAsync(
+                connection);
+
+        await protocolSynchronizer.SynchronizeAsync(
+            binding.ProtocolConnection,
+            _runtimeEndpoint,
+            cancellationToken);
+    }
+
+    private async Task<RuntimeProtocolConnectionBinding>
+        GetOrCreateProtocolConnectionBindingAsync(
+            ITransportConnection connection)
+    {
+        RuntimeProtocolConnectionBinding? currentBinding =
+            _protocolConnectionBinding;
+
+        if (currentBinding is not null
+            && ReferenceEquals(
+                currentBinding.TransportConnection,
+                connection))
+        {
+            return currentBinding;
+        }
+
+        _protocolConnectionBinding =
+            null;
+
+        if (currentBinding is not null)
+        {
+            await currentBinding.DisposeAsync();
+
+            DetachProtocolConnectionServices(
+                currentBinding);
+        }
+
+        RuntimeProtocolConnectionBinding replacementBinding =
+            RuntimeProtocolConnectionBinding.Create(
+                connection);
+
+        AttachProtocolConnectionServices(
+            replacementBinding);
+
+        _protocolConnectionBinding =
+            replacementBinding;
+
+        return replacementBinding;
+    }
+
+    private void AttachProtocolConnectionServices(
+        RuntimeProtocolConnectionBinding binding)
+    {
+        if (binding.ProtocolConnection
+            is ITransportExchangeTraceSource traceSource)
+        {
+            traceSource.SubscribeTrace(
+                _protocolExchangeStatisticsCollector);
+
+            _usesProtocolExchangeStatistics =
+                true;
+        }
+
+        if (binding.ProtocolConnection
+            is IRuntimeProtocolNotificationSource notificationSource)
+        {
+            _notificationSubscriptions.Attach(
+                notificationSource);
+        }
+    }
+
+    private void DetachProtocolConnectionServices(
+        RuntimeProtocolConnectionBinding binding)
+    {
+        if (binding.ProtocolConnection
+            is IRuntimeProtocolNotificationSource notificationSource)
+        {
+            _notificationSubscriptions.Detach(
+                notificationSource);
+        }
+
+        if (binding.ProtocolConnection
+            is ITransportExchangeTraceSource traceSource)
+        {
+            traceSource.UnsubscribeTrace(
+                _protocolExchangeStatisticsCollector);
+        }
     }
 
     private void ApplyInitialHealth(

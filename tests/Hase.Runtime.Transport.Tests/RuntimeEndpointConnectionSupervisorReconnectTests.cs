@@ -30,6 +30,12 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
         RuntimeEndpoint runtimeEndpoint =
             CreateRuntimeEndpoint();
 
+        var statusObserver =
+            new ReadyStatusObserver();
+
+        runtimeEndpoint.SubscribeConnectionStatus(
+            statusObserver);
+
         var synchronizer =
             new TestRuntimeEndpointSynchronizer();
 
@@ -54,7 +60,7 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
             supervisor.RunAsync(
                 cancellationTokenSource.Token);
 
-        await synchronizer.FirstSynchronizationCompleted;
+        await statusObserver.FirstReady;
 
         Assert.Equal(
             EndpointConnectionState.Ready,
@@ -63,7 +69,7 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
         initialConnection.TransitionTo(
             TransportConnectionState.Faulted);
 
-        await synchronizer.SecondSynchronizationCompleted;
+        await statusObserver.SecondReady;
 
         Assert.Equal(
             EndpointConnectionState.Ready,
@@ -104,6 +110,9 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
         Assert.Equal(
             EndpointConnectionState.Disconnected,
             runtimeEndpoint.ConnectionStatus.State);
+
+        runtimeEndpoint.UnsubscribeConnectionStatus(
+            statusObserver);
     }
 
     private static RuntimeEndpoint CreateRuntimeEndpoint()
@@ -115,6 +124,52 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
             new EndpointDescriptor(
                 new EndpointId(
                     "Endpoint")));
+    }
+
+    private sealed class ReadyStatusObserver
+        : IEndpointConnectionStatusObserver
+    {
+        private readonly TaskCompletionSource _firstReady =
+            new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly TaskCompletionSource _secondReady =
+            new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _readyCount;
+
+        public Task FirstReady =>
+            _firstReady.Task;
+
+        public Task SecondReady =>
+            _secondReady.Task;
+
+        public void OnEndpointConnectionStatusChanged(
+            EndpointConnectionStatusChanged change)
+        {
+            ArgumentNullException.ThrowIfNull(
+                change);
+
+            if (change.CurrentStatus.State
+                != EndpointConnectionState.Ready)
+            {
+                return;
+            }
+
+            int readyCount =
+                Interlocked.Increment(
+                    ref _readyCount);
+
+            if (readyCount == 1)
+            {
+                _firstReady.TrySetResult();
+            }
+            else if (readyCount == 2)
+            {
+                _secondReady.TrySetResult();
+            }
+        }
     }
 
     private sealed class TestReconnectPolicy
@@ -178,27 +233,11 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
     private sealed class TestRuntimeEndpointSynchronizer
         : IRuntimeEndpointSynchronizer
     {
-        private readonly TaskCompletionSource<bool>
-            _firstSynchronizationCompleted =
-            new(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
-        private readonly TaskCompletionSource<bool>
-            _secondSynchronizationCompleted =
-            new(
-                TaskCreationOptions.RunContinuationsAsynchronously);
-
         public int SynchronizeCallCount
         {
             get;
             private set;
         }
-
-        public Task FirstSynchronizationCompleted =>
-            _firstSynchronizationCompleted.Task;
-
-        public Task SecondSynchronizationCompleted =>
-            _secondSynchronizationCompleted.Task;
 
         public Task SynchronizeAsync(
             ITransportConnection connection,
@@ -214,17 +253,6 @@ public sealed class RuntimeEndpointConnectionSupervisorReconnectTests
             cancellationToken.ThrowIfCancellationRequested();
 
             SynchronizeCallCount++;
-
-            if (SynchronizeCallCount == 1)
-            {
-                _firstSynchronizationCompleted.TrySetResult(
-                    true);
-            }
-            else if (SynchronizeCallCount == 2)
-            {
-                _secondSynchronizationCompleted.TrySetResult(
-                    true);
-            }
 
             return Task.CompletedTask;
         }
