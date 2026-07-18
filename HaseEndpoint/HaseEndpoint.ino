@@ -7,6 +7,7 @@
 #include "HaseBme280Sensor.h"
 #include "HaseDiscoverHandler.h"
 #include "HasePhysicalEndpointDescriptor.h"
+#include "HasePhysicalExecuteCommandHandler.h"
 #include "HasePhysicalPropertyService.h"
 #include "HasePhysicalReadPropertyHandler.h"
 #include "HasePhysicalWritePropertyHandler.h"
@@ -87,6 +88,9 @@ bool processReadPropertyRequest(
 bool processWritePropertyRequest(
     const HaseProtocolEnvelope& envelope);
 
+bool processExecuteCommandRequest(
+    const HaseProtocolEnvelope& envelope);
+
 bool processReadEndpointDescriptorRequest(
     const HaseProtocolEnvelope& envelope);
 
@@ -124,7 +128,7 @@ void setup()
     Serial.println();
 
     Serial.println(
-        "Firmware capability: C-008 WriteProperty");
+        "Firmware capability: C-010 ExecuteCommand");
 
     Serial.println();
 
@@ -545,6 +549,16 @@ bool processProtocolFrame(
         }
 
         case HaseProtocolDispatchResult::
+            ExecuteCommandRequestRecognized:
+
+        case HaseProtocolDispatchResult::
+            InvalidExecuteCommandRequest:
+        {
+            return processExecuteCommandRequest(
+                envelope);
+        }
+
+        case HaseProtocolDispatchResult::
             ReadEndpointDescriptorRequestRecognized:
         {
             return processReadEndpointDescriptorRequest(
@@ -633,7 +647,8 @@ bool processReadPropertyRequest(
             envelope,
             request))
     {
-        uint32_t responseLength = 0;
+        uint32_t responseLength =
+            0;
 
         HaseReadPropertyResponseHandler::
             CreateFailureResponse(
@@ -736,6 +751,58 @@ bool processWritePropertyRequest(
 
     Serial.println(
         "WritePropertyResponse sent.");
+
+    Serial.println();
+
+    return true;
+}
+
+bool processExecuteCommandRequest(
+    const HaseProtocolEnvelope& envelope)
+{
+    uint32_t responseLength =
+        0;
+
+    bool responseCreated =
+        HasePhysicalExecuteCommandHandler::CreateResponse(
+            envelope,
+            physicalPropertyService,
+            responseBuffer,
+            sizeof(responseBuffer),
+            responseLength);
+
+    if (!responseCreated)
+    {
+        Serial.println(
+            "Failed to create ExecuteCommandResponse.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    if (!transport.writeFrame(
+            responseBuffer,
+            responseLength))
+    {
+        Serial.println(
+            "Failed to write ExecuteCommandResponse. "
+            "Closing client connection.");
+
+        transport.disconnectClient();
+
+        return true;
+    }
+
+    printPayload(
+        "Responded",
+        responseBuffer,
+        responseLength);
+
+    Serial.println();
+
+    Serial.println(
+        "ExecuteCommandResponse sent.");
 
     Serial.println();
 
@@ -909,6 +976,15 @@ void printDispatchResult(
         }
 
         case HaseProtocolDispatchResult::
+            ExecuteCommandRequestRecognized:
+        {
+            Serial.println(
+                "ExecuteCommandRequest recognized");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
             ReadEndpointDescriptorRequestRecognized:
         {
             Serial.println(
@@ -949,6 +1025,15 @@ void printDispatchResult(
         {
             Serial.println(
                 "Invalid WritePropertyRequest");
+
+            break;
+        }
+
+        case HaseProtocolDispatchResult::
+            InvalidExecuteCommandRequest:
+        {
+            Serial.println(
+                "Invalid ExecuteCommandRequest");
 
             break;
         }

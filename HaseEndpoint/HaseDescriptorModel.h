@@ -114,6 +114,17 @@ struct HaseCommandDescriptor
 };
 
 // -----------------------------------------------------------------------------
+// Event descriptor
+// -----------------------------------------------------------------------------
+
+struct HaseEventDescriptor
+{
+    const char* path;
+    const char* displayName;
+    const char* description;
+};
+
+// -----------------------------------------------------------------------------
 // Instrument descriptor
 // -----------------------------------------------------------------------------
 
@@ -131,6 +142,7 @@ struct HaseInstrumentDescriptor
     const HaseCommandDescriptor* commands;
     uint16_t commandCount;
 
+    const HaseEventDescriptor* events;
     uint16_t eventCount;
 };
 

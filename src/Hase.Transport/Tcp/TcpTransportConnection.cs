@@ -3,11 +3,11 @@
 namespace Hase.Transport.Tcp;
 
 /// <summary>
-/// Provides framed request/response exchange over an established
-/// TCP connection.
+/// Provides framed request/response and optional duplex communication over an
+/// established TCP connection.
 /// </summary>
 public sealed class TcpTransportConnection
-    : ITransportConnection,
+    : ITransportDuplexConnection,
       ITransportExchangeTraceSource,
       IAsyncDisposable
 {
@@ -21,8 +21,24 @@ public sealed class TcpTransportConnection
 
     private readonly SemaphoreSlim _exchangeLock =
         new(
-            initialCount: 1,
-            maxCount: 1);
+            initialCount:
+                1,
+            maxCount:
+                1);
+
+    private readonly SemaphoreSlim _sendLock =
+        new(
+            initialCount:
+                1,
+            maxCount:
+                1);
+
+    private readonly SemaphoreSlim _receiveLock =
+        new(
+            initialCount:
+                1,
+            maxCount:
+                1);
 
     private TransportConnectionState _state =
         TransportConnectionState.Connected;
@@ -139,21 +155,12 @@ public sealed class TcpTransportConnection
             exchangeStarted =
                 true;
 
-            byte[] requestFrame =
-                TcpFrameCodec.Encode(
-                    request);
-
-            await _stream.WriteAsync(
-                requestFrame.AsMemory(),
-                cancellationToken);
-
-            await _stream.FlushAsync(
+            await SendAsync(
+                request,
                 cancellationToken);
 
             byte[] response =
-                await TcpFrameReader.ReadAsync(
-                    _stream,
-                    _maximumPayloadLength,
+                await ReceiveAsync(
                     cancellationToken);
 
             PublishTrace(
@@ -217,6 +224,116 @@ public sealed class TcpTransportConnection
         }
     }
 
+    /// <inheritdoc />
+    public async Task SendAsync(
+        byte[] payload,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfUnavailable();
+
+        ArgumentNullException.ThrowIfNull(
+            payload);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await _sendLock.WaitAsync(
+            cancellationToken);
+
+        try
+        {
+            ThrowIfUnavailable();
+
+            byte[] frame =
+                TcpFrameCodec.Encode(
+                    payload);
+
+            await _stream.WriteAsync(
+                frame.AsMemory(),
+                cancellationToken);
+
+            await _stream.FlushAsync(
+                cancellationToken);
+        }
+        catch (ObjectDisposedException)
+            when (_state == TransportConnectionState.Closed)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            throw;
+        }
+        catch
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            throw;
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<byte[]> ReceiveAsync(
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfUnavailable();
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        bool lockAcquired =
+            await _receiveLock.WaitAsync(
+                millisecondsTimeout:
+                    0,
+                cancellationToken);
+
+        if (!lockAcquired)
+        {
+            throw new InvalidOperationException(
+                "Only one receive operation may be active "
+                + "for a TCP transport connection.");
+        }
+
+        try
+        {
+            ThrowIfUnavailable();
+
+            return await TcpFrameReader.ReadAsync(
+                _stream,
+                _maximumPayloadLength,
+                cancellationToken);
+        }
+        catch (ObjectDisposedException)
+            when (_state == TransportConnectionState.Closed)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            throw;
+        }
+        catch
+        {
+            TransitionTo(
+                TransportConnectionState.Faulted);
+
+            throw;
+        }
+        finally
+        {
+            _receiveLock.Release();
+        }
+    }
+
     /// <summary>
     /// Closes the TCP connection and releases all owned resources.
     /// </summary>
@@ -229,7 +346,10 @@ public sealed class TcpTransportConnection
 
         _stream.Dispose();
         _client.Dispose();
+
         _exchangeLock.Dispose();
+        _sendLock.Dispose();
+        _receiveLock.Dispose();
 
         TransitionTo(
             TransportConnectionState.Closed);

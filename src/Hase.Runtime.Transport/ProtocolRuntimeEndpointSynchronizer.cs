@@ -18,7 +18,8 @@ namespace Hase.Runtime.Transport;
 /// operations, or periodically refresh property values.
 /// </remarks>
 public sealed class ProtocolRuntimeEndpointSynchronizer
-    : IRuntimeEndpointSynchronizer
+    : IRuntimeEndpointSynchronizer,
+      IRuntimeProtocolEndpointSynchronizer
 {
     private static int _nextCorrelationId;
 
@@ -45,7 +46,8 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
 
     /// <summary>
     /// Reads and validates the physical endpoint descriptor, then reads the
-    /// current value of every readable runtime property.
+    /// current value of every readable runtime property through the legacy
+    /// transport exchange contract.
     /// </summary>
     public async Task SynchronizeAsync(
         ITransportConnection connection,
@@ -60,19 +62,64 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        await SynchronizeCoreAsync(
+            (request, token) =>
+                ExchangeAsync(
+                    connection,
+                    request,
+                    token),
+            runtimeEndpoint,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads and validates the physical endpoint descriptor, then reads the
+    /// current value of every readable runtime property through the runtime
+    /// protocol connection.
+    /// </summary>
+    async Task IRuntimeProtocolEndpointSynchronizer.SynchronizeAsync(
+        IRuntimeProtocolConnection connection,
+        RuntimeEndpoint runtimeEndpoint,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(
+            connection);
+
+        ArgumentNullException.ThrowIfNull(
+            runtimeEndpoint);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await SynchronizeCoreAsync(
+            connection.SendAsync,
+            runtimeEndpoint,
+            cancellationToken);
+    }
+
+    private async Task SynchronizeCoreAsync(
+        Func<
+            ProtocolMessage,
+            CancellationToken,
+            Task<ProtocolMessage>> sendAsync,
+        RuntimeEndpoint runtimeEndpoint,
+        CancellationToken cancellationToken)
+    {
         await SynchronizeDescriptorAsync(
-            connection,
+            sendAsync,
             runtimeEndpoint,
             cancellationToken);
 
         await SynchronizeReadablePropertiesAsync(
-            connection,
+            sendAsync,
             runtimeEndpoint,
             cancellationToken);
     }
 
     private async Task SynchronizeDescriptorAsync(
-        ITransportConnection connection,
+        Func<
+            ProtocolMessage,
+            CancellationToken,
+            Task<ProtocolMessage>> sendAsync,
         RuntimeEndpoint runtimeEndpoint,
         CancellationToken cancellationToken)
     {
@@ -85,8 +132,7 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
                 runtimeEndpoint.Descriptor.Id);
 
         ProtocolMessage responseMessage =
-            await ExchangeAsync(
-                connection,
+            await sendAsync(
                 request,
                 cancellationToken);
 
@@ -123,7 +169,10 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
     }
 
     private async Task SynchronizeReadablePropertiesAsync(
-        ITransportConnection connection,
+        Func<
+            ProtocolMessage,
+            CancellationToken,
+            Task<ProtocolMessage>> sendAsync,
         RuntimeEndpoint runtimeEndpoint,
         CancellationToken cancellationToken)
     {
@@ -143,7 +192,7 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
 
                 PropertyValue propertyValue =
                     await ReadPropertyAsync(
-                        connection,
+                        sendAsync,
                         runtimeInstrument,
                         runtimeProperty,
                         cancellationToken);
@@ -155,7 +204,10 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
     }
 
     private async Task<PropertyValue> ReadPropertyAsync(
-        ITransportConnection connection,
+        Func<
+            ProtocolMessage,
+            CancellationToken,
+            Task<ProtocolMessage>> sendAsync,
         RuntimeInstrument runtimeInstrument,
         RuntimeProperty runtimeProperty,
         CancellationToken cancellationToken)
@@ -170,8 +222,7 @@ public sealed class ProtocolRuntimeEndpointSynchronizer
                 runtimeProperty.Descriptor.Id);
 
         ProtocolMessage responseMessage =
-            await ExchangeAsync(
-                connection,
+            await sendAsync(
                 request,
                 cancellationToken);
 

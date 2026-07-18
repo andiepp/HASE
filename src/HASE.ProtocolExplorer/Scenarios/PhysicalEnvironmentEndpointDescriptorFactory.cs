@@ -1,6 +1,7 @@
 ﻿using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
@@ -45,6 +46,11 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
         new(
             "Controller",
             "ToggleStatusLed");
+
+    public static readonly DescriptorPath ButtonPressedEventPath =
+        new(
+            "Controller",
+            "ButtonPressed");
 
     public static EndpointDescriptor Create()
     {
@@ -153,6 +159,16 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                     + "and returns its new enabled state."
             };
 
+        var buttonPressed =
+            new EventDescriptor(
+                ButtonPressedEventPath,
+                "Button Pressed")
+            {
+                Description =
+                    "Raised once when the active-low pushbutton on "
+                    + "GPIO17 is debounced as pressed."
+            };
+
         var controller =
             new InstrumentDescriptor(
                 ControllerInstrumentId,
@@ -170,7 +186,9 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                         Description =
                             "GPIO controller provided by the ESP32. "
                             + "The status LED output uses GPIO16 with "
-                            + "active-low behavior."
+                            + "active-low behavior. The pushbutton "
+                            + "input uses GPIO17 with active-low "
+                            + "behavior and the internal pull-up."
                     },
                 Interface =
                     new InstrumentInterface(
@@ -181,6 +199,10 @@ internal static class PhysicalEnvironmentEndpointDescriptorFactory
                         commands:
                         [
                             toggleStatusLed
+                        ],
+                        events:
+                        [
+                            buttonPressed
                         ])
             };
 
