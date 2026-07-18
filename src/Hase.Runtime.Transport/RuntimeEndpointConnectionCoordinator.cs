@@ -1,4 +1,5 @@
-﻿using Hase.Runtime.Connections;
+﻿using Hase.Protocol;
+using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Transport;
 
@@ -16,7 +17,8 @@ namespace Hase.Runtime.Transport;
 /// It does not perform automatic retry or retry backoff.
 /// </remarks>
 public sealed class RuntimeEndpointConnectionCoordinator
-    : IAsyncDisposable
+    : IRuntimeEndpointProtocolHealthProbe,
+      IAsyncDisposable
 {
     private readonly TransportConnectionManager _connectionManager;
     private readonly RuntimeEndpoint _runtimeEndpoint;
@@ -137,6 +139,101 @@ public sealed class RuntimeEndpointConnectionCoordinator
 
         _notificationSubscriptions.Unsubscribe(
             observer);
+    }
+
+    /// <inheritdoc />
+    public async Task<ProtocolMessage> ProbeAsync(
+        ProtocolMessage request,
+        TimeSpan timeout,
+        CancellationToken cancellationToken = default)
+    {
+        ThrowIfDisposed();
+
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        if (timeout != Timeout.InfiniteTimeSpan
+            && timeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(timeout),
+                timeout,
+                "The protocol health-probe timeout must be positive "
+                + "or Timeout.InfiniteTimeSpan.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_runtimeEndpoint.ConnectionStatus.State
+            != EndpointConnectionState.Ready)
+        {
+            throw new InvalidOperationException(
+                "A protocol health probe requires a runtime endpoint "
+                + "in the Ready state.");
+        }
+
+        RuntimeProtocolConnectionBinding binding =
+            _protocolConnectionBinding
+            ?? throw new InvalidOperationException(
+                "The coordinator does not own an active runtime "
+                + "protocol connection binding.");
+
+        ITransportConnection transportConnection =
+            _connectionManager.CurrentConnection
+            ?? throw new InvalidOperationException(
+                "The transport connection manager does not own "
+                + "a current connection.");
+
+        if (!ReferenceEquals(
+                binding.TransportConnection,
+                transportConnection))
+        {
+            throw new InvalidOperationException(
+                "The active runtime protocol binding does not match "
+                + "the current transport connection.");
+        }
+
+        using var timeoutCancellationTokenSource =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken);
+
+        if (timeout != Timeout.InfiniteTimeSpan)
+        {
+            timeoutCancellationTokenSource.CancelAfter(
+                timeout);
+        }
+
+        try
+        {
+            return await binding.ProtocolConnection.SendAsync(
+                request,
+                timeoutCancellationTokenSource.Token);
+        }
+        catch (OperationCanceledException exception)
+            when (!cancellationToken.IsCancellationRequested
+                  && timeoutCancellationTokenSource
+                      .IsCancellationRequested)
+        {
+            InvalidateCurrentTransport(
+                transportConnection);
+
+            throw new TimeoutException(
+                $"The endpoint did not complete the protocol health "
+                + $"probe within {timeout}.",
+                exception);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            InvalidateCurrentTransport(
+                transportConnection);
+
+            throw;
+        }
     }
 
     /// <summary>
@@ -444,6 +541,20 @@ public sealed class RuntimeEndpointConnectionCoordinator
             traceSource.UnsubscribeTrace(
                 _protocolExchangeStatisticsCollector);
         }
+    }
+
+    private static void InvalidateCurrentTransport(
+        ITransportConnection transportConnection)
+    {
+        if (transportConnection
+            is not ITransportConnectionInvalidator invalidator)
+        {
+            throw new InvalidOperationException(
+                "The current transport connection does not support "
+                + "health-probe invalidation.");
+        }
+
+        invalidator.Invalidate();
     }
 
     private void ApplyInitialHealth(

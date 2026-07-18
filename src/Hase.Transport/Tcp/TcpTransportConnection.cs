@@ -9,6 +9,7 @@ namespace Hase.Transport.Tcp;
 public sealed class TcpTransportConnection
     : ITransportDuplexConnection,
       ITransportExchangeTraceSource,
+      ITransportConnectionInvalidator,
       IAsyncDisposable
 {
     private readonly TcpClient _client;
@@ -332,6 +333,13 @@ public sealed class TcpTransportConnection
         {
             _receiveLock.Release();
         }
+    }
+
+    /// <inheritdoc />
+    public void Invalidate()
+    {
+        TransitionTo(
+            TransportConnectionState.Faulted);
     }
 
     /// <summary>

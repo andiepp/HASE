@@ -191,6 +191,63 @@ public sealed class TcpTransportConnectionTests
     }
 
     [Fact]
+    public async Task Invalidate_ConnectedConnection_ShouldTransitionToFaulted()
+    {
+        // Arrange
+        await using var server =
+            new FramedTcpTestServer();
+
+        using var client =
+            new TcpClient();
+
+        await client.ConnectAsync(
+            IPAddress.Loopback,
+            server.Port);
+
+        await using var connection =
+            new TcpTransportConnection(
+                client,
+                maximumPayloadLength: 1024);
+
+        var stateChanges =
+            new List<TransportConnectionStateChangedEventArgs>();
+
+        connection.StateChanged +=
+            (
+                sender,
+                eventArgs) =>
+            {
+                stateChanges.Add(
+                    eventArgs);
+            };
+
+        // Act
+        ITransportConnectionInvalidator invalidator =
+            Assert.IsAssignableFrom<
+                ITransportConnectionInvalidator>(
+                    connection);
+
+        invalidator.Invalidate();
+
+        // Assert
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            connection.State);
+
+        TransportConnectionStateChangedEventArgs stateChange =
+            Assert.Single(
+                stateChanges);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            stateChange.PreviousState);
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            stateChange.CurrentState);
+    }
+
+    [Fact]
     public void Constructor_NullClient_ShouldThrow()
     {
         // Act
