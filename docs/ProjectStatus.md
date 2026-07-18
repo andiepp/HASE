@@ -2,7 +2,7 @@
 
 ## Project
 
-**HASE â€“ Hardware Access System Environment**
+**HASE – Hardware Access System Environment**
 
 HASE is an open, modular framework for describing, discovering, communicating with, and controlling hardware instruments independently of transport technology.
 
@@ -10,7 +10,7 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 # Overall Status
 
-**Current Phase:** Phase 6 â€“ Transport Infrastructure and Physical Endpoint Integration
+**Current Phase:** Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
 The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, and IPv4 network endpoint discovery are implemented.
 
@@ -30,7 +30,7 @@ Protocol Version 1 is feature complete for the current endpoint contract.
 
 # Completed Phases
 
-## Phase 1 â€“ Foundation
+## Phase 1 – Foundation
 
 Completed:
 
@@ -45,7 +45,7 @@ Completed:
 - architecture documentation;
 - initial architecture decision records.
 
-## Phase 2 â€“ Simulation
+## Phase 2 – Simulation
 
 Completed:
 
@@ -58,7 +58,7 @@ Completed:
 - simulation/runtime integration;
 - simulation tests.
 
-## Phase 3 â€“ Protocol Foundation
+## Phase 3 – Protocol Foundation
 
 Completed:
 
@@ -73,7 +73,7 @@ Completed:
 - protocol paths;
 - String, Numeric, and Boolean data-descriptor serialization.
 
-## Phase 4 â€“ Protocol Version 1
+## Phase 4 – Protocol Version 1
 
 Completed:
 
@@ -86,7 +86,7 @@ Completed:
 
 Protocol Version 1 supports Properties, Commands, and Events. It supports full embedded descriptors and compact descriptor references. Network-discovery metadata is not part of the Protocol Version 1 wire contract.
 
-## Phase 5 â€“ Runtime Integration
+## Phase 5 – Runtime Integration
 
 Completed:
 
@@ -98,7 +98,7 @@ Completed:
 - logical, message, and byte tracing;
 - end-to-end runtime capability tests.
 
-## Phase 6 â€“ Transport Infrastructure and Physical Endpoint Integration
+## Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
 Phase 6 is active and substantially implemented.
 
@@ -196,7 +196,7 @@ Every candidate is verified through the existing Protocol Version 1 exchange:
 
 ```text
 DiscoverRequest
-    â†’
+    →
 DiscoverResponse
 ```
 
@@ -226,17 +226,17 @@ The verified path was:
 
 ```text
 ESP32 mDNS advertisement
-    â†’
+    →
 .NET mDNS browser
-    â†’
+    →
 NetworkEndpointCandidate
-    â†’
+    →
 Framed TCP connection
-    â†’
+    →
 DiscoverRequest
-    â†’
+    →
 DiscoverResponse
-    â†’
+    →
 VerifiedNetworkEndpoint
 ```
 
@@ -272,10 +272,10 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 # Capabilities
 
-- C-001 â€“ Runtime property access through Protocol Version 1.
-- C-002 â€“ Runtime event subscription and notification routing.
-- C-003 through C-014 â€“ Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
-- C-015 â€“ IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
+- C-001 – Runtime property access through Protocol Version 1.
+- C-002 – Runtime event subscription and notification routing.
+- C-003 through C-014 – Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
+- C-015 – IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
 
 ---
 

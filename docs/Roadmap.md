@@ -8,9 +8,9 @@ HASE provides transport-independent access to physical and simulated hardware in
 
 ---
 
-# Phase 1 â€“ Foundation
+# Phase 1 – Foundation
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented:
 
@@ -27,9 +27,9 @@ Key outcome: HASE established a transport-independent representation of endpoint
 
 ---
 
-# Phase 2 â€“ Simulation
+# Phase 2 – Simulation
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented:
 
@@ -44,9 +44,9 @@ Future extensions include noise, calibration, playback, JSON scenarios, and faul
 
 ---
 
-# Phase 3 â€“ Protocol Foundation
+# Phase 3 – Protocol Foundation
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented:
 
@@ -62,9 +62,9 @@ Key outcome: a deterministic binary protocol foundation independent of transport
 
 ---
 
-# Phase 4 â€“ Protocol Version 1
+# Phase 4 – Protocol Version 1
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented:
 
@@ -83,9 +83,9 @@ Protocol Version 1 is feature complete for the current Properties, Commands, and
 
 ---
 
-# Phase 5 â€“ Runtime Integration
+# Phase 5 – Runtime Integration
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented:
 
@@ -104,9 +104,9 @@ Completion baseline:
 
 ---
 
-# Phase 6 â€“ Transport Infrastructure and Physical Endpoint Integration
+# Phase 6 – Transport Infrastructure and Physical Endpoint Integration
 
-**Status:** ðŸš§ Active â€“ major capabilities completed
+**Status:** 🚧 Active – major capabilities completed
 
 Current baseline:
 
@@ -120,25 +120,25 @@ IPv4 network discovery verified
 
 ## 6.1 Transport Abstraction
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented `Hase.Transport`, transport connection and factory contracts, duplex connections, lifecycle states, loopback migration, and contract tests.
 
 ## 6.2 Framed TCP Transport
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented TCP options, connection factory, four-byte big-endian framing, payload validation, connection timeouts, duplex send/receive, invalidation, tracing, concurrency tests, and failure tests.
 
 ## 6.3 Runtime Transport Integration
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented connection management, legacy and duplex protocol connections, protocol sessions and bindings, endpoint synchronization, and connection coordination.
 
 ## 6.4 Automatic Reconnection
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented initial retry, transport replacement, bounded backoff, complete resynchronization, cached-value preservation, cancellation-aware supervision, and diagnostics.
 
@@ -152,7 +152,7 @@ immediate
 
 ## 6.5 Duplex Protocol Health Probing
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented coordinator-owned probing, explicit timeouts, silent-loss detection, transport invalidation, recovery through the existing supervisor, one receive path, and physical ESP32 reset validation.
 
@@ -160,13 +160,13 @@ Architecture: ADR-0017.
 
 ## 6.6 Runtime Event Routing and Recovery
 
-**Status:** âœ… Completed
+**Status:** ✅ Completed
 
 Implemented unsolicited notification routing, observer subscriptions, runtime event routing, router migration, physical GPIO17 notification, post-recovery validation, and logical diagnostics across sessions.
 
 ## 6.7 Physical ESP32 Endpoint
 
-**Status:** âœ… Completed for the current endpoint contract
+**Status:** ✅ Completed for the current endpoint contract
 
 Hardware includes the DOIT ESP32 DEVKITC V4 / ESP32-WROOM, BME280, GPIO controller, Wi-Fi, and framed TCP port 5000.
 
@@ -174,7 +174,7 @@ Physical discovery, descriptor access, property reads and writes, commands, even
 
 ## 6.8 Network Endpoint Discovery
 
-**Status:** âœ… Implemented and physically verified for IPv4
+**Status:** ✅ Implemented and physically verified for IPv4
 
 ```text
 Technology : mDNS/DNS-SD
@@ -235,9 +235,9 @@ Next documentation step: ADR-0018.
 
 ---
 
-# Phase 7 â€“ Application and Tooling Expansion
+# Phase 7 – Application and Tooling Expansion
 
-**Status:** ðŸ“‹ Planned
+**Status:** 📋 Planned
 
 Possible scope:
 
