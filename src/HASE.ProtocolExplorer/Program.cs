@@ -37,6 +37,7 @@ internal static class Program
                     new ExecuteCommandResponseScenario(),
                     new EventNotificationScenario(),
                     new ReadEndpointDescriptorResponseScenario(),
+                    new NetworkDiscoveryScenario(),
                     new CapabilityC001Scenario(
                         host),
                     new CapabilityC002Scenario(
@@ -123,7 +124,19 @@ internal static class Program
         Console.WriteLine();
 
         Console.WriteLine(
+            "Network discovery:");
+
+        Console.WriteLine();
+
+        Console.WriteLine(
+            "  network-discovery");
+
+        Console.WriteLine();
+
+        Console.WriteLine(
             "Capability scenarios:");
+
+        Console.WriteLine();
 
         Console.WriteLine(
             "  c001");
@@ -171,6 +184,8 @@ internal static class Program
 
         Console.WriteLine(
             "Protocol scenarios:");
+
+        Console.WriteLine();
 
         Console.WriteLine(
             "  discover");
