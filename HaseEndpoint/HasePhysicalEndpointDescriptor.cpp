@@ -27,7 +27,9 @@ namespace
         nullptr,
         nullptr,
         "GPIO controller provided by the ESP32. "
-        "The status LED output uses GPIO16 with active-low behavior."
+        "The status LED output uses GPIO16 with active-low behavior. "
+        "The pushbutton input uses GPIO17 with active-low behavior "
+        "and the internal pull-up."
     };
 
     const HasePropertyDescriptor EnvironmentSensorProperties[] =
@@ -132,6 +134,16 @@ namespace
         }
     };
 
+    const HaseEventDescriptor ControllerEvents[] =
+    {
+        {
+            "Controller.ButtonPressed",
+            "Button Pressed",
+            "Raised once when the active-low pushbutton on "
+            "GPIO17 is debounced as pressed."
+        }
+    };
+
     const HaseInstrumentDescriptor Instruments[] =
     {
         {
@@ -143,6 +155,7 @@ namespace
             3,
             nullptr,
             0,
+            nullptr,
             0
         },
 
@@ -155,7 +168,8 @@ namespace
             1,
             ControllerCommands,
             1,
-            0
+            ControllerEvents,
+            1
         }
     };
 

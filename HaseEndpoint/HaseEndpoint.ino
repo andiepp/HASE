@@ -7,6 +7,7 @@
 #include "HaseBme280Sensor.h"
 #include "HaseDiscoverHandler.h"
 #include "HasePhysicalEndpointDescriptor.h"
+#include "HasePhysicalEventPublisher.h"
 #include "HasePhysicalExecuteCommandHandler.h"
 #include "HasePhysicalPropertyService.h"
 #include "HasePhysicalReadPropertyHandler.h"
@@ -51,6 +52,10 @@ HaseTcpTransport transport(
     TCP_PORT,
     MAXIMUM_PAYLOAD_LENGTH,
     READ_TIMEOUT_MILLISECONDS);
+
+HasePhysicalEventPublisher eventPublisher(
+    transport,
+    utcClock);
 
 uint8_t requestBuffer[
     MAXIMUM_PAYLOAD_LENGTH];
@@ -128,7 +133,7 @@ void setup()
     Serial.println();
 
     Serial.println(
-        "Firmware capability: C-010 ExecuteCommand");
+        "Firmware capabilities: C-010 ExecuteCommand, EventNotification");
 
     Serial.println();
 
@@ -169,6 +174,8 @@ void setup()
 
         return;
     }
+
+    eventPublisher.begin();
 
     transport.begin();
 
@@ -218,6 +225,8 @@ void loop()
     }
 
     transport.update();
+
+    eventPublisher.update();
 
     processTransport();
 
