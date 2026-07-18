@@ -313,7 +313,7 @@ The verified automated-test baseline is:
 
 # Follow-up Work
 
-- update Project Status and Roadmap to list ADR-0018 as accepted;
+- keep Project Status and Roadmap synchronized with the accepted decision;
 - validate discovery during ESP32 reset;
 - validate advertisement recovery after Wi-Fi interruption;
 - decide whether bounded parallel verification is necessary;
@@ -321,3 +321,4 @@ The verified automated-test baseline is:
 - validate discovery on Linux;
 - add IPv6 browsing and verification;
 - evaluate security requirements before discovery is used across untrusted networks.
+

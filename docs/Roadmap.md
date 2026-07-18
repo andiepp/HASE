@@ -8,9 +8,9 @@ HASE provides transport-independent access to physical and simulated hardware in
 
 ---
 
-# Phase 1 – Foundation
+# Phase 1 - Foundation
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented:
 
@@ -27,9 +27,9 @@ Key outcome: HASE established a transport-independent representation of endpoint
 
 ---
 
-# Phase 2 – Simulation
+# Phase 2 - Simulation
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented:
 
@@ -44,9 +44,9 @@ Future extensions include noise, calibration, playback, JSON scenarios, and faul
 
 ---
 
-# Phase 3 – Protocol Foundation
+# Phase 3 - Protocol Foundation
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented:
 
@@ -62,9 +62,9 @@ Key outcome: a deterministic binary protocol foundation independent of transport
 
 ---
 
-# Phase 4 – Protocol Version 1
+# Phase 4 - Protocol Version 1
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented:
 
@@ -83,9 +83,9 @@ Protocol Version 1 is feature complete for the current Properties, Commands, and
 
 ---
 
-# Phase 5 – Runtime Integration
+# Phase 5 - Runtime Integration
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented:
 
@@ -104,9 +104,9 @@ Completion baseline:
 
 ---
 
-# Phase 6 – Transport Infrastructure and Physical Endpoint Integration
+# Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-**Status:** 🚧 Active – major capabilities completed
+**Status:** [Active] Active - major capabilities completed
 
 Current baseline:
 
@@ -120,25 +120,25 @@ IPv4 network discovery verified
 
 ## 6.1 Transport Abstraction
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented `Hase.Transport`, transport connection and factory contracts, duplex connections, lifecycle states, loopback migration, and contract tests.
 
 ## 6.2 Framed TCP Transport
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented TCP options, connection factory, four-byte big-endian framing, payload validation, connection timeouts, duplex send/receive, invalidation, tracing, concurrency tests, and failure tests.
 
 ## 6.3 Runtime Transport Integration
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented connection management, legacy and duplex protocol connections, protocol sessions and bindings, endpoint synchronization, and connection coordination.
 
 ## 6.4 Automatic Reconnection
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented initial retry, transport replacement, bounded backoff, complete resynchronization, cached-value preservation, cancellation-aware supervision, and diagnostics.
 
@@ -152,7 +152,7 @@ immediate
 
 ## 6.5 Duplex Protocol Health Probing
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented coordinator-owned probing, explicit timeouts, silent-loss detection, transport invalidation, recovery through the existing supervisor, one receive path, and physical ESP32 reset validation.
 
@@ -160,13 +160,13 @@ Architecture: ADR-0017.
 
 ## 6.6 Runtime Event Routing and Recovery
 
-**Status:** ✅ Completed
+**Status:** [Completed] Completed
 
 Implemented unsolicited notification routing, observer subscriptions, runtime event routing, router migration, physical GPIO17 notification, post-recovery validation, and logical diagnostics across sessions.
 
 ## 6.7 Physical ESP32 Endpoint
 
-**Status:** ✅ Completed for the current endpoint contract
+**Status:** [Completed] Completed for the current endpoint contract
 
 Hardware includes the DOIT ESP32 DEVKITC V4 / ESP32-WROOM, BME280, GPIO controller, Wi-Fi, and framed TCP port 5000.
 
@@ -174,7 +174,7 @@ Physical discovery, descriptor access, property reads and writes, commands, even
 
 ## 6.8 Network Endpoint Discovery
 
-**Status:** ✅ Implemented and physically verified for IPv4
+**Status:** [Completed] Implemented and physically verified for IPv4
 
 ```text
 Technology : mDNS/DNS-SD
@@ -220,7 +220,7 @@ Constraints:
 
 Physical capability C-015 covers IPv4 mDNS/DNS-SD discovery and Protocol Version 1 verification.
 
-Next documentation step: ADR-0018.
+Architecture: ADR-0018 - mDNS/DNS-SD Network Endpoint Discovery.
 
 ## 6.9 Remaining Phase 6 Work
 
@@ -235,9 +235,9 @@ Next documentation step: ADR-0018.
 
 ---
 
-# Phase 7 – Application and Tooling Expansion
+# Phase 7 - Application and Tooling Expansion
 
-**Status:** 📋 Planned
+**Status:** [Planned] Planned
 
 Possible scope:
 
@@ -277,25 +277,25 @@ Possible simulation work includes noise, drift, calibration offsets, device and 
 
 # Documentation Roadmap
 
-Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0017.
+Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0018.
 
 Next:
 
-1. Add ADR-0018 for mDNS/DNS-SD discovery.
-2. Record physical capability C-015.
-3. Record IPv4 scope and IPv6 backlog.
-4. Document explicit runtime attachment when designed.
+1. Keep physical capability C-015 and its validation baseline current.
+2. Keep IPv4 scope and IPv6 backlog explicit.
+3. Document explicit runtime attachment when designed.
+4. Record any future discovery concurrency decision in an ADR if it changes architecture.
 
 ---
 
 # Current Priorities
 
-1. Restore and commit complete Project Status and Roadmap files.
-2. Add ADR-0018.
-3. Validate discovery recovery after ESP32 reset.
-4. Validate advertisement recovery after Wi-Fi interruption.
-5. Decide verification concurrency.
-6. Validate Linux discovery.
+1. Commit ADR-0018 and the synchronized documentation state.
+2. Validate discovery recovery after ESP32 reset.
+3. Validate advertisement recovery after Wi-Fi interruption.
+4. Decide verification concurrency.
+5. Validate Linux discovery.
+6. Decide whether IPv6 belongs in Phase 6.
 7. Select the next approved Phase 6 capability.
 
 ---
@@ -320,3 +320,4 @@ Still requiring explicit scope decisions:
 - whether USB serial belongs in Phase 6;
 - whether runtime attachment belongs in Phase 6 or Phase 7;
 - whether Linux validation is required before closing Phase 6.
+

@@ -2,7 +2,7 @@
 
 ## Project
 
-**HASE – Hardware Access System Environment**
+**HASE - Hardware Access System Environment**
 
 HASE is an open, modular framework for describing, discovering, communicating with, and controlling hardware instruments independently of transport technology.
 
@@ -10,7 +10,7 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 # Overall Status
 
-**Current Phase:** Phase 6 – Transport Infrastructure and Physical Endpoint Integration
+**Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
 The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, and IPv4 network endpoint discovery are implemented.
 
@@ -30,7 +30,7 @@ Protocol Version 1 is feature complete for the current endpoint contract.
 
 # Completed Phases
 
-## Phase 1 – Foundation
+## Phase 1 - Foundation
 
 Completed:
 
@@ -45,7 +45,7 @@ Completed:
 - architecture documentation;
 - initial architecture decision records.
 
-## Phase 2 – Simulation
+## Phase 2 - Simulation
 
 Completed:
 
@@ -58,7 +58,7 @@ Completed:
 - simulation/runtime integration;
 - simulation tests.
 
-## Phase 3 – Protocol Foundation
+## Phase 3 - Protocol Foundation
 
 Completed:
 
@@ -73,7 +73,7 @@ Completed:
 - protocol paths;
 - String, Numeric, and Boolean data-descriptor serialization.
 
-## Phase 4 – Protocol Version 1
+## Phase 4 - Protocol Version 1
 
 Completed:
 
@@ -86,7 +86,7 @@ Completed:
 
 Protocol Version 1 supports Properties, Commands, and Events. It supports full embedded descriptors and compact descriptor references. Network-discovery metadata is not part of the Protocol Version 1 wire contract.
 
-## Phase 5 – Runtime Integration
+## Phase 5 - Runtime Integration
 
 Completed:
 
@@ -98,7 +98,7 @@ Completed:
 - logical, message, and byte tracing;
 - end-to-end runtime capability tests.
 
-## Phase 6 – Transport Infrastructure and Physical Endpoint Integration
+## Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
 Phase 6 is active and substantially implemented.
 
@@ -196,7 +196,7 @@ Every candidate is verified through the existing Protocol Version 1 exchange:
 
 ```text
 DiscoverRequest
-    →
+    ->
 DiscoverResponse
 ```
 
@@ -226,17 +226,17 @@ The verified path was:
 
 ```text
 ESP32 mDNS advertisement
-    →
+    ->
 .NET mDNS browser
-    →
+    ->
 NetworkEndpointCandidate
-    →
+    ->
 Framed TCP connection
-    →
+    ->
 DiscoverRequest
-    →
+    ->
 DiscoverResponse
-    →
+    ->
 VerifiedNetworkEndpoint
 ```
 
@@ -272,10 +272,10 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 # Capabilities
 
-- C-001 – Runtime property access through Protocol Version 1.
-- C-002 – Runtime event subscription and notification routing.
-- C-003 through C-014 – Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
-- C-015 – IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
+- C-001 - Runtime property access through Protocol Version 1.
+- C-002 - Runtime event subscription and notification routing.
+- C-003 through C-014 - Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
+- C-015 - IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
 
 ---
 
@@ -300,7 +300,7 @@ Ctrl+C stops discovery cleanly
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0017 are accepted. ADR-0017 defines duplex protocol health probing. The implemented mDNS/DNS-SD discovery architecture will be recorded as ADR-0018.
+ADR-0001 through ADR-0018 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification.
 
 ---
 
@@ -312,11 +312,11 @@ The current implementation intentionally excludes IPv6 discovery, authentication
 
 # Immediate Next Steps
 
-1. Add ADR-0018 for mDNS/DNS-SD network endpoint discovery.
-2. Record capability C-015 in the architecture documentation.
-3. Validate discovery behavior during ESP32 reset and Wi-Fi recovery.
-4. Decide whether sequential verification is sufficient.
-5. Validate discovery on Linux.
+1. Validate discovery behavior during ESP32 reset and Wi-Fi recovery.
+2. Decide whether sequential verification is sufficient.
+3. Design explicit endpoint selection and runtime attachment only after approval.
+4. Validate discovery on Linux.
+5. Decide whether IPv6 belongs in Phase 6.
 6. Continue Phase 6 only after explicit scope approval.
 
 ---
@@ -333,3 +333,4 @@ The current implementation intentionally excludes IPv6 discovery, authentication
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
