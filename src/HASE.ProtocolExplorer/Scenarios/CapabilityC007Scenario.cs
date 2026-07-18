@@ -1,8 +1,6 @@
 ﻿using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Properties;
-using Hase.Protocol;
-using Hase.ProtocolExplorer.Transport;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
@@ -149,9 +147,12 @@ internal sealed class CapabilityC007Scenario
                     cancellationTokenSource.Token);
 
             Task probeTask =
-                RunProbeAsync(
-                    connectionManager,
+                PhysicalRuntimeEndpointProbeLoop.RunAsync(
+                    coordinator,
                     runtimeEndpoint,
+                    ProbeInterval,
+                    ProbeTimeout,
+                    initialCorrelationId: 10_000,
                     cancellationTokenSource.Token);
 
             await Task.WhenAll(
@@ -161,10 +162,12 @@ internal sealed class CapabilityC007Scenario
         catch (OperationCanceledException)
             when (cancellationTokenSource.IsCancellationRequested)
         {
-            Console.WriteLine();
-
-            Console.WriteLine(
-                "Connection supervision stopped.");
+            WriteStopped();
+        }
+        catch (IOException)
+            when (cancellationTokenSource.IsCancellationRequested)
+        {
+            WriteStopped();
         }
         finally
         {
@@ -176,155 +179,12 @@ internal sealed class CapabilityC007Scenario
         }
     }
 
-    private static async Task RunProbeAsync(
-        TransportConnectionManager connectionManager,
-        RuntimeEndpoint runtimeEndpoint,
-        CancellationToken cancellationToken)
+    private static void WriteStopped()
     {
-        ArgumentNullException.ThrowIfNull(
-            connectionManager);
+        Console.WriteLine();
 
-        ArgumentNullException.ThrowIfNull(
-            runtimeEndpoint);
-
-        uint correlationIdValue =
-            10_000;
-
-        while (true)
-        {
-            await Task.Delay(
-                ProbeInterval,
-                cancellationToken);
-
-            if (runtimeEndpoint.ConnectionStatus.State
-                != EndpointConnectionState.Ready)
-            {
-                continue;
-            }
-
-            ITransportConnection? connection =
-                connectionManager.CurrentConnection;
-
-            if (connection is null
-                || connection.State
-                    != TransportConnectionState.Connected)
-            {
-                continue;
-            }
-
-            correlationIdValue++;
-
-            if (correlationIdValue == 0)
-            {
-                correlationIdValue =
-                    1;
-            }
-
-            var request =
-                new ReadPropertyRequest(
-                    new CorrelationId(
-                        correlationIdValue),
-                    PhysicalEnvironmentEndpointDescriptorFactory
-                        .InstrumentId,
-                    PhysicalEnvironmentEndpointDescriptorFactory
-                        .TemperaturePropertyId);
-
-            var client =
-                new ProtocolClient(
-                    connection);
-
-            using var probeCancellationTokenSource =
-                CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken);
-
-            probeCancellationTokenSource.CancelAfter(
-                ProbeTimeout);
-
-            try
-            {
-                ProtocolExchangeResult exchange =
-                    await client.SendAsync(
-                        request,
-                        probeCancellationTokenSource.Token);
-
-                ReadPropertyResponse response =
-                    exchange.ResponseMessage
-                        as ReadPropertyResponse
-                    ?? throw new InvalidDataException(
-                        "The connectivity probe did not receive a "
-                        + "ReadPropertyResponse.");
-
-                if (!response.Result.IsSuccess)
-                {
-                    Console.WriteLine(
-                        $"[{DateTimeOffset.UtcNow:O}] Probe rejected: "
-                        + $"{response.Result.Code} "
-                        + $"{response.Result.Message}");
-
-                    continue;
-                }
-
-                PropertyValue value =
-                    response.PropertyValue
-                    ?? throw new InvalidDataException(
-                        "The successful connectivity probe did not "
-                        + "contain a property value.");
-
-                RuntimeProperty runtimeProperty =
-                    FindTemperatureProperty(
-                        runtimeEndpoint);
-
-                runtimeProperty.UpdateValue(
-                    value);
-
-                string unitSymbol =
-                    runtimeProperty.Descriptor.Data
-                        is NumericDataDescriptor numericData
-                            ? numericData.NativeUnit.Symbol
-                            : string.Empty;
-
-                Console.WriteLine(
-                    $"[{DateTimeOffset.UtcNow:O}] Probe succeeded: "
-                    + $"{value.Value} {unitSymbol}, "
-                    + $"{value.TimestampUtc:O}, "
-                    + $"{value.Quality}");
-            }
-            catch (OperationCanceledException)
-                when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine(
-                    $"[{DateTimeOffset.UtcNow:O}] Probe timed out "
-                    + $"after {ProbeTimeout.TotalSeconds:0} seconds.");
-            }
-            catch (Exception exception)
-            {
-                Console.WriteLine(
-                    $"[{DateTimeOffset.UtcNow:O}] Probe failed: "
-                    + $"{exception.GetType().Name}: "
-                    + $"{exception.Message}");
-            }
-        }
-    }
-
-    private static RuntimeProperty FindTemperatureProperty(
-        RuntimeEndpoint runtimeEndpoint)
-    {
-        RuntimeInstrument instrument =
-            runtimeEndpoint.FindInstrument(
-                PhysicalEnvironmentEndpointDescriptorFactory
-                    .InstrumentId)
-            ?? throw new InvalidOperationException(
-                "The physical environment instrument was not found.");
-
-        return instrument.FindProperty(
-                   PhysicalEnvironmentEndpointDescriptorFactory
-                       .TemperaturePropertyId)
-               ?? throw new InvalidOperationException(
-                   "The physical temperature property was not found.");
+        Console.WriteLine(
+            "Connection supervision stopped.");
     }
 
     private static void WriteHeader(
@@ -424,8 +284,8 @@ internal sealed class CapabilityC007Scenario
                 change);
 
             if (!ReferenceEquals(
-                change.Endpoint,
-                _runtimeEndpoint))
+                    change.Endpoint,
+                    _runtimeEndpoint))
             {
                 return;
             }

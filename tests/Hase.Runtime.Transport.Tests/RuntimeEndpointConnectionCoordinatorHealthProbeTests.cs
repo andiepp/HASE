@@ -40,19 +40,13 @@ public sealed class RuntimeEndpointConnectionCoordinatorHealthProbeTests
         await coordinator.ConnectAsync();
 
         var request =
-            new DiscoverRequest(
-                new CorrelationId(
-                    14_001));
+            CreateRequest(
+                14_001);
 
         // Act
-        IRuntimeEndpointProtocolHealthProbe healthProbe =
-            Assert.IsAssignableFrom<
-                IRuntimeEndpointProtocolHealthProbe>(
-                    coordinator);
-
         Task Act()
         {
-            return healthProbe.ProbeAsync(
+            return coordinator.ProbeAsync(
                 request,
                 TimeSpan.FromMilliseconds(
                     50));
@@ -73,6 +67,145 @@ public sealed class RuntimeEndpointConnectionCoordinatorHealthProbeTests
         Assert.Equal(
             EndpointConnectionState.Faulted,
             runtimeEndpoint.ConnectionStatus.State);
+    }
+
+    [Fact]
+    public async Task ProbeAsync_ZeroTimeout_ShouldRejectWithoutFaultingTransport()
+    {
+        // Arrange
+        var transportConnection =
+            new NonRespondingDuplexTransportConnection();
+
+        var transportFactory =
+            new TestTransportFactory(
+                transportConnection);
+
+        await using var connectionManager =
+            new TransportConnectionManager(
+                transportFactory);
+
+        RuntimeEndpoint runtimeEndpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestProtocolSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                connectionManager,
+                runtimeEndpoint,
+                synchronizer);
+
+        await coordinator.ConnectAsync();
+
+        var request =
+            CreateRequest(
+                14_002);
+
+        // Act
+        Task Act()
+        {
+            return coordinator.ProbeAsync(
+                request,
+                TimeSpan.Zero);
+        }
+
+        // Assert
+        ArgumentOutOfRangeException exception =
+            await Assert.ThrowsAsync<
+                ArgumentOutOfRangeException>(
+                    Act);
+
+        Assert.Equal(
+            "timeout",
+            exception.ParamName);
+
+        Assert.Equal(
+            0,
+            transportConnection.SendCount);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            transportConnection.State);
+
+        Assert.Equal(
+            EndpointConnectionState.Ready,
+            runtimeEndpoint.ConnectionStatus.State);
+    }
+
+    [Fact]
+    public async Task ProbeAsync_CallerCancellation_ShouldNotFaultTransport()
+    {
+        // Arrange
+        var transportConnection =
+            new NonRespondingDuplexTransportConnection();
+
+        var transportFactory =
+            new TestTransportFactory(
+                transportConnection);
+
+        await using var connectionManager =
+            new TransportConnectionManager(
+                transportFactory);
+
+        RuntimeEndpoint runtimeEndpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestProtocolSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                connectionManager,
+                runtimeEndpoint,
+                synchronizer);
+
+        await coordinator.ConnectAsync();
+
+        var request =
+            CreateRequest(
+                14_003);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        cancellationTokenSource.CancelAfter(
+            TimeSpan.FromMilliseconds(
+                50));
+
+        // Act
+        Task Act()
+        {
+            return coordinator.ProbeAsync(
+                request,
+                Timeout.InfiniteTimeSpan,
+                cancellationTokenSource.Token);
+        }
+
+        // Assert
+        await Assert.ThrowsAnyAsync<
+            OperationCanceledException>(
+                Act);
+
+        Assert.Equal(
+            1,
+            transportConnection.SendCount);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            transportConnection.State);
+
+        Assert.Equal(
+            EndpointConnectionState.Ready,
+            runtimeEndpoint.ConnectionStatus.State);
+    }
+
+    private static DiscoverRequest CreateRequest(
+        uint correlationId)
+    {
+        return new DiscoverRequest(
+            new CorrelationId(
+                correlationId));
     }
 
     private static RuntimeEndpoint CreateRuntimeEndpoint()

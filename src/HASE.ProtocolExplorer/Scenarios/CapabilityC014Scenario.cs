@@ -1,6 +1,4 @@
 ﻿using Hase.Core.Domain.Endpoints;
-using Hase.Core.Domain.Identity;
-using Hase.Protocol;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
@@ -142,9 +140,12 @@ internal sealed class CapabilityC014Scenario
                 cancellationTokenSource.Token);
 
         Task probeTask =
-            RunProbeAsync(
+            PhysicalRuntimeEndpointProbeLoop.RunAsync(
                 coordinator,
                 runtimeEndpoint,
+                ProbeInterval,
+                ProbeTimeout,
+                initialCorrelationId: 14_000,
                 cancellationTokenSource.Token);
 
         try
@@ -286,90 +287,6 @@ internal sealed class CapabilityC014Scenario
 
             runtimeEndpoint.UnsubscribeConnectionStatus(
                 statusObserver);
-        }
-    }
-
-    private static async Task RunProbeAsync(
-        RuntimeEndpointConnectionCoordinator coordinator,
-        RuntimeEndpoint runtimeEndpoint,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(
-            coordinator);
-
-        ArgumentNullException.ThrowIfNull(
-            runtimeEndpoint);
-
-        uint correlationIdValue =
-            14_000;
-
-        while (true)
-        {
-            await Task.Delay(
-                ProbeInterval,
-                cancellationToken);
-
-            if (runtimeEndpoint.ConnectionStatus.State
-                != EndpointConnectionState.Ready)
-            {
-                continue;
-            }
-
-            correlationIdValue++;
-
-            if (correlationIdValue
-                == CorrelationId.None.Value)
-            {
-                correlationIdValue++;
-            }
-
-            var request =
-                new ReadPropertyRequest(
-                    new CorrelationId(
-                        correlationIdValue),
-                    PhysicalEnvironmentEndpointDescriptorFactory
-                        .InstrumentId,
-                    PhysicalEnvironmentEndpointDescriptorFactory
-                        .TemperaturePropertyId);
-
-            try
-            {
-                ProtocolMessage responseMessage =
-                    await coordinator.ProbeAsync(
-                        request,
-                        ProbeTimeout,
-                        cancellationToken);
-
-                if (responseMessage
-                    is not ReadPropertyResponse response)
-                {
-                    throw new InvalidDataException(
-                        "The health probe did not receive a "
-                        + "ReadPropertyResponse.");
-                }
-
-                if (!response.Result.IsSuccess)
-                {
-                    throw new InvalidDataException(
-                        "The health probe was rejected with result "
-                        + $"'{response.Result.Code}': "
-                        + $"{response.Result.Message ?? "(no message)"}.");
-                }
-            }
-            catch (TimeoutException)
-            {
-                Console.WriteLine(
-                    $"[{DateTimeOffset.UtcNow:O}] "
-                    + "Protocol health probe timed out.");
-
-                continue;
-            }
-            catch (InvalidOperationException)
-                when (runtimeEndpoint.ConnectionStatus.State
-                      != EndpointConnectionState.Ready)
-            {
-                continue;
-            }
         }
     }
 
