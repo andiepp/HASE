@@ -6,6 +6,7 @@
 
 #include "HaseBme280Sensor.h"
 #include "HaseDiscoverHandler.h"
+#include "HaseMdnsAdvertiser.h"
 #include "HasePhysicalEndpointDescriptor.h"
 #include "HasePhysicalEventPublisher.h"
 #include "HasePhysicalExecuteCommandHandler.h"
@@ -28,6 +29,12 @@
 constexpr uint16_t TCP_PORT =
     5000;
 
+constexpr const char* MDNS_HOST_NAME =
+    "doit-esp32-devkitc-v4-01";
+
+constexpr const char* MDNS_INSTANCE_NAME =
+    "doit-esp32-devkitc-v4-01";
+
 constexpr uint32_t MAXIMUM_PAYLOAD_LENGTH =
     4096;
 
@@ -42,6 +49,8 @@ constexpr unsigned long UTC_SYNCHRONIZATION_TIMEOUT_MILLISECONDS =
 // -----------------------------------------------------------------------------
 
 HaseBme280Sensor environmentSensor;
+
+HaseMdnsAdvertiser mdnsAdvertiser;
 
 HasePhysicalPropertyService physicalPropertyService(
     environmentSensor);
@@ -77,6 +86,10 @@ void printEnvironmentSensorReading();
 void connectToWiFi();
 
 bool synchronizeUtcClock();
+
+void startNetworkEndpoint();
+
+void stopNetworkEndpoint();
 
 void processTransport();
 
@@ -177,7 +190,7 @@ void setup()
 
     eventPublisher.begin();
 
-    transport.begin();
+    startNetworkEndpoint();
 
     endpointStarted =
         true;
@@ -198,7 +211,7 @@ void loop()
 
     if (WiFi.status() != WL_CONNECTED)
     {
-        transport.disconnectClient();
+        stopNetworkEndpoint();
 
         connectToWiFi();
 
@@ -218,7 +231,7 @@ void loop()
             return;
         }
 
-        transport.begin();
+        startNetworkEndpoint();
 
         Serial.println(
             "Waiting for HASE client...");
@@ -432,6 +445,61 @@ bool synchronizeUtcClock()
     Serial.println();
 
     return true;
+}
+
+void startNetworkEndpoint()
+{
+    transport.begin();
+
+    bool advertisementStarted =
+        mdnsAdvertiser.begin(
+            MDNS_HOST_NAME,
+            MDNS_INSTANCE_NAME,
+            TCP_PORT);
+
+    if (!advertisementStarted)
+    {
+        Serial.println(
+            "Failed to advertise the HASE TCP endpoint through mDNS.");
+
+        Serial.println();
+
+        return;
+    }
+
+    Serial.println(
+        "HASE network endpoint advertised through mDNS/DNS-SD.");
+
+    Serial.print(
+        "Service instance : ");
+
+    Serial.println(
+        MDNS_INSTANCE_NAME);
+
+    Serial.print(
+        "Service type     : _hase._tcp.local");
+
+    Serial.println();
+
+    Serial.print(
+        "Service port     : ");
+
+    Serial.println(
+        TCP_PORT);
+
+    Serial.println();
+}
+
+void stopNetworkEndpoint()
+{
+    mdnsAdvertiser.end();
+
+    transport.disconnectClient();
+
+    Serial.println(
+        "HASE network endpoint advertisement stopped.");
+
+    Serial.println();
 }
 
 // -----------------------------------------------------------------------------
