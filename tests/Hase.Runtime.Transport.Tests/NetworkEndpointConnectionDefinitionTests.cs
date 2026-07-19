@@ -52,6 +52,31 @@ public sealed class NetworkEndpointConnectionDefinitionTests
     }
 
     [Fact]
+    public void FromVerifiedEndpoint_Result_ShouldImplementCommonDefinition()
+    {
+        // Arrange
+        var verifiedEndpoint =
+            new VerifiedNetworkEndpoint(
+                new NetworkEndpointCandidate(
+                    "doit-esp32-devkitc-v4-01",
+                    IPAddress.Parse(
+                        "192.168.0.223"),
+                    5000),
+                new EndpointId(
+                    "doit-esp32-devkitc-v4-01"));
+
+        // Act
+        NetworkEndpointConnectionDefinition definition =
+            NetworkEndpointConnectionDefinition
+                .FromVerifiedEndpoint(
+                    verifiedEndpoint);
+
+        // Assert
+        Assert.IsAssignableFrom<IEndpointConnectionDefinition>(
+            definition);
+    }
+
+    [Fact]
     public void FromVerifiedEndpoint_NullEndpoint_ShouldThrow()
     {
         // Act

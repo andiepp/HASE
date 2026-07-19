@@ -13,6 +13,7 @@ namespace Hase.Runtime.Transport.Attachment;
 /// authoritative HASE endpoint identity.
 /// </remarks>
 public sealed class NetworkEndpointConnectionDefinition
+    : IEndpointConnectionDefinition
 {
     private NetworkEndpointConnectionDefinition(
         TcpTransportOptions transportOptions,
@@ -37,18 +38,13 @@ public sealed class NetworkEndpointConnectionDefinition
         get;
     }
 
-    /// <summary>
-    /// Gets how this connection definition was obtained.
-    /// </summary>
+    /// <inheritdoc />
     public EndpointConnectionOrigin Origin
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the endpoint identity expected during attachment verification,
-    /// or <see langword="null"/> when configuration does not constrain it.
-    /// </summary>
+    /// <inheritdoc />
     public EndpointId? ExpectedEndpointId
     {
         get;
