@@ -12,7 +12,7 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, and IPv4 network endpoint discovery are implemented.
+The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, and IPv4 network endpoint discovery are implemented. The architecture for explicit local endpoint attachment and runtime-host lifecycle ownership is accepted.
 
 The current verified baseline is:
 
@@ -306,7 +306,7 @@ Ctrl+C stops discovery cleanly
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0018 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification.
+ADR-0001 through ADR-0019 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification. ADR-0019 defines local endpoint communication lifecycle ownership.
 
 ---
 
@@ -318,12 +318,12 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 
 # Immediate Next Steps
 
-1. Validate advertisement recovery after Wi-Fi interruption.
-2. Decide whether sequential verification is sufficient.
-3. Keep live discovery presence tracking in backlog unless explicitly approved.
-4. Design explicit endpoint selection and runtime attachment only after approval.
-5. Validate discovery on Linux and decide whether IPv6 belongs in Phase 6.
-6. Continue Phase 6 only after explicit scope approval.
+1. Introduce the initial C-016 lifecycle contracts in `Hase.Runtime.Transport`.
+2. Define discovered and manually configured connection definitions.
+3. Define descriptor-source and attachment-session ownership contracts.
+4. Implement attachment from a verified IPv4 discovery result after the contracts are verified.
+5. Implement manual TCP attachment through the same lifecycle.
+6. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
 ---
 
@@ -339,4 +339,5 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 

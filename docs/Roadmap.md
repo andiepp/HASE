@@ -227,16 +227,54 @@ A physical reset test confirmed that an endpoint returning with the same address
 
 Architecture: ADR-0018 - mDNS/DNS-SD Network Endpoint Discovery.
 
-## 6.9 Remaining Phase 6 Work
+## 6.9 Explicit Endpoint Attachment and Lifecycle Ownership
 
+**Status:** [In Progress] Architecture accepted; implementation not started
+
+Architecture: ADR-0019 - Local Endpoint Communication Lifecycle Ownership.
+
+The HASE runtime host owns the complete local communication lifecycle for every attached endpoint:
+
+```text
+Detection or configuration
+    -> connection-target resolution
+    -> endpoint verification or adapter probing
+    -> descriptor resolution
+    -> explicit attachment
+    -> synchronization
+    -> operation
+    -> health monitoring and recovery
+    -> orderly shutdown
+```
+
+Approved boundaries:
+
+- discovery and manual configuration are equal connection-definition sources;
+- detection never attaches or replaces a runtime endpoint automatically;
+- attachment requires an explicit application or user request;
+- native HASE identity is verified again on the operational connection;
+- network addresses are not authoritative endpoint identity;
+- descriptor resolution is independent of connection resolution;
+- complete descriptors, compact repository references, and adapter-configured descriptors are supported architecture paths;
+- an attachment session owns the runtime endpoint and its complete communication lifecycle;
+- one endpoint connection may operate multiple instruments;
+- multiple applications access physical endpoints through the runtime host;
+- Tailscale host detection and a future northbound API remain above the local lifecycle;
+- Protocol Version 1 remains unchanged.
+
+The first C-016 increment introduces contracts only. Network I/O, runtime mutation, Protocol Explorer changes, and firmware changes remain outside that increment.
+
+## 6.10 Remaining Phase 6 Work
+
+- introduce and verify C-016 lifecycle contracts;
+- implement attachment from a verified IPv4 discovery result;
+- implement manual TCP endpoint attachment;
+- define runtime-host attachment inventory;
 - validate Wi-Fi interruption and re-advertisement;
 - decide sequential versus bounded-parallel verification;
-- define discovery-result lifetime and diagnostics;
-- design live discovery presence events only if required by future tooling;
-- design explicit endpoint selection and runtime attachment;
 - validate Linux discovery;
 - decide IPv6 scope;
-- consider BLE and USB serial transports.
+- consider serial, BLE, and USB transports.
 
 ---
 
@@ -282,7 +320,7 @@ Possible simulation work includes noise, drift, calibration offsets, device and 
 
 # Documentation Roadmap
 
-Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0018.
+Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0019.
 
 Next:
 
@@ -295,13 +333,12 @@ Next:
 
 # Current Priorities
 
-1. Commit ADR-0018 and the synchronized documentation state.
-2. Validate advertisement recovery after Wi-Fi interruption.
-3. Keep live discovery presence tracking in backlog.
-4. Decide verification concurrency.
-5. Validate Linux discovery.
-6. Decide whether IPv6 belongs in Phase 6.
-7. Select the next approved Phase 6 capability.
+1. Introduce the initial C-016 lifecycle contracts.
+2. Define discovered and manually configured connection definitions.
+3. Define descriptor-source and attachment-session ownership contracts.
+4. Implement explicit attachment from a verified IPv4 discovery result.
+5. Implement manual TCP attachment through the same lifecycle.
+6. Keep serial transport, remote APIs, and Tailscale host detection as separately approved future capabilities.
 
 ---
 
@@ -318,11 +355,13 @@ Already achieved:
 - IPv4 network discovery;
 - authoritative endpoint verification.
 
-Still requiring explicit scope decisions:
+Still requiring implementation or explicit scope decisions:
 
+- C-016 explicit endpoint attachment and lifecycle ownership;
 - whether IPv6 belongs in Phase 6;
 - whether BLE belongs in Phase 6;
 - whether USB serial belongs in Phase 6;
-- whether runtime attachment belongs in Phase 6 or Phase 7;
-- whether Linux validation is required before closing Phase 6.
+- whether Linux validation is required before closing Phase 6;
+- whether runtime-host inventory and the northbound API belong in Phase 6 or Phase 7.
+
 
