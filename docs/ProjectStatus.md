@@ -248,6 +248,38 @@ A physical ESP32 reset test confirmed the unique-inventory behavior: after the e
 
 ---
 
+# Local Endpoint Communication Lifecycle
+
+ADR-0019 defines the HASE runtime host as the owner of the complete local communication lifecycle for each attached endpoint.
+
+```text
+Detection or configuration
+    -> connection-target resolution
+    -> endpoint verification or adapter probing
+    -> descriptor resolution
+    -> explicit attachment
+    -> synchronization
+    -> operation
+    -> health monitoring and recovery
+    -> orderly shutdown
+```
+
+Discovery and manual configuration are equal sources of connection definitions. Detection never attaches, replaces, operates, or detaches a runtime endpoint automatically.
+
+An attachment session will expose the attached runtime endpoint while owning its transport, protocol or adapter session, synchronization, coordination, recovery, health probing, notification routing, diagnostics, and orderly shutdown.
+
+Native HASE endpoints are verified again through Protocol Version 1 on the connection that enters the operational lifecycle. Network addresses remain connection information rather than endpoint identity.
+
+Descriptor resolution is independent of connection resolution. Complete endpoint descriptors, compact versioned repository references, and adapter-configured descriptors are supported architecture paths.
+
+The local runtime host owns the physical TCP or future serial connection. Multiple instruments may share one endpoint connection. Future local or remote applications access those instruments through the runtime host rather than sharing the physical connection directly.
+
+Tailscale-based runtime-host detection and a future northbound runtime API remain above and independent of the local endpoint lifecycle.
+
+C-016 is the active Phase 6 capability. Its first implementation increment will introduce lifecycle contracts only; it will not perform network I/O or runtime mutation.
+
+---
+
 # Connection and Recovery
 
 `RuntimeEndpointConnectionCoordinator` owns the active runtime protocol binding and duplex-session lifecycle. It coordinates transport establishment, binding creation, synchronization, replacement, status transitions, notification routing, and logical diagnostics.
@@ -339,5 +371,6 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
