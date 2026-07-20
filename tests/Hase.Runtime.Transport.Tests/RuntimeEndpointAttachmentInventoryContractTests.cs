@@ -193,7 +193,7 @@ public sealed class RuntimeEndpointAttachmentInventoryContractTests
                 runtimeEndpoint;
 
             Request =
-                null!;
+                null!; 
         }
 
         public EndpointAttachmentRequest Request
