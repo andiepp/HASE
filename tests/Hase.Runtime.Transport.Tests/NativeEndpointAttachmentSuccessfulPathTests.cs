@@ -163,6 +163,147 @@ public sealed class NativeEndpointAttachmentSuccessfulPathTests
                 null!));
     }
 
+    [Fact]
+    public async Task CompleteAsync_SupervisionFault_ShouldCleanUpAndPropagate()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        var remainingResource =
+            new RecordingAsyncDisposable();
+
+        var expectedException =
+            new IOException(
+                "Initial supervision failed.");
+
+        var successfulPath =
+            new NativeEndpointAttachmentSuccessfulPath(
+                runtimeContext);
+
+        IOException exception =
+            await Assert.ThrowsAsync<IOException>(
+                () => successfulPath.CompleteAsync(
+                    CreateRequest(),
+                    CreateBootstrapResult(),
+                    runtimeEndpoint =>
+                        new EndpointConnectionSupervisionLifetime(
+                            cancellationToken =>
+                                Task.FromException(
+                                    expectedException)),
+                    [remainingResource]));
+
+        Assert.Same(
+            expectedException,
+            exception);
+
+        Assert.Empty(
+            runtimeContext.Endpoints);
+
+        Assert.Equal(
+            1,
+            remainingResource.DisposeCallCount);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_CallerCancellation_ShouldCleanUpAndPropagate()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        var remainingResource =
+            new RecordingAsyncDisposable();
+
+        var supervisionStarted =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var successfulPath =
+            new NativeEndpointAttachmentSuccessfulPath(
+                runtimeContext);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        Task<EndpointAttachmentSession> completionTask =
+            successfulPath.CompleteAsync(
+                CreateRequest(),
+                CreateBootstrapResult(),
+                runtimeEndpoint =>
+                    new EndpointConnectionSupervisionLifetime(
+                        async cancellationToken =>
+                        {
+                            supervisionStarted.TrySetResult();
+
+                            await Task.Delay(
+                                Timeout.InfiniteTimeSpan,
+                                cancellationToken);
+                        }),
+                [remainingResource],
+                cancellationTokenSource.Token);
+
+        await supervisionStarted.Task;
+
+        cancellationTokenSource.Cancel();
+
+        OperationCanceledException exception =
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                async () => await completionTask);
+
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            exception.CancellationToken);
+
+        Assert.Empty(
+            runtimeContext.Endpoints);
+
+        Assert.Equal(
+            1,
+            remainingResource.DisposeCallCount);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_PublicationFailure_ShouldCleanUpAndPropagate()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        _ = runtimeContext.AddEndpoint(
+            CreateBootstrapResult().Descriptor);
+
+        var remainingResource =
+            new RecordingAsyncDisposable();
+
+        var successfulPath =
+            new NativeEndpointAttachmentSuccessfulPath(
+                runtimeContext);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => successfulPath.CompleteAsync(
+                CreateRequest(),
+                CreateBootstrapResult(),
+                runtimeEndpoint =>
+                    new EndpointConnectionSupervisionLifetime(
+                        async cancellationToken =>
+                        {
+                            runtimeEndpoint.UpdateConnectionStatus(
+                                new EndpointConnectionStatus(
+                                    EndpointConnectionState.Ready,
+                                    DateTimeOffset.UtcNow));
+
+                            await Task.Delay(
+                                Timeout.InfiniteTimeSpan,
+                                cancellationToken);
+                        }),
+                [remainingResource]));
+
+        Assert.Single(
+            runtimeContext.Endpoints);
+
+        Assert.Equal(
+            1,
+            remainingResource.DisposeCallCount);
+    }
+
     private static EndpointAttachmentRequest CreateRequest()
     {
         return new EndpointAttachmentRequest(

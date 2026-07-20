@@ -1,4 +1,5 @@
-﻿using Hase.Runtime.Runtime;
+﻿using System.Runtime.ExceptionServices;
+using Hase.Runtime.Runtime;
 
 namespace Hase.Runtime.Transport.Attachment;
 
@@ -67,35 +68,132 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
             _runtimeContext.CreateEndpoint(
                 bootstrapResult.Descriptor);
 
-        EndpointConnectionSupervisionLifetime supervisionLifetime =
-            createSupervisionLifetime(
-                runtimeEndpoint)
-            ?? throw new InvalidOperationException(
-                "The supervision-lifetime factory returned null.");
+        EndpointConnectionSupervisionLifetime? supervisionLifetime =
+            null;
 
-        Task supervisionTask =
-            supervisionLifetime.RunAsync();
+        RuntimeEndpointPublication? publication =
+            null;
 
-        await RuntimeEndpointInitialReadiness.WaitAsync(
-            runtimeEndpoint,
-            supervisionTask,
-            cancellationToken);
+        try
+        {
+            supervisionLifetime =
+                createSupervisionLifetime(
+                    runtimeEndpoint)
+                ?? throw new InvalidOperationException(
+                    "The supervision-lifetime factory returned null.");
 
-        RuntimeEndpointPublication publication =
-            RuntimeEndpointPublication.Publish(
-                _runtimeContext,
-                runtimeEndpoint);
+            Task supervisionTask =
+                supervisionLifetime.RunAsync();
 
-        IAsyncDisposable[] ownedResources =
-        [
-            publication,
-            supervisionLifetime,
-            .. remainingResources
-        ];
+            await RuntimeEndpointInitialReadiness.WaitAsync(
+                runtimeEndpoint,
+                supervisionTask,
+                cancellationToken);
 
-        return new EndpointAttachmentSession(
-            request,
-            runtimeEndpoint,
-            ownedResources);
+            publication =
+                RuntimeEndpointPublication.Publish(
+                    _runtimeContext,
+                    runtimeEndpoint);
+
+            IAsyncDisposable[] ownedResources =
+            [
+                publication,
+                supervisionLifetime,
+                .. remainingResources
+            ];
+
+            return new EndpointAttachmentSession(
+                request,
+                runtimeEndpoint,
+                ownedResources);
+        }
+        catch (Exception attachmentFailure)
+        {
+            List<Exception> cleanupFailures =
+                await CleanupFailedAttachmentAsync(
+                    publication,
+                    supervisionLifetime,
+                    remainingResources,
+                    attachmentFailure);
+
+            if (cleanupFailures.Count > 0)
+            {
+                throw new AggregateException(
+                    "Endpoint attachment failed and one or more "
+                    + "resources also failed during cleanup.",
+                    [
+                        attachmentFailure,
+                        .. cleanupFailures
+                    ]);
+            }
+
+            ExceptionDispatchInfo
+                .Capture(
+                    attachmentFailure)
+                .Throw();
+
+            throw;
+        }
+    }
+
+    private static async Task<List<Exception>>
+        CleanupFailedAttachmentAsync(
+            RuntimeEndpointPublication? publication,
+            EndpointConnectionSupervisionLifetime? supervisionLifetime,
+            IReadOnlyList<IAsyncDisposable> remainingResources,
+            Exception attachmentFailure)
+    {
+        var failures =
+            new List<Exception>();
+
+        if (publication is not null)
+        {
+            await DisposeFailedResourceAsync(
+                publication,
+                attachmentFailure,
+                failures);
+        }
+
+        if (supervisionLifetime is not null)
+        {
+            await DisposeFailedResourceAsync(
+                supervisionLifetime,
+                attachmentFailure,
+                failures);
+        }
+
+        foreach (
+            IAsyncDisposable resource
+            in remainingResources)
+        {
+            await DisposeFailedResourceAsync(
+                resource,
+                attachmentFailure,
+                failures);
+        }
+
+        return failures;
+    }
+
+    private static async Task DisposeFailedResourceAsync(
+        IAsyncDisposable resource,
+        Exception attachmentFailure,
+        ICollection<Exception> cleanupFailures)
+    {
+        try
+        {
+            await resource.DisposeAsync();
+        }
+        catch (Exception cleanupFailure)
+            when (ReferenceEquals(
+                cleanupFailure,
+                attachmentFailure))
+        {
+        }
+        catch (Exception cleanupFailure)
+        {
+            cleanupFailures.Add(
+                cleanupFailure);
+        }
     }
 }
