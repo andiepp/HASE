@@ -1,6 +1,6 @@
 ﻿using System.Buffers.Binary;
 
-namespace Hase.Transport.Serial;
+namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Encodes and decodes complete Compact Serial Protocol Version 1 frames.

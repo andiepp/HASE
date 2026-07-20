@@ -1,4 +1,6 @@
-﻿namespace Hase.Transport.Serial;
+﻿using Hase.Transport.Serial;
+
+namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Reads complete Compact Serial Protocol Version 1 frames from a fragmented

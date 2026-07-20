@@ -1,4 +1,4 @@
-﻿namespace Hase.Transport.Serial;
+﻿namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Calculates CRC-16/CCITT-FALSE values.

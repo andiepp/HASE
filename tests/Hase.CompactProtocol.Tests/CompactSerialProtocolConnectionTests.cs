@@ -1,6 +1,8 @@
-﻿using Hase.Transport.Serial;
+﻿using Hase.CompactProtocol;
+using Hase.Transport;
+using Hase.Transport.Serial;
 
-namespace Hase.Transport.Tests;
+namespace Hase.CompactProtocol.Tests;
 
 public sealed class CompactSerialProtocolConnectionTests
 {

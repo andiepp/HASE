@@ -1,7 +1,7 @@
 ﻿using System.Text;
-using Hase.Transport.Serial;
+using Hase.CompactProtocol;
 
-namespace Hase.Transport.Tests;
+namespace Hase.CompactProtocol.Tests;
 
 public sealed class Crc16CcittFalseTests
 {

@@ -1,4 +1,4 @@
-﻿namespace Hase.Transport.Serial;
+﻿namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Defines the frozen Compact Serial Protocol Version 1 frame limits.

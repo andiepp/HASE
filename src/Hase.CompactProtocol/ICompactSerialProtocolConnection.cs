@@ -1,4 +1,6 @@
-﻿namespace Hase.Transport.Serial;
+﻿using Hase.Transport;
+
+namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Exchanges Compact Serial Protocol frames over one owned serial byte stream.

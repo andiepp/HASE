@@ -1,4 +1,4 @@
-﻿namespace Hase.Transport.Serial;
+﻿namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Represents one complete Compact Serial Protocol Version 1 frame.

@@ -1,4 +1,4 @@
-﻿namespace Hase.Transport.Serial;
+namespace Hase.Transport.Serial;
 
 /// <summary>
 /// Provides asynchronous byte-stream access to an opened serial connection.
@@ -8,7 +8,7 @@
 /// framing remains the responsibility of the transport connection that owns
 /// the byte stream.
 /// </remarks>
-internal interface ISerialByteStream
+public interface ISerialByteStream
     : IAsyncDisposable
 {
     /// <summary>

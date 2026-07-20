@@ -1,4 +1,7 @@
-﻿namespace Hase.Transport.Serial;
+﻿using Hase.Transport;
+using Hase.Transport.Serial;
+
+namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Provides serialized Compact Serial Protocol request/response exchanges over

@@ -2,14 +2,16 @@
   <Folder Name="/Solution Items/">
     <File Path=".gitignore" />
   </Folder>
+  <Project Path="src/Hase.CompactProtocol/Hase.CompactProtocol.csproj" Id="51084aab-9941-4d87-bb51-c78360041240" />
   <Project Path="src/Hase.Core/Hase.Core.csproj" />
   <Project Path="src/Hase.Protocol/Hase.Protocol.csproj" Id="b1d3a42a-bb92-4737-bc05-6012645d1709" />
   <Project Path="src/HASE.ProtocolExplorer/HASE.ProtocolExplorer.csproj" Id="31754301-ad31-4a2f-a426-0f595c0d07f7" />
-  <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
   <Project Path="src/Hase.Runtime.Transport/Hase.Runtime.Transport.csproj" />
+  <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
   <Project Path="src/Hase.Simulation.Runtime/Hase.Simulation.Runtime.csproj" Id="2237039f-536a-47bf-af87-6204a42facf9" />
   <Project Path="src/Hase.Simulation/Hase.Simulation.csproj" />
   <Project Path="src/Hase.Transport/Hase.Transport.csproj" Id="944d6668-cfaa-468d-b1fc-75681f9e4ede" />
+  <Project Path="tests/Hase.CompactProtocol.Tests/Hase.CompactProtocol.Tests.csproj" Id="475ee51a-1128-400d-b652-18a4b53ec395" />
   <Project Path="tests/Hase.Protocol.Tests/Hase.Protocol.Tests.csproj" Id="37af6823-121d-42cd-8023-ac7f9aff8e3c" />
   <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
   <Project Path="tests/Hase.Runtime.Transport.Tests/Hase.Runtime.Transport.Tests.csproj" Id="ffdefcd1-c441-4e0d-9988-4cd9a7e0e032" />
