@@ -119,6 +119,60 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     }
 
     [Fact]
+    public async Task AttachAsync_DuplicateCleanupFailure_ShouldReportBothFailures()
+    {
+        TestEndpointAttachmentSession existingSession =
+            CreateSession(
+                "duplicate-endpoint");
+
+        var cleanupFailure =
+            new InvalidOperationException(
+                "Duplicate cleanup failed.");
+
+        TestEndpointAttachmentSession duplicateSession =
+            CreateSession(
+                "duplicate-endpoint",
+                disposeFailure: cleanupFailure);
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                new QueueEndpointAttachmentService(
+                    existingSession,
+                    duplicateSession));
+
+        RuntimeEndpointAttachmentInventoryEntry existingEntry =
+            await inventory.AttachAsync(
+                CreateRequest());
+
+        AggregateException exception =
+            await Assert.ThrowsAsync<AggregateException>(
+                () => inventory.AttachAsync(
+                    CreateRequest()));
+
+        Assert.Equal(
+            2,
+            exception.InnerExceptions.Count);
+
+        Assert.IsType<InvalidOperationException>(
+            exception.InnerExceptions[0]);
+
+        Assert.Same(
+            cleanupFailure,
+            exception.InnerExceptions[1]);
+
+        Assert.Same(
+            existingEntry,
+            Assert.Single(
+                inventory.List()));
+
+        Assert.Equal(
+            1,
+            duplicateSession.DisposeCallCount);
+
+        await inventory.DisposeAsync();
+    }
+
+    [Fact]
     public async Task DetachAsync_ExistingIdentity_ShouldRemoveAndShutdownSession()
     {
         TestEndpointAttachmentSession session =
@@ -170,6 +224,61 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     }
 
     [Fact]
+    public async Task DetachAsync_ShutdownFailure_ShouldRemoveFailedEntryAndPreserveOthers()
+    {
+        var shutdownFailure =
+            new InvalidOperationException(
+                "Shutdown failed.");
+
+        TestEndpointAttachmentSession failingSession =
+            CreateSession(
+                "failing-endpoint",
+                shutdownFailure: shutdownFailure);
+
+        TestEndpointAttachmentSession unaffectedSession =
+            CreateSession(
+                "unaffected-endpoint");
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                new QueueEndpointAttachmentService(
+                    failingSession,
+                    unaffectedSession));
+
+        RuntimeEndpointAttachmentInventoryEntry failingEntry =
+            await inventory.AttachAsync(
+                CreateRequest());
+
+        RuntimeEndpointAttachmentInventoryEntry unaffectedEntry =
+            await inventory.AttachAsync(
+                CreateRequest());
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => inventory.DetachAsync(
+                    failingEntry.EndpointId));
+
+        Assert.Same(
+            shutdownFailure,
+            exception);
+
+        Assert.Null(
+            inventory.Find(
+                failingEntry.EndpointId));
+
+        Assert.Same(
+            unaffectedEntry,
+            Assert.Single(
+                inventory.List()));
+
+        Assert.Equal(
+            1,
+            failingSession.ShutdownCallCount);
+
+        await inventory.DisposeAsync();
+    }
+
+    [Fact]
     public async Task DisposeAsync_ShouldDisposeAllSessionsAndBeIdempotent()
     {
         TestEndpointAttachmentSession firstSession =
@@ -205,6 +314,110 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     }
 
     [Fact]
+    public async Task DisposeAsync_SingleFailure_ShouldContinueAndRethrowFailure()
+    {
+        var disposeFailure =
+            new InvalidOperationException(
+                "Disposal failed.");
+
+        TestEndpointAttachmentSession failingSession =
+            CreateSession(
+                "failing-endpoint",
+                disposeFailure: disposeFailure);
+
+        TestEndpointAttachmentSession succeedingSession =
+            CreateSession(
+                "succeeding-endpoint");
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                new QueueEndpointAttachmentService(
+                    failingSession,
+                    succeedingSession));
+
+        await inventory.AttachAsync(
+            CreateRequest());
+
+        await inventory.AttachAsync(
+            CreateRequest());
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                async () => await inventory.DisposeAsync());
+
+        Assert.Same(
+            disposeFailure,
+            exception);
+
+        Assert.Equal(
+            1,
+            failingSession.DisposeCallCount);
+
+        Assert.Equal(
+            1,
+            succeedingSession.DisposeCallCount);
+
+        await inventory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_MultipleFailures_ShouldAggregateFailures()
+    {
+        var firstFailure =
+            new InvalidOperationException(
+                "First disposal failed.");
+
+        var secondFailure =
+            new NotSupportedException(
+                "Second disposal failed.");
+
+        TestEndpointAttachmentSession firstSession =
+            CreateSession(
+                "endpoint-one",
+                disposeFailure: firstFailure);
+
+        TestEndpointAttachmentSession secondSession =
+            CreateSession(
+                "endpoint-two",
+                disposeFailure: secondFailure);
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                new QueueEndpointAttachmentService(
+                    firstSession,
+                    secondSession));
+
+        await inventory.AttachAsync(
+            CreateRequest());
+
+        await inventory.AttachAsync(
+            CreateRequest());
+
+        AggregateException exception =
+            await Assert.ThrowsAsync<AggregateException>(
+                async () => await inventory.DisposeAsync());
+
+        Assert.Collection(
+            exception.InnerExceptions,
+            failure => Assert.Same(
+                firstFailure,
+                failure),
+            failure => Assert.Same(
+                secondFailure,
+                failure));
+
+        Assert.Equal(
+            1,
+            firstSession.DisposeCallCount);
+
+        Assert.Equal(
+            1,
+            secondSession.DisposeCallCount);
+
+        await inventory.DisposeAsync();
+    }
+
+    [Fact]
     public async Task OperationsAfterDisposal_ShouldReject()
     {
         var inventory =
@@ -232,7 +445,9 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     }
 
     private static TestEndpointAttachmentSession CreateSession(
-        string endpointId)
+        string endpointId,
+        Exception? shutdownFailure = null,
+        Exception? disposeFailure = null)
     {
         var runtimeEndpoint =
             new RuntimeEndpoint(
@@ -243,7 +458,9 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
 
         return new TestEndpointAttachmentSession(
             CreateRequest(),
-            runtimeEndpoint);
+            runtimeEndpoint,
+            shutdownFailure,
+            disposeFailure);
     }
 
     private static EndpointAttachmentRequest CreateRequest()
@@ -283,13 +500,21 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     {
         public TestEndpointAttachmentSession(
             EndpointAttachmentRequest request,
-            RuntimeEndpoint runtimeEndpoint)
+            RuntimeEndpoint runtimeEndpoint,
+            Exception? shutdownFailure,
+            Exception? disposeFailure)
         {
             Request =
                 request;
 
             RuntimeEndpoint =
                 runtimeEndpoint;
+
+            ShutdownFailure =
+                shutdownFailure;
+
+            DisposeFailure =
+                disposeFailure;
         }
 
         public int ShutdownCallCount
@@ -302,6 +527,16 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
         {
             get;
             private set;
+        }
+
+        private Exception? ShutdownFailure
+        {
+            get;
+        }
+
+        private Exception? DisposeFailure
+        {
+            get;
         }
 
         public EndpointAttachmentRequest Request
@@ -321,12 +556,24 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
 
             ShutdownCallCount++;
 
+            if (ShutdownFailure is not null)
+            {
+                return Task.FromException(
+                    ShutdownFailure);
+            }
+
             return Task.CompletedTask;
         }
 
         public ValueTask DisposeAsync()
         {
             DisposeCallCount++;
+
+            if (DisposeFailure is not null)
+            {
+                return ValueTask.FromException(
+                    DisposeFailure);
+            }
 
             return ValueTask.CompletedTask;
         }

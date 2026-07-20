@@ -73,9 +73,20 @@ public sealed class RuntimeEndpointAttachmentInventory
 
             return entry;
         }
-        catch
+        catch (Exception attachmentFailure)
         {
-            await attachmentSession.DisposeAsync();
+            try
+            {
+                await attachmentSession.DisposeAsync();
+            }
+            catch (Exception cleanupFailure)
+            {
+                throw new AggregateException(
+                    "Endpoint attachment failed and its incomplete "
+                    + "session cleanup also failed.",
+                    attachmentFailure,
+                    cleanupFailure);
+            }
 
             throw;
         }
