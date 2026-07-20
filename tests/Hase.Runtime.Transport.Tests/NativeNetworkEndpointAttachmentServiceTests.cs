@@ -253,6 +253,94 @@ public sealed class NativeNetworkEndpointAttachmentServiceTests
                 null!));
     }
 
+    [Fact]
+    public async Task AttachAsync_OperationalConstructionFailure_ShouldNotPublish()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        var expectedException =
+            new InvalidOperationException(
+                "Operational construction failed.");
+
+        var service =
+            new NativeNetworkEndpointAttachmentService(
+                runtimeContext,
+                (
+                    definition,
+                    cancellationToken) =>
+                    Task.FromResult(
+                        CreateBootstrapResult()),
+                (
+                    definition,
+                    runtimeEndpoint) =>
+                    throw expectedException);
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.AttachAsync(
+                    new EndpointAttachmentRequest(
+                        CreateConnectionDefinition(),
+                        EndpointProvidedDescriptorSource.Instance)));
+
+        Assert.Same(
+            expectedException,
+            exception);
+
+        Assert.Empty(
+            runtimeContext.Endpoints);
+    }
+
+    [Fact]
+    public async Task AttachAsync_SupervisionFailure_ShouldCleanUpAndNotPublish()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        var expectedException =
+            new IOException(
+                "Initial supervision failed.");
+
+        var remainingResource =
+            new RecordingAsyncDisposable();
+
+        var service =
+            new NativeNetworkEndpointAttachmentService(
+                runtimeContext,
+                (
+                    definition,
+                    cancellationToken) =>
+                    Task.FromResult(
+                        CreateBootstrapResult()),
+                (
+                    definition,
+                    runtimeEndpoint) =>
+                    new TestOperationalResources(
+                        new EndpointConnectionSupervisionLifetime(
+                            cancellationToken =>
+                                Task.FromException(
+                                    expectedException)),
+                        [remainingResource]));
+
+        IOException exception =
+            await Assert.ThrowsAsync<IOException>(
+                () => service.AttachAsync(
+                    new EndpointAttachmentRequest(
+                        CreateConnectionDefinition(),
+                        EndpointProvidedDescriptorSource.Instance)));
+
+        Assert.Same(
+            expectedException,
+            exception);
+
+        Assert.Empty(
+            runtimeContext.Endpoints);
+
+        Assert.Equal(
+            1,
+            remainingResource.DisposeCallCount);
+    }
+
     private static NativeNetworkEndpointAttachmentService CreateService(
         Func<
             NetworkEndpointConnectionDefinition,
