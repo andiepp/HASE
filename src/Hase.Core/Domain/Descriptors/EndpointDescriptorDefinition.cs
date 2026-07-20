@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 
 namespace Hase.Core.Domain.Descriptors;
@@ -57,5 +58,23 @@ public sealed record EndpointDescriptorDefinition
     public IReadOnlyList<InstrumentDescriptor> Instruments
     {
         get;
+    }
+
+    /// <summary>
+    /// Creates an endpoint descriptor with an authoritative endpoint identity
+    /// and this definition's reusable descriptor content.
+    /// </summary>
+    public EndpointDescriptor Materialize(
+        EndpointId endpointId)
+    {
+        ArgumentNullException.ThrowIfNull(
+            endpointId);
+
+        return new EndpointDescriptor(
+            endpointId,
+            Instruments)
+        {
+            Metadata = Metadata
+        };
     }
 }
