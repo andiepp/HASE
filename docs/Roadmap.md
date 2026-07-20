@@ -111,7 +111,7 @@ Completion baseline:
 Current baseline:
 
 ```text
-861 automated tests
+967 automated tests
 .NET solution builds
 ESP32 firmware builds
 Physical ESP32 endpoint verified
@@ -229,7 +229,7 @@ Architecture: ADR-0018 - mDNS/DNS-SD Network Endpoint Discovery.
 
 ## 6.9 Explicit Endpoint Attachment and Lifecycle Ownership
 
-**Status:** [In Progress] Architecture accepted; implementation not started
+**Status:** [Completed] Implemented and physically verified for native framed TCP
 
 Architecture: ADR-0019 - Local Endpoint Communication Lifecycle Ownership.
 
@@ -262,14 +262,42 @@ Approved boundaries:
 - Tailscale host detection and a future northbound API remain above the local lifecycle;
 - Protocol Version 1 remains unchanged.
 
-The first C-016 increment introduces contracts only. Network I/O, runtime mutation, Protocol Explorer changes, and firmware changes remain outside that increment.
+Implemented:
+
+- endpoint connection-origin and connection-definition contracts;
+- endpoint-provided descriptor-source and attachment contracts;
+- native Protocol Version 1 bootstrap contracts and implementation;
+- temporary framed-TCP bootstrap client;
+- staged runtime endpoint creation and explicit publication;
+- operational identity validation on the connection entering service;
+- initial-readiness gating before publication;
+- coherent operational resource construction;
+- runtime-host-owned attachment sessions with idempotent orderly shutdown;
+- failed-attachment cleanup and caller-cancellation propagation;
+- manual and discovery-derived network definitions converging on one attachment service;
+- automated framed-TCP bootstrap, operational attachment, publication, and shutdown integration;
+- Protocol Explorer C-016 physical validation.
+
+Physical validation confirmed:
+
+```text
+Authoritative endpoint : doit-esp32-devkitc-v4-01
+Connection state       : Ready
+Published endpoints     : 1
+Readable cache          : Temperature, Relative Humidity,
+                          Air Pressure, Status LED Enabled
+Shutdown state          : Disconnected
+Published endpoints     : 0
+```
+
+The ESP32 transport now accepts a newly pending operational client and replaces the stale bootstrap client when the network stack has not yet observed peer closure.
+
+Capability C-016 is complete for native framed-TCP endpoints.
 
 ## 6.10 Remaining Phase 6 Work
 
-- introduce and verify C-016 lifecycle contracts;
-- implement attachment from a verified IPv4 discovery result;
-- implement manual TCP endpoint attachment;
 - define runtime-host attachment inventory;
+- decide whether attached-endpoint inventory belongs in Phase 6 or Phase 7;
 - validate Wi-Fi interruption and re-advertisement;
 - decide sequential versus bounded-parallel verification;
 - validate Linux discovery;
@@ -312,7 +340,7 @@ Protocol Version 1 is frozen for the current endpoint contract. Authentication, 
 
 # Future Runtime and Simulation Work
 
-Possible runtime work includes explicit attachment, multiple endpoints, replacement policy, persistence, offline inventory, calibration, settings, EEPROM workflows, scheduling, and event history.
+Possible runtime work includes multiple attached endpoints, replacement policy, persistence, offline inventory, calibration, settings, EEPROM workflows, scheduling, and event history.
 
 Possible simulation work includes noise, drift, calibration offsets, device and network failures, playback, scripted scenarios, and multi-endpoint simulation.
 
@@ -324,21 +352,19 @@ Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `Run
 
 Next:
 
-1. Keep physical capability C-015 and its validation baseline current.
+1. Keep physical capabilities C-015 and C-016 and their validation baselines current.
 2. Keep IPv4 scope and IPv6 backlog explicit.
-3. Document explicit runtime attachment when designed.
+3. Document runtime-host attachment inventory when its phase is selected.
 4. Record any future discovery concurrency decision in an ADR if it changes architecture.
 
 ---
 
 # Current Priorities
 
-1. Introduce the initial C-016 lifecycle contracts.
-2. Define discovered and manually configured connection definitions.
-3. Define descriptor-source and attachment-session ownership contracts.
-4. Implement explicit attachment from a verified IPv4 discovery result.
-5. Implement manual TCP attachment through the same lifecycle.
-6. Keep serial transport, remote APIs, and Tailscale host detection as separately approved future capabilities.
+1. Select the next Phase 6 capability explicitly.
+2. Decide the phase boundary for runtime-host attachment inventory.
+3. Decide whether Linux validation is required before Phase 6 completion.
+4. Keep IPv6, serial transport, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
 
 ---
 
@@ -353,15 +379,17 @@ Already achieved:
 - physical properties, commands, and events;
 - event recovery;
 - IPv4 network discovery;
-- authoritative endpoint verification.
+- authoritative endpoint verification;
+- C-016 explicit endpoint attachment and lifecycle ownership;
+- automated and physical attachment lifecycle validation.
 
 Still requiring implementation or explicit scope decisions:
 
-- C-016 explicit endpoint attachment and lifecycle ownership;
 - whether IPv6 belongs in Phase 6;
 - whether BLE belongs in Phase 6;
 - whether USB serial belongs in Phase 6;
 - whether Linux validation is required before closing Phase 6;
 - whether runtime-host inventory and the northbound API belong in Phase 6 or Phase 7.
+
 
 

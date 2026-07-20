@@ -12,12 +12,12 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, and IPv4 network endpoint discovery are implemented. The architecture for explicit local endpoint attachment and runtime-host lifecycle ownership is accepted.
+The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, and explicit runtime-host-owned endpoint attachment are implemented. C-016 has been validated through automated loopback TCP integration and the physical ESP32/BME280 endpoint.
 
 The current verified baseline is:
 
 ```text
-861 automated tests passing
+967 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Physical ESP32 endpoint verified
@@ -126,7 +126,14 @@ Completed:
 - IPv4 mDNS/DNS-SD endpoint discovery;
 - Protocol Version 1 candidate verification;
 - authoritative endpoint-ID deduplication;
-- Protocol Explorer network-discovery scenario.
+- Protocol Explorer network-discovery scenario;
+- explicit endpoint connection and descriptor-source contracts;
+- native Protocol Version 1 bootstrap and authoritative identity validation;
+- staged runtime endpoint creation and readiness-gated publication;
+- runtime-host-owned attachment sessions and orderly shutdown;
+- manual and discovery-derived network definitions through one attachment path;
+- automated framed-TCP attachment lifecycle integration;
+- physical C-016 attachment and shutdown validation.
 
 ---
 
@@ -266,7 +273,7 @@ Detection or configuration
 
 Discovery and manual configuration are equal sources of connection definitions. Detection never attaches, replaces, operates, or detaches a runtime endpoint automatically.
 
-An attachment session will expose the attached runtime endpoint while owning its transport, protocol or adapter session, synchronization, coordination, recovery, health probing, notification routing, diagnostics, and orderly shutdown.
+An attachment session exposes the attached runtime endpoint while owning its transport, protocol session, synchronization, coordination, recovery, notification routing, diagnostics, runtime publication, and orderly shutdown.
 
 Native HASE endpoints are verified again through Protocol Version 1 on the connection that enters the operational lifecycle. Network addresses remain connection information rather than endpoint identity.
 
@@ -276,7 +283,9 @@ The local runtime host owns the physical TCP or future serial connection. Multip
 
 Tailscale-based runtime-host detection and a future northbound runtime API remain above and independent of the local endpoint lifecycle.
 
-C-016 is the active Phase 6 capability. Its first implementation increment will introduce lifecycle contracts only; it will not perform network I/O or runtime mutation.
+C-016 is complete for native framed-TCP endpoints. The implementation performs temporary bootstrap, authoritative identity and descriptor acquisition, staged runtime construction, independent operational connection establishment, operational identity revalidation, descriptor and readable-property synchronization, readiness-gated publication, recovery supervision, and orderly session shutdown.
+
+Physical validation confirmed the bootstrap-to-operational handoff on the ESP32. `HaseTcpTransport` now accepts a newly pending client and replaces the previous stale client when the ESP32 network stack has not yet observed the bootstrap peer closure.
 
 ---
 
@@ -314,6 +323,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 - C-002 - Runtime event subscription and notification routing.
 - C-003 through C-014 - Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
 - C-015 - IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
+- C-016 - Explicit native network endpoint attachment through the runtime-host lifecycle.
 
 ---
 
@@ -321,7 +331,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-861 automated tests pass
+967 automated tests pass
 ESP32 firmware builds
 BME280 initializes
 Wi-Fi connects
@@ -332,6 +342,10 @@ Protocol Explorer discovers the candidate
 DiscoverRequest/DiscoverResponse succeeds
 Authoritative EndpointId is verified
 Ctrl+C stops discovery cleanly
+C-016 bootstrap and operational TCP sessions succeed
+C-016 publishes only after Ready
+C-016 synchronizes four physical readable properties
+C-016 shutdown ends Disconnected with zero published endpoints
 ```
 
 ---
@@ -344,18 +358,17 @@ ADR-0001 through ADR-0019 are accepted. ADR-0017 defines duplex protocol health 
 
 # Current Limitations
 
-The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic runtime attachment, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, and USB serial transport.
+The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, and USB serial transport.
 
 ---
 
 # Immediate Next Steps
 
-1. Introduce the initial C-016 lifecycle contracts in `Hase.Runtime.Transport`.
-2. Define discovered and manually configured connection definitions.
-3. Define descriptor-source and attachment-session ownership contracts.
-4. Implement attachment from a verified IPv4 discovery result after the contracts are verified.
-5. Implement manual TCP attachment through the same lifecycle.
-6. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
+1. Keep C-016 attachment, shutdown, and physical validation baselines current.
+2. Select the next Phase 6 capability explicitly.
+3. Decide whether runtime-host attachment inventory belongs in Phase 6 or Phase 7.
+4. Decide whether Linux validation is required before closing Phase 6.
+5. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
 ---
 
@@ -371,6 +384,7 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
 
