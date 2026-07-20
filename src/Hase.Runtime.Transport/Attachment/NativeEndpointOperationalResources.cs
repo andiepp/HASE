@@ -9,6 +9,7 @@ namespace Hase.Runtime.Transport.Attachment;
 /// network endpoint after bootstrap.
 /// </summary>
 internal sealed class NativeEndpointOperationalResources
+    : INativeEndpointOperationalResources
 {
     private NativeEndpointOperationalResources(
         EndpointConnectionSupervisionLifetime supervisionLifetime,
@@ -34,7 +35,7 @@ internal sealed class NativeEndpointOperationalResources
     /// <summary>
     /// Gets the lifetime that starts and stops connection supervision.
     /// </summary>
-    internal EndpointConnectionSupervisionLifetime SupervisionLifetime
+    public EndpointConnectionSupervisionLifetime SupervisionLifetime
     {
         get;
     }
@@ -58,7 +59,7 @@ internal sealed class NativeEndpointOperationalResources
     /// <summary>
     /// Gets resources in the order required after supervision has stopped.
     /// </summary>
-    internal IReadOnlyList<IAsyncDisposable> ResourcesAfterSupervision
+    public IReadOnlyList<IAsyncDisposable> ResourcesAfterSupervision
     {
         get;
     }
