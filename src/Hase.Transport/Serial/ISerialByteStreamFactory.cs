@@ -3,7 +3,7 @@
 /// <summary>
 /// Opens the serial byte stream owned by one transport connection.
 /// </summary>
-internal interface ISerialByteStreamFactory
+public interface ISerialByteStreamFactory
 {
     /// <summary>
     /// Opens a serial byte stream using the supplied connection settings.

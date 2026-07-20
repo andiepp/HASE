@@ -5,7 +5,7 @@ namespace Hase.Transport.Serial;
 /// <summary>
 /// Opens serial byte streams through System.IO.Ports.
 /// </summary>
-internal sealed class SystemIoPortsSerialByteStreamFactory
+public sealed class SystemIoPortsSerialByteStreamFactory
     : ISerialByteStreamFactory
 {
     private readonly Func<
