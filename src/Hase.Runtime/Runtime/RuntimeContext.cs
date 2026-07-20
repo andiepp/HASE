@@ -19,64 +19,136 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
     public IReadOnlyList<IRuntimeNode> Children =>
         _endpoints.Cast<IRuntimeNode>().ToArray();
 
-    public RuntimeEndpoint AddEndpoint(EndpointDescriptor descriptor)
+    /// <summary>
+    /// Constructs a runtime endpoint associated with this context without
+    /// publishing it in the context endpoint inventory.
+    /// </summary>
+    public RuntimeEndpoint CreateEndpoint(
+        EndpointDescriptor descriptor)
     {
-        ArgumentNullException.ThrowIfNull(descriptor);
+        ArgumentNullException.ThrowIfNull(
+            descriptor);
 
-        if (_endpoints.Any(e => e.Descriptor.Id == descriptor.Id))
+        return new RuntimeEndpoint(
+            this,
+            descriptor);
+    }
+
+    /// <summary>
+    /// Publishes a staged runtime endpoint in this context.
+    /// </summary>
+    public RuntimeEndpoint PublishEndpoint(
+        RuntimeEndpoint endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(
+            endpoint);
+
+        if (!ReferenceEquals(
+                endpoint.Context,
+                this))
         {
-            throw new InvalidOperationException(
-                $"An endpoint with id '{descriptor.Id}' already exists.");
+            throw new ArgumentException(
+                "The runtime endpoint belongs to a different "
+                + "runtime context.",
+                nameof(endpoint));
         }
 
-        var endpoint = new RuntimeEndpoint(this, descriptor);
+        if (_endpoints.Any(
+                existingEndpoint =>
+                    existingEndpoint.Descriptor.Id
+                    == endpoint.Descriptor.Id))
+        {
+            throw new InvalidOperationException(
+                $"An endpoint with id "
+                + $"'{endpoint.Descriptor.Id}' already exists.");
+        }
 
-        endpoint.Subscribe(this);
+        endpoint.Subscribe(
+            this);
 
-        _endpoints.Add(endpoint);
+        _endpoints.Add(
+            endpoint);
 
         return endpoint;
     }
 
-    public bool RemoveEndpoint(RuntimeEndpoint endpoint)
+    /// <summary>
+    /// Constructs and immediately publishes a runtime endpoint.
+    /// </summary>
+    public RuntimeEndpoint AddEndpoint(
+        EndpointDescriptor descriptor)
     {
-        ArgumentNullException.ThrowIfNull(endpoint);
+        RuntimeEndpoint endpoint =
+            CreateEndpoint(
+                descriptor);
 
-        endpoint.Unsubscribe(this);
-
-        return _endpoints.Remove(endpoint);
+        return PublishEndpoint(
+            endpoint);
     }
 
-    public RuntimeEndpoint? FindEndpoint(EndpointId id)
+    public bool RemoveEndpoint(
+        RuntimeEndpoint endpoint)
     {
-        ArgumentNullException.ThrowIfNull(id);
+        ArgumentNullException.ThrowIfNull(
+            endpoint);
+
+        if (!_endpoints.Remove(
+                endpoint))
+        {
+            return false;
+        }
+
+        endpoint.Unsubscribe(
+            this);
+
+        return true;
+    }
+
+    public RuntimeEndpoint? FindEndpoint(
+        EndpointId id)
+    {
+        ArgumentNullException.ThrowIfNull(
+            id);
 
         return _endpoints.FirstOrDefault(
-            endpoint => endpoint.Descriptor.Id == id);
+            endpoint =>
+                endpoint.Descriptor.Id
+                == id);
     }
 
-    public void Subscribe(IPropertyValueObserver observer)
+    public void Subscribe(
+        IPropertyValueObserver observer)
     {
-        ArgumentNullException.ThrowIfNull(observer);
+        ArgumentNullException.ThrowIfNull(
+            observer);
 
-        if (!_observers.Contains(observer))
+        if (!_observers.Contains(
+                observer))
         {
-            _observers.Add(observer);
+            _observers.Add(
+                observer);
         }
     }
 
-    public void Unsubscribe(IPropertyValueObserver observer)
+    public void Unsubscribe(
+        IPropertyValueObserver observer)
     {
-        ArgumentNullException.ThrowIfNull(observer);
+        ArgumentNullException.ThrowIfNull(
+            observer);
 
-        _observers.Remove(observer);
+        _observers.Remove(
+            observer);
     }
 
-    public void OnPropertyValueChanged(PropertyValueChanged change)
+    public void OnPropertyValueChanged(
+        PropertyValueChanged change)
     {
-        foreach (var observer in _observers)
+        foreach (
+            IPropertyValueObserver observer
+            in _observers)
         {
-            observer.OnPropertyValueChanged(change);
+            observer.OnPropertyValueChanged(
+                change);
         }
     }
 }
