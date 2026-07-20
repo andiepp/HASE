@@ -418,6 +418,203 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     }
 
     [Fact]
+    public async Task ConcurrentDuplicateAttachments_ShouldSerializeAndPreserveFirstEntry()
+    {
+        TestEndpointAttachmentSession firstSession =
+            CreateSession(
+                "duplicate-endpoint");
+
+        TestEndpointAttachmentSession secondSession =
+            CreateSession(
+                "duplicate-endpoint");
+
+        var firstAttachmentStarted =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var releaseFirstAttachment =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        int attachmentCallCount =
+            0;
+
+        var attachmentService =
+            new DelegateEndpointAttachmentService(
+                async cancellationToken =>
+                {
+                    int callNumber =
+                        Interlocked.Increment(
+                            ref attachmentCallCount);
+
+                    if (callNumber == 1)
+                    {
+                        firstAttachmentStarted.TrySetResult();
+
+                        await releaseFirstAttachment.Task.WaitAsync(
+                            cancellationToken);
+
+                        return firstSession;
+                    }
+
+                    return secondSession;
+                });
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                attachmentService);
+
+        Task<RuntimeEndpointAttachmentInventoryEntry> firstAttachment =
+            inventory.AttachAsync(
+                CreateRequest());
+
+        await firstAttachmentStarted.Task;
+
+        Task<RuntimeEndpointAttachmentInventoryEntry> secondAttachment =
+            inventory.AttachAsync(
+                CreateRequest());
+
+        Assert.Equal(
+            1,
+            Volatile.Read(
+                ref attachmentCallCount));
+
+        releaseFirstAttachment.TrySetResult();
+
+        RuntimeEndpointAttachmentInventoryEntry firstEntry =
+            await firstAttachment;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await secondAttachment);
+
+        Assert.Same(
+            firstEntry,
+            Assert.Single(
+                inventory.List()));
+
+        Assert.Equal(
+            1,
+            secondSession.DisposeCallCount);
+
+        await inventory.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DuringAttachment_ShouldWaitAndDisposeCompletedAttachment()
+    {
+        TestEndpointAttachmentSession session =
+            CreateSession(
+                "endpoint-one");
+
+        var attachmentStarted =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var releaseAttachment =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var attachmentService =
+            new DelegateEndpointAttachmentService(
+                async cancellationToken =>
+                {
+                    attachmentStarted.TrySetResult();
+
+                    await releaseAttachment.Task.WaitAsync(
+                        cancellationToken);
+
+                    return session;
+                });
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                attachmentService);
+
+        Task<RuntimeEndpointAttachmentInventoryEntry> attachmentTask =
+            inventory.AttachAsync(
+                CreateRequest());
+
+        await attachmentStarted.Task;
+
+        Task disposalTask =
+            inventory.DisposeAsync().AsTask();
+
+        Assert.False(
+            disposalTask.IsCompleted);
+
+        releaseAttachment.TrySetResult();
+
+        await attachmentTask;
+        await disposalTask;
+
+        Assert.Equal(
+            1,
+            session.DisposeCallCount);
+    }
+
+    [Fact]
+    public async Task AttachAsync_QueuedBehindDisposal_ShouldRejectWithoutCallingService()
+    {
+        var disposalStarted =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var releaseDisposal =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        TestEndpointAttachmentSession existingSession =
+            CreateSession(
+                "existing-endpoint",
+                disposalStarted: disposalStarted,
+                releaseDisposal: releaseDisposal.Task);
+
+        TestEndpointAttachmentSession unusedSession =
+            CreateSession(
+                "unused-endpoint");
+
+        var attachmentService =
+            new QueueEndpointAttachmentService(
+                existingSession,
+                unusedSession);
+
+        var inventory =
+            new RuntimeEndpointAttachmentInventory(
+                attachmentService);
+
+        await inventory.AttachAsync(
+            CreateRequest());
+
+        Task disposalTask =
+            inventory.DisposeAsync().AsTask();
+
+        await disposalStarted.Task;
+
+        Task<RuntimeEndpointAttachmentInventoryEntry> attachmentTask =
+            inventory.AttachAsync(
+                CreateRequest());
+
+        Assert.Equal(
+            1,
+            attachmentService.CallCount);
+
+        releaseDisposal.TrySetResult();
+
+        await disposalTask;
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () => await attachmentTask);
+
+        Assert.Equal(
+            1,
+            attachmentService.CallCount);
+
+        Assert.Equal(
+            0,
+            unusedSession.DisposeCallCount);
+    }
+
+    [Fact]
     public async Task OperationsAfterDisposal_ShouldReject()
     {
         var inventory =
@@ -447,7 +644,9 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
     private static TestEndpointAttachmentSession CreateSession(
         string endpointId,
         Exception? shutdownFailure = null,
-        Exception? disposeFailure = null)
+        Exception? disposeFailure = null,
+        TaskCompletionSource? disposalStarted = null,
+        Task? releaseDisposal = null)
     {
         var runtimeEndpoint =
             new RuntimeEndpoint(
@@ -460,7 +659,9 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
             CreateRequest(),
             runtimeEndpoint,
             shutdownFailure,
-            disposeFailure);
+            disposeFailure,
+            disposalStarted,
+            releaseDisposal);
     }
 
     private static EndpointAttachmentRequest CreateRequest()
@@ -484,14 +685,49 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
                     sessions);
         }
 
+        public int CallCount
+        {
+            get;
+            private set;
+        }
+
         public Task<IEndpointAttachmentSession> AttachAsync(
             EndpointAttachmentRequest request,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            CallCount++;
+
             return Task.FromResult(
                 _sessions.Dequeue());
+        }
+    }
+
+    private sealed class DelegateEndpointAttachmentService
+        : IEndpointAttachmentService
+    {
+        private readonly Func<
+            CancellationToken,
+            Task<IEndpointAttachmentSession>>
+            _attachAsync;
+
+        public DelegateEndpointAttachmentService(
+            Func<
+                CancellationToken,
+                Task<IEndpointAttachmentSession>>
+                attachAsync)
+        {
+            _attachAsync =
+                attachAsync;
+        }
+
+        public Task<IEndpointAttachmentSession> AttachAsync(
+            EndpointAttachmentRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return _attachAsync(
+                cancellationToken);
         }
     }
 
@@ -502,7 +738,9 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
             EndpointAttachmentRequest request,
             RuntimeEndpoint runtimeEndpoint,
             Exception? shutdownFailure,
-            Exception? disposeFailure)
+            Exception? disposeFailure,
+            TaskCompletionSource? disposalStarted,
+            Task? releaseDisposal)
         {
             Request =
                 request;
@@ -515,6 +753,12 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
 
             DisposeFailure =
                 disposeFailure;
+
+            DisposalStarted =
+                disposalStarted;
+
+            ReleaseDisposal =
+                releaseDisposal;
         }
 
         public int ShutdownCallCount
@@ -535,6 +779,16 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
         }
 
         private Exception? DisposeFailure
+        {
+            get;
+        }
+
+        private TaskCompletionSource? DisposalStarted
+        {
+            get;
+        }
+
+        private Task? ReleaseDisposal
         {
             get;
         }
@@ -565,17 +819,21 @@ public sealed class RuntimeEndpointAttachmentInventoryTests
             return Task.CompletedTask;
         }
 
-        public ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync()
         {
             DisposeCallCount++;
 
-            if (DisposeFailure is not null)
+            DisposalStarted?.TrySetResult();
+
+            if (ReleaseDisposal is not null)
             {
-                return ValueTask.FromException(
-                    DisposeFailure);
+                await ReleaseDisposal;
             }
 
-            return ValueTask.CompletedTask;
+            if (DisposeFailure is not null)
+            {
+                throw DisposeFailure;
+            }
         }
     }
 

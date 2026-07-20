@@ -7,8 +7,9 @@ namespace Hase.Runtime.Transport.Attachment;
 /// Maintains the runtime host's active endpoint attachment inventory.
 /// </summary>
 /// <remarks>
-/// This implementation provides sequential inventory behavior. Concurrent
-/// operation coordination is introduced separately.
+/// Complete inventory operations are serialized. An operation that enters
+/// first completes before the next operation observes or mutates inventory
+/// state.
 /// </remarks>
 public sealed class RuntimeEndpointAttachmentInventory
     : IRuntimeEndpointAttachmentInventory
@@ -21,6 +22,11 @@ public sealed class RuntimeEndpointAttachmentInventory
         RuntimeEndpointAttachmentInventoryEntry>
         _entries =
             [];
+
+    private readonly SemaphoreSlim _operationGate =
+        new(
+            1,
+            1);
 
     private bool _isDisposed;
 
@@ -44,51 +50,61 @@ public sealed class RuntimeEndpointAttachmentInventory
         ArgumentNullException.ThrowIfNull(
             request);
 
-        ThrowIfDisposed();
-
-        IEndpointAttachmentSession attachmentSession =
-            await _attachmentService.AttachAsync(
-                request,
-                cancellationToken);
-
-        RuntimeEndpointAttachmentInventoryEntry entry;
+        await _operationGate.WaitAsync(
+            cancellationToken);
 
         try
         {
-            entry =
-                new RuntimeEndpointAttachmentInventoryEntry(
-                    attachmentSession);
+            ThrowIfDisposed();
 
-            if (_entries.ContainsKey(
-                    entry.EndpointId))
-            {
-                throw new InvalidOperationException(
-                    "An endpoint attachment with authoritative identity "
-                    + $"'{entry.EndpointId}' is already present.");
-            }
+            IEndpointAttachmentSession attachmentSession =
+                await _attachmentService.AttachAsync(
+                    request,
+                    cancellationToken);
 
-            _entries.Add(
-                entry.EndpointId,
-                entry);
+            RuntimeEndpointAttachmentInventoryEntry entry;
 
-            return entry;
-        }
-        catch (Exception attachmentFailure)
-        {
             try
             {
-                await attachmentSession.DisposeAsync();
-            }
-            catch (Exception cleanupFailure)
-            {
-                throw new AggregateException(
-                    "Endpoint attachment failed and its incomplete "
-                    + "session cleanup also failed.",
-                    attachmentFailure,
-                    cleanupFailure);
-            }
+                entry =
+                    new RuntimeEndpointAttachmentInventoryEntry(
+                        attachmentSession);
 
-            throw;
+                if (_entries.ContainsKey(
+                        entry.EndpointId))
+                {
+                    throw new InvalidOperationException(
+                        "An endpoint attachment with authoritative identity "
+                        + $"'{entry.EndpointId}' is already present.");
+                }
+
+                _entries.Add(
+                    entry.EndpointId,
+                    entry);
+
+                return entry;
+            }
+            catch (Exception attachmentFailure)
+            {
+                try
+                {
+                    await attachmentSession.DisposeAsync();
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(
+                        "Endpoint attachment failed and its incomplete "
+                        + "session cleanup also failed.",
+                        attachmentFailure,
+                        cleanupFailure);
+                }
+
+                throw;
+            }
+        }
+        finally
+        {
+            _operationGate.Release();
         }
     }
 
@@ -99,21 +115,39 @@ public sealed class RuntimeEndpointAttachmentInventory
         ArgumentNullException.ThrowIfNull(
             endpointId);
 
-        ThrowIfDisposed();
+        _operationGate.Wait();
 
-        _entries.TryGetValue(
-            endpointId,
-            out RuntimeEndpointAttachmentInventoryEntry? entry);
+        try
+        {
+            ThrowIfDisposed();
 
-        return entry;
+            _entries.TryGetValue(
+                endpointId,
+                out RuntimeEndpointAttachmentInventoryEntry? entry);
+
+            return entry;
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
     }
 
     /// <inheritdoc />
     public IReadOnlyList<RuntimeEndpointAttachmentInventoryEntry> List()
     {
-        ThrowIfDisposed();
+        _operationGate.Wait();
 
-        return _entries.Values.ToArray();
+        try
+        {
+            ThrowIfDisposed();
+
+            return _entries.Values.ToArray();
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
     }
 
     /// <inheritdoc />
@@ -124,75 +158,94 @@ public sealed class RuntimeEndpointAttachmentInventory
         ArgumentNullException.ThrowIfNull(
             endpointId);
 
-        ThrowIfDisposed();
-
-        if (!_entries.Remove(
-                endpointId,
-                out RuntimeEndpointAttachmentInventoryEntry? entry))
-        {
-            return false;
-        }
-
-        await entry.AttachmentSession.ShutdownAsync(
+        await _operationGate.WaitAsync(
             cancellationToken);
 
-        return true;
+        try
+        {
+            ThrowIfDisposed();
+
+            if (!_entries.Remove(
+                    endpointId,
+                    out RuntimeEndpointAttachmentInventoryEntry? entry))
+            {
+                return false;
+            }
+
+            await entry.AttachmentSession.ShutdownAsync(
+                cancellationToken);
+
+            return true;
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        if (_isDisposed)
+        await _operationGate.WaitAsync();
+
+        try
         {
-            return;
-        }
-
-        _isDisposed =
-            true;
-
-        RuntimeEndpointAttachmentInventoryEntry[] entries =
-            _entries.Values.ToArray();
-
-        _entries.Clear();
-
-        List<Exception>? failures =
-            null;
-
-        foreach (
-            RuntimeEndpointAttachmentInventoryEntry entry
-            in entries)
-        {
-            try
+            if (_isDisposed)
             {
-                await entry.AttachmentSession.DisposeAsync();
+                return;
             }
-            catch (Exception exception)
+
+            _isDisposed =
+                true;
+
+            RuntimeEndpointAttachmentInventoryEntry[] entries =
+                _entries.Values.ToArray();
+
+            _entries.Clear();
+
+            List<Exception>? failures =
+                null;
+
+            foreach (
+                RuntimeEndpointAttachmentInventoryEntry entry
+                in entries)
             {
-                failures ??=
-                    [];
+                try
+                {
+                    await entry.AttachmentSession.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    failures ??=
+                        [];
 
-                failures.Add(
-                    exception);
+                    failures.Add(
+                        exception);
+                }
             }
-        }
 
-        if (failures is null)
+            if (failures is null)
+            {
+                return;
+            }
+
+            if (failures.Count == 1)
+            {
+                ExceptionDispatchInfo
+                    .Capture(
+                        failures[0])
+                    .Throw();
+            }
+
+            throw new AggregateException(
+                "Multiple endpoint attachments failed during inventory "
+                + "disposal.",
+                failures);
+        }
+        finally
         {
-            return;
+            _operationGate.Release();
         }
-
-        if (failures.Count == 1)
-        {
-            ExceptionDispatchInfo
-                .Capture(
-                    failures[0])
-                .Throw();
-        }
-
-        throw new AggregateException(
-            "Multiple endpoint attachments failed during inventory "
-            + "disposal.",
-            failures);
     }
 
     private void ThrowIfDisposed()
