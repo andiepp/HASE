@@ -62,13 +62,45 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
                 nameof(resourcesAfterSupervision));
         }
 
+        return await CompleteAsync(
+            request,
+            bootstrapResult,
+            runtimeEndpoint =>
+                new SuppliedOperationalResources(
+                    createSupervisionLifetime(
+                        runtimeEndpoint),
+                    remainingResources),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Completes attachment using one coherent operational resource graph.
+    /// </summary>
+    internal async Task<EndpointAttachmentSession> CompleteAsync(
+        EndpointAttachmentRequest request,
+        NativeEndpointBootstrapResult bootstrapResult,
+        Func<
+            RuntimeEndpoint,
+            INativeEndpointOperationalResources>
+            createOperationalResources,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        ArgumentNullException.ThrowIfNull(
+            bootstrapResult);
+
+        ArgumentNullException.ThrowIfNull(
+            createOperationalResources);
+
         cancellationToken.ThrowIfCancellationRequested();
 
         RuntimeEndpoint runtimeEndpoint =
             _runtimeContext.CreateEndpoint(
                 bootstrapResult.Descriptor);
 
-        EndpointConnectionSupervisionLifetime? supervisionLifetime =
+        INativeEndpointOperationalResources? operationalResources =
             null;
 
         RuntimeEndpointPublication? publication =
@@ -76,14 +108,16 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
 
         try
         {
-            supervisionLifetime =
-                createSupervisionLifetime(
+            operationalResources =
+                createOperationalResources(
                     runtimeEndpoint)
                 ?? throw new InvalidOperationException(
-                    "The supervision-lifetime factory returned null.");
+                    "The operational-resource factory returned null.");
 
             Task supervisionTask =
-                supervisionLifetime.RunAsync();
+                operationalResources
+                    .SupervisionLifetime
+                    .RunAsync();
 
             await RuntimeEndpointInitialReadiness.WaitAsync(
                 runtimeEndpoint,
@@ -98,8 +132,8 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
             IAsyncDisposable[] ownedResources =
             [
                 publication,
-                supervisionLifetime,
-                .. remainingResources
+                operationalResources.SupervisionLifetime,
+                .. operationalResources.ResourcesAfterSupervision
             ];
 
             return new EndpointAttachmentSession(
@@ -112,8 +146,9 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
             List<Exception> cleanupFailures =
                 await CleanupFailedAttachmentAsync(
                     publication,
-                    supervisionLifetime,
-                    remainingResources,
+                    operationalResources?.SupervisionLifetime,
+                    operationalResources?.ResourcesAfterSupervision
+                        ?? Array.Empty<IAsyncDisposable>(),
                     attachmentFailure);
 
             if (cleanupFailures.Count > 0)
@@ -194,6 +229,33 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
         {
             cleanupFailures.Add(
                 cleanupFailure);
+        }
+    }
+
+    private sealed class SuppliedOperationalResources
+        : INativeEndpointOperationalResources
+    {
+        internal SuppliedOperationalResources(
+            EndpointConnectionSupervisionLifetime supervisionLifetime,
+            IReadOnlyList<IAsyncDisposable> resourcesAfterSupervision)
+        {
+            SupervisionLifetime =
+                supervisionLifetime
+                ?? throw new InvalidOperationException(
+                    "The supervision-lifetime factory returned null.");
+
+            ResourcesAfterSupervision =
+                resourcesAfterSupervision;
+        }
+
+        public EndpointConnectionSupervisionLifetime SupervisionLifetime
+        {
+            get;
+        }
+
+        public IReadOnlyList<IAsyncDisposable> ResourcesAfterSupervision
+        {
+            get;
         }
     }
 }

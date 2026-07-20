@@ -304,6 +304,49 @@ public sealed class NativeEndpointAttachmentSuccessfulPathTests
             remainingResource.DisposeCallCount);
     }
 
+    [Fact]
+    public async Task CompleteAsync_OperationalResourceBundle_ShouldOwnBundle()
+    {
+        var runtimeContext =
+            new RuntimeContext();
+
+        var remainingResource =
+            new RecordingAsyncDisposable();
+
+        var successfulPath =
+            new NativeEndpointAttachmentSuccessfulPath(
+                runtimeContext);
+
+        EndpointAttachmentSession session =
+            await successfulPath.CompleteAsync(
+                CreateRequest(),
+                CreateBootstrapResult(),
+                runtimeEndpoint =>
+                    new TestOperationalResources(
+                        new EndpointConnectionSupervisionLifetime(
+                            async cancellationToken =>
+                            {
+                                runtimeEndpoint.UpdateConnectionStatus(
+                                    new EndpointConnectionStatus(
+                                        EndpointConnectionState.Ready,
+                                        DateTimeOffset.UtcNow));
+
+                                await Task.Delay(
+                                    Timeout.InfiniteTimeSpan,
+                                    cancellationToken);
+                            }),
+                        [remainingResource]));
+
+        await session.ShutdownAsync();
+
+        Assert.Empty(
+            runtimeContext.Endpoints);
+
+        Assert.Equal(
+            1,
+            remainingResource.DisposeCallCount);
+    }
+
     private static EndpointAttachmentRequest CreateRequest()
     {
         return new EndpointAttachmentRequest(
@@ -347,6 +390,31 @@ public sealed class NativeEndpointAttachmentSuccessfulPathTests
             DisposeCallCount++;
 
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TestOperationalResources
+        : INativeEndpointOperationalResources
+    {
+        public TestOperationalResources(
+            EndpointConnectionSupervisionLifetime supervisionLifetime,
+            IReadOnlyList<IAsyncDisposable> resourcesAfterSupervision)
+        {
+            SupervisionLifetime =
+                supervisionLifetime;
+
+            ResourcesAfterSupervision =
+                resourcesAfterSupervision;
+        }
+
+        public EndpointConnectionSupervisionLifetime SupervisionLifetime
+        {
+            get;
+        }
+
+        public IReadOnlyList<IAsyncDisposable> ResourcesAfterSupervision
+        {
+            get;
         }
     }
 }
