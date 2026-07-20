@@ -184,22 +184,23 @@ void HaseTcpTransport::disconnectClient()
 
 void HaseTcpTransport::acceptClient()
 {
-    if (hasConnectedClient())
-    {
-        return;
-    }
-
-    if (_client)
-    {
-        _client.stop();
-    }
-
     WiFiClient newClient =
         _server.available();
 
     if (!newClient)
     {
         return;
+    }
+
+    if (_client)
+    {
+        if (_client.connected())
+        {
+            Serial.println(
+                "Replacing the previous client with a newly accepted client.");
+        }
+
+        _client.stop();
     }
 
     _client =
