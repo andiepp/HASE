@@ -9,5 +9,11 @@ internal enum CompactSerialMessageType : byte
         0x01,
 
     BootstrapResponse =
-        0x02
+        0x02,
+
+    ExecuteCommandRequest =
+        0x03,
+
+    ExecuteCommandResponse =
+        0x04
 }
