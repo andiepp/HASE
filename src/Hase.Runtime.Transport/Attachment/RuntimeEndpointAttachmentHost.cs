@@ -1,4 +1,5 @@
 ﻿using Hase.Runtime.Runtime;
+using Hase.Runtime.Connections;
 
 namespace Hase.Runtime.Transport.Attachment;
 
@@ -13,6 +14,42 @@ namespace Hase.Runtime.Transport.Attachment;
 public sealed class RuntimeEndpointAttachmentHost
     : IAsyncDisposable
 {
+    /// <summary>
+    /// Creates a host configured for native HASE endpoints reached through
+    /// framed TCP.
+    /// </summary>
+    public static RuntimeEndpointAttachmentHost CreateNativeNetwork(
+        INativeEndpointBootstrapper bootstrapper,
+        IRuntimeEndpointSynchronizer synchronizer,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        int maximumPayloadLength =
+            TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength)
+    {
+        ArgumentNullException.ThrowIfNull(
+            bootstrapper);
+
+        ArgumentNullException.ThrowIfNull(
+            synchronizer);
+
+        ArgumentNullException.ThrowIfNull(
+            reconnectPolicy);
+
+        var runtimeContext =
+            new RuntimeContext();
+
+        var attachmentService =
+            new NativeNetworkEndpointAttachmentService(
+                runtimeContext,
+                bootstrapper,
+                synchronizer,
+                reconnectPolicy,
+                maximumPayloadLength);
+
+        return new RuntimeEndpointAttachmentHost(
+            runtimeContext,
+            attachmentService);
+    }
+
     /// <summary>
     /// Initializes the endpoint attachment owner for one runtime context.
     /// </summary>

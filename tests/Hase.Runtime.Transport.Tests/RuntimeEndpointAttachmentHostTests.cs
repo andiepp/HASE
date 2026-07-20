@@ -1,6 +1,8 @@
 ﻿using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Runtime;
+using Hase.Runtime.Connections;
+using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Xunit;
 
@@ -8,6 +10,87 @@ namespace Hase.Runtime.Transport.Tests;
 
 public sealed class RuntimeEndpointAttachmentHostTests
 {
+    [Fact]
+    public async Task CreateNativeNetwork_ShouldCreateOwnedContextAndInventory()
+    {
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost.CreateNativeNetwork(
+                new ProtocolNativeEndpointBootstrapper(),
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                new DefaultRuntimeEndpointReconnectPolicy());
+
+        Assert.NotNull(
+            host.RuntimeContext);
+
+        Assert.Empty(
+            host.RuntimeContext.Endpoints);
+
+        Assert.IsType<RuntimeEndpointAttachmentInventory>(
+            host.AttachmentInventory);
+
+        Assert.Empty(
+            host.AttachmentInventory.List());
+    }
+
+    [Fact]
+    public async Task CreateNativeNetwork_Attachment_ShouldRouteThroughNativeService()
+    {
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost.CreateNativeNetwork(
+                new ProtocolNativeEndpointBootstrapper(),
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                new DefaultRuntimeEndpointReconnectPolicy());
+
+        var request =
+            new EndpointAttachmentRequest(
+                new TestEndpointConnectionDefinition(),
+                new TestEndpointDescriptorSource());
+
+        await Assert.ThrowsAsync<NotSupportedException>(
+            () => host.AttachmentInventory.AttachAsync(
+                request));
+
+        Assert.Empty(
+            host.AttachmentInventory.List());
+
+        Assert.Empty(
+            host.RuntimeContext.Endpoints);
+    }
+
+    [Fact]
+    public void CreateNativeNetwork_NullBootstrapper_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => RuntimeEndpointAttachmentHost.CreateNativeNetwork(
+                null!,
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                new DefaultRuntimeEndpointReconnectPolicy()));
+    }
+
+    [Fact]
+    public void CreateNativeNetwork_NullSynchronizer_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => RuntimeEndpointAttachmentHost.CreateNativeNetwork(
+                new ProtocolNativeEndpointBootstrapper(),
+                null!,
+                new DefaultRuntimeEndpointReconnectPolicy()));
+    }
+
+    [Fact]
+    public void CreateNativeNetwork_NullReconnectPolicy_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => RuntimeEndpointAttachmentHost.CreateNativeNetwork(
+                new ProtocolNativeEndpointBootstrapper(),
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                null!));
+    }
+
     [Fact]
     public void Constructor_ShouldExposeRuntimeContextAndAttachmentInventory()
     {
