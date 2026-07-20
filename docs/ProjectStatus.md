@@ -12,12 +12,12 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, and explicit runtime-host-owned endpoint attachment are implemented. C-016 has been validated through automated loopback TCP integration and the physical ESP32/BME280 endpoint.
+The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, and the runtime-host attachment inventory are implemented. C-016 and C-017 have been validated through automated loopback TCP integration and the physical ESP32/BME280 endpoint.
 
 The current verified baseline is:
 
 ```text
-967 automated tests passing
+998 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Physical ESP32 endpoint verified
@@ -133,7 +133,16 @@ Completed:
 - runtime-host-owned attachment sessions and orderly shutdown;
 - manual and discovery-derived network definitions through one attachment path;
 - automated framed-TCP attachment lifecycle integration;
-- physical C-016 attachment and shutdown validation.
+- physical C-016 attachment and shutdown validation;
+- authoritative runtime-host attachment inventory;
+- immutable attachment inventory entries;
+- attach, find, snapshot list, detach, and asynchronous disposal operations;
+- duplicate-identity rejection without automatic replacement;
+- deterministic attachment, detachment, and disposal coordination;
+- runtime attachment-host composition;
+- native framed-TCP host composition;
+- automated host-inventory framed-TCP integration;
+- physical C-017 inventory attachment and detachment validation.
 
 ---
 
@@ -159,7 +168,7 @@ The physical endpoint remains authoritative. The runtime maintains a synchronize
 
 ## Runtime Transport Integration
 
-`Hase.Runtime.Transport` contains connection management, runtime protocol connections, duplex sessions, protocol bindings, synchronization, recovery supervision, health probing, notification migration, candidate verification, and discovery orchestration.
+`Hase.Runtime.Transport` contains connection management, runtime protocol connections, duplex sessions, protocol bindings, synchronization, recovery supervision, health probing, notification migration, candidate verification, discovery orchestration, endpoint attachment services, the authoritative attachment inventory, and runtime attachment-host composition.
 
 ---
 
@@ -287,6 +296,10 @@ C-016 is complete for native framed-TCP endpoints. The implementation performs t
 
 Physical validation confirmed the bootstrap-to-operational handoff on the ESP32. `HaseTcpTransport` now accepts a newly pending client and replaces the previous stale client when the ESP32 network stack has not yet observed the bootstrap peer closure.
 
+C-017 adds the runtime-host attachment inventory above the C-016 lifecycle. Inventory entries are keyed only by the authoritative `EndpointId` exposed by the attached `RuntimeEndpoint`. Attach, find, snapshot list, detach, and asynchronous disposal are coordinated through one host-owned inventory. Duplicate identity never replaces an existing attachment; the rejected session is cleaned up.
+
+Automated framed-TCP validation covers bootstrap, operational attachment, readiness-gated publication, authoritative lookup, detachment, connection closure, and removal from both the attachment inventory and `RuntimeContext`. Physical validation confirmed one inventory entry and one published endpoint while Ready, followed by explicit detachment to `Disconnected` with both inventories empty.
+
 ---
 
 # Connection and Recovery
@@ -324,6 +337,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 - C-003 through C-014 - Physical framed TCP, Protocol Version 1 operations, synchronization, recovery, probing, physical properties, commands, duplex notifications, router migration, and event recovery.
 - C-015 - IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
 - C-016 - Explicit native network endpoint attachment through the runtime-host lifecycle.
+- C-017 - Runtime-host attachment inventory with authoritative identity, duplicate rejection, coordinated lifecycle ownership, and explicit detachment.
 
 ---
 
@@ -331,7 +345,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-967 automated tests pass
+998 automated tests pass
 ESP32 firmware builds
 BME280 initializes
 Wi-Fi connects
@@ -346,6 +360,10 @@ C-016 bootstrap and operational TCP sessions succeed
 C-016 publishes only after Ready
 C-016 synchronizes four physical readable properties
 C-016 shutdown ends Disconnected with zero published endpoints
+C-017 inventory lookup returns the same authoritative entry
+C-017 inventory contains one entry while Ready
+C-017 explicit detach returns True
+C-017 detach ends Disconnected with zero inventory entries and zero published endpoints
 ```
 
 ---
@@ -364,11 +382,10 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 
 # Immediate Next Steps
 
-1. Keep C-016 attachment, shutdown, and physical validation baselines current.
+1. Keep C-016 and C-017 attachment, inventory, shutdown, and physical validation baselines current.
 2. Select the next Phase 6 capability explicitly.
-3. Decide whether runtime-host attachment inventory belongs in Phase 6 or Phase 7.
-4. Decide whether Linux validation is required before closing Phase 6.
-5. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
+3. Decide whether Linux validation is required before closing Phase 6.
+4. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
 ---
 
@@ -384,6 +401,7 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
 

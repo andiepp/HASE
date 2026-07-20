@@ -111,7 +111,7 @@ Completion baseline:
 Current baseline:
 
 ```text
-967 automated tests
+998 automated tests
 .NET solution builds
 ESP32 firmware builds
 Physical ESP32 endpoint verified
@@ -294,10 +294,53 @@ The ESP32 transport now accepts a newly pending operational client and replaces 
 
 Capability C-016 is complete for native framed-TCP endpoints.
 
-## 6.10 Remaining Phase 6 Work
+## 6.10 Runtime-host Attachment Inventory
 
-- define runtime-host attachment inventory;
-- decide whether attached-endpoint inventory belongs in Phase 6 or Phase 7;
+**Status:** [Completed] Implemented and physically verified for native framed TCP
+
+Capability C-017 adds the host-owned inventory above the C-016 attachment lifecycle.
+
+Implemented:
+
+- `IRuntimeEndpointAttachmentInventory`;
+- immutable `RuntimeEndpointAttachmentInventoryEntry`;
+- authoritative identity from the attached `RuntimeEndpoint`;
+- attach, find, snapshot list, detach, and asynchronous disposal;
+- duplicate authoritative-identity rejection without automatic replacement;
+- cleanup of rejected duplicate sessions;
+- explicit failure propagation and disposal-failure aggregation;
+- deterministic coordination of attachment, detachment, lookup, listing, and disposal;
+- `RuntimeEndpointAttachmentHost` ownership composition;
+- native framed-TCP host factory;
+- automated framed-TCP host-inventory integration;
+- Protocol Explorer C-017 physical validation.
+
+Concurrency rules:
+
+- complete inventory operations are serialized;
+- an attachment already in progress completes before queued disposal;
+- disposal owns and closes attachments completed before it;
+- operations queued behind disposal are rejected;
+- duplicate identity never replaces the existing attachment.
+
+Physical validation confirmed:
+
+```text
+Authoritative endpoint : doit-esp32-devkitc-v4-01
+Connection state       : Ready
+Inventory entries      : 1
+Authoritative lookup   : Same entry
+Published endpoints    : 1
+Detached               : True
+Shutdown state         : Disconnected
+Inventory entries      : 0
+Published endpoints    : 0
+```
+
+Capability C-017 is complete for the current native framed-TCP endpoint path.
+
+## 6.11 Remaining Phase 6 Work
+
 - validate Wi-Fi interruption and re-advertisement;
 - decide sequential versus bounded-parallel verification;
 - validate Linux discovery;
@@ -352,9 +395,9 @@ Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `Run
 
 Next:
 
-1. Keep physical capabilities C-015 and C-016 and their validation baselines current.
+1. Keep physical capabilities C-015 through C-017 and their validation baselines current.
 2. Keep IPv4 scope and IPv6 backlog explicit.
-3. Document runtime-host attachment inventory when its phase is selected.
+3. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
 4. Record any future discovery concurrency decision in an ADR if it changes architecture.
 
 ---
@@ -362,9 +405,8 @@ Next:
 # Current Priorities
 
 1. Select the next Phase 6 capability explicitly.
-2. Decide the phase boundary for runtime-host attachment inventory.
-3. Decide whether Linux validation is required before Phase 6 completion.
-4. Keep IPv6, serial transport, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
+2. Decide whether Linux validation is required before Phase 6 completion.
+3. Keep IPv6, serial transport, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
 
 ---
 
@@ -381,7 +423,10 @@ Already achieved:
 - IPv4 network discovery;
 - authoritative endpoint verification;
 - C-016 explicit endpoint attachment and lifecycle ownership;
-- automated and physical attachment lifecycle validation.
+- automated and physical attachment lifecycle validation;
+- C-017 authoritative runtime-host attachment inventory;
+- deterministic duplicate, detachment, and disposal coordination;
+- automated and physical host-inventory validation.
 
 Still requiring implementation or explicit scope decisions:
 
@@ -389,7 +434,8 @@ Still requiring implementation or explicit scope decisions:
 - whether BLE belongs in Phase 6;
 - whether USB serial belongs in Phase 6;
 - whether Linux validation is required before closing Phase 6;
-- whether runtime-host inventory and the northbound API belong in Phase 6 or Phase 7.
+- whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
+
 
 
 
