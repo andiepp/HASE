@@ -3,13 +3,16 @@ using Hase.CompactProtocol;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Properties;
+using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport;
 using Hase.Transport.Serial;
 
 namespace Hase.ProtocolExplorer.Scenarios;
 
 /// <summary>
-/// Validates compact property reading against a physical Arduino Uno-class
-/// endpoint by reading the built-in LED state before and after toggling it.
+/// Validates compact property synchronization against a physical Arduino
+/// Uno-class endpoint by reading the runtime-cached built-in LED state before
+/// and after toggling it.
 /// </summary>
 internal sealed class CapabilityC020Scenario
     : IParameterizedScenario
@@ -95,16 +98,23 @@ internal sealed class CapabilityC020Scenario
                 transportOptions,
                 expectedEndpointId: null);
 
-        PropertyDescriptor property =
-            FindBuiltInLedStateProperty(
+        var runtimeContext =
+            new RuntimeContext();
+
+        RuntimeEndpoint runtimeEndpoint =
+            runtimeContext.AddEndpoint(
                 connection.Descriptor);
+
+        RuntimeProperty runtimeProperty =
+            FindBuiltInLedStateProperty(
+                runtimeEndpoint);
 
         WriteConnectedEndpoint(
             connection,
-            property);
+            runtimeProperty);
 
-        var reader =
-            new CompactPropertyReader(
+        var synchronizer =
+            new CompactRuntimePropertySynchronizer(
                 connection.Connection,
                 propertyMap);
 
@@ -112,19 +122,19 @@ internal sealed class CapabilityC020Scenario
             new CompactCommandExecutor(
                 connection.Connection);
 
-        CompactPropertyReadResult initialRead =
-            await reader.ReadAsync(
-                PhysicalArduinoUnoCompactDescriptorFactory
-                    .BuiltInLedStateCompactPropertyId);
+        CompactRuntimePropertySynchronizationResult initialResult =
+            await SynchronizeSinglePropertyAsync(
+                synchronizer,
+                runtimeEndpoint);
 
         bool initialState =
-            RequireSuccessfulBooleanValue(
-                initialRead,
+            RequireCachedBooleanValue(
+                initialResult,
                 "initial");
 
-        WritePropertyValue(
-            "Initial LED state",
-            initialRead,
+        WriteCachedPropertyValue(
+            "Initial cached state",
+            initialResult,
             initialState);
 
         Console.WriteLine(
@@ -150,30 +160,30 @@ internal sealed class CapabilityC020Scenario
                 + "execution.");
         }
 
-        CompactPropertyReadResult updatedRead =
-            await reader.ReadAsync(
-                PhysicalArduinoUnoCompactDescriptorFactory
-                    .BuiltInLedStateCompactPropertyId);
+        CompactRuntimePropertySynchronizationResult updatedResult =
+            await SynchronizeSinglePropertyAsync(
+                synchronizer,
+                runtimeEndpoint);
 
         bool updatedState =
-            RequireSuccessfulBooleanValue(
-                updatedRead,
+            RequireCachedBooleanValue(
+                updatedResult,
                 "updated");
 
-        WritePropertyValue(
-            "Updated LED state",
-            updatedRead,
+        WriteCachedPropertyValue(
+            "Updated cached state",
+            updatedResult,
             updatedState);
 
         if (updatedState == initialState)
         {
             throw new InvalidDataException(
-                "The compact LED state did not change after successful toggle "
-                + "command execution.");
+                "The runtime-cached LED state did not change after successful "
+                + "toggle command execution.");
         }
 
         Console.WriteLine(
-            "Compact property validation completed successfully.");
+            "Compact runtime property synchronization completed successfully.");
 
         Console.WriteLine();
 
@@ -185,62 +195,108 @@ internal sealed class CapabilityC020Scenario
         Console.WriteLine();
 
         Console.WriteLine(
+            $"Runtime endpoints      : {runtimeContext.Endpoints.Count}");
+
+        Console.WriteLine(
+            $"Cache property         : "
+            + $"{runtimeProperty.Descriptor.Path}");
+
+        Console.WriteLine();
+
+        Console.WriteLine(
             "The serial connection will now be closed.");
     }
 
-    private static PropertyDescriptor FindBuiltInLedStateProperty(
-        EndpointDescriptor descriptor)
+    private static async Task<
+        CompactRuntimePropertySynchronizationResult>
+        SynchronizeSinglePropertyAsync(
+            CompactRuntimePropertySynchronizer synchronizer,
+            RuntimeEndpoint runtimeEndpoint)
     {
-        PropertyDescriptor? property =
-            descriptor.Instruments
-                .Where(
-                    instrument =>
-                        instrument.Id
-                        == PhysicalArduinoUnoCompactDescriptorFactory
-                            .ControllerInstrumentId)
-                .SelectMany(
-                    instrument =>
-                        instrument.Interface.Properties)
-                .FirstOrDefault(
-                    candidate =>
-                        candidate.Id
-                        == PhysicalArduinoUnoCompactDescriptorFactory
-                            .BuiltInLedStatePropertyId);
+        IReadOnlyList<
+            CompactRuntimePropertySynchronizationResult> results =
+            await synchronizer.SynchronizeAsync(
+                runtimeEndpoint);
+
+        return AssertSingleResult(
+            results);
+    }
+
+    private static CompactRuntimePropertySynchronizationResult
+        AssertSingleResult(
+            IReadOnlyList<
+                CompactRuntimePropertySynchronizationResult> results)
+    {
+        if (results.Count != 1)
+        {
+            throw new InvalidDataException(
+                $"Compact runtime synchronization returned {results.Count} "
+                + "results instead of exactly one.");
+        }
+
+        return results[0];
+    }
+
+    private static RuntimeProperty FindBuiltInLedStateProperty(
+        RuntimeEndpoint runtimeEndpoint)
+    {
+        RuntimeInstrument? controller =
+            runtimeEndpoint.FindInstrument(
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .ControllerInstrumentId);
+
+        if (controller is null)
+        {
+            throw new InvalidDataException(
+                "The Arduino Uno runtime endpoint does not contain the "
+                + "expected GPIO controller instrument.");
+        }
+
+        RuntimeProperty? property =
+            controller.FindProperty(
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .BuiltInLedStatePropertyId);
 
         if (property is null)
         {
             throw new InvalidDataException(
-                "The materialized Arduino Uno descriptor does not contain "
-                + "the expected built-in LED state property.");
+                "The Arduino Uno runtime endpoint does not contain the "
+                + "expected built-in LED state property.");
         }
 
         return property;
     }
 
-    private static bool RequireSuccessfulBooleanValue(
-        CompactPropertyReadResult result,
-        string readName)
+    private static bool RequireCachedBooleanValue(
+        CompactRuntimePropertySynchronizationResult result,
+        string synchronizationName)
     {
         if (result.Status
             != CompactPropertyReadStatus.Success)
         {
             throw new InvalidDataException(
-                $"The {readName} compact property read returned "
-                + $"'{result.Status}'.");
+                $"The {synchronizationName} compact property synchronization "
+                + $"returned '{result.Status}'.");
         }
 
-        if (result.Value is null)
+        if (!result.CacheUpdated)
         {
             throw new InvalidDataException(
-                $"The {readName} compact property read did not contain a "
-                + "property value.");
+                $"The {synchronizationName} compact property synchronization "
+                + "did not update the runtime cache.");
         }
 
-        if (result.Value.Value is not bool value)
+        PropertyValue propertyValue =
+            result.RuntimeProperty.CurrentValue
+            ?? throw new InvalidDataException(
+                $"The {synchronizationName} compact property synchronization "
+                + "did not produce a cached property value.");
+
+        if (propertyValue.Value is not bool value)
         {
             throw new InvalidDataException(
-                $"The {readName} compact property read did not produce a "
-                + "Boolean value.");
+                $"The {synchronizationName} runtime cache value is not "
+                + "Boolean.");
         }
 
         return value;
@@ -266,13 +322,13 @@ internal sealed class CapabilityC020Scenario
 
     private static void WriteConnectedEndpoint(
         CompactEndpointConnection connection,
-        PropertyDescriptor property)
+        RuntimeProperty runtimeProperty)
     {
         EndpointDescriptor descriptor =
             connection.Descriptor;
 
         Console.WriteLine(
-            "Compact endpoint initialized.");
+            "Compact endpoint initialized and published in the runtime.");
 
         Console.WriteLine();
 
@@ -292,10 +348,12 @@ internal sealed class CapabilityC020Scenario
             + $"{descriptor.Metadata.DisplayName}");
 
         Console.WriteLine(
-            $"Property path          : {property.Path}");
+            $"Property path          : "
+            + $"{runtimeProperty.Descriptor.Path}");
 
         Console.WriteLine(
-            $"Property name          : {property.DisplayName}");
+            $"Property name          : "
+            + $"{runtimeProperty.Descriptor.DisplayName}");
 
         Console.WriteLine(
             $"Compact property id    : "
@@ -306,27 +364,34 @@ internal sealed class CapabilityC020Scenario
             + $"{CompactPropertyValueEncoding.Boolean}");
 
         Console.WriteLine(
+            $"Initial cache          : "
+            + $"{(runtimeProperty.CurrentValue is null ? "Empty" : "Populated")}");
+
+        Console.WriteLine(
             $"Connection state       : "
             + $"{connection.Connection.State}");
 
         Console.WriteLine();
     }
 
-    private static void WritePropertyValue(
+    private static void WriteCachedPropertyValue(
         string label,
-        CompactPropertyReadResult result,
+        CompactRuntimePropertySynchronizationResult result,
         bool value)
     {
         PropertyValue propertyValue =
-            result.Value
+            result.RuntimeProperty.CurrentValue
             ?? throw new InvalidOperationException(
-                "A successful compact property result must contain a value.");
+                "A successful synchronization must populate the cache.");
 
         Console.WriteLine(
             $"{label,-22}: {FormatBoolean(value)}");
 
         Console.WriteLine(
             $"Read status            : {result.Status}");
+
+        Console.WriteLine(
+            $"Cache updated          : {result.CacheUpdated}");
 
         Console.WriteLine(
             $"Timestamp UTC          : "
@@ -363,8 +428,8 @@ internal sealed class CapabilityC020Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "Read the physical Arduino Uno built-in LED state through the "
-            + "Compact Serial Protocol before and after toggling it.");
+            "Synchronize the physical Arduino Uno built-in LED state into "
+            + "the runtime property cache before and after toggling it.");
 
         Console.WriteLine();
 
@@ -393,6 +458,9 @@ internal sealed class CapabilityC020Scenario
 
         Console.WriteLine(
             "Compact command      : 0x01 - Toggle built-in LED");
+
+        Console.WriteLine(
+            "Runtime cache        : Synchronize successful reads");
 
         Console.WriteLine();
     }
