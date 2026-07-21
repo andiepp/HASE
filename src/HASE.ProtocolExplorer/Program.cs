@@ -56,7 +56,8 @@ internal static class Program
                     new CapabilityC014Scenario(),
                     new CapabilityC016Scenario(),
                     new CapabilityC017Scenario(),
-                    new CapabilityC018Scenario()
+                    new CapabilityC018Scenario(),
+                    new CapabilityC019Scenario()
                 ]);
 
         string scenarioName =
@@ -191,6 +192,9 @@ internal static class Program
 
         Console.WriteLine(
             "  c018 <COM port> [baud rate]");
+
+        Console.WriteLine(
+            "  c019 <COM port> [baud rate]");
 
         Console.WriteLine();
 
