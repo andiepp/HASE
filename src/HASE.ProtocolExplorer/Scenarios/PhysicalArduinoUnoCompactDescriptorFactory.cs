@@ -1,4 +1,6 @@
-﻿using Hase.Core.Domain.Commands;
+﻿using Hase.CompactProtocol;
+using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
@@ -8,12 +10,15 @@ using Hase.Core.Domain.Properties;
 namespace Hase.ProtocolExplorer.Scenarios;
 
 /// <summary>
-/// Defines the host-side descriptor used by the physical Arduino Uno compact
-/// command validation scenario.
+/// Defines the host-side descriptor and compact mappings used by the physical
+/// Arduino Uno validation endpoint.
 /// </summary>
 internal static class PhysicalArduinoUnoCompactDescriptorFactory
 {
     public const byte ToggleBuiltInLedCompactCommandId =
+        0x01;
+
+    public const byte BuiltInLedStateCompactPropertyId =
         0x01;
 
     public static readonly DescriptorReference DescriptorReference =
@@ -26,6 +31,15 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
         new(
             "arduino-uno-controller-01");
 
+    public static readonly PropertyId BuiltInLedStatePropertyId =
+        new(
+            "built-in-led-state");
+
+    public static readonly DescriptorPath BuiltInLedStatePropertyPath =
+        new(
+            "Led",
+            "State");
+
     public static readonly DescriptorPath ToggleBuiltInLedCommandPath =
         new(
             "Led",
@@ -33,6 +47,19 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
 
     public static EndpointDescriptorDefinition CreateDefinition()
     {
+        var builtInLedState =
+            new PropertyDescriptor(
+                BuiltInLedStatePropertyId,
+                BuiltInLedStatePropertyPath,
+                "Built-in LED State",
+                new BooleanDataDescriptor())
+            {
+                Description =
+                    "Reports whether the Arduino Uno built-in LED is on.",
+                AccessMode =
+                    PropertyAccessMode.Read
+            };
+
         var toggleBuiltInLed =
             new CommandDescriptor(
                 ToggleBuiltInLedCommandPath,
@@ -59,10 +86,14 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                         Description =
                             "GPIO controller provided by the Arduino Uno. "
                             + "The built-in LED is exposed through a compact "
-                            + "command."
+                            + "property and command."
                     },
                 Interface =
                     new InstrumentInterface(
+                        properties:
+                        [
+                            builtInLedState
+                        ],
                         commands:
                         [
                             toggleBuiltInLed
@@ -76,11 +107,30 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                     "Arduino Uno Compact Validation Endpoint",
                 Description =
                     "Physical Arduino Uno-class endpoint used to validate "
-                    + "Compact Serial Protocol bootstrap and command execution."
+                    + "Compact Serial Protocol bootstrap, command execution, "
+                    + "and property reading."
             },
             instruments:
             [
                 controller
+            ]);
+    }
+
+    public static CompactPropertyMap CreatePropertyMap(
+        EndpointDescriptorDefinition descriptorDefinition)
+    {
+        ArgumentNullException.ThrowIfNull(
+            descriptorDefinition);
+
+        return new CompactPropertyMap(
+            descriptorDefinition,
+            mappings:
+            [
+                new CompactPropertyMapping(
+                    BuiltInLedStateCompactPropertyId,
+                    ControllerInstrumentId,
+                    BuiltInLedStatePropertyId,
+                    CompactPropertyValueEncoding.Boolean)
             ]);
     }
 }
