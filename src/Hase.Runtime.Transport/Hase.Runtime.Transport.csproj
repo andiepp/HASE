@@ -1,15 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
-    <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
-    <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\Hase.CompactProtocol\Hase.CompactProtocol.csproj" />
+		<ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
+		<ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
+		<ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
+	</ItemGroup>
 
 </Project>
