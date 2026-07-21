@@ -11,6 +11,7 @@ namespace Hase.CompactProtocol;
 /// established connection on success.
 /// </summary>
 internal sealed class CompactSerialEndpointConnector
+    : ICompactEndpointConnectionFactory
 {
     private readonly ISerialByteStreamFactory _serialByteStreamFactory;
     private readonly IEndpointDescriptorRepository _descriptorRepository;
