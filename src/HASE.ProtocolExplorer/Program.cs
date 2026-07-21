@@ -8,23 +8,19 @@ internal static class Program
     public static int Main(
         string[] args)
     {
-        ArgumentNullException.ThrowIfNull(
-            args);
-
         WriteHeader();
 
-        if (args.Length < 1)
+        if (args.Length == 0)
         {
             WriteHelp();
-
             return 1;
         }
 
-        ProtocolExplorerHost host =
-            new();
+        var host =
+            new ProtocolExplorerHost();
 
-        ScenarioRunner runner =
-            new(
+        var runner =
+            new ScenarioRunner(
                 host.TraceGenerator,
                 [
                     new DiscoverScenario(),
@@ -38,10 +34,8 @@ internal static class Program
                     new EventNotificationScenario(),
                     new ReadEndpointDescriptorResponseScenario(),
                     new NetworkDiscoveryScenario(),
-                    new CapabilityC001Scenario(
-                        host),
-                    new CapabilityC002Scenario(
-                        host),
+                    new CapabilityC001Scenario(host),
+                    new CapabilityC002Scenario(host),
                     new CapabilityC003Scenario(),
                     new CapabilityC004Scenario(),
                     new CapabilityC005Scenario(),
@@ -58,46 +52,44 @@ internal static class Program
                     new CapabilityC017Scenario(),
                     new CapabilityC018Scenario(),
                     new CapabilityC019Scenario(),
-                    new CapabilityC020Scenario()
+                    new CapabilityC020Scenario(),
+                    new CapabilityC021Scenario()
                 ]);
 
         string scenarioName =
             args[0];
 
-        IReadOnlyList<string> scenarioArguments =
+        string[] scenarioArguments =
             args
-                .Skip(
-                    1)
+                .Skip(1)
                 .ToArray();
 
         try
         {
-            if (!runner.TryRun(
+            bool scenarioFound =
+                runner.TryRun(
                     scenarioName,
-                    scenarioArguments))
+                    scenarioArguments);
+
+            if (!scenarioFound)
             {
                 Console.WriteLine(
-                    $"Unknown scenario '{scenarioName}'.");
-
+                    $"Unknown scenario: {scenarioName}");
                 Console.WriteLine();
 
                 WriteHelp();
-
                 return 1;
             }
         }
         catch (Exception exception)
         {
             Console.WriteLine();
-
-            Console.WriteLine(
-                "Scenario failed.");
-
+            Console.WriteLine("Scenario failed.");
             Console.WriteLine();
-
             Console.WriteLine(
-                $"{exception.GetType().Name}: "
-                + $"{exception.Message}");
+                $"Exception type : {exception.GetType().FullName}");
+            Console.WriteLine(
+                $"Message        : {exception.Message}");
 
             return 1;
         }
@@ -107,134 +99,86 @@ internal static class Program
 
     private static void WriteHeader()
     {
-        Console.WriteLine(
-            "HASE Protocol Explorer");
-
-        Console.WriteLine(
-            "======================");
-
+        Console.WriteLine("HASE Protocol Explorer");
+        Console.WriteLine("======================");
         Console.WriteLine();
     }
 
     private static void WriteHelp()
     {
+        Console.WriteLine("Usage:");
+        Console.WriteLine();
         Console.WriteLine(
-            "Usage:");
-
+            "  HASE.ProtocolExplorer <scenario> [arguments]");
         Console.WriteLine();
 
-        Console.WriteLine(
-            "  Hase.ProtocolExplorer <scenario> [arguments]");
-
+        Console.WriteLine("Capability scenarios:");
         Console.WriteLine();
-
-        Console.WriteLine(
-            "Network discovery:");
-
-        Console.WriteLine();
-
-        Console.WriteLine(
-            "  network-discovery");
-
-        Console.WriteLine();
-
-        Console.WriteLine(
-            "Capability scenarios:");
-
-        Console.WriteLine();
-
         Console.WriteLine(
             "  c001");
-
         Console.WriteLine(
             "  c002");
-
         Console.WriteLine(
-            "  c003 <ESP32 host or IP address>");
-
+            "  c003");
         Console.WriteLine(
-            "  c004 <ESP32 host or IP address>");
-
+            "  c004");
         Console.WriteLine(
-            "  c005 <ESP32 host or IP address>");
-
+            "  c005");
         Console.WriteLine(
-            "  c006 <ESP32 host or IP address>");
-
+            "  c006");
         Console.WriteLine(
-            "  c007 <ESP32 host or IP address>");
-
+            "  c007");
         Console.WriteLine(
-            "  c008 <ESP32 host or IP address>");
-
+            "  c008");
         Console.WriteLine(
-            "  c009 <ESP32 host or IP address>");
-
+            "  c009");
         Console.WriteLine(
-            "  c010 <ESP32 host or IP address>");
-
+            "  c010");
         Console.WriteLine(
-            "  c011 <ESP32 host or IP address>");
-
+            "  c011");
         Console.WriteLine(
-            "  c012 <ESP32 host or IP address>");
-
+            "  c012");
         Console.WriteLine(
-            "  c013 <ESP32 host or IP address>");
-
+            "  c013");
         Console.WriteLine(
-            "  c014 <ESP32 host or IP address>");
-
+            "  c014");
         Console.WriteLine(
-            "  c016 <ESP32 host or IP address>");
-
+            "  c016");
         Console.WriteLine(
-            "  c017 <ESP32 host or IP address>");
-
+            "  c017");
         Console.WriteLine(
             "  c018 <COM port> [baud rate]");
-
         Console.WriteLine(
             "  c019 <COM port> [baud rate]");
-
         Console.WriteLine(
             "  c020 <COM port> [baud rate]");
-
-        Console.WriteLine();
-
         Console.WriteLine(
-            "Protocol scenarios:");
-
+            "  c021 <COM port> [baud rate]");
         Console.WriteLine();
 
+        Console.WriteLine("Protocol scenarios:");
+        Console.WriteLine();
         Console.WriteLine(
             "  discover");
-
         Console.WriteLine(
             "  discover-response");
-
         Console.WriteLine(
-            "  read");
-
+            "  read-property");
         Console.WriteLine(
-            "  read-response");
-
+            "  read-property-response");
         Console.WriteLine(
-            "  write");
-
+            "  write-property");
         Console.WriteLine(
-            "  write-response");
-
+            "  write-property-response");
         Console.WriteLine(
-            "  command");
-
+            "  execute-command");
         Console.WriteLine(
-            "  command-response");
-
+            "  execute-command-response");
         Console.WriteLine(
-            "  event");
-
+            "  event-notification");
         Console.WriteLine(
-            "  descriptor-response");
+            "  read-endpoint-descriptor-response");
+        Console.WriteLine(
+            "  network-discovery");
     }
 }
