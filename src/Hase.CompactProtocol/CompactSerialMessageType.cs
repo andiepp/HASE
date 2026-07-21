@@ -1,8 +1,5 @@
 ﻿namespace Hase.CompactProtocol;
 
-/// <summary>
-/// Defines Compact Serial Protocol Version 1 message types.
-/// </summary>
 internal enum CompactSerialMessageType : byte
 {
     BootstrapRequest =
@@ -15,5 +12,11 @@ internal enum CompactSerialMessageType : byte
         0x03,
 
     ExecuteCommandResponse =
-        0x04
+        0x04,
+
+    ReadPropertyRequest =
+        0x05,
+
+    ReadPropertyResponse =
+        0x06
 }
