@@ -1,11 +1,12 @@
 /*
   HASE Arduino Uno - Compact Serial Protocol Endpoint
 
-  Capability C-019:
+  Capability C-020:
   - Compact bootstrap
   - Execute compact command 0x01
   - Toggle LED_BUILTIN
-  - Return compact command execution status
+  - Read compact property 0x01
+  - Return the current LED_BUILTIN state
 
   Protocol settings:
   - Baud rate          : 115200
@@ -47,7 +48,16 @@ namespace
   const uint8_t ExecuteCommandResponseMessageType =
     0x04;
 
+  const uint8_t ReadPropertyRequestMessageType =
+    0x05;
+
+  const uint8_t ReadPropertyResponseMessageType =
+    0x06;
+
   const uint8_t ToggleBuiltInLedCommandId =
+    0x01;
+
+  const uint8_t BuiltInLedStatePropertyId =
     0x01;
 
   const uint8_t CommandStatusSuccess =
@@ -58,6 +68,12 @@ namespace
 
   const uint8_t CommandStatusExecutionFailed =
     0x02;
+
+  const uint8_t PropertyReadStatusSuccess =
+    0x00;
+
+  const uint8_t PropertyReadStatusUnknownProperty =
+    0x01;
 
   const uint8_t FrameOverheadLength =
     8;
@@ -296,6 +312,45 @@ namespace
       sizeof(payload));
   }
 
+  void SendReadPropertyResponse(
+    uint8_t correlationId,
+    uint8_t propertyId)
+  {
+    if (
+      propertyId
+      != BuiltInLedStatePropertyId)
+    {
+      const uint8_t payload[] =
+      {
+        propertyId,
+        PropertyReadStatusUnknownProperty
+      };
+
+      SendFrame(
+        ReadPropertyResponseMessageType,
+        correlationId,
+        payload,
+        sizeof(payload));
+
+      return;
+    }
+
+    const uint8_t payload[] =
+    {
+      propertyId,
+      PropertyReadStatusSuccess,
+      builtInLedState
+        ? 0x01
+        : 0x00
+    };
+
+    SendFrame(
+      ReadPropertyResponseMessageType,
+      correlationId,
+      payload,
+      sizeof(payload));
+  }
+
   uint8_t ExecuteCommand(
     uint8_t commandId)
   {
@@ -363,6 +418,33 @@ namespace
       correlationId,
       commandId,
       status);
+  }
+
+  void ProcessReadPropertyRequest(
+    uint8_t correlationId,
+    uint8_t payloadLength)
+  {
+    if (correlationId == 0)
+    {
+      return;
+    }
+
+    if (payloadLength != 1)
+    {
+      return;
+    }
+
+    const uint8_t propertyId =
+      receiveBuffer[6];
+
+    if (propertyId == 0)
+    {
+      return;
+    }
+
+    SendReadPropertyResponse(
+      correlationId,
+      propertyId);
   }
 
   void ProcessCompleteFrame()
@@ -449,6 +531,12 @@ namespace
 
       case ExecuteCommandRequestMessageType:
         ProcessExecuteCommandRequest(
+          correlationId,
+          payloadLength);
+        break;
+
+      case ReadPropertyRequestMessageType:
+        ProcessReadPropertyRequest(
           correlationId,
           payloadLength);
         break;
