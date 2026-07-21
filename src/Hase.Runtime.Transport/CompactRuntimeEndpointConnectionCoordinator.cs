@@ -8,8 +8,8 @@ namespace Hase.Runtime.Transport;
 
 /// <summary>
 /// Coordinates connection establishment, descriptor validation, property
-/// synchronization, connection replacement, and shutdown for one compact
-/// runtime endpoint.
+/// synchronization, connection replacement, faulted-connection detachment,
+/// and shutdown for one compact runtime endpoint.
 /// </summary>
 internal sealed class CompactRuntimeEndpointConnectionCoordinator
     : IAsyncDisposable
@@ -133,6 +133,47 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                 EndpointConnectionState.Faulted,
                 _timeProvider.GetUtcNow(),
                 message.Trim()));
+    }
+
+    /// <summary>
+    /// Detaches and disposes the invalid active connection after the runtime
+    /// endpoint has entered the faulted state.
+    /// </summary>
+    /// <remarks>
+    /// The stable runtime endpoint and all cached property values remain
+    /// unchanged. The runtime endpoint remains faulted until reconnection
+    /// begins.
+    /// </remarks>
+    public async Task DetachFaultedConnectionAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await _gate.WaitAsync(
+            cancellationToken);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                _disposed,
+                this);
+
+            if (_runtimeEndpoint.ConnectionStatus.State
+                != EndpointConnectionState.Faulted)
+            {
+                throw new InvalidOperationException(
+                    "The active compact connection can be detached through "
+                    + "the fault-recovery path only while the runtime endpoint "
+                    + "is Faulted.");
+            }
+
+            await _connectionOwner.DetachAsync(
+                cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     private async Task EstablishAsync(
