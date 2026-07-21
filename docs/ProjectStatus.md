@@ -12,15 +12,17 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, runtime integration, Protocol Explorer, production TCP transport, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, and the runtime-host attachment inventory are implemented. C-016 and C-017 have been validated through automated loopback TCP integration and the physical ESP32/BME280 endpoint.
+The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, and the runtime-host attachment inventory are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-020 are validated through the physical Arduino Uno endpoint.
 
 The current verified baseline is:
 
 ```text
-998 automated tests passing
+1,252 automated tests passing
 .NET solution builds
 ESP32 firmware builds
+Arduino Uno firmware builds
 Physical ESP32 endpoint verified
+Physical Arduino Uno endpoint verified
 IPv4 mDNS/DNS-SD discovery verified
 ```
 
@@ -143,6 +145,14 @@ Completed:
 - native framed-TCP host composition;
 - automated host-inventory framed-TCP integration;
 - physical C-017 inventory attachment and detachment validation.
+- production USB serial byte transport for Arduino Uno-class endpoints;
+- Compact Serial Protocol Version 1 framing, correlation, and CRC validation;
+- versioned host-side compact endpoint descriptor resolution;
+- physical C-018 compact bootstrap and descriptor-resolution validation;
+- compact command execution and physical C-019 LED-toggle validation;
+- descriptor-side compact property mappings and Boolean value decoding;
+- compact property reads and physical C-020 LED-state validation;
+- compact runtime property synchronization with cache-preservation semantics.
 
 ---
 
@@ -166,9 +176,17 @@ The physical endpoint remains authoritative. The runtime maintains a synchronize
 
 `Hase.Transport` contains the transport contracts, loopback transport, framed TCP transport, transport tracing, connection invalidation, network discovery contracts, and the IPv4 mDNS/DNS-SD browser.
 
+It also contains the production serial byte-stream abstraction and System.IO.Ports implementation used by Arduino Uno-class compact endpoints.
+
 ## Runtime Transport Integration
 
 `Hase.Runtime.Transport` contains connection management, runtime protocol connections, duplex sessions, protocol bindings, synchronization, recovery supervision, health probing, notification migration, candidate verification, discovery orchestration, endpoint attachment services, the authoritative attachment inventory, and runtime attachment-host composition.
+
+It additionally contains compact runtime property synchronization. Successful compact reads update the existing `RuntimeProperty` cache; unsuccessful reads preserve the previous cached value.
+
+## Compact Protocol
+
+`Hase.CompactProtocol` contains the resource-constrained Compact Serial Protocol Version 1 defined by ADR-0020. Compact endpoints expose authoritative identity and a versioned descriptor reference while the complete descriptor remains in the runtime-host repository.
 
 ---
 
@@ -193,6 +211,22 @@ The BME280 instrument exposes Temperature, Relative Humidity, and Air Pressure. 
 ## GPIO Controller Instrument
 
 The GPIO controller exposes Boolean properties, commands, and events. Physical GPIO17 notification was validated through the complete duplex path and after connection recovery.
+
+## Arduino Uno Compact Endpoint
+
+```text
+Board              : Arduino Uno class
+Endpoint ID        : arduino-uno-01
+Transport          : USB serial at 115200 baud
+Protocol           : Compact Serial Protocol V1
+Descriptor         : arduino-uno-validation v1
+Property           : Led.State (compact id 0x01)
+Command            : Led.Toggle (compact id 0x01)
+```
+
+The serial connection carries binary HASE frames exclusively. Compact bootstrap returns the authoritative endpoint identity and versioned descriptor reference. The runtime host resolves the complete descriptor from its repository.
+
+Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), and Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020). The observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
 
 ---
 
@@ -338,6 +372,9 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 - C-015 - IPv4 mDNS/DNS-SD discovery with authoritative Protocol Version 1 endpoint verification.
 - C-016 - Explicit native network endpoint attachment through the runtime-host lifecycle.
 - C-017 - Runtime-host attachment inventory with authoritative identity, duplicate rejection, coordinated lifecycle ownership, and explicit detachment.
+- C-018 - Physical compact serial bootstrap and host-side descriptor resolution for Arduino Uno-class endpoints.
+- C-019 - Physical compact command execution through the Arduino Uno built-in LED.
+- C-020 - Physical compact property reading and runtime-cache synchronization.
 
 ---
 
@@ -345,8 +382,9 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-998 automated tests pass
+1,252 automated tests pass
 ESP32 firmware builds
+Arduino Uno firmware builds
 BME280 initializes
 Wi-Fi connects
 UTC synchronizes
@@ -364,28 +402,31 @@ C-017 inventory lookup returns the same authoritative entry
 C-017 inventory contains one entry while Ready
 C-017 explicit detach returns True
 C-017 detach ends Disconnected with zero inventory entries and zero published endpoints
+C-018 compact bootstrap resolves arduino-uno-validation v1
+C-019 compact LED-toggle command returns Success
+C-020 synchronizes Led.State from Off to On in the runtime cache
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0019 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification. ADR-0019 defines local endpoint communication lifecycle ownership.
+ADR-0001 through ADR-0020 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification. ADR-0019 defines local endpoint communication lifecycle ownership. ADR-0020 defines the resource-constrained serial endpoint protocol.
 
 ---
 
 # Current Limitations
 
-The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, and USB serial transport.
+The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, automatic serial-device identification, compact property writes, compact event notifications, additional compact scalar encodings, and compact serial reconnect supervision.
 
 ---
 
 # Immediate Next Steps
 
-1. Keep C-016 and C-017 attachment, inventory, shutdown, and physical validation baselines current.
+1. Keep C-016 through C-020 physical validation baselines current.
 2. Select the next Phase 6 capability explicitly.
 3. Decide whether Linux validation is required before closing Phase 6.
-4. Keep live presence tracking, serial transport, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
+4. Keep live presence tracking, additional compact operations, BLE, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
 ---
 
@@ -401,8 +442,5 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
-
-
-
 
 

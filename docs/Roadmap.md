@@ -111,10 +111,12 @@ Completion baseline:
 Current baseline:
 
 ```text
-998 automated tests
+1,252 automated tests
 .NET solution builds
 ESP32 firmware builds
+Arduino Uno firmware builds
 Physical ESP32 endpoint verified
+Physical Arduino Uno endpoint verified
 IPv4 network discovery verified
 ```
 
@@ -339,13 +341,37 @@ Published endpoints    : 0
 
 Capability C-017 is complete for the current native framed-TCP endpoint path.
 
-## 6.11 Remaining Phase 6 Work
+## 6.11 Resource-Constrained USB Serial Endpoints
+
+**Status:** [Completed] Implemented and physically verified for Arduino Uno-class endpoints
+
+Architecture: ADR-0020 - Resource-Constrained Serial Endpoint Protocol.
+
+Implemented:
+
+- production USB serial byte transport;
+- Compact Serial Protocol Version 1 framing and CRC validation;
+- authoritative compact bootstrap identity;
+- versioned host-side descriptor repository resolution;
+- compact command execution;
+- descriptor-side compact property mappings;
+- descriptor-selected Boolean value decoding;
+- compact property reading;
+- compact runtime property-cache synchronization;
+- cache preservation after unsuccessful compact reads;
+- Arduino Uno bootstrap firmware and Protocol Explorer C-018;
+- physical LED-toggle command validation through C-019;
+- physical `Led.State` cache synchronization through C-020.
+
+Physical C-020 validation confirmed an empty initial cache, successful `Off` synchronization, successful toggle execution, replacement with `On`, UTC timestamps, `Good` quality, one runtime endpoint, and process exit code zero.
+
+## 6.12 Remaining Phase 6 Work
 
 - validate Wi-Fi interruption and re-advertisement;
 - decide sequential versus bounded-parallel verification;
 - validate Linux discovery;
 - decide IPv6 scope;
-- consider serial, BLE, and USB transports.
+- consider BLE and additional compact serial capabilities.
 
 ---
 
@@ -369,7 +395,7 @@ Architecture constraint: discovery must never automatically replace an existing 
 
 # Future Transport Work
 
-Possible transports and extensions include IPv6 mDNS/DNS-SD, USB serial and CH340 identification, BLE, MQTT, remote access, Tailscale-assisted discovery, gateway transports, and resource-constrained microcontroller transports.
+Possible transports and extensions include IPv6 mDNS/DNS-SD, automatic CH340 and serial-device identification, BLE, MQTT, remote access, Tailscale-assisted discovery, gateway transports, additional compact value encodings, compact writes, compact events, and compact serial supervision.
 
 Transport implementations remain below Protocol Version 1.
 
@@ -391,11 +417,11 @@ Possible simulation work includes noise, drift, calibration offsets, device and 
 
 # Documentation Roadmap
 
-Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0019.
+Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0020.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-017 and their validation baselines current.
+1. Keep physical capabilities C-015 through C-020 and their validation baselines current.
 2. Keep IPv4 scope and IPv6 backlog explicit.
 3. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
 4. Record any future discovery concurrency decision in an ADR if it changes architecture.
@@ -406,7 +432,7 @@ Next:
 
 1. Select the next Phase 6 capability explicitly.
 2. Decide whether Linux validation is required before Phase 6 completion.
-3. Keep IPv6, serial transport, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
+3. Keep IPv6, additional compact serial capabilities, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
 
 ---
 
@@ -427,15 +453,17 @@ Already achieved:
 - C-017 authoritative runtime-host attachment inventory;
 - deterministic duplicate, detachment, and disposal coordination;
 - automated and physical host-inventory validation.
+- USB serial transport and Compact Serial Protocol Version 1;
+- C-018 compact bootstrap and descriptor resolution;
+- C-019 compact command execution;
+- C-020 compact property reading and runtime-cache synchronization.
 
 Still requiring implementation or explicit scope decisions:
 
 - whether IPv6 belongs in Phase 6;
 - whether BLE belongs in Phase 6;
-- whether USB serial belongs in Phase 6;
+- which additional compact serial operations belong in Phase 6;
 - whether Linux validation is required before closing Phase 6;
 - whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
-
-
 
 
