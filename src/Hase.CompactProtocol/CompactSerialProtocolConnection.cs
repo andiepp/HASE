@@ -52,12 +52,9 @@ internal sealed class CompactSerialProtocolConnection
         TransportConnectionStateChangedEventArgs>?
         StateChanged;
 
-    /// <summary>
-    /// Occurs when the single compact receive loop receives a valid
-    /// zero-correlation unsolicited frame.
-    /// </summary>
-    public event Action<CompactSerialFrame>?
-        UnsolicitedFrameReceived;
+    /// <inheritdoc />
+    public event Action<CompactEventNotification>?
+        EventNotificationReceived;
 
     /// <inheritdoc />
     public TransportConnectionState State =>
@@ -250,17 +247,12 @@ internal sealed class CompactSerialProtocolConnection
 
                 if (frame.CorrelationId == 0)
                 {
-                    if (frame.MessageType
-                        != (byte)CompactSerialMessageType.EventNotification)
-                    {
-                        throw new InvalidDataException(
-                            $"Compact serial unsolicited message type "
-                            + $"0x{frame.MessageType:X2} is not "
-                            + $"{CompactSerialMessageType.EventNotification}.");
-                    }
+                    CompactEventNotification notification =
+                        CompactEventNotificationCodec.Decode(
+                            frame);
 
-                    UnsolicitedFrameReceived?.Invoke(
-                        frame);
+                    EventNotificationReceived?.Invoke(
+                        notification);
 
                     continue;
                 }

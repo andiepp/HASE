@@ -101,30 +101,32 @@ public sealed class CompactSerialProtocolConnectionTests
                 stream);
 
         var receivedNotifications =
-            new List<CompactSerialFrame>();
+            new List<CompactEventNotification>();
 
-        connection.UnsolicitedFrameReceived +=
-            frame =>
+        ICompactSerialProtocolConnection abstraction =
+            connection;
+
+        abstraction.EventNotificationReceived +=
+            notification =>
             {
                 receivedNotifications.Add(
-                    frame);
+                    notification);
             };
 
         CompactSerialFrame actualResponse =
             await connection.ExchangeAsync(
                 CreateRequest());
 
-        CompactSerialFrame actualNotification =
+        CompactEventNotification actualNotification =
             Assert.Single(
                 receivedNotifications);
 
         Assert.Equal(
-            (byte)CompactSerialMessageType.EventNotification,
-            actualNotification.MessageType);
+            0x01,
+            actualNotification.EventId);
 
-        Assert.Equal(
-            0x00,
-            actualNotification.CorrelationId);
+        Assert.True(
+            actualNotification.Value.IsEmpty);
 
         Assert.Equal(
             0x21,
@@ -154,14 +156,17 @@ public sealed class CompactSerialProtocolConnectionTests
                 stream);
 
         var receivedNotification =
-            new TaskCompletionSource<CompactSerialFrame>(
+            new TaskCompletionSource<CompactEventNotification>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
-        connection.UnsolicitedFrameReceived +=
-            frame =>
+        ICompactSerialProtocolConnection abstraction =
+            connection;
+
+        abstraction.EventNotificationReceived +=
+            notification =>
             {
                 receivedNotification.TrySetResult(
-                    frame);
+                    notification);
             };
 
         _ =
@@ -178,21 +183,63 @@ public sealed class CompactSerialProtocolConnectionTests
             CompactSerialFrameCodec.Encode(
                 notification));
 
-        CompactSerialFrame actual =
+        CompactEventNotification actual =
             await receivedNotification.Task.WaitAsync(
                 TimeSpan.FromSeconds(
                     1));
 
         Assert.Equal(
-            (byte)CompactSerialMessageType.EventNotification,
-            actual.MessageType);
+            0x01,
+            actual.EventId);
 
-        Assert.Equal(
-            0x00,
-            actual.CorrelationId);
+        Assert.True(
+            actual.Value.IsEmpty);
 
         Assert.Equal(
             TransportConnectionState.Connected,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ReceiveLoop_MalformedEventNotification_ShouldFaultConnection()
+    {
+        var response =
+            new CompactSerialFrame(
+                messageType: 0x02,
+                correlationId: 0x21,
+                payload: []);
+
+        var stream =
+            new TestSerialByteStream(
+                CompactSerialFrameCodec.Encode(
+                    response));
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        var faulted =
+            CreateFaultedCompletion(
+                connection);
+
+        _ =
+            await connection.ExchangeAsync(
+                CreateRequest());
+
+        stream.EnqueueReadBytes(
+            CompactSerialFrameCodec.Encode(
+                new CompactSerialFrame(
+                    messageType:
+                        (byte)CompactSerialMessageType.EventNotification,
+                    correlationId: 0x00,
+                    payload: [])));
+
+        await faulted.Task.WaitAsync(
+            TimeSpan.FromSeconds(
+                1));
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
             connection.State);
     }
 
