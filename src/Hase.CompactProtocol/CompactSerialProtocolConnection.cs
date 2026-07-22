@@ -33,7 +33,8 @@ internal sealed class CompactSerialProtocolConnection
 
         _reader =
             new CompactSerialFrameReader(
-                stream);
+                stream,
+                rejectUnsupportedProtocolVersion: true);
     }
 
     /// <inheritdoc />

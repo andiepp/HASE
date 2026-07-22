@@ -9,19 +9,33 @@ namespace Hase.CompactProtocol;
 internal sealed class CompactSerialFrameReader
 {
     private readonly ISerialByteStream _stream;
+    private readonly bool _rejectUnsupportedProtocolVersion;
 
     public CompactSerialFrameReader(
         ISerialByteStream stream)
+        : this(
+            stream,
+            rejectUnsupportedProtocolVersion: false)
+    {
+    }
+
+    internal CompactSerialFrameReader(
+        ISerialByteStream stream,
+        bool rejectUnsupportedProtocolVersion)
     {
         _stream =
             stream
             ?? throw new ArgumentNullException(
                 nameof(stream));
+
+        _rejectUnsupportedProtocolVersion =
+            rejectUnsupportedProtocolVersion;
     }
 
     /// <summary>
     /// Scans through non-frame bytes and returns the next valid complete frame.
-    /// Corrupted or unsupported complete frames are discarded.
+    /// Corrupted complete frames are discarded. Unsupported protocol versions
+    /// are either discarded or rejected according to this reader's policy.
     /// </summary>
     public async Task<CompactSerialFrame> ReadAsync(
         CancellationToken cancellationToken = default)
@@ -65,6 +79,15 @@ internal sealed class CompactSerialFrameReader
             int frameLength =
                 CompactSerialFrameConstants.FrameOverheadLength
                 + payloadLength;
+
+            if (_rejectUnsupportedProtocolVersion
+                && encoded[2]
+                    != CompactSerialFrameConstants.ProtocolVersion)
+            {
+                throw new CompactProtocolVersionNotSupportedException(
+                    encoded[2],
+                    CompactSerialFrameConstants.ProtocolVersion);
+            }
 
             try
             {
