@@ -1,5 +1,4 @@
 ﻿using Hase.Core.Domain.Descriptors;
-using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Transport.Serial;
 
@@ -58,14 +57,14 @@ internal sealed class CompactSerialEndpointConnector
                     connection,
                     _descriptorRepository);
 
-            EndpointDescriptor descriptor =
-                await initializer.InitializeAsync(
+            CompactEndpointInitializationResult initializationResult =
+                await initializer.InitializeWithResultAsync(
                     expectedEndpointId,
                     cancellationToken);
 
             return new CompactEndpointConnection(
-                descriptor,
-                connection);
+                connection,
+                initializationResult);
         }
         catch
         {

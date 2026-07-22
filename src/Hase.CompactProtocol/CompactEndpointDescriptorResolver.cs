@@ -20,7 +20,7 @@ internal sealed class CompactEndpointDescriptorResolver
                 nameof(repository));
     }
 
-    public async Task<EndpointDescriptor> ResolveAsync(
+    public async Task<EndpointDescriptorDefinition> ResolveDefinitionAsync(
         CompactBootstrapResponse bootstrapResponse,
         CancellationToken cancellationToken = default)
     {
@@ -44,6 +44,18 @@ internal sealed class CompactEndpointDescriptorResolver
                 + $"{reference.Version} is not available in the host "
                 + "descriptor repository.");
         }
+
+        return definition;
+    }
+
+    public async Task<EndpointDescriptor> ResolveAsync(
+        CompactBootstrapResponse bootstrapResponse,
+        CancellationToken cancellationToken = default)
+    {
+        EndpointDescriptorDefinition definition =
+            await ResolveDefinitionAsync(
+                bootstrapResponse,
+                cancellationToken);
 
         return definition.Materialize(
             bootstrapResponse.EndpointId);

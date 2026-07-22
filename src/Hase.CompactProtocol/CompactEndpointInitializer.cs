@@ -28,20 +28,48 @@ internal sealed class CompactEndpointInitializer
     }
 
     /// <summary>
-    /// Bootstraps the endpoint, validates an optional expected endpoint identity,
-    /// and returns the materialized endpoint descriptor.
+    /// Bootstraps the endpoint, validates an optional expected endpoint
+    /// identity, and preserves the complete initialization result.
     /// </summary>
-    public async Task<EndpointDescriptor> InitializeAsync(
-        EndpointId? expectedEndpointId,
-        CancellationToken cancellationToken = default)
+    public async Task<CompactEndpointInitializationResult>
+        InitializeWithResultAsync(
+            EndpointId? expectedEndpointId,
+            CancellationToken cancellationToken = default)
     {
         CompactBootstrapResponse bootstrapResponse =
             await _bootstrapper.BootstrapAsync(
                 expectedEndpointId,
                 cancellationToken);
 
-        return await _descriptorResolver.ResolveAsync(
-            bootstrapResponse,
-            cancellationToken);
+        EndpointDescriptorDefinition descriptorDefinition =
+            await _descriptorResolver.ResolveDefinitionAsync(
+                bootstrapResponse,
+                cancellationToken);
+
+        EndpointDescriptor descriptor =
+            descriptorDefinition.Materialize(
+                bootstrapResponse.EndpointId);
+
+        return new CompactEndpointInitializationResult(
+            bootstrapResponse.EndpointId,
+            bootstrapResponse.DescriptorReference,
+            descriptorDefinition,
+            descriptor);
+    }
+
+    /// <summary>
+    /// Bootstraps the endpoint, validates an optional expected endpoint
+    /// identity, and returns the materialized endpoint descriptor.
+    /// </summary>
+    public async Task<EndpointDescriptor> InitializeAsync(
+        EndpointId? expectedEndpointId,
+        CancellationToken cancellationToken = default)
+    {
+        CompactEndpointInitializationResult result =
+            await InitializeWithResultAsync(
+                expectedEndpointId,
+                cancellationToken);
+
+        return result.Descriptor;
     }
 }

@@ -27,6 +27,33 @@ internal sealed class CompactEndpointConnection
                 nameof(connection));
     }
 
+    public CompactEndpointConnection(
+        ICompactSerialProtocolConnection connection,
+        CompactEndpointInitializationResult initializationResult)
+    {
+        _connection =
+            connection
+            ?? throw new ArgumentNullException(
+                nameof(connection));
+
+        InitializationResult =
+            initializationResult
+            ?? throw new ArgumentNullException(
+                nameof(initializationResult));
+
+        Descriptor =
+            initializationResult.Descriptor;
+    }
+
+    /// <summary>
+    /// Gets the complete initialization result when this connection was
+    /// created by the production compact endpoint initialization path.
+    /// </summary>
+    public CompactEndpointInitializationResult? InitializationResult
+    {
+        get;
+    }
+
     /// <summary>
     /// Gets the materialized descriptor for the connected endpoint.
     /// </summary>
