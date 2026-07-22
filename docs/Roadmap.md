@@ -111,7 +111,7 @@ Completion baseline:
 Current baseline:
 
 ```text
-1,600 automated tests
+1,677 automated tests
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -119,6 +119,7 @@ Physical ESP32 endpoint verified
 Physical Arduino Uno endpoint verified
 IPv4 network discovery verified
 Windows USB serial discovery verified
+Compact serial endpoint attachment verified
 ```
 
 ## 6.1 Transport Abstraction
@@ -435,7 +436,64 @@ Manual COM-port configuration remains supported through the established compact 
 
 Linux USB serial discovery remains explicit backlog. The reserved incompatible-descriptor result requires a formal compact-profile contract before it is actively produced.
 
-## 6.13 Remaining Phase 6 Work
+## 6.13 Compact Serial Endpoint Attachment
+
+**Status:** [Completed] Implemented and physically verified on Windows
+
+Capability C-024 extends the runtime-host-owned attachment lifecycle and
+authoritative inventory to resource-constrained compact serial endpoints.
+
+Implemented:
+
+- configured and explicitly selected discovery-derived serial definitions
+  converging on one compact attachment service;
+- host-repository compact endpoint definitions combining one exact versioned
+  descriptor reference, the complete descriptor content, and validated compact
+  property mappings;
+- temporary authoritative compact bootstrap before runtime construction;
+- independent operational compact connection establishment;
+- authoritative endpoint identity, descriptor, and operational-definition
+  revalidation;
+- initial readable-property synchronization before `Ready`;
+- readiness-gated runtime publication and authoritative inventory insertion;
+- shared native and compact successful-attachment lifecycle ownership;
+- failed-attachment cleanup and cancellation propagation;
+- recurring compact supervision, recovery, and resynchronization through the
+  attached operational connection;
+- duplicate authoritative-identity rejection without automatic replacement;
+- explicit inventory detachment and orderly shutdown;
+- production compact runtime-host composition;
+- Protocol Explorer `c024` physical validation.
+
+Physical validation confirmed:
+
+```text
+Candidate port         : COM3
+VID                    : 0x2341
+PID                    : 0x0043
+Product                : Arduino Uno
+Authoritative endpoint : arduino-uno-01
+Descriptor reference   : arduino-uno-validation v1
+Connection origin      : Discovered
+Connection state       : Ready
+Inventory entries      : 1
+Published endpoints    : 1
+Led.State              : False, UTC timestamp, Good quality
+Detached               : True
+Final state            : Disconnected
+Final inventory        : 0
+Final publication      : 0
+Process exit code      : 0
+```
+
+Discovery verification, attachment bootstrap, and operational attachment use
+three distinct connection ownership scopes. Discovery never attaches
+automatically. USB metadata remains candidate information only, while compact
+bootstrap supplies authoritative HASE identity. Configured and discovered
+definitions use the same attachment path. Compact Serial Protocol Version 1 and
+Protocol Version 1 remain unchanged.
+
+## 6.14 Remaining Phase 6 Work
 
 - validate Wi-Fi interruption and re-advertisement;
 - keep verification sequential unless future physical evidence justifies bounded parallelism;
@@ -488,11 +546,11 @@ Possible simulation work includes noise, drift, calibration offsets, device and 
 
 # Documentation Roadmap
 
-Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, `C-023-USB-Serial-Endpoint-Discovery.md`, and ADR-0001 through ADR-0021.
+Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, `C-023-USB-Serial-Endpoint-Discovery.md`, `C-024-Compact-Serial-Endpoint-Attachment.md`, and ADR-0001 through ADR-0021.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-023 and their validation baselines current.
+1. Keep physical capabilities C-015 through C-024 and their validation baselines current.
 2. Keep IPv4 scope, IPv6 backlog, and Linux USB serial backlog explicit.
 3. Keep candidate metadata separate from authoritative endpoint identity.
 4. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
@@ -533,6 +591,7 @@ Already achieved:
 - C-021 compact serial connection supervision, health probing, bounded recovery, resynchronization, cache preservation, and clean shutdown;
 - C-022 compact property writing, endpoint confirmation, runtime-cache synchronization, coordinator lifecycle ownership, and physical Arduino Uno validation;
 - C-023 Windows USB serial candidate enumeration, metadata filtering, authoritative compact bootstrap verification, exact descriptor resolution, isolated outcomes, unique endpoint inventory, production composition, and physical Arduino Uno validation.
+- C-024 explicitly selected compact serial endpoint attachment through the runtime-host inventory, independent bootstrap and operational connections, authoritative revalidation, initial property synchronization, readiness-gated publication, supervision, and orderly physical Arduino Uno detachment.
 
 Still requiring implementation or explicit scope decisions:
 
