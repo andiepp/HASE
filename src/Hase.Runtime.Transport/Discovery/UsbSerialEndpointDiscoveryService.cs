@@ -82,12 +82,32 @@ public sealed class UsbSerialEndpointDiscoveryService
                 options.CreateTransportOptions(
                     candidate.PortName);
 
-            UsbSerialEndpointVerificationResult result =
-                await _candidateVerifier.VerifyAsync(
-                    candidate,
-                    transportOptions,
-                    options.VerificationTimeout,
-                    cancellationToken);
+            UsbSerialEndpointVerificationResult result;
+
+            try
+            {
+                result =
+                    await _candidateVerifier.VerifyAsync(
+                        candidate,
+                        transportOptions,
+                        options.VerificationTimeout,
+                        cancellationToken);
+            }
+            catch (IOException exception)
+            {
+                string detail =
+                    string.IsNullOrWhiteSpace(
+                        exception.Message)
+                    ? "USB serial candidate verification failed with an "
+                        + "I/O error."
+                    : exception.Message;
+
+                result =
+                    new RejectedUsbSerialEndpointCandidate(
+                        candidate,
+                        UsbSerialEndpointVerificationFailure.ConnectionFailed,
+                        detail);
+            }
 
             results.Add(
                 result);
