@@ -1,4 +1,5 @@
-﻿using Hase.CompactProtocol;
+﻿using System.Threading.Channels;
+using Hase.CompactProtocol;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
@@ -277,8 +278,15 @@ public sealed class CompactSerialEndpointAttachmentPropertyEndToEndTests
         private readonly DescriptorReference _descriptorReference;
         private readonly bool _propertyValue;
 
-        private byte[]? _encodedResponse;
-        private int _readOffset;
+        private readonly Channel<byte> _readBytes =
+            Channel.CreateUnbounded<byte>(
+                new UnboundedChannelOptions
+                {
+                    SingleReader =
+                        true,
+                    SingleWriter =
+                        true
+                });
 
         public RespondingSerialByteStream(
             EndpointId endpointId,
@@ -340,52 +348,64 @@ public sealed class CompactSerialEndpointAttachmentPropertyEndToEndTests
                             + $"0x{request.MessageType:X2}.")
                 };
 
-            _encodedResponse =
+            foreach (byte value in
                 CompactSerialFrameCodec.Encode(
-                    response);
-
-            _readOffset =
-                0;
+                    response))
+            {
+                if (!_readBytes.Writer.TryWrite(
+                        value))
+                {
+                    throw new InvalidOperationException(
+                        "The scripted serial stream is already completed.");
+                }
+            }
 
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask<int> ReadAsync(
+        public async ValueTask<int> ReadAsync(
             Memory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (_encodedResponse is null
-                || _readOffset >= _encodedResponse.Length)
+            byte first;
+
+            try
             {
-                return ValueTask.FromResult(
-                    0);
+                first =
+                    await _readBytes.Reader.ReadAsync(
+                        cancellationToken);
+            }
+            catch (ChannelClosedException)
+            {
+                return 0;
             }
 
+            buffer.Span[0] =
+                first;
+
             int byteCount =
-                Math.Min(
-                    buffer.Length,
-                    _encodedResponse.Length
-                    - _readOffset);
+                1;
 
-            _encodedResponse
-                .AsMemory(
-                    _readOffset,
-                    byteCount)
-                .CopyTo(
-                    buffer);
+            while (byteCount < buffer.Length
+                   && _readBytes.Reader.TryRead(
+                       out byte value))
+            {
+                buffer.Span[byteCount] =
+                    value;
 
-            _readOffset +=
-                byteCount;
+                byteCount++;
+            }
 
-            return ValueTask.FromResult(
-                byteCount);
+            return byteCount;
         }
 
         public ValueTask DisposeAsync()
         {
             DisposeCallCount++;
+
+            _readBytes.Writer.TryComplete();
 
             return ValueTask.CompletedTask;
         }

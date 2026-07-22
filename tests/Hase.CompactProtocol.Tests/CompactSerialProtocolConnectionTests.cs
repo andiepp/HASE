@@ -1,4 +1,5 @@
-﻿using Hase.CompactProtocol;
+﻿using System.Threading.Channels;
+using Hase.CompactProtocol;
 using Hase.Transport;
 using Hase.Transport.Serial;
 
@@ -62,6 +63,257 @@ public sealed class CompactSerialProtocolConnectionTests
 
         Assert.Equal(
             TransportConnectionState.Connected,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_EventBeforeResponse_ShouldDeliverEventAndCompleteResponse()
+    {
+        CompactSerialFrame notification =
+            CompactEventNotificationCodec.Encode(
+                new CompactEventNotification(
+                    eventId: 0x01,
+                    ReadOnlyMemory<byte>.Empty));
+
+        var response =
+            new CompactSerialFrame(
+                messageType: 0x02,
+                correlationId: 0x21,
+                payload:
+                [
+                    0x30
+                ]);
+
+        byte[] input =
+            CompactSerialFrameCodec.Encode(
+                    notification)
+                .Concat(
+                    CompactSerialFrameCodec.Encode(
+                        response))
+                .ToArray();
+
+        var stream =
+            new TestSerialByteStream(
+                input);
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        var receivedNotifications =
+            new List<CompactSerialFrame>();
+
+        connection.UnsolicitedFrameReceived +=
+            frame =>
+            {
+                receivedNotifications.Add(
+                    frame);
+            };
+
+        CompactSerialFrame actualResponse =
+            await connection.ExchangeAsync(
+                CreateRequest());
+
+        CompactSerialFrame actualNotification =
+            Assert.Single(
+                receivedNotifications);
+
+        Assert.Equal(
+            (byte)CompactSerialMessageType.EventNotification,
+            actualNotification.MessageType);
+
+        Assert.Equal(
+            0x00,
+            actualNotification.CorrelationId);
+
+        Assert.Equal(
+            0x21,
+            actualResponse.CorrelationId);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ReceiveLoop_EventAfterResponse_ShouldContinueWithoutAnotherExchange()
+    {
+        var response =
+            new CompactSerialFrame(
+                messageType: 0x02,
+                correlationId: 0x21,
+                payload: []);
+
+        var stream =
+            new TestSerialByteStream(
+                CompactSerialFrameCodec.Encode(
+                    response));
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        var receivedNotification =
+            new TaskCompletionSource<CompactSerialFrame>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.UnsolicitedFrameReceived +=
+            frame =>
+            {
+                receivedNotification.TrySetResult(
+                    frame);
+            };
+
+        _ =
+            await connection.ExchangeAsync(
+                CreateRequest());
+
+        CompactSerialFrame notification =
+            CompactEventNotificationCodec.Encode(
+                new CompactEventNotification(
+                    eventId: 0x01,
+                    ReadOnlyMemory<byte>.Empty));
+
+        stream.EnqueueReadBytes(
+            CompactSerialFrameCodec.Encode(
+                notification));
+
+        CompactSerialFrame actual =
+            await receivedNotification.Task.WaitAsync(
+                TimeSpan.FromSeconds(
+                    1));
+
+        Assert.Equal(
+            (byte)CompactSerialMessageType.EventNotification,
+            actual.MessageType);
+
+        Assert.Equal(
+            0x00,
+            actual.CorrelationId);
+
+        Assert.Equal(
+            TransportConnectionState.Connected,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ReceiveLoop_ZeroCorrelationNonEvent_ShouldFaultConnection()
+    {
+        var response =
+            new CompactSerialFrame(
+                messageType: 0x02,
+                correlationId: 0x21,
+                payload: []);
+
+        var stream =
+            new TestSerialByteStream(
+                CompactSerialFrameCodec.Encode(
+                    response));
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        var faulted =
+            CreateFaultedCompletion(
+                connection);
+
+        _ =
+            await connection.ExchangeAsync(
+                CreateRequest());
+
+        stream.EnqueueReadBytes(
+            CompactSerialFrameCodec.Encode(
+                new CompactSerialFrame(
+                    messageType:
+                        (byte)CompactSerialMessageType.ReadPropertyResponse,
+                    correlationId: 0x00,
+                    payload: [])));
+
+        await faulted.Task.WaitAsync(
+            TimeSpan.FromSeconds(
+                1));
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_NonzeroEventNotification_ShouldFaultConnection()
+    {
+        CompactSerialFrame invalidNotification =
+            new(
+                (byte)CompactSerialMessageType.EventNotification,
+                correlationId: 0x21,
+                payload:
+                [
+                    0x01
+                ]);
+
+        var stream =
+            new TestSerialByteStream(
+                CompactSerialFrameCodec.Encode(
+                    invalidNotification));
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        async Task Act()
+        {
+            _ =
+                await connection.ExchangeAsync(
+                    CreateRequest());
+        }
+
+        await Assert.ThrowsAsync<InvalidDataException>(
+            Act);
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            connection.State);
+    }
+
+    [Fact]
+    public async Task ReceiveLoop_UnmatchedCorrelatedFrame_ShouldFaultConnection()
+    {
+        var response =
+            new CompactSerialFrame(
+                messageType: 0x02,
+                correlationId: 0x21,
+                payload: []);
+
+        var stream =
+            new TestSerialByteStream(
+                CompactSerialFrameCodec.Encode(
+                    response));
+
+        await using var connection =
+            new CompactSerialProtocolConnection(
+                stream);
+
+        var faulted =
+            CreateFaultedCompletion(
+                connection);
+
+        _ =
+            await connection.ExchangeAsync(
+                CreateRequest());
+
+        stream.EnqueueReadBytes(
+            CompactSerialFrameCodec.Encode(
+                new CompactSerialFrame(
+                    messageType: 0x02,
+                    correlationId: 0x22,
+                    payload: [])));
+
+        await faulted.Task.WaitAsync(
+            TimeSpan.FromSeconds(
+                1));
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
             connection.State);
     }
 
@@ -163,7 +415,8 @@ public sealed class CompactSerialProtocolConnectionTests
     public async Task ExchangeAsync_EndOfStream_ShouldFaultConnection()
     {
         var stream =
-            new TestSerialByteStream();
+            new TestSerialByteStream(
+                completeReads: true);
 
         await using var connection =
             new CompactSerialProtocolConnection(
@@ -342,18 +595,53 @@ public sealed class CompactSerialProtocolConnectionTests
             payload: []);
     }
 
+    private static TaskCompletionSource CreateFaultedCompletion(
+        CompactSerialProtocolConnection connection)
+    {
+        var faulted =
+            new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+        connection.StateChanged +=
+            (
+                sender,
+                change) =>
+            {
+                if (change.CurrentState
+                    == TransportConnectionState.Faulted)
+                {
+                    faulted.TrySetResult();
+                }
+            };
+
+        return faulted;
+    }
+
     private sealed class TestSerialByteStream
         : ISerialByteStream
     {
-        private readonly byte[] _readBytes;
-        private int _readPosition;
+        private readonly Channel<byte> _readBytes =
+            Channel.CreateUnbounded<byte>(
+                new UnboundedChannelOptions
+                {
+                    SingleReader =
+                        true,
+                    SingleWriter =
+                        false
+                });
 
         public TestSerialByteStream(
-            byte[]? readBytes = null)
+            byte[]? readBytes = null,
+            bool completeReads = false)
         {
-            _readBytes =
+            EnqueueReadBytes(
                 readBytes
-                ?? [];
+                ?? []);
+
+            if (completeReads)
+            {
+                _readBytes.Writer.TryComplete();
+            }
         }
 
         public List<byte[]> Writes
@@ -374,38 +662,56 @@ public sealed class CompactSerialProtocolConnectionTests
             private set;
         }
 
-        public ValueTask<int> ReadAsync(
+        public void EnqueueReadBytes(
+            ReadOnlySpan<byte> bytes)
+        {
+            foreach (byte value in bytes)
+            {
+                if (!_readBytes.Writer.TryWrite(
+                        value))
+                {
+                    throw new InvalidOperationException(
+                        "The test serial read stream is already completed.");
+                }
+            }
+        }
+
+        public async ValueTask<int> ReadAsync(
             Memory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            int available =
-                _readBytes.Length
-                - _readPosition;
+            byte first;
 
-            if (available == 0)
+            try
             {
-                return ValueTask.FromResult(
-                    0);
+                first =
+                    await _readBytes.Reader.ReadAsync(
+                        cancellationToken);
+            }
+            catch (ChannelClosedException)
+            {
+                return 0;
             }
 
-            int bytesToRead =
-                Math.Min(
-                    available,
-                    buffer.Length);
+            buffer.Span[0] =
+                first;
 
-            _readBytes.AsMemory(
-                    _readPosition,
-                    bytesToRead)
-                .CopyTo(
-                    buffer);
+            int bytesRead =
+                1;
 
-            _readPosition +=
-                bytesToRead;
+            while (bytesRead < buffer.Length
+                   && _readBytes.Reader.TryRead(
+                       out byte value))
+            {
+                buffer.Span[bytesRead] =
+                    value;
 
-            return ValueTask.FromResult(
-                bytesToRead);
+                bytesRead++;
+            }
+
+            return bytesRead;
         }
 
         public ValueTask WriteAsync(
@@ -428,6 +734,8 @@ public sealed class CompactSerialProtocolConnectionTests
         public ValueTask DisposeAsync()
         {
             DisposeCallCount++;
+
+            _readBytes.Writer.TryComplete();
 
             return ValueTask.CompletedTask;
         }
