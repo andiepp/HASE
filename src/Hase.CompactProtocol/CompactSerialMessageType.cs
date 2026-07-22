@@ -24,5 +24,8 @@ internal enum CompactSerialMessageType : byte
         0x07,
 
     WritePropertyResponse =
-        0x08
+        0x08,
+
+    EventNotification =
+        0x09
 }
