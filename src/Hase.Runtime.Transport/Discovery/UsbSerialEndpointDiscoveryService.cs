@@ -53,6 +53,9 @@ public sealed class UsbSerialEndpointDiscoveryService
         var results =
             new List<UsbSerialEndpointVerificationResult>();
 
+        var observedCandidates =
+            new HashSet<UsbSerialEndpointCandidate>();
+
         await foreach (
             UsbSerialEndpointCandidate candidate
             in _candidateSource
@@ -62,6 +65,12 @@ public sealed class UsbSerialEndpointDiscoveryService
                     cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (!observedCandidates.Add(
+                candidate))
+            {
+                continue;
+            }
 
             if (_candidateFilter is not null
                 && !_candidateFilter.IsMatch(
