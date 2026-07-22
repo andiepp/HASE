@@ -188,9 +188,7 @@ internal static class CompactBootstrapCodec
         }
         catch (ArgumentException exception)
         {
-            throw new InvalidDataException(
-                "The compact bootstrap response contains invalid "
-                + "identity data.",
+            throw new CompactBootstrapIdentityException(
                 exception);
         }
     }
