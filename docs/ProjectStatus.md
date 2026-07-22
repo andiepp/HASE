@@ -12,12 +12,12 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, the runtime-host attachment inventory, compact runtime property synchronization, and compact serial connection supervision are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-022 are validated through the physical Arduino Uno endpoint.
+The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, the runtime-host attachment inventory, compact runtime property synchronization, and compact serial connection supervision are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-023 are validated through the physical Arduino Uno endpoint.
 
 The current verified baseline is:
 
 ```text
-1,373 automated tests passing
+1,600 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -164,7 +164,14 @@ Completed:
 - coordinator-owned compact property writing serialized against replacement and shutdown;
 - endpoint-confirmed read-back with runtime-cache update only after successful confirmation;
 - Arduino Uno writable `Led.State` firmware support;
-- physical C-022 explicit `Off -> On -> Off` property-writing and cache-confirmation validation.
+- physical C-022 explicit `Off -> On -> Off` property-writing and cache-confirmation validation;
+- Windows USB serial candidate enumeration through `Win32_PnPEntity`;
+- platform-neutral USB serial candidate and metadata-filter contracts;
+- sequential compact candidate verification with isolated busy, unavailable, access-denied, timeout, non-HASE, malformed-response, unsupported-version, invalid-identity, unknown-descriptor, and connection-failure outcomes;
+- authoritative compact endpoint identity from `CompactBootstrapResponse.EndpointId`;
+- candidate deduplication by normalized connection target and verified-inventory deduplication by authoritative `EndpointId`;
+- production Windows USB serial discovery composition with temporary connection ownership and no runtime attachment;
+- Protocol Explorer C-023 automatic Arduino Uno discovery and physical authoritative-bootstrap validation.
 
 ---
 
@@ -238,9 +245,43 @@ Command            : Led.Toggle (compact id 0x01)
 
 The serial connection carries binary HASE frames exclusively. Compact bootstrap returns the authoritative endpoint identity and versioned descriptor reference. The runtime host resolves the complete descriptor from its repository.
 
-Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020), automatic compact serial connection recovery after USB disconnection (C-021), and endpoint-confirmed explicit `Off -> On -> Off` property writing with UTC-stamped `Good` runtime-cache values (C-022). The C-020 observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
+Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020), automatic compact serial connection recovery after USB disconnection (C-021), endpoint-confirmed explicit `Off -> On -> Off` property writing with UTC-stamped `Good` runtime-cache values (C-022), and automatic Windows USB serial discovery with authoritative Compact Serial Protocol bootstrap (C-023). The C-020 observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
 
 C-021 physical validation started from `Disconnected`, progressed through `Connecting` and `Synchronizing` to `Ready`, detected USB loss as `Faulted`, and retried using the configured bounded schedule. After the Arduino returned on the same COM port, supervision re-established the connection, resynchronized `Led.State`, restored `Ready`, and retained a `Good` cached value. Ctrl+C stopped supervision cleanly, transitioned the endpoint from `Ready` to `Disconnected`, preserved the final cached value, and exited with code 0.
+
+C-023 physical validation enumerated the Arduino Uno as connection candidate `COM10` with VID `0x2341`, PID `0x0043`, product name `Arduino Uno`, and USB serial number `75836333537351D06110`. Those values remained descriptive metadata only. Compact bootstrap returned the authoritative endpoint identity `arduino-uno-01` and exact descriptor reference `arduino-uno-validation v1`. The unique verified inventory contained one endpoint. The temporary verification stream was disposed, no runtime endpoint was attached or mutated, and Protocol Explorer exited with code 0.
+
+---
+
+# USB Serial Discovery
+
+Windows USB serial discovery is implemented under platform-neutral candidate, filter, verifier, result, and orchestration contracts.
+
+The first provider uses `System.Management` and `Win32_PnPEntity` to enumerate serial candidates and optional USB metadata. Enumeration is read-only. Optional VID, PID, product, manufacturer, USB serial number, and port filters reduce active probes but never establish HASE identity.
+
+Every eligible candidate is verified sequentially through a temporary Compact Serial Protocol connection. Verification requires a valid correlated bootstrap response, accepts `CompactBootstrapResponse.EndpointId` as authoritative, and resolves the exact descriptor reference from the host repository. Temporary verification resources are always disposed. Discovery never attaches, publishes, replaces, or mutates runtime endpoints.
+
+One discovery result retains every distinct-port candidate outcome and exposes a separate unique verified inventory deduplicated by authoritative `EndpointId`. Caller cancellation stops discovery; expected per-candidate failures are isolated.
+
+Physical validation produced:
+
+```text
+Candidate port         : COM10
+VID                    : 0x2341
+PID                    : 0x0043
+Product                : Arduino Uno
+USB serial number      : 75836333537351D06110
+Result                 : Verified
+Authoritative endpoint : arduino-uno-01
+Descriptor reference   : arduino-uno-validation v1
+Unique inventory       : 1
+Runtime attachment     : None
+Runtime mutation       : None
+```
+
+The COM port and USB metadata identify the connection candidate only. The compact bootstrap response supplies authoritative HASE identity.
+
+Linux USB serial discovery remains explicit backlog. A formal compact-profile contract is required before the reserved incompatible-descriptor outcome is actively produced.
 
 ---
 
@@ -392,6 +433,8 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 - C-019 - Physical compact command execution through the Arduino Uno built-in LED.
 - C-020 - Physical compact property reading and runtime-cache synchronization.
 - C-021 - Compact serial connection supervision with health probing, bounded retry, connection replacement, resynchronization, cache preservation, and clean shutdown.
+- C-022 - Endpoint-confirmed compact property writing with confirmation reads and runtime-cache synchronization.
+- C-023 - Windows USB serial candidate discovery with metadata filtering, authoritative compact bootstrap verification, exact descriptor resolution, isolated outcomes, and a unique endpoint inventory.
 
 ---
 
@@ -399,7 +442,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-1,373 automated tests pass
+1,600 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -428,28 +471,37 @@ C-021 reconnects on the configured COM port and returns through Synchronizing to
 C-021 preserves the cached Led.State value while faulted and refreshes it after recovery
 C-021 Ctrl+C shutdown ends Disconnected with the final cached value retained
 C-021 Protocol Explorer exits with code 0
+C-022 writes Led.State Off -> On -> Off with successful confirmation reads
+C-022 confirmed cache values have UTC timestamps and Good quality
+C-023 discovers Arduino Uno candidate COM10 through Win32_PnPEntity
+C-023 keeps VID 0x2341, PID 0x0043, product, USB serial number, and COM10 as candidate metadata
+C-023 verifies authoritative EndpointId arduino-uno-01 through compact bootstrap
+C-023 resolves arduino-uno-validation v1 from the host repository
+C-023 produces one unique verified endpoint with no runtime attachment or mutation
+C-023 disposes temporary verification streams and exits with code 0
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0020 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification. ADR-0019 defines local endpoint communication lifecycle ownership. ADR-0020 defines the resource-constrained serial endpoint protocol.
+ADR-0001 through ADR-0021 are accepted. ADR-0017 defines duplex protocol health probing. ADR-0018 defines mDNS/DNS-SD network endpoint discovery and authoritative Protocol Version 1 candidate verification. ADR-0019 defines local endpoint communication lifecycle ownership. ADR-0020 defines the resource-constrained serial endpoint protocol. ADR-0021 defines USB serial endpoint discovery and authoritative Compact Serial Protocol verification.
 
 ---
 
 # Current Limitations
 
-The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, automatic serial-device identification, compact property writes, compact event notifications, and additional compact scalar encodings.
+The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux USB serial discovery and physical validation, BLE, formal compact-profile negotiation, compact event notifications, and additional compact scalar encodings.
 
 ---
 
 # Immediate Next Steps
 
-1. Keep C-016 through C-021 physical validation baselines current.
-2. Conduct the C-022 completion review and select the next Phase 6 capability explicitly.
-3. Decide whether Linux validation is required before closing Phase 6.
-4. Keep live presence tracking, additional compact operations, BLE, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
+1. Keep C-016 through C-023 physical validation baselines current.
+2. Select the next Phase 6 capability explicitly.
+3. Keep Linux USB serial discovery and physical validation explicit backlog.
+4. Define a formal compact-profile contract before activating incompatible-descriptor classification.
+5. Keep live presence tracking, additional compact operations, BLE, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
 ---
 
@@ -465,6 +517,7 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
 
