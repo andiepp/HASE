@@ -35,7 +35,7 @@ public sealed class UsbSerialEndpointDiscoveryCandidateDeduplicationTests
                     duplicateCandidate),
                 verifier);
 
-        IReadOnlyList<UsbSerialEndpointVerificationResult> results =
+        UsbSerialEndpointDiscoveryResult discoveryResult =
             await service.DiscoverAsync(
                 new UsbSerialEndpointDiscoveryOptions(
                     baudRate: 115200,
@@ -50,13 +50,13 @@ public sealed class UsbSerialEndpointDiscoveryCandidateDeduplicationTests
             firstCandidate,
             verifiedCandidate);
 
-        UsbSerialEndpointVerificationResult result =
+        UsbSerialEndpointVerificationResult candidateResult =
             Assert.Single(
-                results);
+                discoveryResult.CandidateResults);
 
         Assert.Same(
             firstCandidate,
-            result.Candidate);
+            candidateResult.Candidate);
     }
 
     private sealed class TestCandidateSource

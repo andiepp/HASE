@@ -40,10 +40,9 @@ public sealed class UsbSerialEndpointDiscoveryService
     /// Enumerates and verifies one ordered snapshot of eligible USB serial
     /// candidates.
     /// </summary>
-    public async Task<IReadOnlyList<UsbSerialEndpointVerificationResult>>
-        DiscoverAsync(
-            UsbSerialEndpointDiscoveryOptions options,
-            CancellationToken cancellationToken = default)
+    public async Task<UsbSerialEndpointDiscoveryResult> DiscoverAsync(
+        UsbSerialEndpointDiscoveryOptions options,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(
             options);
@@ -94,6 +93,7 @@ public sealed class UsbSerialEndpointDiscoveryService
                 result);
         }
 
-        return results;
+        return new UsbSerialEndpointDiscoveryResult(
+            results);
     }
 }

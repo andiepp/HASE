@@ -29,7 +29,7 @@ public sealed class UsbSerialEndpointDiscoveryServiceTests
                     secondCandidate),
                 verifier);
 
-        IReadOnlyList<UsbSerialEndpointVerificationResult> results =
+        UsbSerialEndpointDiscoveryResult result =
             await service.DiscoverAsync(
                 new UsbSerialEndpointDiscoveryOptions(
                     baudRate: 115200,
@@ -50,12 +50,15 @@ public sealed class UsbSerialEndpointDiscoveryServiceTests
                 firstCandidate,
                 secondCandidate
             },
-            results.Select(
-                result => result.Candidate));
+            result.CandidateResults.Select(
+                candidateResult => candidateResult.Candidate));
 
         Assert.Equal(
             1,
             verifier.MaximumConcurrentCallCount);
+
+        Assert.Empty(
+            result.VerifiedEndpoints);
     }
 
     [Fact]
@@ -84,7 +87,7 @@ public sealed class UsbSerialEndpointDiscoveryServiceTests
                 verifier,
                 filter);
 
-        IReadOnlyList<UsbSerialEndpointVerificationResult> results =
+        UsbSerialEndpointDiscoveryResult result =
             await service.DiscoverAsync(
                 new UsbSerialEndpointDiscoveryOptions(
                     baudRate: 115200,
@@ -106,13 +109,13 @@ public sealed class UsbSerialEndpointDiscoveryServiceTests
             },
             verifier.Candidates);
 
-        UsbSerialEndpointVerificationResult result =
+        UsbSerialEndpointVerificationResult candidateResult =
             Assert.Single(
-                results);
+                result.CandidateResults);
 
         Assert.Same(
             acceptedByFilter,
-            result.Candidate);
+            candidateResult.Candidate);
     }
 
     [Fact]
@@ -135,7 +138,7 @@ public sealed class UsbSerialEndpointDiscoveryServiceTests
             TimeSpan.FromSeconds(
                 3);
 
-        await service.DiscoverAsync(
+        _ = await service.DiscoverAsync(
             new UsbSerialEndpointDiscoveryOptions(
                 baudRate: 57600,
                 dataBits: 7,
