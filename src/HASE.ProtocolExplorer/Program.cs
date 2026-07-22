@@ -56,7 +56,8 @@ internal static class Program
                     new CapabilityC020Scenario(),
                     new CapabilityC021Scenario(),
                     new CapabilityC022Scenario(),
-                    new CapabilityC023Scenario()
+                    new CapabilityC023Scenario(),
+                    new CapabilityC024Scenario()
                 ]);
 
         string scenarioName =
@@ -122,34 +123,16 @@ internal static class Program
         Console.WriteLine(
             "Capability scenarios:");
         Console.WriteLine();
-        Console.WriteLine(
-            "  c001");
-        Console.WriteLine(
-            "  c002");
-        Console.WriteLine(
-            "  c003");
-        Console.WriteLine(
-            "  c004");
-        Console.WriteLine(
-            "  c005");
-        Console.WriteLine(
-            "  c006");
-        Console.WriteLine(
-            "  c007");
-        Console.WriteLine(
-            "  c008");
-        Console.WriteLine(
-            "  c009");
-        Console.WriteLine(
-            "  c010");
-        Console.WriteLine(
-            "  c011");
-        Console.WriteLine(
-            "  c012");
-        Console.WriteLine(
-            "  c013");
-        Console.WriteLine(
-            "  c014");
+
+        for (
+            int capability = 1;
+            capability <= 14;
+            capability++)
+        {
+            Console.WriteLine(
+                $"  c{capability:000}");
+        }
+
         Console.WriteLine(
             "  c016");
         Console.WriteLine(
@@ -166,6 +149,8 @@ internal static class Program
             "  c022 <COM port> [baud rate]");
         Console.WriteLine(
             "  c023 [baud rate] [verification timeout seconds]");
+        Console.WriteLine(
+            "  c024 [baud rate] [verification timeout seconds]");
         Console.WriteLine();
 
         Console.WriteLine(

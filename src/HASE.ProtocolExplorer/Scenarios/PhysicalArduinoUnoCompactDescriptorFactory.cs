@@ -45,6 +45,21 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
             "Led",
             "Toggle");
 
+    /// <summary>
+    /// Creates the complete host-side compact endpoint registration used by
+    /// bootstrap and operational attachment.
+    /// </summary>
+    public static CompactEndpointDefinition CreateCompactDefinition()
+    {
+        EndpointDescriptorDefinition descriptorDefinition =
+            CreateDefinition();
+
+        return new CompactEndpointDefinition(
+            DescriptorReference,
+            descriptorDefinition,
+            CreatePropertyMappings());
+    }
+
     public static EndpointDescriptorDefinition CreateDefinition()
     {
         var builtInLedState =
@@ -125,13 +140,19 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
 
         return new CompactPropertyMap(
             descriptorDefinition,
-            mappings:
-            [
-                new CompactPropertyMapping(
-                    BuiltInLedStateCompactPropertyId,
-                    ControllerInstrumentId,
-                    BuiltInLedStatePropertyId,
-                    CompactPropertyValueEncoding.Boolean)
-            ]);
+            CreatePropertyMappings());
+    }
+
+    private static IReadOnlyList<CompactPropertyMapping>
+        CreatePropertyMappings()
+    {
+        return
+        [
+            new CompactPropertyMapping(
+                BuiltInLedStateCompactPropertyId,
+                ControllerInstrumentId,
+                BuiltInLedStatePropertyId,
+                CompactPropertyValueEncoding.Boolean)
+        ];
     }
 }

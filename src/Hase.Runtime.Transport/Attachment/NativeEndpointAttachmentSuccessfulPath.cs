@@ -1,31 +1,31 @@
-﻿using System.Runtime.ExceptionServices;
-using Hase.Runtime.Runtime;
+﻿using Hase.Runtime.Runtime;
 
 namespace Hase.Runtime.Transport.Attachment;
 
 /// <summary>
-/// Completes the successful post-bootstrap attachment path for one native
-/// endpoint.
+/// Adapts native endpoint bootstrap and operational resources to the shared
+/// successful attachment lifecycle.
 /// </summary>
 internal sealed class NativeEndpointAttachmentSuccessfulPath
 {
-    private readonly RuntimeContext _runtimeContext;
+    private readonly EndpointAttachmentSuccessfulPath _successfulPath;
 
     /// <summary>
-    /// Initializes the successful attachment path.
+    /// Initializes the native successful attachment adapter.
     /// </summary>
     internal NativeEndpointAttachmentSuccessfulPath(
         RuntimeContext runtimeContext)
     {
-        _runtimeContext =
-            runtimeContext
-            ?? throw new ArgumentNullException(
-                nameof(runtimeContext));
+        _successfulPath =
+            new EndpointAttachmentSuccessfulPath(
+                runtimeContext
+                ?? throw new ArgumentNullException(
+                    nameof(runtimeContext)));
     }
 
     /// <summary>
-    /// Creates a staged endpoint, starts supervision, waits for initial
-    /// readiness, publishes the endpoint, and returns its owning session.
+    /// Completes attachment using a supplied native supervision lifetime and
+    /// ordered resources.
     /// </summary>
     internal async Task<EndpointAttachmentSession> CompleteAsync(
         EndpointAttachmentRequest request,
@@ -74,9 +74,10 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
     }
 
     /// <summary>
-    /// Completes attachment using one coherent operational resource graph.
+    /// Completes attachment using one coherent native operational resource
+    /// graph.
     /// </summary>
-    internal async Task<EndpointAttachmentSession> CompleteAsync(
+    internal Task<EndpointAttachmentSession> CompleteAsync(
         EndpointAttachmentRequest request,
         NativeEndpointBootstrapResult bootstrapResult,
         Func<
@@ -94,142 +95,13 @@ internal sealed class NativeEndpointAttachmentSuccessfulPath
         ArgumentNullException.ThrowIfNull(
             createOperationalResources);
 
-        cancellationToken.ThrowIfCancellationRequested();
-
-        RuntimeEndpoint runtimeEndpoint =
-            _runtimeContext.CreateEndpoint(
-                bootstrapResult.Descriptor);
-
-        INativeEndpointOperationalResources? operationalResources =
-            null;
-
-        RuntimeEndpointPublication? publication =
-            null;
-
-        try
-        {
-            operationalResources =
+        return _successfulPath.CompleteAsync(
+            request,
+            bootstrapResult.Descriptor,
+            runtimeEndpoint =>
                 createOperationalResources(
-                    runtimeEndpoint)
-                ?? throw new InvalidOperationException(
-                    "The operational-resource factory returned null.");
-
-            Task supervisionTask =
-                operationalResources
-                    .SupervisionLifetime
-                    .RunAsync();
-
-            await RuntimeEndpointInitialReadiness.WaitAsync(
-                runtimeEndpoint,
-                supervisionTask,
-                cancellationToken);
-
-            publication =
-                RuntimeEndpointPublication.Publish(
-                    _runtimeContext,
-                    runtimeEndpoint);
-
-            IAsyncDisposable[] ownedResources =
-            [
-                publication,
-                operationalResources.SupervisionLifetime,
-                .. operationalResources.ResourcesAfterSupervision
-            ];
-
-            return new EndpointAttachmentSession(
-                request,
-                runtimeEndpoint,
-                ownedResources);
-        }
-        catch (Exception attachmentFailure)
-        {
-            List<Exception> cleanupFailures =
-                await CleanupFailedAttachmentAsync(
-                    publication,
-                    operationalResources?.SupervisionLifetime,
-                    operationalResources?.ResourcesAfterSupervision
-                        ?? Array.Empty<IAsyncDisposable>(),
-                    attachmentFailure);
-
-            if (cleanupFailures.Count > 0)
-            {
-                throw new AggregateException(
-                    "Endpoint attachment failed and one or more "
-                    + "resources also failed during cleanup.",
-                    [
-                        attachmentFailure,
-                        .. cleanupFailures
-                    ]);
-            }
-
-            ExceptionDispatchInfo
-                .Capture(
-                    attachmentFailure)
-                .Throw();
-
-            throw;
-        }
-    }
-
-    private static async Task<List<Exception>>
-        CleanupFailedAttachmentAsync(
-            RuntimeEndpointPublication? publication,
-            EndpointConnectionSupervisionLifetime? supervisionLifetime,
-            IReadOnlyList<IAsyncDisposable> remainingResources,
-            Exception attachmentFailure)
-    {
-        var failures =
-            new List<Exception>();
-
-        if (publication is not null)
-        {
-            await DisposeFailedResourceAsync(
-                publication,
-                attachmentFailure,
-                failures);
-        }
-
-        if (supervisionLifetime is not null)
-        {
-            await DisposeFailedResourceAsync(
-                supervisionLifetime,
-                attachmentFailure,
-                failures);
-        }
-
-        foreach (
-            IAsyncDisposable resource
-            in remainingResources)
-        {
-            await DisposeFailedResourceAsync(
-                resource,
-                attachmentFailure,
-                failures);
-        }
-
-        return failures;
-    }
-
-    private static async Task DisposeFailedResourceAsync(
-        IAsyncDisposable resource,
-        Exception attachmentFailure,
-        ICollection<Exception> cleanupFailures)
-    {
-        try
-        {
-            await resource.DisposeAsync();
-        }
-        catch (Exception cleanupFailure)
-            when (ReferenceEquals(
-                cleanupFailure,
-                attachmentFailure))
-        {
-        }
-        catch (Exception cleanupFailure)
-        {
-            cleanupFailures.Add(
-                cleanupFailure);
-        }
+                    runtimeEndpoint),
+            cancellationToken);
     }
 
     private sealed class SuppliedOperationalResources

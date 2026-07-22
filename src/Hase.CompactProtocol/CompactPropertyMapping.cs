@@ -6,8 +6,11 @@ namespace Hase.CompactProtocol;
 /// Maps one resource-constrained wire property identifier to one property in a
 /// predefined host-side endpoint descriptor.
 /// </summary>
-internal sealed record CompactPropertyMapping
+public sealed record CompactPropertyMapping
 {
+    /// <summary>
+    /// Initializes one compact property mapping.
+    /// </summary>
     public CompactPropertyMapping(
         byte compactPropertyId,
         InstrumentId instrumentId,
@@ -48,21 +51,33 @@ internal sealed record CompactPropertyMapping
             encoding;
     }
 
+    /// <summary>
+    /// Gets the nonzero compact wire-property identifier.
+    /// </summary>
     public byte CompactPropertyId
     {
         get;
     }
 
+    /// <summary>
+    /// Gets the target runtime instrument identity.
+    /// </summary>
     public InstrumentId InstrumentId
     {
         get;
     }
 
+    /// <summary>
+    /// Gets the target runtime property identity.
+    /// </summary>
     public PropertyId PropertyId
     {
         get;
     }
 
+    /// <summary>
+    /// Gets the compact wire-value encoding.
+    /// </summary>
     public CompactPropertyValueEncoding Encoding
     {
         get;

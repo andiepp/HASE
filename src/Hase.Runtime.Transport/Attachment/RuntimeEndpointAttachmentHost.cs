@@ -1,5 +1,7 @@
-﻿using Hase.Runtime.Runtime;
+﻿using Hase.CompactProtocol;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Runtime;
+using Hase.Transport.Serial;
 
 namespace Hase.Runtime.Transport.Attachment;
 
@@ -44,6 +46,49 @@ public sealed class RuntimeEndpointAttachmentHost
                 synchronizer,
                 reconnectPolicy,
                 maximumPayloadLength);
+
+        return new RuntimeEndpointAttachmentHost(
+            runtimeContext,
+            attachmentService);
+    }
+
+    /// <summary>
+    /// Creates a host configured for compact HASE endpoints reached through
+    /// production System.IO.Ports serial transport.
+    /// </summary>
+    /// <param name="definitionRepository">
+    /// Host repository containing exact compact endpoint definitions and
+    /// their operational wire mappings.
+    /// </param>
+    /// <param name="reconnectPolicy">
+    /// Retry-delay policy used for initial connection and recovery.
+    /// </param>
+    /// <param name="probeOptions">
+    /// Compact endpoint health-probe timing, or <see langword="null"/> to use
+    /// the approved default timing.
+    /// </param>
+    public static RuntimeEndpointAttachmentHost CreateCompactSerial(
+        ICompactEndpointDefinitionRepository definitionRepository,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        CompactEndpointHealthProbeOptions? probeOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            definitionRepository);
+
+        ArgumentNullException.ThrowIfNull(
+            reconnectPolicy);
+
+        var runtimeContext =
+            new RuntimeContext();
+
+        var attachmentService =
+            new CompactSerialEndpointAttachmentService(
+                runtimeContext,
+                new SystemIoPortsSerialByteStreamFactory(),
+                definitionRepository,
+                reconnectPolicy,
+                probeOptions
+                ?? CompactEndpointHealthProbeOptions.Default);
 
         return new RuntimeEndpointAttachmentHost(
             runtimeContext,

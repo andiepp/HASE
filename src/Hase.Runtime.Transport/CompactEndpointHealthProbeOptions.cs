@@ -3,8 +3,11 @@
 /// <summary>
 /// Configures periodic health probing for one compact serial endpoint.
 /// </summary>
-internal sealed record CompactEndpointHealthProbeOptions
+public sealed record CompactEndpointHealthProbeOptions
 {
+    /// <summary>
+    /// Gets the approved default compact endpoint health-probe timing.
+    /// </summary>
     public static CompactEndpointHealthProbeOptions Default
     {
         get;
@@ -17,6 +20,9 @@ internal sealed record CompactEndpointHealthProbeOptions
                 TimeSpan.FromSeconds(
                     3));
 
+    /// <summary>
+    /// Initializes compact endpoint health-probe options.
+    /// </summary>
     public CompactEndpointHealthProbeOptions(
         TimeSpan probeInterval,
         TimeSpan probeTimeout)
@@ -44,11 +50,17 @@ internal sealed record CompactEndpointHealthProbeOptions
             probeTimeout;
     }
 
+    /// <summary>
+    /// Gets the delay between successful compact endpoint health probes.
+    /// </summary>
     public TimeSpan ProbeInterval
     {
         get;
     }
 
+    /// <summary>
+    /// Gets the maximum duration of one compact endpoint health probe.
+    /// </summary>
     public TimeSpan ProbeTimeout
     {
         get;

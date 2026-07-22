@@ -4,8 +4,11 @@
 /// Identifies the descriptor-defined binary representation of one compact
 /// property value.
 /// </summary>
-internal enum CompactPropertyValueEncoding : byte
+public enum CompactPropertyValueEncoding : byte
 {
+    /// <summary>
+    /// Encodes a Boolean value as one byte: zero for false and one for true.
+    /// </summary>
     Boolean =
         0x01
 }
