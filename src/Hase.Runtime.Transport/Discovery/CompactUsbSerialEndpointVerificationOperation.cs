@@ -104,6 +104,13 @@ internal sealed class CompactUsbSerialEndpointVerificationOperation
                 UsbSerialEndpointVerificationFailure.InvalidCompactResponse,
                 exception.Message);
         }
+        catch (EndOfStreamException exception)
+        {
+            return new RejectedUsbSerialEndpointCandidate(
+                candidate,
+                UsbSerialEndpointVerificationFailure.NonHaseEndpoint,
+                exception.Message);
+        }
         catch (SerialPortOpenException exception)
         {
             return new RejectedUsbSerialEndpointCandidate(
