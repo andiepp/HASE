@@ -16,6 +16,7 @@ internal sealed class CompactEndpointOperationalResources
         CompactPropertyMap propertyMap,
         CompactEventMap eventMap,
         CompactEventNotificationResolver eventResolver,
+        CompactMappedEventNotificationSource eventSource,
         EndpointConnectionSupervisionLifetime supervisionLifetime,
         CompactRuntimeEndpointConnectionCoordinator coordinator,
         CompactRuntimeEndpointConnectionSupervisor supervisor)
@@ -32,6 +33,9 @@ internal sealed class CompactEndpointOperationalResources
         EventResolver =
             eventResolver;
 
+        EventSource =
+            eventSource;
+
         SupervisionLifetime =
             supervisionLifetime;
 
@@ -47,71 +51,54 @@ internal sealed class CompactEndpointOperationalResources
         ];
     }
 
-    /// <summary>
-    /// Gets the exact compact definition used to create the operational
-    /// resource graph.
-    /// </summary>
     internal CompactEndpointDefinition Definition
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the validated compact property map.
-    /// </summary>
     internal CompactPropertyMap PropertyMap
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the validated compact event map.
-    /// </summary>
     internal CompactEventMap EventMap
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the descriptor-bound compact event-notification resolver.
-    /// </summary>
     internal CompactEventNotificationResolver EventResolver
     {
         get;
     }
 
     /// <summary>
-    /// Gets the compact runtime endpoint connection coordinator.
+    /// Gets the current-connection-authoritative mapped compact event source.
     /// </summary>
+    internal CompactMappedEventNotificationSource EventSource
+    {
+        get;
+    }
+
     internal CompactRuntimeEndpointConnectionCoordinator Coordinator
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the compact runtime endpoint connection supervisor.
-    /// </summary>
     internal CompactRuntimeEndpointConnectionSupervisor Supervisor
     {
         get;
     }
 
-    /// <inheritdoc />
     public EndpointConnectionSupervisionLifetime SupervisionLifetime
     {
         get;
     }
 
-    /// <inheritdoc />
     public IReadOnlyList<IAsyncDisposable> ResourcesAfterSupervision
     {
         get;
     }
 
-    /// <summary>
-    /// Constructs the complete operational connection graph for one compact
-    /// endpoint reached through serial transport.
-    /// </summary>
     internal static CompactEndpointOperationalResources CreateSerial(
         SerialEndpointConnectionDefinition connectionDefinition,
         CompactEndpointDefinition definition,
@@ -152,6 +139,10 @@ internal sealed class CompactEndpointOperationalResources
             new CompactEventNotificationResolver(
                 eventMap);
 
+        var eventSource =
+            new CompactMappedEventNotificationSource(
+                eventResolver);
+
         var descriptorRepository =
             new CompactEndpointDescriptorRepositoryAdapter(
                 definitionRepository);
@@ -167,7 +158,10 @@ internal sealed class CompactEndpointOperationalResources
                 connectionDefinition.TransportOptions,
                 propertyMap,
                 runtimeEndpoint,
-                new EndpointDescriptorCompatibilityValidator());
+                new EndpointDescriptorCompatibilityValidator(),
+                new CompactEndpointConnectionOwner(),
+                eventSource,
+                TimeProvider.System);
 
         var supervisor =
             new CompactRuntimeEndpointConnectionSupervisor(
@@ -185,6 +179,7 @@ internal sealed class CompactEndpointOperationalResources
             propertyMap,
             eventMap,
             eventResolver,
+            eventSource,
             supervisionLifetime,
             coordinator,
             supervisor);

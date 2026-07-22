@@ -8,8 +8,8 @@ namespace Hase.Runtime.Transport;
 
 /// <summary>
 /// Coordinates connection establishment, descriptor validation, property
-/// synchronization, operation, connection replacement, faulted-connection
-/// detachment, and shutdown for one compact runtime endpoint.
+/// synchronization, operation, compact-event authority, connection replacement,
+/// faulted-connection detachment, and shutdown for one compact runtime endpoint.
 /// </summary>
 internal sealed class CompactRuntimeEndpointConnectionCoordinator
     : IAsyncDisposable
@@ -21,6 +21,7 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
     private readonly EndpointDescriptorCompatibilityValidator
         _compatibilityValidator;
     private readonly CompactEndpointConnectionOwner _connectionOwner;
+    private readonly CompactMappedEventNotificationSource _eventSource;
     private readonly TimeProvider _timeProvider;
 
     private readonly SemaphoreSlim _gate =
@@ -43,6 +44,8 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
             runtimeEndpoint,
             compatibilityValidator,
             new CompactEndpointConnectionOwner(),
+            CreateEmptyEventSource(
+                propertyMap),
             TimeProvider.System)
     {
     }
@@ -54,6 +57,28 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
         RuntimeEndpoint runtimeEndpoint,
         EndpointDescriptorCompatibilityValidator compatibilityValidator,
         CompactEndpointConnectionOwner connectionOwner,
+        TimeProvider timeProvider)
+        : this(
+            connectionFactory,
+            transportOptions,
+            propertyMap,
+            runtimeEndpoint,
+            compatibilityValidator,
+            connectionOwner,
+            CreateEmptyEventSource(
+                propertyMap),
+            timeProvider)
+    {
+    }
+
+    internal CompactRuntimeEndpointConnectionCoordinator(
+        ICompactEndpointConnectionFactory connectionFactory,
+        SerialTransportOptions transportOptions,
+        CompactPropertyMap propertyMap,
+        RuntimeEndpoint runtimeEndpoint,
+        EndpointDescriptorCompatibilityValidator compatibilityValidator,
+        CompactEndpointConnectionOwner connectionOwner,
+        CompactMappedEventNotificationSource eventSource,
         TimeProvider timeProvider)
     {
         _connectionFactory =
@@ -86,6 +111,11 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
             ?? throw new ArgumentNullException(
                 nameof(connectionOwner));
 
+        _eventSource =
+            eventSource
+            ?? throw new ArgumentNullException(
+                nameof(eventSource));
+
         _timeProvider =
             timeProvider
             ?? throw new ArgumentNullException(
@@ -100,6 +130,9 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
 
     public CompactEndpointConnection? ActiveConnection =>
         _connectionOwner.Current;
+
+    internal CompactMappedEventNotificationSource EventSource =>
+        _eventSource;
 
     public Task ConnectAsync(
         CancellationToken cancellationToken = default)
@@ -179,6 +212,8 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                 nameof(message));
         }
 
+        _eventSource.Deactivate();
+
         _runtimeEndpoint.UpdateConnectionStatus(
             new EndpointConnectionStatus(
                 EndpointConnectionState.Faulted,
@@ -218,6 +253,8 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                     + "is Faulted.");
             }
 
+            _eventSource.Deactivate();
+
             await _connectionOwner.DetachAsync(
                 cancellationToken);
         }
@@ -241,6 +278,11 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                 this);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Revoke the previous connection before replacement work begins.
+            // Compact events received while disconnected or recovering are
+            // intentionally neither queued nor replayed.
+            _eventSource.Deactivate();
 
             _runtimeEndpoint.UpdateConnectionStatus(
                 new EndpointConnectionStatus(
@@ -299,14 +341,19 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                     candidate,
                     cancellationToken);
 
-                candidate =
-                    null;
-
                 _runtimeEndpoint.UpdateConnectionStatus(
                     new EndpointConnectionStatus(
                         EndpointConnectionState.Ready,
                         _timeProvider.GetUtcNow(),
                         "Compact endpoint is ready."));
+
+                // Event delivery begins only after operational validation,
+                // synchronization, replacement, and the Ready transition.
+                _eventSource.Activate(
+                    candidate);
+
+                candidate =
+                    null;
             }
             catch (OperationCanceledException)
                 when (cancellationToken.IsCancellationRequested)
@@ -324,6 +371,8 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                 {
                     await candidate.DisposeAsync();
                 }
+
+                _eventSource.Deactivate();
 
                 _runtimeEndpoint.UpdateConnectionStatus(
                     new EndpointConnectionStatus(
@@ -354,6 +403,10 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
             _disposed =
                 true;
 
+            // Revoke event delivery before disposing the active physical
+            // connection so a receive-loop race cannot publish after shutdown.
+            _eventSource.Deactivate();
+
             await _connectionOwner.DisposeAsync();
 
             _runtimeEndpoint.UpdateConnectionStatus(
@@ -366,5 +419,22 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
         {
             _gate.Release();
         }
+    }
+
+    private static CompactMappedEventNotificationSource
+        CreateEmptyEventSource(
+            CompactPropertyMap propertyMap)
+    {
+        ArgumentNullException.ThrowIfNull(
+            propertyMap);
+
+        var eventMap =
+            new CompactEventMap(
+                propertyMap.DescriptorDefinition,
+                []);
+
+        return new CompactMappedEventNotificationSource(
+            new CompactEventNotificationResolver(
+                eventMap));
     }
 }
