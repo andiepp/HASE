@@ -12,12 +12,12 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, and the runtime-host attachment inventory are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-020 are validated through the physical Arduino Uno endpoint.
+The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, the runtime-host attachment inventory, compact runtime property synchronization, and compact serial connection supervision are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-021 are validated through the physical Arduino Uno endpoint.
 
 The current verified baseline is:
 
 ```text
-1,252 automated tests passing
+1,290 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -152,7 +152,13 @@ Completed:
 - compact command execution and physical C-019 LED-toggle validation;
 - descriptor-side compact property mappings and Boolean value decoding;
 - compact property reads and physical C-020 LED-state validation;
-- compact runtime property synchronization with cache-preservation semantics.
+- compact runtime property synchronization with cache-preservation semantics;
+- compact serial connection ownership and coordinated connection replacement;
+- recurring compact endpoint health probing with explicit interval and timeout controls;
+- automatic compact serial recovery using immediate, 1-second, 2-second, 5-second, and bounded 10-second retry delays;
+- cache preservation during compact serial faults and property refresh after recovery;
+- clean cancellation-aware compact supervision shutdown;
+- physical C-021 USB-disconnection detection, retry, reconnection, resynchronization, and shutdown validation.
 
 ---
 
@@ -182,7 +188,7 @@ It also contains the production serial byte-stream abstraction and System.IO.Por
 
 `Hase.Runtime.Transport` contains connection management, runtime protocol connections, duplex sessions, protocol bindings, synchronization, recovery supervision, health probing, notification migration, candidate verification, discovery orchestration, endpoint attachment services, the authoritative attachment inventory, and runtime attachment-host composition.
 
-It additionally contains compact runtime property synchronization. Successful compact reads update the existing `RuntimeProperty` cache; unsuccessful reads preserve the previous cached value.
+It additionally contains compact runtime property synchronization and compact endpoint connection supervision. Successful compact reads update the existing `RuntimeProperty` cache; unsuccessful reads preserve the previous cached value. Compact connection ownership, coordination, health probing, recurring supervision, retry, replacement, resynchronization, and cancellation-aware disposal reuse the runtime endpoint connection-state model while remaining independent of the native Protocol Version 1 transport path.
 
 ## Compact Protocol
 
@@ -226,7 +232,9 @@ Command            : Led.Toggle (compact id 0x01)
 
 The serial connection carries binary HASE frames exclusively. Compact bootstrap returns the authoritative endpoint identity and versioned descriptor reference. The runtime host resolves the complete descriptor from its repository.
 
-Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), and Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020). The observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
+Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020), and automatic compact serial connection recovery after USB disconnection (C-021). The C-020 observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
+
+C-021 physical validation started from `Disconnected`, progressed through `Connecting` and `Synchronizing` to `Ready`, detected USB loss as `Faulted`, and retried using the configured bounded schedule. After the Arduino returned on the same COM port, supervision re-established the connection, resynchronized `Led.State`, restored `Ready`, and retained a `Good` cached value. Ctrl+C stopped supervision cleanly, transitioned the endpoint from `Ready` to `Disconnected`, preserved the final cached value, and exited with code 0.
 
 ---
 
@@ -354,6 +362,8 @@ Active health probes use the existing duplex session, never introduce a competin
 
 After reconnection, HASE performs descriptor synchronization, compatibility validation, readable-property refresh, binding replacement, and notification-router migration. Cached values remain available while disconnected.
 
+Compact serial endpoints use `CompactRuntimeEndpointConnectionCoordinator` and `CompactRuntimeEndpointConnectionSupervisor` for the equivalent compact lifecycle. `CompactEndpointHealthProbe` performs recurring protocol-level reads through the owned compact connection, with a one-second probe interval and three-second timeout in the C-021 physical scenario. Probe failures or timeouts invalidate and detach the unusable connection before the established reconnect policy creates a replacement. Successful reconnection validates endpoint compatibility, refreshes readable compact properties, and returns the endpoint to `Ready` without discarding cached values during the fault.
+
 ---
 
 # Protocol Notifications and Diagnostics
@@ -375,6 +385,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 - C-018 - Physical compact serial bootstrap and host-side descriptor resolution for Arduino Uno-class endpoints.
 - C-019 - Physical compact command execution through the Arduino Uno built-in LED.
 - C-020 - Physical compact property reading and runtime-cache synchronization.
+- C-021 - Compact serial connection supervision with health probing, bounded retry, connection replacement, resynchronization, cache preservation, and clean shutdown.
 
 ---
 
@@ -382,7 +393,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-1,252 automated tests pass
+1,290 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -405,6 +416,12 @@ C-017 detach ends Disconnected with zero inventory entries and zero published en
 C-018 compact bootstrap resolves arduino-uno-validation v1
 C-019 compact LED-toggle command returns Success
 C-020 synchronizes Led.State from Off to On in the runtime cache
+C-021 detects physical Arduino USB disconnection and enters Faulted
+C-021 retries compact serial connection establishment with bounded backoff
+C-021 reconnects on the configured COM port and returns through Synchronizing to Ready
+C-021 preserves the cached Led.State value while faulted and refreshes it after recovery
+C-021 Ctrl+C shutdown ends Disconnected with the final cached value retained
+C-021 Protocol Explorer exits with code 0
 ```
 
 ---
@@ -417,13 +434,13 @@ ADR-0001 through ADR-0020 are accepted. ADR-0017 defines duplex protocol health 
 
 # Current Limitations
 
-The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, automatic serial-device identification, compact property writes, compact event notifications, additional compact scalar encodings, and compact serial reconnect supervision.
+The current implementation intentionally excludes IPv6 discovery, live Added/Updated/Removed presence tracking, authentication, authorization, encryption, automatic attachment without an explicit request, automatic endpoint replacement, cross-subnet mDNS relaying, parallel candidate verification, persistent discovery results, Linux physical validation, BLE, automatic serial-device identification, compact property writes, compact event notifications, and additional compact scalar encodings.
 
 ---
 
 # Immediate Next Steps
 
-1. Keep C-016 through C-020 physical validation baselines current.
+1. Keep C-016 through C-021 physical validation baselines current.
 2. Select the next Phase 6 capability explicitly.
 3. Decide whether Linux validation is required before closing Phase 6.
 4. Keep live presence tracking, additional compact operations, BLE, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
@@ -442,5 +459,6 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
