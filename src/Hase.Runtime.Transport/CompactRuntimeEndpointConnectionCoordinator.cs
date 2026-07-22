@@ -8,8 +8,8 @@ namespace Hase.Runtime.Transport;
 
 /// <summary>
 /// Coordinates connection establishment, descriptor validation, property
-/// synchronization, connection replacement, faulted-connection detachment,
-/// and shutdown for one compact runtime endpoint.
+/// synchronization, operation, connection replacement, faulted-connection
+/// detachment, and shutdown for one compact runtime endpoint.
 /// </summary>
 internal sealed class CompactRuntimeEndpointConnectionCoordinator
     : IAsyncDisposable
@@ -115,6 +115,57 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
         return EstablishAsync(
             "Reconnecting compact serial endpoint.",
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Writes one compact endpoint property through the active connection and
+    /// updates the runtime cache only from a successful confirmation read.
+    /// </summary>
+    public async Task<CompactRuntimePropertyWriteResult> WritePropertyAsync(
+        byte compactPropertyId,
+        object value,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await _gate.WaitAsync(
+            cancellationToken);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                _disposed,
+                this);
+
+            if (_runtimeEndpoint.ConnectionStatus.State
+                != EndpointConnectionState.Ready)
+            {
+                throw new InvalidOperationException(
+                    "Compact endpoint properties can be written only while "
+                    + "the runtime endpoint is Ready.");
+            }
+
+            CompactEndpointConnection activeConnection =
+                _connectionOwner.Current
+                ?? throw new InvalidOperationException(
+                    "The compact runtime endpoint does not have an active "
+                    + "connection.");
+
+            var propertyWriter =
+                new CompactRuntimePropertyWriter(
+                    activeConnection.Connection,
+                    _propertyMap);
+
+            return await propertyWriter.WriteAsync(
+                _runtimeEndpoint,
+                compactPropertyId,
+                value,
+                cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     public void MarkFaulted(
