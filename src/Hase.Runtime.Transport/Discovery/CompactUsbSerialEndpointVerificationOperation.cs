@@ -75,6 +75,28 @@ internal sealed class CompactUsbSerialEndpointVerificationOperation
                 $"USB serial candidate verification did not complete within "
                 + $"{timeout}.");
         }
+        catch (CompactProtocolVersionNotSupportedException exception)
+        {
+            return new RejectedUsbSerialEndpointCandidate(
+                candidate,
+                UsbSerialEndpointVerificationFailure
+                    .UnsupportedCompactProtocolVersion,
+                exception.Message);
+        }
+        catch (CompactBootstrapIdentityException exception)
+        {
+            return new RejectedUsbSerialEndpointCandidate(
+                candidate,
+                UsbSerialEndpointVerificationFailure.InvalidEndpointIdentity,
+                exception.Message);
+        }
+        catch (CompactDescriptorNotFoundException exception)
+        {
+            return new RejectedUsbSerialEndpointCandidate(
+                candidate,
+                UsbSerialEndpointVerificationFailure.UnknownDescriptorReference,
+                exception.Message);
+        }
         catch (SerialPortOpenException exception)
         {
             return new RejectedUsbSerialEndpointCandidate(
