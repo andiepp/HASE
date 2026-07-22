@@ -111,13 +111,14 @@ Completion baseline:
 Current baseline:
 
 ```text
-1,373 automated tests
+1,600 automated tests
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
 Physical ESP32 endpoint verified
 Physical Arduino Uno endpoint verified
 IPv4 network discovery verified
+Windows USB serial discovery verified
 ```
 
 ## 6.1 Transport Abstraction
@@ -384,11 +385,62 @@ Physical C-021 validation confirmed `Disconnected -> Connecting -> Synchronizing
 
 Physical C-022 validation confirmed explicit `Off -> On -> Off` writes for `Led.State`. Every write and confirmation read returned `Success`; every confirmed runtime-cache value had a UTC timestamp and `Good` quality. Coordinator tests also confirmed that disposal waits for an active write and rejects writes queued behind disposal.
 
-## 6.12 Remaining Phase 6 Work
+## 6.12 USB Serial Endpoint Discovery and Verification
+
+**Status:** [Completed] Implemented and physically verified on Windows
+
+Architecture: ADR-0021 - USB Serial Endpoint Discovery and Authoritative Compact Verification.
+
+Implemented:
+
+- platform-neutral USB serial candidate, filter, verifier, result, options, and orchestration contracts;
+- Windows candidate enumeration through `System.Management` and `Win32_PnPEntity`;
+- optional VID, PID, port, product, manufacturer, and USB serial-number filtering;
+- read-only candidate enumeration with missing-metadata tolerance and malformed-record isolation;
+- Windows port normalization and connection-target deduplication;
+- sequential candidate verification using candidate-specific serial settings and explicit per-candidate timeouts;
+- temporary `System.IO.Ports` connection ownership;
+- existing Compact Serial Protocol V1 bootstrap without wire-contract changes;
+- authoritative identity from `CompactBootstrapResponse.EndpointId`;
+- exact versioned descriptor-reference resolution through the host repository;
+- isolated busy, unavailable, access-denied, timeout, non-HASE, invalid-response, unsupported-version, invalid-identity, unknown-descriptor, and connection-failure outcomes;
+- caller-cancellation propagation distinct from candidate failure;
+- complete candidate-outcome retention;
+- unique verified inventory deduplicated by authoritative `EndpointId`;
+- production Windows discovery composition;
+- Protocol Explorer `c023` physical validation;
+- no automatic runtime attachment, replacement, publication, or mutation.
+
+Physical validation confirmed:
+
+```text
+Candidate port         : COM10
+VID                    : 0x2341
+PID                    : 0x0043
+Product                : Arduino Uno
+USB serial number      : 75836333537351D06110
+Result                 : Verified
+Authoritative endpoint : arduino-uno-01
+Descriptor reference   : arduino-uno-validation v1
+Unique inventory       : 1
+Runtime attachment     : None
+Runtime mutation       : None
+Verification streams   : Disposed
+Process exit code       : 0
+```
+
+The COM port, VID, PID, product name, manufacturer, and USB serial number remain descriptive connection metadata. They are never substituted for HASE identity. The compact bootstrap response supplies the authoritative endpoint identity.
+
+Manual COM-port configuration remains supported through the established compact connection path.
+
+Linux USB serial discovery remains explicit backlog. The reserved incompatible-descriptor result requires a formal compact-profile contract before it is actively produced.
+
+## 6.13 Remaining Phase 6 Work
 
 - validate Wi-Fi interruption and re-advertisement;
-- decide sequential versus bounded-parallel verification;
-- validate Linux discovery;
+- keep verification sequential unless future physical evidence justifies bounded parallelism;
+- implement and physically validate Linux USB serial discovery only through a separately approved increment;
+- define a formal compact-profile compatibility contract before activating incompatible-descriptor classification;
 - decide IPv6 scope;
 - consider BLE and additional compact serial capabilities.
 
@@ -414,7 +466,7 @@ Architecture constraint: discovery must never automatically replace an existing 
 
 # Future Transport Work
 
-Possible transports and extensions include IPv6 mDNS/DNS-SD, automatic CH340 and serial-device identification, BLE, MQTT, remote access, Tailscale-assisted discovery, gateway transports, additional compact value encodings, compact writes, and compact events.
+Possible transports and extensions include IPv6 mDNS/DNS-SD, Linux USB serial discovery, additional USB serial devices and metadata filters, BLE, MQTT, remote access, Tailscale-assisted discovery, gateway transports, additional compact value encodings, compact events, and formal compact profiles.
 
 Transport implementations remain below Protocol Version 1.
 
@@ -436,22 +488,24 @@ Possible simulation work includes noise, drift, calibration offsets, device and 
 
 # Documentation Roadmap
 
-Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, and ADR-0001 through ADR-0020.
+Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `RuntimeComponentModel.md`, `SerializationModel.md`, `ProjectStatus.md`, `Roadmap.md`, `C-023-USB-Serial-Endpoint-Discovery.md`, and ADR-0001 through ADR-0021.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-022 and their validation baselines current.
-2. Keep IPv4 scope and IPv6 backlog explicit.
-3. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
-4. Record any future discovery concurrency decision in an ADR if it changes architecture.
+1. Keep physical capabilities C-015 through C-023 and their validation baselines current.
+2. Keep IPv4 scope, IPv6 backlog, and Linux USB serial backlog explicit.
+3. Keep candidate metadata separate from authoritative endpoint identity.
+4. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
+5. Record any future discovery concurrency or compact-profile decision in an ADR if it changes architecture.
 
 ---
 
 # Current Priorities
 
 1. Select the next Phase 6 capability explicitly.
-2. Decide whether Linux validation is required before Phase 6 completion.
-3. Keep IPv6, additional compact serial capabilities, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
+2. Keep Linux USB serial discovery as a separately approved, platform-specific backlog item.
+3. Define a formal compact-profile contract before activating incompatible-descriptor classification.
+4. Keep IPv6, additional compact serial capabilities, BLE, remote APIs, and Tailscale host detection as separately approved future capabilities.
 
 ---
 
@@ -477,15 +531,18 @@ Already achieved:
 - C-019 compact command execution;
 - C-020 compact property reading and runtime-cache synchronization;
 - C-021 compact serial connection supervision, health probing, bounded recovery, resynchronization, cache preservation, and clean shutdown;
-- C-022 compact property writing, endpoint confirmation, runtime-cache synchronization, coordinator lifecycle ownership, and physical Arduino Uno validation.
+- C-022 compact property writing, endpoint confirmation, runtime-cache synchronization, coordinator lifecycle ownership, and physical Arduino Uno validation;
+- C-023 Windows USB serial candidate enumeration, metadata filtering, authoritative compact bootstrap verification, exact descriptor resolution, isolated outcomes, unique endpoint inventory, production composition, and physical Arduino Uno validation.
 
 Still requiring implementation or explicit scope decisions:
 
 - whether IPv6 belongs in Phase 6;
 - whether BLE belongs in Phase 6;
 - which additional compact serial operations belong in Phase 6;
-- whether Linux validation is required before closing Phase 6;
+- Linux USB serial discovery and physical validation;
+- a formal compact-profile compatibility contract;
 - whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
+
 
 
 
