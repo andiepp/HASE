@@ -18,5 +18,11 @@ internal enum CompactSerialMessageType : byte
         0x05,
 
     ReadPropertyResponse =
-        0x06
+        0x06,
+
+    WritePropertyRequest =
+        0x07,
+
+    WritePropertyResponse =
+        0x08
 }
