@@ -55,9 +55,10 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                 new BooleanDataDescriptor())
             {
                 Description =
-                    "Reports whether the Arduino Uno built-in LED is on.",
+                    "Reports and controls whether the Arduino Uno built-in "
+                    + "LED is on.",
                 AccessMode =
-                    PropertyAccessMode.Read
+                    PropertyAccessMode.ReadWrite
             };
 
         var toggleBuiltInLed =
@@ -86,7 +87,7 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                         Description =
                             "GPIO controller provided by the Arduino Uno. "
                             + "The built-in LED is exposed through a compact "
-                            + "property and command."
+                            + "read/write property and command."
                     },
                 Interface =
                     new InstrumentInterface(
@@ -108,7 +109,7 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                 Description =
                     "Physical Arduino Uno-class endpoint used to validate "
                     + "Compact Serial Protocol bootstrap, command execution, "
-                    + "and property reading."
+                    + "and property reading and writing."
             },
             instruments:
             [

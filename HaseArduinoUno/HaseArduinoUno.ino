@@ -1,11 +1,12 @@
 /*
   HASE Arduino Uno - Compact Serial Protocol Endpoint
 
-  Capability C-020:
+  Capabilities C-018 through C-022:
   - Compact bootstrap
   - Execute compact command 0x01
   - Toggle LED_BUILTIN
   - Read compact property 0x01
+  - Write compact property 0x01
   - Return the current LED_BUILTIN state
 
   Protocol settings:
@@ -54,6 +55,12 @@ namespace
   const uint8_t ReadPropertyResponseMessageType =
     0x06;
 
+  const uint8_t WritePropertyRequestMessageType =
+    0x07;
+
+  const uint8_t WritePropertyResponseMessageType =
+    0x08;
+
   const uint8_t ToggleBuiltInLedCommandId =
     0x01;
 
@@ -66,14 +73,20 @@ namespace
   const uint8_t CommandStatusUnknownCommand =
     0x01;
 
-  const uint8_t CommandStatusExecutionFailed =
-    0x02;
-
   const uint8_t PropertyReadStatusSuccess =
     0x00;
 
   const uint8_t PropertyReadStatusUnknownProperty =
     0x01;
+
+  const uint8_t PropertyWriteStatusSuccess =
+    0x00;
+
+  const uint8_t PropertyWriteStatusUnknownProperty =
+    0x01;
+
+  const uint8_t PropertyWriteStatusInvalidValue =
+    0x03;
 
   const uint8_t FrameOverheadLength =
     8;
@@ -165,6 +178,19 @@ namespace
       receiveLength =
         1;
     }
+  }
+
+  void ApplyBuiltInLedState(
+    bool state)
+  {
+    builtInLedState =
+      state;
+
+    digitalWrite(
+      LED_BUILTIN,
+      builtInLedState
+        ? HIGH
+        : LOW);
   }
 
   void SendFrame(
@@ -351,6 +377,24 @@ namespace
       sizeof(payload));
   }
 
+  void SendWritePropertyResponse(
+    uint8_t correlationId,
+    uint8_t propertyId,
+    uint8_t status)
+  {
+    const uint8_t payload[] =
+    {
+      propertyId,
+      status
+    };
+
+    SendFrame(
+      WritePropertyResponseMessageType,
+      correlationId,
+      payload,
+      sizeof(payload));
+  }
+
   uint8_t ExecuteCommand(
     uint8_t commandId)
   {
@@ -362,14 +406,8 @@ namespace
         CommandStatusUnknownCommand;
     }
 
-    builtInLedState =
-      !builtInLedState;
-
-    digitalWrite(
-      LED_BUILTIN,
-      builtInLedState
-        ? HIGH
-        : LOW);
+    ApplyBuiltInLedState(
+      !builtInLedState);
 
     return
       CommandStatusSuccess;
@@ -379,12 +417,9 @@ namespace
     uint8_t correlationId,
     uint8_t payloadLength)
   {
-    if (correlationId == 0)
-    {
-      return;
-    }
-
-    if (payloadLength != 0)
+    if (
+      correlationId == 0
+      || payloadLength != 0)
     {
       return;
     }
@@ -397,12 +432,9 @@ namespace
     uint8_t correlationId,
     uint8_t payloadLength)
   {
-    if (correlationId == 0)
-    {
-      return;
-    }
-
-    if (payloadLength != 1)
+    if (
+      correlationId == 0
+      || payloadLength != 1)
     {
       return;
     }
@@ -424,12 +456,9 @@ namespace
     uint8_t correlationId,
     uint8_t payloadLength)
   {
-    if (correlationId == 0)
-    {
-      return;
-    }
-
-    if (payloadLength != 1)
+    if (
+      correlationId == 0
+      || payloadLength != 1)
     {
       return;
     }
@@ -447,6 +476,71 @@ namespace
       propertyId);
   }
 
+  void ProcessWritePropertyRequest(
+    uint8_t correlationId,
+    uint8_t payloadLength)
+  {
+    if (
+      correlationId == 0
+      || payloadLength == 0)
+    {
+      return;
+    }
+
+    const uint8_t propertyId =
+      receiveBuffer[6];
+
+    if (propertyId == 0)
+    {
+      return;
+    }
+
+    if (
+      propertyId
+      != BuiltInLedStatePropertyId)
+    {
+      SendWritePropertyResponse(
+        correlationId,
+        propertyId,
+        PropertyWriteStatusUnknownProperty);
+
+      return;
+    }
+
+    if (payloadLength != 2)
+    {
+      SendWritePropertyResponse(
+        correlationId,
+        propertyId,
+        PropertyWriteStatusInvalidValue);
+
+      return;
+    }
+
+    const uint8_t value =
+      receiveBuffer[7];
+
+    if (
+      value != 0x00
+      && value != 0x01)
+    {
+      SendWritePropertyResponse(
+        correlationId,
+        propertyId,
+        PropertyWriteStatusInvalidValue);
+
+      return;
+    }
+
+    ApplyBuiltInLedState(
+      value == 0x01);
+
+    SendWritePropertyResponse(
+      correlationId,
+      propertyId,
+      PropertyWriteStatusSuccess);
+  }
+
   void ProcessCompleteFrame()
   {
     if (
@@ -460,14 +554,9 @@ namespace
       receiveBuffer[0]
         != StartMarkerFirstByte
       || receiveBuffer[1]
-        != StartMarkerSecondByte)
-    {
-      return;
-    }
-
-    if (
-      receiveBuffer[2]
-      != ProtocolVersion)
+        != StartMarkerSecondByte
+      || receiveBuffer[2]
+        != ProtocolVersion)
     {
       return;
     }
@@ -537,6 +626,12 @@ namespace
 
       case ReadPropertyRequestMessageType:
         ProcessReadPropertyRequest(
+          correlationId,
+          payloadLength);
+        break;
+
+      case WritePropertyRequestMessageType:
+        ProcessWritePropertyRequest(
           correlationId,
           payloadLength);
         break;
@@ -642,12 +737,8 @@ void setup()
     LED_BUILTIN,
     OUTPUT);
 
-  builtInLedState =
-    false;
-
-  digitalWrite(
-    LED_BUILTIN,
-    LOW);
+  ApplyBuiltInLedState(
+    false);
 
   Serial.begin(
     SerialBaudRate);
