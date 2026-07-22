@@ -75,5 +75,38 @@ internal sealed class CompactUsbSerialEndpointVerificationOperation
                 $"USB serial candidate verification did not complete within "
                 + $"{timeout}.");
         }
+        catch (SerialPortOpenException exception)
+        {
+            return new RejectedUsbSerialEndpointCandidate(
+                candidate,
+                MapOpenFailure(
+                    exception.Failure),
+                exception.Message);
+        }
+    }
+
+    private static UsbSerialEndpointVerificationFailure MapOpenFailure(
+        SerialPortOpenFailure failure)
+    {
+        return failure switch
+        {
+            SerialPortOpenFailure.Busy =>
+                UsbSerialEndpointVerificationFailure.PortBusy,
+
+            SerialPortOpenFailure.Unavailable =>
+                UsbSerialEndpointVerificationFailure.PortUnavailable,
+
+            SerialPortOpenFailure.AccessDenied =>
+                UsbSerialEndpointVerificationFailure.AccessDenied,
+
+            SerialPortOpenFailure.Failed =>
+                UsbSerialEndpointVerificationFailure.ConnectionFailed,
+
+            _ =>
+                throw new ArgumentOutOfRangeException(
+                    nameof(failure),
+                    failure,
+                    "The serial-port open failure classification is invalid.")
+        };
     }
 }
