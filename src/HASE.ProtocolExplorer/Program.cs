@@ -53,7 +53,8 @@ internal static class Program
                     new CapabilityC018Scenario(),
                     new CapabilityC019Scenario(),
                     new CapabilityC020Scenario(),
-                    new CapabilityC021Scenario()
+                    new CapabilityC021Scenario(),
+                    new CapabilityC022Scenario()
                 ]);
 
         string scenarioName =
@@ -84,7 +85,8 @@ internal static class Program
         catch (Exception exception)
         {
             Console.WriteLine();
-            Console.WriteLine("Scenario failed.");
+            Console.WriteLine(
+                "Scenario failed.");
             Console.WriteLine();
             Console.WriteLine(
                 $"Exception type : {exception.GetType().FullName}");
@@ -99,20 +101,24 @@ internal static class Program
 
     private static void WriteHeader()
     {
-        Console.WriteLine("HASE Protocol Explorer");
-        Console.WriteLine("======================");
+        Console.WriteLine(
+            "HASE Protocol Explorer");
+        Console.WriteLine(
+            "======================");
         Console.WriteLine();
     }
 
     private static void WriteHelp()
     {
-        Console.WriteLine("Usage:");
+        Console.WriteLine(
+            "Usage:");
         Console.WriteLine();
         Console.WriteLine(
             "  HASE.ProtocolExplorer <scenario> [arguments]");
         Console.WriteLine();
 
-        Console.WriteLine("Capability scenarios:");
+        Console.WriteLine(
+            "Capability scenarios:");
         Console.WriteLine();
         Console.WriteLine(
             "  c001");
@@ -154,9 +160,12 @@ internal static class Program
             "  c020 <COM port> [baud rate]");
         Console.WriteLine(
             "  c021 <COM port> [baud rate]");
+        Console.WriteLine(
+            "  c022 <COM port> [baud rate]");
         Console.WriteLine();
 
-        Console.WriteLine("Protocol scenarios:");
+        Console.WriteLine(
+            "Protocol scenarios:");
         Console.WriteLine();
         Console.WriteLine(
             "  discover");

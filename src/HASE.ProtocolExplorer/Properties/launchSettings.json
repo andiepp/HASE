@@ -2,7 +2,7 @@
   "profiles": {
     "HASE.ProtocolExplorer": {
       "commandName": "Project",
-      "commandLineArgs": "c021 COM10"
+      "commandLineArgs": "c022 COM10"
     }
   }
 }
