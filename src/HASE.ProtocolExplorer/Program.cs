@@ -34,6 +34,7 @@ internal static class Program
                     new EventNotificationScenario(),
                     new ReadEndpointDescriptorResponseScenario(),
                     new NetworkDiscoveryScenario(),
+                    new UsbSerialCandidatesScenario(),
                     new CapabilityC001Scenario(host),
                     new CapabilityC002Scenario(host),
                     new CapabilityC003Scenario(),
@@ -165,7 +166,7 @@ internal static class Program
         Console.WriteLine();
 
         Console.WriteLine(
-            "Protocol scenarios:");
+            "Protocol and discovery scenarios:");
         Console.WriteLine();
         Console.WriteLine(
             "  discover");
@@ -189,5 +190,7 @@ internal static class Program
             "  read-endpoint-descriptor-response");
         Console.WriteLine(
             "  network-discovery");
+        Console.WriteLine(
+            "  usb-serial-candidates");
     }
 }
