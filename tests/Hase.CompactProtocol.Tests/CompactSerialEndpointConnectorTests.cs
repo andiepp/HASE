@@ -167,7 +167,7 @@ public sealed class CompactSerialEndpointConnectorTests
                 expectedEndpointId: null);
         }
 
-        await Assert.ThrowsAsync<InvalidDataException>(
+        await Assert.ThrowsAsync<CompactDescriptorNotFoundException>(
             Act);
 
         Assert.Equal(

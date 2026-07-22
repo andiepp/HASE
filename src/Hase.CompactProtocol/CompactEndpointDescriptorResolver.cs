@@ -36,13 +36,8 @@ internal sealed class CompactEndpointDescriptorResolver
 
         if (definition is null)
         {
-            DescriptorReference reference =
-                bootstrapResponse.DescriptorReference;
-
-            throw new InvalidDataException(
-                $"Descriptor '{reference.Id.Value}' version "
-                + $"{reference.Version} is not available in the host "
-                + "descriptor repository.");
+            throw new CompactDescriptorNotFoundException(
+                bootstrapResponse.DescriptorReference);
         }
 
         return definition;

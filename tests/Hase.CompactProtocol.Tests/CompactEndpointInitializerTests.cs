@@ -186,8 +186,8 @@ public sealed class CompactEndpointInitializerTests
                 expectedEndpointId: null);
         }
 
-        InvalidDataException exception =
-            await Assert.ThrowsAsync<InvalidDataException>(
+        CompactDescriptorNotFoundException exception =
+            await Assert.ThrowsAsync<CompactDescriptorNotFoundException>(
                 Act);
 
         Assert.Contains(

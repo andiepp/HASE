@@ -78,8 +78,11 @@ public sealed class CompactEndpointDescriptorResolverTests
     }
 
     [Fact]
-    public async Task ResolveAsync_MissingReference_ShouldThrow()
+    public async Task ResolveAsync_MissingReference_ShouldThrowSemanticException()
     {
+        CompactBootstrapResponse bootstrapResponse =
+            CreateBootstrapResponse();
+
         var resolver =
             new CompactEndpointDescriptorResolver(
                 new TestEndpointDescriptorRepository(
@@ -88,12 +91,16 @@ public sealed class CompactEndpointDescriptorResolverTests
         async Task Act()
         {
             _ = await resolver.ResolveAsync(
-                CreateBootstrapResponse());
+                bootstrapResponse);
         }
 
-        InvalidDataException exception =
-            await Assert.ThrowsAsync<InvalidDataException>(
+        CompactDescriptorNotFoundException exception =
+            await Assert.ThrowsAsync<CompactDescriptorNotFoundException>(
                 Act);
+
+        Assert.Same(
+            bootstrapResponse.DescriptorReference,
+            exception.DescriptorReference);
 
         Assert.Contains(
             "arduino-uno-environment",
@@ -164,6 +171,30 @@ public sealed class CompactEndpointDescriptorResolverTests
 
         await Assert.ThrowsAsync<ArgumentNullException>(
             Act);
+    }
+
+    [Fact]
+    public void DescriptorNotFoundException_NullReference_ShouldThrow()
+    {
+        void Act()
+        {
+            _ = new CompactDescriptorNotFoundException(
+                null!);
+        }
+
+        Assert.Throws<ArgumentNullException>(
+            Act);
+    }
+
+    [Fact]
+    public void DescriptorNotFoundException_ShouldBeAnIOException()
+    {
+        var exception =
+            new CompactDescriptorNotFoundException(
+                CreateBootstrapResponse().DescriptorReference);
+
+        Assert.IsAssignableFrom<IOException>(
+            exception);
     }
 
     private static CompactBootstrapResponse CreateBootstrapResponse()
