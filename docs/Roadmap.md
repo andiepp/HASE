@@ -111,7 +111,7 @@ Completion baseline:
 Current baseline:
 
 ```text
-1,290 automated tests
+1,373 automated tests
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -369,11 +369,20 @@ Implemented:
 - compatibility validation and complete readable-property resynchronization after reconnect;
 - cached-property preservation while disconnected;
 - cancellation-aware supervision and clean disposal;
-- Protocol Explorer C-021 physical USB-disconnection and reconnection validation.
+- Protocol Explorer C-021 physical USB-disconnection and reconnection validation;
+- compact property-write request and response wire contracts;
+- descriptor-selected Boolean property-value encoding;
+- descriptor-aware writable-property validation;
+- endpoint-confirmed runtime property writing and cache synchronization;
+- coordinator-owned writes serialized against replacement and disposal;
+- Arduino Uno `Led.State` read/write firmware support;
+- Protocol Explorer C-022 explicit property-writing validation.
 
 Physical C-020 validation confirmed an empty initial cache, successful `Off` synchronization, successful toggle execution, replacement with `On`, UTC timestamps, `Good` quality, one runtime endpoint, and process exit code zero.
 
 Physical C-021 validation confirmed `Disconnected -> Connecting -> Synchronizing -> Ready`, protocol-level USB-loss detection, `Ready -> Faulted`, bounded reconnect attempts while COM3 was absent, replacement connection establishment after the Arduino returned, complete property resynchronization, and restoration of `Ready` with a `Good` cached value. Ctrl+C produced `Ready -> Disconnected`, retained the final cached value, and exited with code zero.
+
+Physical C-022 validation confirmed explicit `Off -> On -> Off` writes for `Led.State`. Every write and confirmation read returned `Success`; every confirmed runtime-cache value had a UTC timestamp and `Good` quality. Coordinator tests also confirmed that disposal waits for an active write and rejects writes queued behind disposal.
 
 ## 6.12 Remaining Phase 6 Work
 
@@ -431,7 +440,7 @@ Current documentation includes `Architecture.md`, `RuntimeArchitecture.md`, `Run
 
 Next:
 
-1. Keep physical capabilities C-015 through C-021 and their validation baselines current.
+1. Keep physical capabilities C-015 through C-022 and their validation baselines current.
 2. Keep IPv4 scope and IPv6 backlog explicit.
 3. Keep the authoritative inventory identity and no-automatic-replacement rule explicit.
 4. Record any future discovery concurrency decision in an ADR if it changes architecture.
@@ -467,7 +476,8 @@ Already achieved:
 - C-018 compact bootstrap and descriptor resolution;
 - C-019 compact command execution;
 - C-020 compact property reading and runtime-cache synchronization;
-- C-021 compact serial connection supervision, health probing, bounded recovery, resynchronization, cache preservation, and clean shutdown.
+- C-021 compact serial connection supervision, health probing, bounded recovery, resynchronization, cache preservation, and clean shutdown;
+- C-022 compact property writing, endpoint confirmation, runtime-cache synchronization, coordinator lifecycle ownership, and physical Arduino Uno validation.
 
 Still requiring implementation or explicit scope decisions:
 
@@ -476,6 +486,7 @@ Still requiring implementation or explicit scope decisions:
 - which additional compact serial operations belong in Phase 6;
 - whether Linux validation is required before closing Phase 6;
 - whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
+
 
 
 

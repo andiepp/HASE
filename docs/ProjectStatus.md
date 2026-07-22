@@ -12,12 +12,12 @@ HASE is an open, modular framework for describing, discovering, communicating wi
 
 **Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, the runtime-host attachment inventory, compact runtime property synchronization, and compact serial connection supervision are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-021 are validated through the physical Arduino Uno endpoint.
+The core architecture, runtime model, simulation framework, Protocol Version 1, Compact Serial Protocol Version 1, runtime integration, Protocol Explorer, production TCP and USB serial transports, duplex protocol infrastructure, endpoint synchronization, automatic connection recovery, active protocol health probing, runtime event routing, transport diagnostics, physical property access, physical command execution, physical event notification, IPv4 network endpoint discovery, explicit runtime-host-owned endpoint attachment, the runtime-host attachment inventory, compact runtime property synchronization, and compact serial connection supervision are implemented. C-016 and C-017 are validated through the physical ESP32/BME280 endpoint; C-018 through C-022 are validated through the physical Arduino Uno endpoint.
 
 The current verified baseline is:
 
 ```text
-1,290 automated tests passing
+1,373 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -158,7 +158,13 @@ Completed:
 - automatic compact serial recovery using immediate, 1-second, 2-second, 5-second, and bounded 10-second retry delays;
 - cache preservation during compact serial faults and property refresh after recovery;
 - clean cancellation-aware compact supervision shutdown;
-- physical C-021 USB-disconnection detection, retry, reconnection, resynchronization, and shutdown validation.
+- physical C-021 USB-disconnection detection, retry, reconnection, resynchronization, and shutdown validation;
+- compact property-write request and response wire contracts with deterministic endpoint statuses;
+- descriptor-selected compact Boolean value encoding and writable-property validation;
+- coordinator-owned compact property writing serialized against replacement and shutdown;
+- endpoint-confirmed read-back with runtime-cache update only after successful confirmation;
+- Arduino Uno writable `Led.State` firmware support;
+- physical C-022 explicit `Off -> On -> Off` property-writing and cache-confirmation validation.
 
 ---
 
@@ -232,7 +238,7 @@ Command            : Led.Toggle (compact id 0x01)
 
 The serial connection carries binary HASE frames exclusively. Compact bootstrap returns the authoritative endpoint identity and versioned descriptor reference. The runtime host resolves the complete descriptor from its repository.
 
-Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020), and automatic compact serial connection recovery after USB disconnection (C-021). The C-020 observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
+Physical validation confirmed bootstrap and descriptor resolution (C-018), built-in LED command execution (C-019), Boolean LED-state synchronization into the existing runtime property cache before and after the toggle command (C-020), automatic compact serial connection recovery after USB disconnection (C-021), and endpoint-confirmed explicit `Off -> On -> Off` property writing with UTC-stamped `Good` runtime-cache values (C-022). The C-020 observed transition was `Off -> On`; both cached values had UTC timestamps and `Good` quality.
 
 C-021 physical validation started from `Disconnected`, progressed through `Connecting` and `Synchronizing` to `Ready`, detected USB loss as `Faulted`, and retried using the configured bounded schedule. After the Arduino returned on the same COM port, supervision re-established the connection, resynchronized `Led.State`, restored `Ready`, and retained a `Good` cached value. Ctrl+C stopped supervision cleanly, transitioned the endpoint from `Ready` to `Disconnected`, preserved the final cached value, and exited with code 0.
 
@@ -393,7 +399,7 @@ Diagnostics include transport state, health snapshots, connection and recovery s
 
 ```text
 .NET solution builds
-1,290 automated tests pass
+1,373 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -441,7 +447,7 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 # Immediate Next Steps
 
 1. Keep C-016 through C-021 physical validation baselines current.
-2. Select the next Phase 6 capability explicitly.
+2. Conduct the C-022 completion review and select the next Phase 6 capability explicitly.
 3. Decide whether Linux validation is required before closing Phase 6.
 4. Keep live presence tracking, additional compact operations, BLE, remote APIs, and Tailscale host detection in backlog until their capabilities are explicitly approved.
 
@@ -459,6 +465,7 @@ The current implementation intentionally excludes IPv6 discovery, live Added/Upd
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+
 
 
 
