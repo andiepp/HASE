@@ -16,6 +16,16 @@ public sealed class WindowsUsbSerialEndpointCandidateSource
 {
     private readonly IWindowsUsbSerialDeviceProvider _deviceProvider;
 
+    /// <summary>
+    /// Initializes a Windows USB serial endpoint candidate source using
+    /// the operating system's Plug-and-Play inventory.
+    /// </summary>
+    public WindowsUsbSerialEndpointCandidateSource()
+        : this(
+            new SystemManagementWindowsUsbSerialDeviceProvider())
+    {
+    }
+
     internal WindowsUsbSerialEndpointCandidateSource(
         IWindowsUsbSerialDeviceProvider deviceProvider)
     {
