@@ -1,10 +1,21 @@
 ﻿using Hase.Core.Domain.Descriptors;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.CompactProtocol.Tests;
 
 public sealed class CompactEndpointDefinitionTests
 {
+    private static readonly InstrumentId InstrumentId =
+        new(
+            "controller-01");
+
+    private static readonly DescriptorPath EventPath =
+        DescriptorPath.Parse(
+            "Controller.ButtonPressed");
+
     [Fact]
     public void Constructor_ValidValues_ShouldExposeSnapshot()
     {
@@ -12,21 +23,30 @@ public sealed class CompactEndpointDefinitionTests
         DescriptorReference descriptorReference =
             CreateDescriptorReference();
 
-        var descriptorDefinition =
-            new EndpointDescriptorDefinition();
+        EndpointDescriptorDefinition descriptorDefinition =
+            CreateDescriptorDefinition();
 
         var propertyMappings =
             new List<CompactPropertyMapping>();
+
+        var eventMappings =
+            new List<CompactEventMapping>
+            {
+                CreateEventMapping()
+            };
 
         // Act
         var definition =
             new CompactEndpointDefinition(
                 descriptorReference,
                 descriptorDefinition,
-                propertyMappings);
+                propertyMappings,
+                eventMappings);
 
         propertyMappings.Add(
-            CreateMapping());
+            CreatePropertyMapping());
+
+        eventMappings.Clear();
 
         // Assert
         Assert.Same(
@@ -39,6 +59,27 @@ public sealed class CompactEndpointDefinitionTests
 
         Assert.Empty(
             definition.PropertyMappings);
+
+        CompactEventMapping eventMapping =
+            Assert.Single(
+                definition.EventMappings);
+
+        Assert.Equal(
+            0x01,
+            eventMapping.CompactEventId);
+    }
+
+    [Fact]
+    public void ThreeArgumentConstructor_ShouldUseEmptyEventMappings()
+    {
+        var definition =
+            new CompactEndpointDefinition(
+                CreateDescriptorReference(),
+                new EndpointDescriptorDefinition(),
+                []);
+
+        Assert.Empty(
+            definition.EventMappings);
     }
 
     [Fact]
@@ -93,6 +134,22 @@ public sealed class CompactEndpointDefinitionTests
     }
 
     [Fact]
+    public void Constructor_NullEventMappings_ShouldThrow()
+    {
+        void Act()
+        {
+            _ = new CompactEndpointDefinition(
+                CreateDescriptorReference(),
+                new EndpointDescriptorDefinition(),
+                [],
+                null!);
+        }
+
+        Assert.Throws<ArgumentNullException>(
+            Act);
+    }
+
+    [Fact]
     public void Constructor_NullPropertyMappingEntry_ShouldThrow()
     {
         // Act
@@ -112,6 +169,24 @@ public sealed class CompactEndpointDefinitionTests
     }
 
     [Fact]
+    public void Constructor_NullEventMappingEntry_ShouldThrow()
+    {
+        void Act()
+        {
+            _ = new CompactEndpointDefinition(
+                CreateDescriptorReference(),
+                new EndpointDescriptorDefinition(),
+                [],
+                [
+                    null!
+                ]);
+        }
+
+        Assert.Throws<ArgumentException>(
+            Act);
+    }
+
+    [Fact]
     public void Constructor_UnknownPropertyTarget_ShouldThrow()
     {
         // Act
@@ -121,11 +196,29 @@ public sealed class CompactEndpointDefinitionTests
                 CreateDescriptorReference(),
                 new EndpointDescriptorDefinition(),
                 [
-                    CreateMapping()
+                    CreatePropertyMapping()
                 ]);
         }
 
         // Assert
+        Assert.Throws<ArgumentException>(
+            Act);
+    }
+
+    [Fact]
+    public void Constructor_UnknownEventTarget_ShouldThrow()
+    {
+        void Act()
+        {
+            _ = new CompactEndpointDefinition(
+                CreateDescriptorReference(),
+                new EndpointDescriptorDefinition(),
+                [],
+                [
+                    CreateEventMapping()
+                ]);
+        }
+
         Assert.Throws<ArgumentException>(
             Act);
     }
@@ -138,14 +231,54 @@ public sealed class CompactEndpointDefinitionTests
             version: 1);
     }
 
-    private static CompactPropertyMapping CreateMapping()
+    private static CompactPropertyMapping CreatePropertyMapping()
     {
         return new CompactPropertyMapping(
             compactPropertyId: 0x01,
-            new InstrumentId(
-                "controller-01"),
+            InstrumentId,
             new PropertyId(
                 "led-state"),
             CompactPropertyValueEncoding.Boolean);
+    }
+
+    private static CompactEventMapping CreateEventMapping()
+    {
+        return new CompactEventMapping(
+            compactEventId: 0x01,
+            InstrumentId,
+            EventPath,
+            CompactEventValueEncoding.None);
+    }
+
+    private static EndpointDescriptorDefinition
+        CreateDescriptorDefinition()
+    {
+        var eventDescriptor =
+            new EventDescriptor(
+                EventPath,
+                "Button Pressed");
+
+        var instrument =
+            new InstrumentDescriptor(
+                InstrumentId,
+                "Arduino Uno GPIO Controller",
+                new InstrumentKind(
+                    "controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        events:
+                        [
+                            eventDescriptor
+                        ])
+            };
+
+        return new EndpointDescriptorDefinition(
+            instruments:
+            [
+                instrument
+            ],
+            metadata:
+                new());
     }
 }

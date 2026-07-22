@@ -14,6 +14,8 @@ internal sealed class CompactEndpointOperationalResources
     private CompactEndpointOperationalResources(
         CompactEndpointDefinition definition,
         CompactPropertyMap propertyMap,
+        CompactEventMap eventMap,
+        CompactEventNotificationResolver eventResolver,
         EndpointConnectionSupervisionLifetime supervisionLifetime,
         CompactRuntimeEndpointConnectionCoordinator coordinator,
         CompactRuntimeEndpointConnectionSupervisor supervisor)
@@ -23,6 +25,12 @@ internal sealed class CompactEndpointOperationalResources
 
         PropertyMap =
             propertyMap;
+
+        EventMap =
+            eventMap;
+
+        EventResolver =
+            eventResolver;
 
         SupervisionLifetime =
             supervisionLifetime;
@@ -52,6 +60,22 @@ internal sealed class CompactEndpointOperationalResources
     /// Gets the validated compact property map.
     /// </summary>
     internal CompactPropertyMap PropertyMap
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the validated compact event map.
+    /// </summary>
+    internal CompactEventMap EventMap
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the descriptor-bound compact event-notification resolver.
+    /// </summary>
+    internal CompactEventNotificationResolver EventResolver
     {
         get;
     }
@@ -121,6 +145,13 @@ internal sealed class CompactEndpointOperationalResources
         CompactPropertyMap propertyMap =
             definition.CreatePropertyMap();
 
+        CompactEventMap eventMap =
+            definition.CreateEventMap();
+
+        var eventResolver =
+            new CompactEventNotificationResolver(
+                eventMap);
+
         var descriptorRepository =
             new CompactEndpointDescriptorRepositoryAdapter(
                 definitionRepository);
@@ -152,6 +183,8 @@ internal sealed class CompactEndpointOperationalResources
         return new CompactEndpointOperationalResources(
             definition,
             propertyMap,
+            eventMap,
+            eventResolver,
             supervisionLifetime,
             coordinator,
             supervisor);

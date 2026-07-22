@@ -4,10 +4,25 @@ namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Contains one exact host-side compact endpoint definition together with the
-/// wire mappings required to operate its properties.
+/// wire mappings required to operate its properties and events.
 /// </summary>
 public sealed class CompactEndpointDefinition
 {
+    /// <summary>
+    /// Initializes one compact endpoint definition without event mappings.
+    /// </summary>
+    public CompactEndpointDefinition(
+        DescriptorReference descriptorReference,
+        EndpointDescriptorDefinition descriptorDefinition,
+        IEnumerable<CompactPropertyMapping> propertyMappings)
+        : this(
+            descriptorReference,
+            descriptorDefinition,
+            propertyMappings,
+            eventMappings: [])
+    {
+    }
+
     /// <summary>
     /// Initializes one compact endpoint definition.
     /// </summary>
@@ -21,10 +36,15 @@ public sealed class CompactEndpointDefinition
     /// Compact wire-property mappings associated with this exact descriptor
     /// version.
     /// </param>
+    /// <param name="eventMappings">
+    /// Compact wire-event mappings associated with this exact descriptor
+    /// version.
+    /// </param>
     public CompactEndpointDefinition(
         DescriptorReference descriptorReference,
         EndpointDescriptorDefinition descriptorDefinition,
-        IEnumerable<CompactPropertyMapping> propertyMappings)
+        IEnumerable<CompactPropertyMapping> propertyMappings,
+        IEnumerable<CompactEventMapping> eventMappings)
     {
         DescriptorReference =
             descriptorReference
@@ -39,10 +59,13 @@ public sealed class CompactEndpointDefinition
         ArgumentNullException.ThrowIfNull(
             propertyMappings);
 
-        CompactPropertyMapping[] mappingArray =
+        ArgumentNullException.ThrowIfNull(
+            eventMappings);
+
+        CompactPropertyMapping[] propertyMappingArray =
             propertyMappings.ToArray();
 
-        if (mappingArray.Any(
+        if (propertyMappingArray.Any(
                 static mapping =>
                     mapping is null))
         {
@@ -52,12 +75,32 @@ public sealed class CompactEndpointDefinition
                 nameof(propertyMappings));
         }
 
+        CompactEventMapping[] eventMappingArray =
+            eventMappings.ToArray();
+
+        if (eventMappingArray.Any(
+                static mapping =>
+                    mapping is null))
+        {
+            throw new ArgumentException(
+                "The compact event mapping collection must not contain "
+                + "null values.",
+                nameof(eventMappings));
+        }
+
         _ = new CompactPropertyMap(
             descriptorDefinition,
-            mappingArray);
+            propertyMappingArray);
+
+        _ = new CompactEventMap(
+            descriptorDefinition,
+            eventMappingArray);
 
         PropertyMappings =
-            mappingArray;
+            propertyMappingArray;
+
+        EventMappings =
+            eventMappingArray;
     }
 
     /// <summary>
@@ -85,10 +128,25 @@ public sealed class CompactEndpointDefinition
         get;
     }
 
+    /// <summary>
+    /// Gets the validated compact wire-event mappings in declaration order.
+    /// </summary>
+    public IReadOnlyList<CompactEventMapping> EventMappings
+    {
+        get;
+    }
+
     internal CompactPropertyMap CreatePropertyMap()
     {
         return new CompactPropertyMap(
             DescriptorDefinition,
             PropertyMappings);
+    }
+
+    internal CompactEventMap CreateEventMap()
+    {
+        return new CompactEventMap(
+            DescriptorDefinition,
+            EventMappings);
     }
 }

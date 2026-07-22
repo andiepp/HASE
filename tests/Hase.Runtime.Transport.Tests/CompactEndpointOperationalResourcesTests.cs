@@ -1,6 +1,9 @@
 ﻿using Hase.CompactProtocol;
 using Hase.Core.Domain.Descriptors;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Transport.Serial;
@@ -10,6 +13,14 @@ namespace Hase.Runtime.Transport.Tests;
 
 public sealed class CompactEndpointOperationalResourcesTests
 {
+    private static readonly InstrumentId InstrumentId =
+        new(
+            "controller-01");
+
+    private static readonly DescriptorPath EventPath =
+        DescriptorPath.Parse(
+            "Controller.ButtonPressed");
+
     [Fact]
     public async Task CreateSerial_ShouldAssembleOperationalResourceGraph()
     {
@@ -56,6 +67,24 @@ public sealed class CompactEndpointOperationalResourcesTests
         Assert.Same(
             definition.DescriptorDefinition,
             resources.PropertyMap.DescriptorDefinition);
+
+        Assert.Same(
+            definition.DescriptorDefinition,
+            resources.EventMap.DescriptorDefinition);
+
+        CompactMappedEventNotification mappedNotification =
+            resources.EventResolver.Resolve(
+                new CompactEventNotification(
+                    eventId: 0x01,
+                    ReadOnlyMemory<byte>.Empty));
+
+        Assert.Equal(
+            InstrumentId,
+            mappedNotification.Mapping.InstrumentId);
+
+        Assert.Equal(
+            EventPath,
+            mappedNotification.Mapping.EventPath);
 
         Assert.Same(
             runtimeEndpoint,
@@ -181,13 +210,50 @@ public sealed class CompactEndpointOperationalResourcesTests
 
     private static CompactEndpointDefinition CreateDefinition()
     {
+        var eventDescriptor =
+            new EventDescriptor(
+                EventPath,
+                "Button Pressed");
+
+        var instrument =
+            new InstrumentDescriptor(
+                InstrumentId,
+                "Arduino Uno GPIO Controller",
+                new InstrumentKind(
+                    "controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        events:
+                        [
+                            eventDescriptor
+                        ])
+            };
+
+        var descriptorDefinition =
+            new EndpointDescriptorDefinition(
+                instruments:
+                [
+                    instrument
+                ],
+                metadata:
+                    new());
+
         return new CompactEndpointDefinition(
             new DescriptorReference(
                 new DescriptorId(
                     "arduino-uno-validation"),
                 version: 1),
-            new EndpointDescriptorDefinition(),
-            []);
+            descriptorDefinition,
+            propertyMappings: [],
+            eventMappings:
+            [
+                new CompactEventMapping(
+                    compactEventId: 0x01,
+                    InstrumentId,
+                    EventPath,
+                    CompactEventValueEncoding.None)
+            ]);
     }
 
     private static SerialEndpointConnectionDefinition
