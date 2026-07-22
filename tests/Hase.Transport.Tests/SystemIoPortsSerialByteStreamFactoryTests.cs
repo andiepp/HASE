@@ -119,7 +119,7 @@ public sealed class SystemIoPortsSerialByteStreamFactoryTests
     }
 
     [Fact]
-    public async Task OpenAsync_OpenFailure_ShouldDisposePort()
+    public async Task OpenAsync_OpenFailure_ShouldWrapAndDisposePort()
     {
         var expectedException =
             new IOException(
@@ -144,13 +144,22 @@ public sealed class SystemIoPortsSerialByteStreamFactoryTests
                     115200));
         }
 
-        IOException actualException =
-            await Assert.ThrowsAsync<IOException>(
-                Act);
+        SerialPortOpenException actualException =
+            await Assert.ThrowsAsync<
+                SerialPortOpenException>(
+                    Act);
+
+        Assert.Equal(
+            "COM5",
+            actualException.PortName);
+
+        Assert.Equal(
+            SerialPortOpenFailure.Failed,
+            actualException.Failure);
 
         Assert.Same(
             expectedException,
-            actualException);
+            actualException.InnerException);
 
         Assert.Equal(
             1,

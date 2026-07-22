@@ -50,7 +50,20 @@ public sealed class SystemIoPortsSerialByteStreamFactory
 
         try
         {
-            serialPort.Open();
+            try
+            {
+                serialPort.Open();
+            }
+            catch (Exception exception)
+                when (SerialPortOpenFailureClassifier.TryClassify(
+                    exception,
+                    out SerialPortOpenFailure failure))
+            {
+                throw new SerialPortOpenException(
+                    options.PortName,
+                    failure,
+                    exception);
+            }
 
             Stream stream =
                 serialPort.BaseStream;
