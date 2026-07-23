@@ -117,7 +117,7 @@ Completion baseline:
 
 # Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-**Status:** [Active] Active - major capabilities completed
+**Status:** [Completed] Completed at the C-025 baseline
 
 Current baseline:
 
@@ -474,39 +474,181 @@ Final C-025 automated baseline:
 1,745 tests pass
 ```
 
-## 6.15 Remaining Phase 6 Work
+## 6.15 Phase 6 Closure
 
-- validate Wi-Fi interruption and re-advertisement if still required for Phase 6;
-- keep USB serial candidate verification sequential unless physical evidence
-  justifies bounded parallelism;
-- implement and physically validate Linux USB serial discovery only through a
-  separately approved increment;
-- define a formal compact-profile compatibility contract before activating
-  incompatible-descriptor classification;
-- decide IPv6 scope;
-- decide BLE scope;
-- select any additional compact operations as separate capabilities;
-- decide whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
+**Status:** [Completed] Completed
+
+Phase 6 closes at the verified C-025 baseline.
+
+The following optional extensions are deferred and do not block Phase 6
+completion:
+
+- Wi-Fi interruption and re-advertisement validation;
+- bounded parallel USB serial candidate verification;
+- Linux USB serial discovery and physical validation;
+- formal compact-profile compatibility;
+- IPv6 discovery;
+- BLE;
+- additional compact operations and value encodings.
+
+Each deferred item requires a separately approved increment.
 
 ---
 
-# Phase 7 - Application and Tooling Expansion
+# Phase 7 - Northbound Runtime-Host API
+
+**Status:** [Active] Active - architecture accepted
+
+Architecture: ADR-0023 - Northbound Runtime-Host API Boundary.
+
+Phase 7 allows local and remote applications to use the runtime model owned by a
+HASE runtime host. The runtime host continues to own every physical endpoint
+connection, southbound protocol or adapter session, synchronization service,
+recovery supervisor, notification route, and attachment lifetime.
+
+The approved dependency direction is:
+
+```text
+Local or remote application
+    -> northbound runtime-host API
+        -> runtime-host application services
+            -> authoritative attachment inventory
+            -> runtime model
+            -> host-owned operation routing
+                -> native or compact endpoint integration
+```
+
+## 7.1 Northbound Snapshot and Identity Contracts
+
+**Status:** [Next] Architecture accepted; implementation not started
+
+Define immutable, transport-independent representations for:
+
+- runtime-host identity and API contract version;
+- published endpoint inventory entries;
+- authoritative `EndpointId`;
+- opaque attachment generation;
+- endpoint connection state;
+- endpoint and instrument descriptors;
+- Properties and current cached values;
+- Commands;
+- Events.
+
+Active operations identify both `EndpointId` and the expected attachment
+generation. An operation from an ended attachment must never be silently
+applied to a later attachment with the same endpoint identity.
+
+## 7.2 Runtime-Host Inventory Query Service
 
 **Status:** [Planned] Planned
+
+Expose snapshot and lookup operations sourced only from the authoritative
+runtime-host attachment inventory. Discovery candidates, configured connection
+definitions, staged endpoints, and failed attachment attempts are not
+operational inventory entries.
+
+## 7.3 Normalized Property Operations
+
+**Status:** [Planned] Planned
+
+Provide transport-independent cached-value queries, explicit authoritative
+reads, endpoint-confirmed writes, validation, cancellation, and normalized
+operation failures for both native and compact endpoints.
+
+Cached-value queries remain distinct from live endpoint reads. Requested writes
+do not update the runtime cache until endpoint confirmation or another
+authoritative protocol result.
+
+## 7.4 Normalized Command Execution
+
+**Status:** [Planned] Planned
+
+Provide attachment-generation-scoped Command execution through host-owned
+operation routing without exposing protocol correlation identifiers or
+transport-specific components.
+
+## 7.5 Lifecycle, Property, and Event Observation
+
+**Status:** [Planned] Planned
+
+Provide live observation of:
+
+- endpoint attachment and detachment;
+- connection-state changes;
+- Property-value changes;
+- attachment-generation replacement;
+- Event occurrences.
+
+Initial Event semantics remain transient with no offline queue and no replay.
+Clients obtain a fresh inventory snapshot after reconnecting before resuming
+live observation.
+
+## 7.6 Unified Native and Compact Validation
+
+**Status:** [Planned] Planned
+
+Validate native Protocol Version 1 and Compact Serial Protocol endpoints through
+the same in-process northbound application-service contracts before selecting a
+remote wire technology.
+
+## 7.7 Remote API Technology
+
+**Status:** [Planned] Requires separate architecture approval
+
+Evaluate and select a remote mapping that supports:
+
+- typed request and response operations;
+- cancellation and timeouts;
+- server-to-client streaming or an equivalent subscription mechanism;
+- explicit API compatibility;
+- cross-platform clients;
+- bounded resource use;
+- authentication and authorization.
+
+Candidate technologies may include gRPC over HTTP/2, HTTP/JSON with an approved
+streaming mechanism, or another explicitly evaluated mapping. The selected
+technology adapts to the application services and does not become a dependency
+of the runtime core.
+
+## 7.8 Security and Remote Exposure
+
+**Status:** [Planned] Requires separate architecture approval
+
+Define authentication, authorization, encryption, credential lifecycle, and
+audit behavior before production non-local exposure.
+
+Network reachability, including Tailscale connectivity, does not grant HASE
+authority.
+
+## 7.9 Future Management API
+
+**Status:** [Backlog] Not part of the first northbound capability
+
+Possible later management operations include discovery, connection
+configuration, attachment, detachment, replacement policy, descriptor-repository
+administration, persistent host configuration, and host shutdown.
+
+Operational access and lifecycle administration remain separate authorization
+surfaces.
+
+## 7.10 Application and Tooling Expansion
+
+**Status:** [Backlog] Planned after the operational service boundary
 
 Possible scope:
 
 - endpoint browser UI and explicit selection;
-- runtime attachment workflow;
 - topology and descriptor views;
-- live properties and property editing;
-- command execution and event monitoring;
+- live properties and Property editing;
+- Command execution and Event monitoring;
 - connection and transport diagnostics;
-- configuration persistence;
-- northbound runtime-host APIs if not completed earlier.
+- configuration persistence.
 
-Architecture constraint: discovery must never automatically replace an existing
-runtime endpoint.
+Architecture constraints:
+
+- discovery never automatically replaces an existing runtime endpoint;
+- applications never acquire or share the physical endpoint connection;
+- the runtime host remains authoritative for attachment lifecycle ownership.
 
 ---
 
@@ -577,32 +719,38 @@ Current documentation includes:
 - `C-023-USB-Serial-Endpoint-Discovery.md`;
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
-- ADR-0001 through ADR-0022.
+- ADR-0001 through ADR-0023.
 
 Next:
 
 1. Keep physical capabilities C-015 through C-025 and their validation baselines
    current.
-2. Keep IPv4 scope, IPv6 backlog, and Linux USB serial backlog explicit.
-3. Keep candidate metadata separate from authoritative endpoint identity.
-4. Keep authoritative inventory identity and no-automatic-replacement rules
-   explicit.
-5. Keep compact current-connection event authority, no-queue, and no-replay
+2. Keep Phase 6 closure and its deferred optional extensions explicit.
+3. Keep the Phase 7 northbound API boundary aligned with ADR-0023.
+4. Keep attachment generation separate from authoritative endpoint identity.
+5. Keep operational access separate from lifecycle administration.
+6. Keep compact current-connection Event authority, no-queue, and no-replay
    semantics explicit.
-6. Record any future compact-profile, discovery-concurrency, or event-history
-   architecture change in an ADR.
+7. Record future wire-technology, security, management, compact-profile,
+   discovery-concurrency, or Event-history architecture changes in ADRs.
 
 ---
 
 # Current Priorities
 
-1. Select the next Phase 6 capability explicitly.
-2. Keep Linux USB serial discovery as a separately approved platform-specific
-   backlog item.
-3. Define a formal compact-profile contract before activating
-   incompatible-descriptor classification.
-4. Keep IPv6, additional compact operations, BLE, remote APIs, and Tailscale
-   host detection as separately approved future capabilities.
+1. Implement Phase 7.1 transport-independent northbound snapshot and identity
+   contracts.
+2. Define opaque attachment-generation semantics without changing
+   `EndpointId`.
+3. Implement the runtime-host inventory query service.
+4. Normalize native and compact operations behind application services.
+5. Validate both physical endpoint families through the same in-process
+   northbound contract.
+6. Select the remote wire technology only after the service boundary is
+   validated.
+7. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+   persistent Event history, lifecycle administration, and Tailscale host
+   discovery as separately approved backlog.
 
 ---
 
@@ -641,11 +789,12 @@ Already achieved:
 - C-025 physical hardware-reset recovery;
 - C-025 physical USB-unplug/replug regression.
 
-Still requiring implementation or explicit scope decisions:
+Phase 6 is complete. Optional extensions remain backlog:
 
-- whether IPv6 belongs in Phase 6;
-- whether BLE belongs in Phase 6;
-- which additional compact operations belong in Phase 6;
+- IPv6 discovery;
+- BLE;
+- additional compact operations;
 - Linux USB serial discovery and physical validation;
-- a formal compact-profile compatibility contract;
-- whether the northbound runtime-host API belongs in Phase 6 or Phase 7.
+- formal compact-profile compatibility.
+
+The northbound runtime-host API begins in Phase 7 under ADR-0023.

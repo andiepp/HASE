@@ -12,8 +12,7 @@ technology.
 
 # Overall Status
 
-**Current Phase:** Phase 6 - Transport Infrastructure and Physical Endpoint
-Integration
+**Current Phase:** Phase 7 - Northbound Runtime-Host API
 
 The core architecture, runtime model, simulation framework, Protocol Version 1,
 Compact Serial Protocol Version 1, runtime integration, Protocol Explorer,
@@ -25,7 +24,13 @@ discovery, explicit runtime-host-owned endpoint attachment, the authoritative
 runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
 serial endpoint attachment, and compact serial unsolicited event notification
-are implemented.
+are implemented. Phase 6 is complete at the C-025 baseline.
+
+ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
+with transport-independent application services that expose the authoritative
+runtime-host inventory and normalized Properties, Commands, Events, connection
+status, and live observation without exposing or transferring ownership of
+physical endpoint lifecycles.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
@@ -125,7 +130,7 @@ Completed:
 
 ## Phase 6 - Transport Infrastructure and Physical Endpoint Integration
 
-Phase 6 is active and substantially implemented.
+Phase 6 is complete at the C-025 baseline.
 
 Completed:
 
@@ -236,6 +241,46 @@ Completed:
 - physical C-025 recovery after Arduino hardware reset while USB remains
   connected;
 - physical C-025 recovery after USB unplug/replug.
+
+---
+
+# Phase 7 - Northbound Runtime-Host API
+
+Phase 7 is active.
+
+Architecture: ADR-0023 - Northbound Runtime-Host API Boundary.
+
+The approved northbound architecture:
+
+- places the northbound runtime-host API above the authoritative attachment
+  inventory and runtime model;
+- keeps the runtime host as the sole owner of every physical endpoint
+  connection, protocol or adapter session, synchronization service, recovery
+  supervisor, notification route, and attachment lifetime;
+- exposes immutable host, endpoint, instrument, Property, Command, Event, and
+  connection-state representations;
+- normalizes native Protocol Version 1 and Compact Serial Protocol endpoint
+  operations behind transport-independent application services;
+- distinguishes cached Property queries from explicit authoritative endpoint
+  reads;
+- preserves endpoint-confirmed Property-write semantics;
+- binds active operations to both authoritative `EndpointId` and an opaque
+  attachment generation;
+- prevents operations from an ended attachment from crossing into a later
+  attachment with the same endpoint identity;
+- supports multiple local or remote applications without sharing the physical
+  endpoint connection;
+- preserves transient Event semantics with no offline queue and no replay;
+- separates the initial operational API from future remote lifecycle
+  administration;
+- keeps Tailscale reachability and runtime-host discovery separate from the API
+  contract;
+- defers remote wire-technology, authentication, authorization, encryption, and
+  audit decisions until after the transport-independent service boundary is
+  implemented and validated.
+
+The first Phase 7 implementation increment will define northbound snapshot and
+identity contracts. No northbound code is implemented at the current baseline.
 
 ---
 
@@ -617,7 +662,7 @@ Protocol Explorer C-025 exits with code 0
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0022 are accepted.
+ADR-0001 through ADR-0023 are accepted.
 
 Relevant recent decisions:
 
@@ -628,6 +673,7 @@ Relevant recent decisions:
 - ADR-0021 - USB Serial Endpoint Discovery and Authoritative Compact
   Verification.
 - ADR-0022 - Compact Serial Event Notifications.
+- ADR-0023 - Northbound Runtime-Host API Boundary.
 
 ---
 
@@ -637,7 +683,7 @@ The current implementation intentionally excludes:
 
 - IPv6 discovery;
 - live Added/Updated/Removed presence tracking;
-- authentication, authorization, and encryption;
+- production northbound authentication, authorization, encryption, and audit;
 - automatic attachment without an explicit request;
 - automatic endpoint replacement;
 - cross-subnet mDNS relaying;
@@ -648,20 +694,25 @@ The current implementation intentionally excludes:
 - formal compact-profile negotiation;
 - persistent event history and replay;
 - additional compact scalar/event-value encodings;
-- northbound runtime-host APIs;
+- implemented northbound application services and remote API mapping;
 - Tailscale runtime-host discovery.
 
 ---
 
 # Immediate Next Steps
 
-1. Keep C-016 through C-025 physical validation baselines current.
-2. Select the next Phase 6 capability explicitly.
-3. Keep Linux USB serial discovery and physical validation explicit backlog.
-4. Define a formal compact-profile contract before activating
-   incompatible-descriptor classification.
-5. Keep live presence tracking, additional compact operations, BLE, remote APIs,
-   and Tailscale host detection in backlog until explicitly approved.
+1. Define the Phase 7 transport-independent northbound snapshot and identity
+   contracts.
+2. Define opaque attachment-generation semantics without changing the existing
+   endpoint identity model.
+3. Define the runtime-host inventory query service.
+4. Normalize native and compact Property, Command, and Event operations behind
+   application services.
+5. Validate both physical endpoint families through the same in-process
+   northbound service contract before selecting a remote wire technology.
+6. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+   persistent Event history, remote lifecycle administration, and Tailscale
+   runtime-host discovery as separately approved backlog.
 
 ---
 
@@ -681,3 +732,6 @@ The current implementation intentionally excludes:
 - Increments remain small, buildable, and testable.
 - Physical capabilities receive end-to-end validation.
 - Discovered endpoints never replace active runtime endpoints automatically.
+- The runtime host remains the sole owner of physical endpoint lifecycles.
+- Northbound active operations are scoped to one attachment generation.
+- Network reachability does not grant HASE authorization.
