@@ -120,4 +120,123 @@ internal sealed class RuntimeHostIdentityFile
                     documentLength));
         }
     }
+
+    /// <summary>
+    /// Atomically creates the candidate identity when the target is missing
+    /// and returns the authoritative persisted identity.
+    /// </summary>
+    public async Task<RuntimeHostIdentityStoreCreateResult>
+        CreateIfMissingAsync(
+            RuntimeHostId candidate,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            candidate);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        byte[] document =
+            RuntimeHostIdentityDocumentCodec.Serialize(
+                candidate);
+
+        string directoryPath =
+            Path.GetDirectoryName(
+                FilePath)
+            ?? throw new InvalidOperationException(
+                "The runtime-host identity file path has no parent directory.");
+
+        Directory.CreateDirectory(
+            directoryPath);
+
+        string temporaryFilePath =
+            Path.Combine(
+                directoryPath,
+                $".{Path.GetFileName(FilePath)}.{Guid.NewGuid():N}.tmp");
+
+        bool published =
+            false;
+
+        try
+        {
+            await using (var stream =
+                new FileStream(
+                    temporaryFilePath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 4096,
+                    FileOptions.Asynchronous
+                    | FileOptions.SequentialScan
+                    | FileOptions.WriteThrough))
+            {
+                await stream
+                    .WriteAsync(
+                        document,
+                        cancellationToken)
+                    .ConfigureAwait(
+                        false);
+
+                await stream
+                    .FlushAsync(
+                        cancellationToken)
+                    .ConfigureAwait(
+                        false);
+
+                stream.Flush(
+                    flushToDisk: true);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                File.Move(
+                    temporaryFilePath,
+                    FilePath,
+                    overwrite: false);
+
+                published =
+                    true;
+            }
+            catch (IOException)
+                when (File.Exists(
+                    FilePath))
+            {
+                RuntimeHostId? existingRuntimeHostId =
+                    await ReadAsync(
+                        cancellationToken)
+                    .ConfigureAwait(
+                        false);
+
+                if (existingRuntimeHostId is null)
+                {
+                    throw new IOException(
+                        "The runtime-host identity target disappeared after an atomic creation race.");
+                }
+
+                return new RuntimeHostIdentityStoreCreateResult(
+                    existingRuntimeHostId,
+                    RuntimeHostIdentityStoreCreateOutcome.Existing);
+            }
+
+            return new RuntimeHostIdentityStoreCreateResult(
+                candidate,
+                RuntimeHostIdentityStoreCreateOutcome.Created);
+        }
+        finally
+        {
+            if (!published)
+            {
+                try
+                {
+                    File.Delete(
+                        temporaryFilePath);
+                }
+                catch
+                {
+                    // Cleanup failure must not hide the original outcome.
+                }
+            }
+        }
+    }
 }
