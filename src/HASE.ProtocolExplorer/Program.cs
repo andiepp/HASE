@@ -57,7 +57,8 @@ internal static class Program
                     new CapabilityC021Scenario(),
                     new CapabilityC022Scenario(),
                     new CapabilityC023Scenario(),
-                    new CapabilityC024Scenario()
+                    new CapabilityC024Scenario(),
+                    new CapabilityC025Scenario()
                 ]);
 
         string scenarioName =
@@ -79,20 +80,26 @@ internal static class Program
             {
                 Console.WriteLine(
                     $"Unknown scenario: {scenarioName}");
+
                 Console.WriteLine();
 
                 WriteHelp();
+
                 return 1;
             }
         }
         catch (Exception exception)
         {
             Console.WriteLine();
+
             Console.WriteLine(
                 "Scenario failed.");
+
             Console.WriteLine();
+
             Console.WriteLine(
                 $"Exception type : {exception.GetType().FullName}");
+
             Console.WriteLine(
                 $"Message        : {exception.Message}");
 
@@ -106,8 +113,10 @@ internal static class Program
     {
         Console.WriteLine(
             "HASE Protocol Explorer");
+
         Console.WriteLine(
             "======================");
+
         Console.WriteLine();
     }
 
@@ -115,13 +124,17 @@ internal static class Program
     {
         Console.WriteLine(
             "Usage:");
+
         Console.WriteLine();
+
         Console.WriteLine(
             "  HASE.ProtocolExplorer <scenario> [arguments]");
+
         Console.WriteLine();
 
         Console.WriteLine(
             "Capability scenarios:");
+
         Console.WriteLine();
 
         for (
@@ -135,49 +148,74 @@ internal static class Program
 
         Console.WriteLine(
             "  c016");
+
         Console.WriteLine(
             "  c017");
+
         Console.WriteLine(
             "  c018 <COM port> [baud rate]");
+
         Console.WriteLine(
             "  c019 <COM port> [baud rate]");
+
         Console.WriteLine(
             "  c020 <COM port> [baud rate]");
+
         Console.WriteLine(
             "  c021 <COM port> [baud rate]");
+
         Console.WriteLine(
             "  c022 <COM port> [baud rate]");
+
         Console.WriteLine(
             "  c023 [baud rate] [verification timeout seconds]");
+
         Console.WriteLine(
             "  c024 [baud rate] [verification timeout seconds]");
+
+        Console.WriteLine(
+            "  c025 [baud rate] [verification timeout seconds]");
+
         Console.WriteLine();
 
         Console.WriteLine(
             "Protocol and discovery scenarios:");
+
         Console.WriteLine();
+
         Console.WriteLine(
             "  discover");
+
         Console.WriteLine(
             "  discover-response");
+
         Console.WriteLine(
             "  read-property");
+
         Console.WriteLine(
             "  read-property-response");
+
         Console.WriteLine(
             "  write-property");
+
         Console.WriteLine(
             "  write-property-response");
+
         Console.WriteLine(
             "  execute-command");
+
         Console.WriteLine(
             "  execute-command-response");
+
         Console.WriteLine(
             "  event-notification");
+
         Console.WriteLine(
             "  read-endpoint-descriptor-response");
+
         Console.WriteLine(
             "  network-discovery");
+
         Console.WriteLine(
             "  usb-serial-candidates");
     }
