@@ -148,7 +148,9 @@ internal sealed class CompactRuntimeEndpointConnectionSupervisor
     {
         try
         {
-            await _coordinator.ConnectAsync(
+            await ConnectAttemptAsync(
+                reconnect:
+                    false,
                 cancellationToken);
 
             return;
@@ -173,7 +175,9 @@ internal sealed class CompactRuntimeEndpointConnectionSupervisor
 
             try
             {
-                await _coordinator.ReconnectAsync(
+                await ConnectAttemptAsync(
+                    reconnect:
+                        true,
                     cancellationToken);
 
                 return;
@@ -204,7 +208,9 @@ internal sealed class CompactRuntimeEndpointConnectionSupervisor
 
             try
             {
-                await _coordinator.ReconnectAsync(
+                await ConnectAttemptAsync(
+                    reconnect:
+                        true,
                     cancellationToken);
 
                 return;
@@ -218,6 +224,53 @@ internal sealed class CompactRuntimeEndpointConnectionSupervisor
             {
                 retryAttempt++;
             }
+        }
+    }
+
+    /// <summary>
+    /// Bounds one compact connection/bootstrap attempt. A COM port can remain
+    /// present while the endpoint processor is reset or otherwise silent; such
+    /// an attempt must expire so supervision can advance to the reconnect
+    /// policy's next attempt.
+    /// </summary>
+    private async Task ConnectAttemptAsync(
+        bool reconnect,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        using var timeoutTokenSource =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken);
+
+        timeoutTokenSource.CancelAfter(
+            _probeOptions.ProbeTimeout);
+
+        try
+        {
+            if (reconnect)
+            {
+                await _coordinator.ReconnectAsync(
+                    timeoutTokenSource.Token);
+            }
+            else
+            {
+                await _coordinator.ConnectAsync(
+                    timeoutTokenSource.Token);
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException exception)
+            when (timeoutTokenSource.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"Compact endpoint connection attempt timed out after "
+                + $"{_probeOptions.ProbeTimeout}.",
+                exception);
         }
     }
 

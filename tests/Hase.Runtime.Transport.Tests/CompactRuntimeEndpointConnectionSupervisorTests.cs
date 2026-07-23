@@ -122,6 +122,113 @@ public sealed class CompactRuntimeEndpointConnectionSupervisorTests
     }
 
     [Fact]
+    public async Task RunAsync_ReconnectBootstrapTimeout_ShouldAdvanceToNextAttempt()
+    {
+        EndpointDescriptorDefinition definition =
+            CreateDefinition();
+
+        RuntimeEndpoint runtimeEndpoint =
+            new RuntimeContext()
+                .AddEndpoint(
+                    definition.Materialize(
+                        EndpointId));
+
+        var firstProtocolConnection =
+            new FaultOnSecondExchangeCompactSerialProtocolConnection();
+
+        var recoveredProtocolConnection =
+            new TestCompactSerialProtocolConnection();
+
+        var connectionFactory =
+            new ResetRecoveryConnectionFactory(
+                new CompactEndpointConnection(
+                    definition.Materialize(
+                        EndpointId),
+                    firstProtocolConnection),
+                new CompactEndpointConnection(
+                    definition.Materialize(
+                        EndpointId),
+                    recoveredProtocolConnection));
+
+        CompactPropertyMap propertyMap =
+            CreatePropertyMap(
+                definition);
+
+        var coordinator =
+            new CompactRuntimeEndpointConnectionCoordinator(
+                connectionFactory,
+                new SerialTransportOptions(
+                    "COM10",
+                    115200),
+                propertyMap,
+                runtimeEndpoint,
+                new EndpointDescriptorCompatibilityValidator());
+
+        var supervisor =
+            new CompactRuntimeEndpointConnectionSupervisor(
+                coordinator,
+                propertyMap,
+                new ImmediateReconnectPolicy(),
+                new CompactEndpointHealthProbeOptions(
+                    probeInterval:
+                        TimeSpan.FromMilliseconds(
+                            10),
+                    probeTimeout:
+                        TimeSpan.FromMilliseconds(
+                            50)));
+
+        var statusObserver =
+            new RecoveryStatusObserver();
+
+        runtimeEndpoint.SubscribeConnectionStatus(
+            statusObserver);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        Task supervisionTask =
+            supervisor.RunAsync(
+                cancellationTokenSource.Token);
+
+        try
+        {
+            await statusObserver.ReadyAfterFault.WaitAsync(
+                TimeSpan.FromSeconds(
+                    5));
+
+            Assert.True(
+                statusObserver.FaultObserved);
+
+            Assert.Equal(
+                EndpointConnectionState.Ready,
+                runtimeEndpoint.ConnectionStatus.State);
+
+            Assert.Equal(
+                3,
+                connectionFactory.ConnectCallCount);
+
+            Assert.Equal(
+                1,
+                connectionFactory.TimedOutReconnectCallCount);
+
+            Assert.Same(
+                recoveredProtocolConnection,
+                coordinator.ActiveConnection?.Connection);
+        }
+        finally
+        {
+            runtimeEndpoint.UnsubscribeConnectionStatus(
+                statusObserver);
+
+            cancellationTokenSource.Cancel();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () =>
+                await supervisionTask);
+    }
+
+    [Fact]
     public void Constructor_NullCoordinator_ShouldThrow()
     {
         EndpointDescriptorDefinition definition =
@@ -341,6 +448,198 @@ public sealed class CompactRuntimeEndpointConnectionSupervisorTests
         }
     }
 
+    private sealed class ResetRecoveryConnectionFactory
+        : ICompactEndpointConnectionFactory
+    {
+        private readonly CompactEndpointConnection _initialConnection;
+        private readonly CompactEndpointConnection _recoveredConnection;
+
+        public ResetRecoveryConnectionFactory(
+            CompactEndpointConnection initialConnection,
+            CompactEndpointConnection recoveredConnection)
+        {
+            _initialConnection =
+                initialConnection;
+
+            _recoveredConnection =
+                recoveredConnection;
+        }
+
+        public int ConnectCallCount
+        {
+            get;
+            private set;
+        }
+
+        public int TimedOutReconnectCallCount
+        {
+            get;
+            private set;
+        }
+
+        public async Task<CompactEndpointConnection> ConnectAsync(
+            SerialTransportOptions transportOptions,
+            EndpointId? expectedEndpointId,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            ConnectCallCount++;
+
+            if (ConnectCallCount == 1)
+            {
+                return _initialConnection;
+            }
+
+            if (ConnectCallCount == 2)
+            {
+                try
+                {
+                    await Task.Delay(
+                        Timeout.InfiniteTimeSpan,
+                        cancellationToken);
+                }
+                catch (OperationCanceledException)
+                    when (cancellationToken.IsCancellationRequested)
+                {
+                    TimedOutReconnectCallCount++;
+
+                    throw;
+                }
+
+                throw new InvalidOperationException(
+                    "The simulated silent reconnect attempt unexpectedly "
+                    + "completed.");
+            }
+
+            return _recoveredConnection;
+        }
+    }
+
+    private sealed class ImmediateReconnectPolicy
+        : IRuntimeEndpointReconnectPolicy
+    {
+        public TimeSpan GetDelay(
+            int retryAttempt)
+        {
+            return TimeSpan.Zero;
+        }
+    }
+
+    private sealed class RecoveryStatusObserver
+        : IEndpointConnectionStatusObserver
+    {
+        private readonly TaskCompletionSource
+            _readyAfterFault =
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _faultObserved;
+
+        public bool FaultObserved =>
+            Volatile.Read(
+                ref _faultObserved)
+            != 0;
+
+        public Task ReadyAfterFault =>
+            _readyAfterFault.Task;
+
+        public void OnEndpointConnectionStatusChanged(
+            EndpointConnectionStatusChanged change)
+        {
+            if (change.CurrentStatus.State
+                == EndpointConnectionState.Faulted)
+            {
+                Interlocked.Exchange(
+                    ref _faultObserved,
+                    1);
+
+                return;
+            }
+
+            if (change.CurrentStatus.State
+                    == EndpointConnectionState.Ready
+                && FaultObserved)
+            {
+                _readyAfterFault.TrySetResult();
+            }
+        }
+    }
+
+    private sealed class FaultOnSecondExchangeCompactSerialProtocolConnection
+        : ICompactSerialProtocolConnection
+    {
+        public event EventHandler<
+            TransportConnectionStateChangedEventArgs>?
+            StateChanged
+        {
+            add
+            {
+            }
+
+            remove
+            {
+            }
+        }
+
+        public TransportConnectionState State =>
+            TransportConnectionState.Connected;
+
+        public int ExchangeCallCount
+        {
+            get;
+            private set;
+        }
+
+        public int DisposeCallCount
+        {
+            get;
+            private set;
+        }
+
+        public Task<CompactSerialFrame> ExchangeAsync(
+            CompactSerialFrame request,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            ExchangeCallCount++;
+
+            if (ExchangeCallCount >= 2)
+            {
+                throw new IOException(
+                    "Simulated compact endpoint reset.");
+            }
+
+            CompactReadPropertyRequest readRequest =
+                CompactReadPropertyCodec.DecodeRequest(
+                    request);
+
+            return Task.FromResult(
+                CompactReadPropertyCodec.EncodeResponse(
+                    new CompactReadPropertyResponse(
+                        readRequest.CorrelationId,
+                        readRequest.PropertyId,
+                        CompactPropertyReadStatus.Success,
+                        value:
+                        new byte[]
+                        {
+                            0x01
+                        })));
+        }
+
+        public void Invalidate()
+        {
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            DisposeCallCount++;
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
     private sealed class TestCompactSerialProtocolConnection
         : ICompactSerialProtocolConnection
     {
@@ -390,10 +689,11 @@ public sealed class CompactRuntimeEndpointConnectionSupervisorTests
                         readRequest.CorrelationId,
                         readRequest.PropertyId,
                         CompactPropertyReadStatus.Success,
-                        value: new byte[]
-                        {
-                            0x01
-                        })));
+                        value:
+                            new byte[]
+                            {
+                                0x01
+                            })));
         }
 
         public void Invalidate()

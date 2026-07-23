@@ -11,8 +11,8 @@ namespace Hase.ProtocolExplorer.Scenarios;
 
 /// <summary>
 /// Discovers, explicitly selects, attaches, and validates unsolicited compact
-/// button-event notifications and automatic recovery for the physical Arduino
-/// Uno.
+/// button-event notifications and automatic recovery from an Arduino Uno
+/// hardware reset while the USB serial adapter remains connected.
 /// </summary>
 internal sealed class CapabilityC025Scenario
     : IParameterizedScenario
@@ -164,6 +164,9 @@ internal sealed class CapabilityC025Scenario
         RecordingRuntimeEventObserver? eventObserver =
             null;
 
+        LatchedConnectionStatusObserver? connectionStatusObserver =
+            null;
+
         try
         {
             Console.WriteLine(
@@ -197,6 +200,12 @@ internal sealed class CapabilityC025Scenario
             runtimeEvent.Subscribe(
                 eventObserver);
 
+            connectionStatusObserver =
+                new LatchedConnectionStatusObserver();
+
+            runtimeEndpoint.SubscribeConnectionStatus(
+                connectionStatusObserver);
+
             WriteReady(
                 attachmentHost,
                 entry,
@@ -204,7 +213,7 @@ internal sealed class CapabilityC025Scenario
                 runtimeEvent);
 
             WriteStepHeader(
-                "1. Verify event delivery before disconnection");
+                "1. Verify event delivery before hardware reset");
 
             Console.WriteLine(
                 "Press and release the Arduino Uno D7 pushbutton once.");
@@ -233,29 +242,34 @@ internal sealed class CapabilityC025Scenario
             }
 
             WriteStepHeader(
-                "2. Verify fault detection and recovery start");
+                "2. Verify fault detection during Arduino Uno hardware reset");
 
             Console.WriteLine(
-                "Unplug the Arduino Uno USB cable now.");
+                "Press and hold the Arduino Uno RESET button for at least "
+                + "5 seconds, then release it.");
 
             Console.WriteLine(
-                "The runtime host will supervise the existing attachment and "
-                + "retry the configured COM port automatically.");
+                "Do not unplug the USB cable. The COM port must remain "
+                + "present while the endpoint processor is held in reset.");
 
             Console.WriteLine();
 
-            await WaitForStateAsync(
-                runtimeEndpoint,
-                EndpointConnectionState.Faulted,
-                FaultObservationTimeout,
-                cancellationTokenSource.Token);
+            EndpointConnectionStatusChanged faultedChange =
+                await connectionStatusObserver.Faulted.WaitAsync(
+                    FaultObservationTimeout,
+                    cancellationTokenSource.Token);
 
             Console.WriteLine(
-                $"Connection state observed : "
-                + $"{runtimeEndpoint.ConnectionStatus.State}");
+                $"Faulted transition       : "
+                + $"{faultedChange.PreviousStatus.State} -> "
+                + $"{faultedChange.CurrentStatus.State}");
 
             Console.WriteLine(
-                $"Observed event count      : "
+                $"Fault detail             : "
+                + $"{faultedChange.CurrentStatus.Detail}");
+
+            Console.WriteLine(
+                $"Observed event count     : "
                 + $"{eventObserver.OccurrenceCount}");
 
             Console.WriteLine();
@@ -263,34 +277,22 @@ internal sealed class CapabilityC025Scenario
             if (eventObserver.OccurrenceCount != 1)
             {
                 throw new InvalidDataException(
-                    "An event occurrence was delivered while fault handling "
-                    + "was beginning.");
+                    "An event occurrence was delivered while the endpoint "
+                    + "was faulting.");
             }
 
             WriteStepHeader(
-                "3. Verify no offline event queue and no replay");
+                "3. Verify automatic reset recovery and absence of replay");
+
+            EndpointConnectionStatusChanged readyChange =
+                await connectionStatusObserver.ReadyAfterFault.WaitAsync(
+                    RecoveryTimeout,
+                    cancellationTokenSource.Token);
 
             Console.WriteLine(
-                "While the Arduino Uno is disconnected, press and release "
-                + "D7 once.");
-
-            Console.WriteLine(
-                "If the Uno is powered only from USB, the board is off and "
-                + "cannot emit the event. If it has external power, the event "
-                + "has no connected host session and must be discarded.");
-
-            Console.WriteLine();
-
-            Console.WriteLine(
-                "Reconnect the same Arduino Uno on the same USB/COM path.");
-
-            Console.WriteLine();
-
-            await WaitForStateAsync(
-                runtimeEndpoint,
-                EndpointConnectionState.Ready,
-                RecoveryTimeout,
-                cancellationTokenSource.Token);
+                $"Recovery transition      : "
+                + $"{readyChange.PreviousStatus.State} -> "
+                + $"{readyChange.CurrentStatus.State}");
 
             Console.WriteLine(
                 "Runtime endpoint recovered to Ready.");
@@ -304,22 +306,23 @@ internal sealed class CapabilityC025Scenario
             if (eventObserver.OccurrenceCount != 1)
             {
                 throw new InvalidDataException(
-                    "A compact event occurrence was replayed after recovery.");
+                    "A compact event occurrence was replayed after reset "
+                    + "recovery.");
             }
 
             Console.WriteLine(
-                "Observer subscription      : Preserved");
+                "Observer subscription     : Preserved");
 
             Console.WriteLine(
                 "Occurrence count after Ready: 1");
 
             Console.WriteLine(
-                "Offline replay             : None");
+                "Replay after reset        : None");
 
             Console.WriteLine();
 
             WriteStepHeader(
-                "4. Verify event delivery after connection replacement");
+                "4. Verify event delivery after reset connection replacement");
 
             Console.WriteLine(
                 "Press and release the Arduino Uno D7 pushbutton once more.");
@@ -343,8 +346,8 @@ internal sealed class CapabilityC025Scenario
             if (eventObserver.OccurrenceCount != 2)
             {
                 throw new InvalidDataException(
-                    "Recovery did not produce exactly one new runtime event "
-                    + "occurrence from the second physical press.");
+                    "Reset recovery did not produce exactly one new runtime "
+                    + "event occurrence from the second physical press.");
             }
 
             WriteSuccess(
@@ -363,6 +366,13 @@ internal sealed class CapabilityC025Scenario
         {
             Console.CancelKeyPress -=
                 cancelHandler;
+
+            if (entry is not null
+                && connectionStatusObserver is not null)
+            {
+                entry.RuntimeEndpoint.UnsubscribeConnectionStatus(
+                    connectionStatusObserver);
+            }
 
             if (runtimeEvent is not null
                 && eventObserver is not null)
@@ -453,35 +463,6 @@ internal sealed class CapabilityC025Scenario
         return parsedValue;
     }
 
-    private static async Task WaitForStateAsync(
-        RuntimeEndpoint runtimeEndpoint,
-        EndpointConnectionState expectedState,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        DateTimeOffset deadline =
-            DateTimeOffset.UtcNow
-            + timeout;
-
-        while (runtimeEndpoint.ConnectionStatus.State
-            != expectedState)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (DateTimeOffset.UtcNow >= deadline)
-            {
-                throw new TimeoutException(
-                    $"The compact runtime endpoint did not enter "
-                    + $"'{expectedState}' within {timeout}.");
-            }
-
-            await Task.Delay(
-                TimeSpan.FromMilliseconds(
-                    50),
-                cancellationToken);
-        }
-    }
-
     private static RuntimeEvent GetButtonPressedRuntimeEvent(
         RuntimeEndpoint runtimeEndpoint)
     {
@@ -550,7 +531,8 @@ internal sealed class CapabilityC025Scenario
             "Discover and authoritatively verify the physical Arduino Uno, "
             + "attach it through the runtime-host inventory, route unsolicited "
             + "compact D7 button notifications into the native runtime event "
-            + "model, and verify recovery without offline replay.");
+            + "model, and verify recovery from a hardware reset while USB "
+            + "remains connected.");
 
         Console.WriteLine();
 
@@ -605,6 +587,9 @@ internal sealed class CapabilityC025Scenario
 
         Console.WriteLine(
             "Replay after recovery: Never");
+
+        Console.WriteLine(
+            "Reset validation     : USB remains connected");
 
         Console.WriteLine();
 
@@ -713,8 +698,7 @@ internal sealed class CapabilityC025Scenario
         Console.WriteLine();
 
         Console.WriteLine(
-            "The runtime event observer is now subscribed and will remain "
-            + "subscribed across compact connection replacement.");
+            "Runtime event and connection-status observers are subscribed.");
 
         Console.WriteLine();
     }
@@ -788,22 +772,19 @@ internal sealed class CapabilityC025Scenario
             "Initial event delivery  : Verified");
 
         Console.WriteLine(
-            "Fault detection         : Verified");
+            "Reset fault detection   : Verified");
 
         Console.WriteLine(
-            "Automatic recovery      : Verified");
+            "Automatic reset recovery: Verified");
 
         Console.WriteLine(
             "Observer continuity     : Verified");
 
         Console.WriteLine(
-            "Offline queue           : None");
+            "Replay after reset      : None");
 
         Console.WriteLine(
-            "Replay after recovery   : None");
-
-        Console.WriteLine(
-            "Post-recovery delivery  : Verified");
+            "Post-reset delivery     : Verified");
 
         Console.WriteLine(
             "Runtime event identity  : Preserved");
@@ -909,6 +890,70 @@ internal sealed class CapabilityC025Scenario
             {
                 _secondOccurrence.TrySetResult(
                     occurrence);
+            }
+        }
+    }
+
+    private sealed class LatchedConnectionStatusObserver
+        : IEndpointConnectionStatusObserver
+    {
+        private readonly TaskCompletionSource<EndpointConnectionStatusChanged>
+            _faulted =
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private readonly TaskCompletionSource<EndpointConnectionStatusChanged>
+            _readyAfterFault =
+                new(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _faultObserved;
+
+        public Task<EndpointConnectionStatusChanged> Faulted =>
+            _faulted.Task;
+
+        public Task<EndpointConnectionStatusChanged> ReadyAfterFault =>
+            _readyAfterFault.Task;
+
+        public void OnEndpointConnectionStatusChanged(
+            EndpointConnectionStatusChanged change)
+        {
+            Console.WriteLine(
+                $"Connection state         : "
+                + $"{change.PreviousStatus.State} -> "
+                + $"{change.CurrentStatus.State}");
+
+            if (!string.IsNullOrWhiteSpace(
+                    change.CurrentStatus.Detail))
+            {
+                Console.WriteLine(
+                    $"Status detail           : "
+                    + $"{change.CurrentStatus.Detail}");
+            }
+
+            Console.WriteLine();
+
+            if (change.CurrentStatus.State
+                == EndpointConnectionState.Faulted)
+            {
+                Interlocked.Exchange(
+                    ref _faultObserved,
+                    1);
+
+                _faulted.TrySetResult(
+                    change);
+
+                return;
+            }
+
+            if (change.CurrentStatus.State
+                    == EndpointConnectionState.Ready
+                && Volatile.Read(
+                    ref _faultObserved)
+                    != 0)
+            {
+                _readyAfterFault.TrySetResult(
+                    change);
             }
         }
     }
