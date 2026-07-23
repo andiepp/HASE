@@ -1,4 +1,5 @@
-﻿using Hase.Runtime.Transport.Attachment;
+﻿using Hase.Core.Domain.Identity;
+using Hase.Runtime.Transport.Attachment;
 
 namespace Hase.Runtime.Northbound;
 
@@ -97,5 +98,17 @@ public sealed class RuntimeHostInventorySnapshotProvider
 
             return snapshots;
         }
+    }
+
+    /// <inheritdoc />
+    public PublishedRuntimeEndpointSnapshot? Find(
+        EndpointId endpointId)
+    {
+        ArgumentNullException.ThrowIfNull(
+            endpointId);
+
+        return List().FirstOrDefault(
+            snapshot =>
+                snapshot.EndpointId == endpointId);
     }
 }

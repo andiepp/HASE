@@ -172,6 +172,82 @@ public sealed class RuntimeHostInventorySnapshotProviderTests
             provider.List().Count);
     }
 
+    [Fact]
+    public void Find_PublishedIdentity_ReturnsSameGenerationAsList()
+    {
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "lookup-endpoint");
+
+        var provider =
+            new RuntimeHostInventorySnapshotProvider(
+                new TestAttachmentInventory(
+                    entry));
+
+        PublishedRuntimeEndpointSnapshot listedSnapshot =
+            Assert.Single(
+                provider.List());
+
+        PublishedRuntimeEndpointSnapshot? foundSnapshot =
+            provider.Find(
+                entry.EndpointId);
+
+        Assert.NotNull(
+            foundSnapshot);
+
+        Assert.Equal(
+            listedSnapshot.EndpointId,
+            foundSnapshot.EndpointId);
+
+        Assert.Equal(
+            listedSnapshot.Generation,
+            foundSnapshot.Generation);
+    }
+
+    [Fact]
+    public void Find_MissingIdentity_ReturnsNull()
+    {
+        var provider =
+            new RuntimeHostInventorySnapshotProvider(
+                new TestAttachmentInventory(
+                    CreateEntry(
+                        "published-endpoint")));
+
+        PublishedRuntimeEndpointSnapshot? snapshot =
+            provider.Find(
+                new EndpointId(
+                    "missing-endpoint"));
+
+        Assert.Null(
+            snapshot);
+    }
+
+    [Fact]
+    public void Find_AfterEntryEnds_ReturnsNull()
+    {
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "ended-endpoint");
+
+        var inventory =
+            new TestAttachmentInventory(
+                entry);
+
+        var provider =
+            new RuntimeHostInventorySnapshotProvider(
+                inventory);
+
+        Assert.NotNull(
+            provider.Find(
+                entry.EndpointId));
+
+        inventory.SetEntries();
+
+        Assert.Null(
+            provider.Find(
+                entry.EndpointId));
+    }
+
     private static RuntimeEndpointAttachmentInventoryEntry CreateEntry(
         string endpointId)
     {
