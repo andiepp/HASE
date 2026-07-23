@@ -32,13 +32,19 @@ runtime-host inventory and normalized Properties, Commands, Events, connection
 status, and live observation without exposing or transferring ownership of
 physical endpoint lifecycles.
 
+The Phase 7.1 snapshot and identity foundation is implemented. It provides
+stable runtime-host identity, API contract versioning, immutable endpoint
+attachment snapshots, opaque attachment generations, authoritative inventory
+list and lookup projection, identity resolution precedence, atomic
+cross-process file persistence, and file-backed snapshot composition.
+
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
 
 The current verified baseline is:
 
 ```text
-1,745 automated tests passing
+1,849 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -279,8 +285,29 @@ The approved northbound architecture:
   audit decisions until after the transport-independent service boundary is
   implemented and validated.
 
-The first Phase 7 implementation increment will define northbound snapshot and
-identity contracts. No northbound code is implemented at the current baseline.
+Implemented Phase 7 foundation:
+
+- dedicated `Hase.Runtime.Northbound` project;
+- `RuntimeHostApiVersion`;
+- stable authoritative `RuntimeHostId`;
+- immutable runtime-host and published endpoint snapshots;
+- authoritative inventory list and lookup projection;
+- opaque per-attachment generations that change across reattachment;
+- runtime-host snapshot capture from the host-owned attachment inventory;
+- ADR-0024 stable runtime-host identity semantics;
+- ADR-0025 explicit, persisted, and generated-and-persisted identity
+  resolution;
+- canonical GUID-based runtime-host identity generation;
+- ADR-0026 strict version-1 JSON file persistence;
+- bounded strict UTF-8 document validation;
+- atomic non-overwriting first-run identity publication;
+- concurrent first-run convergence on one authoritative identity;
+- file-backed runtime-host snapshot composition;
+- preservation of runtime-host ownership for attachment and endpoint
+  lifecycles.
+
+Normalized Property, Command, Event, and live-observation application services
+remain the next Phase 7 work. No remote wire technology has been selected.
 
 ---
 
@@ -335,6 +362,36 @@ cancellation-aware disposal.
 
 A COM port being present does not prove that the endpoint processor is
 responsive.
+
+## Northbound Runtime-Host Foundation
+
+`Hase.Runtime.Northbound` contains the transport-independent application-facing
+snapshot and identity foundation.
+
+The authoritative attachment inventory is projected into immutable published
+endpoint snapshots containing:
+
+- authoritative `EndpointId`;
+- opaque attachment generation;
+- immutable endpoint descriptor;
+- captured endpoint connection status.
+
+`RuntimeHostSnapshotProvider` combines that projection with stable
+`RuntimeHostId` and `RuntimeHostApiVersion`.
+
+Runtime-host identity resolution applies this precedence:
+
+1. explicit configured identity;
+2. previously persisted generated identity;
+3. newly generated and atomically persisted identity.
+
+`FileRuntimeHostIdentityStore` uses a strict versioned UTF-8 JSON document and
+atomic non-overwriting publication. Malformed, inaccessible, incompatible, or
+ambiguous persistence fails safely and is never treated as an empty store.
+
+`RuntimeHostNorthboundSnapshotComposition` resolves identity once and composes
+snapshot providers over the host-owned attachment inventory. It does not own,
+attach, detach, supervise, recover, or dispose endpoints.
 
 ## Compact Protocol
 
@@ -623,7 +680,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-1,745 automated tests pass
+1,849 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -656,13 +713,21 @@ C-025 bounds silent connection/bootstrap attempts and advances retry
 C-025 post-recovery D7 event delivery is verified
 C-025 orderly detach ends Disconnected with zero inventory and publication
 Protocol Explorer C-025 exits with code 0
+Stable RuntimeHostId is included in every runtime-host snapshot
+Attachment generation is stable for one published entry and changes on reattach
+Explicit runtime-host identity bypasses persistent storage
+Persisted runtime-host identity survives composition restart
+First-run identity creation is atomic and converges across concurrent callers
+Malformed or incompatible identity documents fail without replacement
+File-backed composition supplies the resolved identity to snapshot publication
+Runtime-host snapshot composition does not dispose the attachment inventory
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0023 are accepted.
+ADR-0001 through ADR-0026 are accepted.
 
 Relevant recent decisions:
 
@@ -674,6 +739,9 @@ Relevant recent decisions:
   Verification.
 - ADR-0022 - Compact Serial Event Notifications.
 - ADR-0023 - Northbound Runtime-Host API Boundary.
+- ADR-0024 - Stable Runtime-Host Identity.
+- ADR-0025 - Runtime-Host Identity Resolution.
+- ADR-0026 - File-Based Runtime-Host Identity Store.
 
 ---
 
@@ -694,20 +762,20 @@ The current implementation intentionally excludes:
 - formal compact-profile negotiation;
 - persistent event history and replay;
 - additional compact scalar/event-value encodings;
-- implemented northbound application services and remote API mapping;
+- normalized northbound Property, Command, Event, and observation services;
+- northbound remote API mapping;
 - Tailscale runtime-host discovery.
 
 ---
 
 # Immediate Next Steps
 
-1. Define the Phase 7 transport-independent northbound snapshot and identity
-   contracts.
-2. Define opaque attachment-generation semantics without changing the existing
-   endpoint identity model.
-3. Define the runtime-host inventory query service.
-4. Normalize native and compact Property, Command, and Event operations behind
-   application services.
+1. Define normalized Property operations with separate cached-value and
+   authoritative endpoint-read semantics.
+2. Define attachment-generation-scoped Property operation targeting.
+3. Normalize native and compact Command operations behind one application
+   service.
+4. Define lifecycle, Property, and Event observation services.
 5. Validate both physical endpoint families through the same in-process
    northbound service contract before selecting a remote wire technology.
 6. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,

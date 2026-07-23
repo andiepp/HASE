@@ -520,32 +520,50 @@ Local or remote application
 
 ## 7.1 Northbound Snapshot and Identity Contracts
 
-**Status:** [Next] Architecture accepted; implementation not started
+**Status:** [Completed] Completed
 
-Define immutable, transport-independent representations for:
+Implemented:
 
-- runtime-host identity and API contract version;
-- published endpoint inventory entries;
+- dedicated `Hase.Runtime.Northbound` project;
+- stable authoritative `RuntimeHostId`;
+- `RuntimeHostApiVersion`;
+- immutable runtime-host snapshots;
+- immutable published endpoint attachment snapshots;
 - authoritative `EndpointId`;
 - opaque attachment generation;
-- endpoint connection state;
-- endpoint and instrument descriptors;
-- Properties and current cached values;
-- Commands;
-- Events.
+- endpoint descriptor and captured connection status;
+- stable generation for one published inventory entry;
+- new generation after reattachment, including reattachment with the same
+  endpoint identity;
+- ADR-0024 stable runtime-host identity;
+- ADR-0025 identity-resolution precedence;
+- explicit, persisted, and generated-and-persisted resolution origins;
+- canonical GUID-based generated identities;
+- ADR-0026 file-based identity persistence;
+- strict versioned UTF-8 JSON identity documents;
+- atomic non-overwriting first-run publication;
+- concurrent first-run convergence;
+- file-backed snapshot composition over the host-owned inventory.
 
-Active operations identify both `EndpointId` and the expected attachment
-generation. An operation from an ended attachment must never be silently
-applied to a later attachment with the same endpoint identity.
+Properties, current cached values, Commands, Events, and active operation
+targeting remain in the dedicated application-service increments below.
 
 ## 7.2 Runtime-Host Inventory Query Service
 
-**Status:** [Planned] Planned
+**Status:** [Completed] Completed
 
-Expose snapshot and lookup operations sourced only from the authoritative
-runtime-host attachment inventory. Discovery candidates, configured connection
-definitions, staged endpoints, and failed attachment attempts are not
-operational inventory entries.
+Implemented:
+
+- immutable list projection sourced only from the authoritative runtime-host
+  attachment inventory;
+- authoritative `EndpointId` lookup;
+- exclusion of discovery candidates, configured connection definitions, staged
+  endpoints, and failed attachment attempts;
+- per-entry attachment-generation retention;
+- generation retirement when an inventory entry ends;
+- runtime-host snapshot capture with stable resolved host identity;
+- composition that leaves inventory and endpoint lifecycle ownership with the
+  runtime host.
 
 ## 7.3 Normalized Property Operations
 
@@ -719,14 +737,15 @@ Current documentation includes:
 - `C-023-USB-Serial-Endpoint-Discovery.md`;
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
-- ADR-0001 through ADR-0023.
+- ADR-0001 through ADR-0026.
 
 Next:
 
 1. Keep physical capabilities C-015 through C-025 and their validation baselines
    current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
-3. Keep the Phase 7 northbound API boundary aligned with ADR-0023.
+3. Keep the Phase 7 northbound API boundary and identity foundation aligned
+   with ADR-0023 through ADR-0026.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -738,12 +757,12 @@ Next:
 
 # Current Priorities
 
-1. Implement Phase 7.1 transport-independent northbound snapshot and identity
-   contracts.
-2. Define opaque attachment-generation semantics without changing
-   `EndpointId`.
-3. Implement the runtime-host inventory query service.
-4. Normalize native and compact operations behind application services.
+1. Implement Phase 7.3 normalized Property operations with distinct cached and
+   authoritative-read semantics.
+2. Scope active Property operations to authoritative `EndpointId` and expected
+   attachment generation.
+3. Implement Phase 7.4 normalized Command execution.
+4. Implement Phase 7.5 lifecycle, Property, and Event observation.
 5. Validate both physical endpoint families through the same in-process
    northbound contract.
 6. Select the remote wire technology only after the service boundary is
