@@ -22,12 +22,17 @@ public sealed class RuntimeHostSnapshotTests
 
         var snapshot =
             new PublishedRuntimeHostSnapshot(
+                CreateRuntimeHostId(),
                 new RuntimeHostApiVersion(
                     2,
                     1),
                 source);
 
         source.Clear();
+
+        Assert.Equal(
+            CreateRuntimeHostId(),
+            snapshot.RuntimeHostId);
 
         Assert.Equal(
             new RuntimeHostApiVersion(
@@ -42,10 +47,21 @@ public sealed class RuntimeHostSnapshotTests
     }
 
     [Fact]
+    public void PublishedSnapshot_NullRuntimeHostId_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new PublishedRuntimeHostSnapshot(
+                null!,
+                RuntimeHostApiVersion.Current,
+                Array.Empty<PublishedRuntimeEndpointSnapshot>()));
+    }
+
+    [Fact]
     public void PublishedSnapshot_NullEndpoints_Throws()
     {
         Assert.Throws<ArgumentNullException>(
             () => new PublishedRuntimeHostSnapshot(
+                CreateRuntimeHostId(),
                 RuntimeHostApiVersion.Current,
                 null!));
     }
@@ -55,6 +71,7 @@ public sealed class RuntimeHostSnapshotTests
     {
         Assert.Throws<ArgumentException>(
             () => new PublishedRuntimeHostSnapshot(
+                CreateRuntimeHostId(),
                 RuntimeHostApiVersion.Current,
                 new PublishedRuntimeEndpointSnapshot[]
                 {
@@ -63,10 +80,20 @@ public sealed class RuntimeHostSnapshotTests
     }
 
     [Fact]
+    public void Provider_NullRuntimeHostId_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new RuntimeHostSnapshotProvider(
+                null!,
+                new TestInventorySnapshotProvider()));
+    }
+
+    [Fact]
     public void Provider_NullInventoryProvider_Throws()
     {
         Assert.Throws<ArgumentNullException>(
             () => new RuntimeHostSnapshotProvider(
+                CreateRuntimeHostId(),
                 null!));
     }
 
@@ -79,11 +106,16 @@ public sealed class RuntimeHostSnapshotTests
 
         var provider =
             new RuntimeHostSnapshotProvider(
+                CreateRuntimeHostId(),
                 new TestInventorySnapshotProvider(
                     endpoint));
 
         PublishedRuntimeHostSnapshot snapshot =
             provider.Capture();
+
+        Assert.Equal(
+            CreateRuntimeHostId(),
+            snapshot.RuntimeHostId);
 
         Assert.Equal(
             RuntimeHostApiVersion.Current,
@@ -93,6 +125,38 @@ public sealed class RuntimeHostSnapshotTests
             endpoint,
             Assert.Single(
                 snapshot.Endpoints));
+    }
+
+    [Fact]
+    public void Provider_RepeatedCaptures_PreserveRuntimeHostIdentity()
+    {
+        RuntimeHostId runtimeHostId =
+            CreateRuntimeHostId();
+
+        var provider =
+            new RuntimeHostSnapshotProvider(
+                runtimeHostId,
+                new TestInventorySnapshotProvider());
+
+        PublishedRuntimeHostSnapshot firstSnapshot =
+            provider.Capture();
+
+        PublishedRuntimeHostSnapshot secondSnapshot =
+            provider.Capture();
+
+        Assert.Same(
+            runtimeHostId,
+            firstSnapshot.RuntimeHostId);
+
+        Assert.Same(
+            runtimeHostId,
+            secondSnapshot.RuntimeHostId);
+    }
+
+    private static RuntimeHostId CreateRuntimeHostId()
+    {
+        return new RuntimeHostId(
+            "runtime-host-58c50d84-c4ad-47a0-b7c6-1eeed3483593");
     }
 
     private static PublishedRuntimeEndpointSnapshot CreateEndpointSnapshot(

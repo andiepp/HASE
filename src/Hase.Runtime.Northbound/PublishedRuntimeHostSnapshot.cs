@@ -13,9 +13,15 @@ public sealed record PublishedRuntimeHostSnapshot
     /// Initializes a published runtime-host snapshot.
     /// </summary>
     public PublishedRuntimeHostSnapshot(
+        RuntimeHostId runtimeHostId,
         RuntimeHostApiVersion apiVersion,
         IEnumerable<PublishedRuntimeEndpointSnapshot> endpoints)
     {
+        RuntimeHostId =
+            runtimeHostId
+            ?? throw new ArgumentNullException(
+                nameof(runtimeHostId));
+
         ArgumentNullException.ThrowIfNull(
             endpoints);
 
@@ -37,6 +43,14 @@ public sealed record PublishedRuntimeHostSnapshot
         Endpoints =
             Array.AsReadOnly(
                 endpointSnapshot);
+    }
+
+    /// <summary>
+    /// Gets the stable authoritative identity of the runtime host.
+    /// </summary>
+    public RuntimeHostId RuntimeHostId
+    {
+        get;
     }
 
     /// <summary>

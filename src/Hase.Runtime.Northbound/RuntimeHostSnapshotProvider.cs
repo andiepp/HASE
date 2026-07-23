@@ -7,6 +7,9 @@
 public sealed class RuntimeHostSnapshotProvider
     : IRuntimeHostSnapshotProvider
 {
+    private readonly RuntimeHostId
+        _runtimeHostId;
+
     private readonly IRuntimeHostInventorySnapshotProvider
         _inventorySnapshotProvider;
 
@@ -14,8 +17,14 @@ public sealed class RuntimeHostSnapshotProvider
     /// Initializes a runtime-host snapshot provider.
     /// </summary>
     public RuntimeHostSnapshotProvider(
+        RuntimeHostId runtimeHostId,
         IRuntimeHostInventorySnapshotProvider inventorySnapshotProvider)
     {
+        _runtimeHostId =
+            runtimeHostId
+            ?? throw new ArgumentNullException(
+                nameof(runtimeHostId));
+
         _inventorySnapshotProvider =
             inventorySnapshotProvider
             ?? throw new ArgumentNullException(
@@ -26,6 +35,7 @@ public sealed class RuntimeHostSnapshotProvider
     public PublishedRuntimeHostSnapshot Capture()
     {
         return new PublishedRuntimeHostSnapshot(
+            _runtimeHostId,
             RuntimeHostApiVersion.Current,
             _inventorySnapshotProvider.List());
     }
