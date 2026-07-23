@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
+    <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
   </ItemGroup>
 
 </Project>
