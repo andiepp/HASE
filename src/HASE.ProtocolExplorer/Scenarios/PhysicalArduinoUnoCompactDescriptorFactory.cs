@@ -3,6 +3,7 @@ using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
@@ -19,6 +20,9 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
         0x01;
 
     public const byte BuiltInLedStateCompactPropertyId =
+        0x01;
+
+    public const byte ButtonPressedCompactEventId =
         0x01;
 
     public static readonly DescriptorReference DescriptorReference =
@@ -45,6 +49,11 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
             "Led",
             "Toggle");
 
+    public static readonly DescriptorPath ButtonPressedEventPath =
+        new(
+            "Controller",
+            "ButtonPressed");
+
     /// <summary>
     /// Creates the complete host-side compact endpoint registration used by
     /// bootstrap and operational attachment.
@@ -57,7 +66,8 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
         return new CompactEndpointDefinition(
             DescriptorReference,
             descriptorDefinition,
-            CreatePropertyMappings());
+            CreatePropertyMappings(),
+            CreateEventMappings());
     }
 
     public static EndpointDescriptorDefinition CreateDefinition()
@@ -85,6 +95,16 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                     "Toggles the Arduino Uno built-in LED."
             };
 
+        var buttonPressed =
+            new EventDescriptor(
+                ButtonPressedEventPath,
+                "Button Pressed")
+            {
+                Description =
+                    "Raised when the Arduino Uno validation pushbutton is "
+                    + "pressed."
+            };
+
         var controller =
             new InstrumentDescriptor(
                 ControllerInstrumentId,
@@ -102,7 +122,9 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                         Description =
                             "GPIO controller provided by the Arduino Uno. "
                             + "The built-in LED is exposed through a compact "
-                            + "read/write property and command."
+                            + "read/write property and command, and the "
+                            + "validation pushbutton is exposed as a compact "
+                            + "event."
                     },
                 Interface =
                     new InstrumentInterface(
@@ -113,6 +135,10 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                         commands:
                         [
                             toggleBuiltInLed
+                        ],
+                        events:
+                        [
+                            buttonPressed
                         ])
             };
 
@@ -124,7 +150,7 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                 Description =
                     "Physical Arduino Uno-class endpoint used to validate "
                     + "Compact Serial Protocol bootstrap, command execution, "
-                    + "and property reading and writing."
+                    + "property reading and writing, and event notification."
             },
             instruments:
             [
@@ -153,6 +179,19 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                 ControllerInstrumentId,
                 BuiltInLedStatePropertyId,
                 CompactPropertyValueEncoding.Boolean)
+        ];
+    }
+
+    private static IReadOnlyList<CompactEventMapping>
+        CreateEventMappings()
+    {
+        return
+        [
+            new CompactEventMapping(
+                ButtonPressedCompactEventId,
+                ControllerInstrumentId,
+                ButtonPressedEventPath,
+                CompactEventValueEncoding.None)
         ];
     }
 }
