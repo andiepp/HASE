@@ -41,7 +41,9 @@ public sealed record RuntimeEventOccurrence
     }
 
     /// <summary>
-    /// Gets the truthful UTC occurrence timestamp reported by the endpoint.
+    /// Gets the UTC occurrence timestamp. Protocols that carry an endpoint
+    /// timestamp preserve it; protocols without one use the host observation
+    /// time.
     /// </summary>
     public DateTimeOffset TimestampUtc
     {

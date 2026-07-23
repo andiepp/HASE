@@ -4,13 +4,13 @@ using Hase.Runtime.Runtime;
 namespace Hase.Runtime.Transport;
 
 /// <summary>
-/// Routes decoded protocol event notifications into an existing runtime
-/// endpoint graph.
+/// Routes decoded Protocol Version 1 event notifications into an existing
+/// runtime endpoint graph.
 /// </summary>
 public sealed class ProtocolRuntimeEndpointEventRouter
     : IProtocolNotificationObserver
 {
-    private readonly RuntimeEndpoint _runtimeEndpoint;
+    private readonly RuntimeEndpointEventRouter _eventRouter;
 
     /// <summary>
     /// Initializes an event-notification router for one runtime endpoint.
@@ -18,10 +18,11 @@ public sealed class ProtocolRuntimeEndpointEventRouter
     public ProtocolRuntimeEndpointEventRouter(
         RuntimeEndpoint runtimeEndpoint)
     {
-        _runtimeEndpoint =
-            runtimeEndpoint
-            ?? throw new ArgumentNullException(
-                nameof(runtimeEndpoint));
+        _eventRouter =
+            new RuntimeEndpointEventRouter(
+                runtimeEndpoint
+                ?? throw new ArgumentNullException(
+                    nameof(runtimeEndpoint)));
     }
 
     /// <inheritdoc />
@@ -37,25 +38,9 @@ public sealed class ProtocolRuntimeEndpointEventRouter
             return;
         }
 
-        RuntimeInstrument? runtimeInstrument =
-            _runtimeEndpoint.FindInstrument(
-                eventNotification.InstrumentId);
-
-        if (runtimeInstrument is null)
-        {
-            return;
-        }
-
-        RuntimeEvent? runtimeEvent =
-            runtimeInstrument.FindEvent(
-                eventNotification.EventPath);
-
-        if (runtimeEvent is null)
-        {
-            return;
-        }
-
-        runtimeEvent.PublishOccurrence(
+        _eventRouter.Publish(
+            eventNotification.InstrumentId,
+            eventNotification.EventPath,
             eventNotification.TimestampUtc,
             eventNotification.Value);
     }

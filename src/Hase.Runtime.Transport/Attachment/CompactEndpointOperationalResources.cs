@@ -17,6 +17,7 @@ internal sealed class CompactEndpointOperationalResources
         CompactEventMap eventMap,
         CompactEventNotificationResolver eventResolver,
         CompactMappedEventNotificationSource eventSource,
+        CompactRuntimeEndpointEventRouter eventRouter,
         EndpointConnectionSupervisionLifetime supervisionLifetime,
         CompactRuntimeEndpointConnectionCoordinator coordinator,
         CompactRuntimeEndpointConnectionSupervisor supervisor)
@@ -35,6 +36,9 @@ internal sealed class CompactEndpointOperationalResources
 
         EventSource =
             eventSource;
+
+        EventRouter =
+            eventRouter;
 
         SupervisionLifetime =
             supervisionLifetime;
@@ -75,6 +79,15 @@ internal sealed class CompactEndpointOperationalResources
     /// Gets the current-connection-authoritative mapped compact event source.
     /// </summary>
     internal CompactMappedEventNotificationSource EventSource
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the router that publishes accepted compact events into the native
+    /// runtime event graph.
+    /// </summary>
+    internal CompactRuntimeEndpointEventRouter EventRouter
     {
         get;
     }
@@ -143,6 +156,12 @@ internal sealed class CompactEndpointOperationalResources
             new CompactMappedEventNotificationSource(
                 eventResolver);
 
+        var eventRouter =
+            new CompactRuntimeEndpointEventRouter(
+                eventSource,
+                runtimeEndpoint,
+                TimeProvider.System);
+
         var descriptorRepository =
             new CompactEndpointDescriptorRepositoryAdapter(
                 definitionRepository);
@@ -180,6 +199,7 @@ internal sealed class CompactEndpointOperationalResources
             eventMap,
             eventResolver,
             eventSource,
+            eventRouter,
             supervisionLifetime,
             coordinator,
             supervisor);
