@@ -1,13 +1,14 @@
 /*
   HASE Arduino Uno - Compact Serial Protocol Endpoint
 
-  Capabilities C-018 through C-022:
+  Capabilities C-018 through C-025:
   - Compact bootstrap
   - Execute compact command 0x01
   - Toggle LED_BUILTIN
   - Read compact property 0x01
   - Write compact property 0x01
   - Return the current LED_BUILTIN state
+  - Publish compact event 0x01 when the validation pushbutton is pressed
 
   Protocol settings:
   - Baud rate          : 115200
@@ -15,9 +16,20 @@
   - DescriptorId       : arduino-uno-validation
   - Descriptor version : 1
 
+  Validation pushbutton:
+  - Pin                : D7
+  - Electrical         : active-low
+  - Input mode         : INPUT_PULLUP
+  - Debounce           : 50 ms
+  - Compact EventId    : 0x01
+  - Event value        : none
+
   Important:
   Serial is the binary HASE transport.
   Do not write diagnostic text to Serial.
+
+  Compact unsolicited notifications use correlation identifier 0.
+  The firmware does not queue or replay button events.
 */
 
 #include <Arduino.h>
@@ -61,11 +73,23 @@ namespace
   const uint8_t WritePropertyResponseMessageType =
     0x08;
 
+  const uint8_t EventNotificationMessageType =
+    0x09;
+
   const uint8_t ToggleBuiltInLedCommandId =
     0x01;
 
   const uint8_t BuiltInLedStatePropertyId =
     0x01;
+
+  const uint8_t ButtonPressedEventId =
+    0x01;
+
+  const uint8_t ButtonPin =
+    7;
+
+  const unsigned long ButtonDebounceMilliseconds =
+    50UL;
 
   const uint8_t CommandStatusSuccess =
     0x00;
@@ -114,6 +138,15 @@ namespace
 
   bool builtInLedState =
     false;
+
+  uint8_t buttonRawState =
+    HIGH;
+
+  uint8_t buttonStableState =
+    HIGH;
+
+  unsigned long buttonLastRawChangeMilliseconds =
+    0UL;
 
   uint16_t CalculateCrc16CcittFalse(
     const uint8_t* data,
@@ -393,6 +426,65 @@ namespace
       correlationId,
       payload,
       sizeof(payload));
+  }
+
+  void SendButtonPressedEvent()
+  {
+    const uint8_t payload[] =
+    {
+      ButtonPressedEventId
+    };
+
+    SendFrame(
+      EventNotificationMessageType,
+      0x00,
+      payload,
+      sizeof(payload));
+  }
+
+  void PollButton()
+  {
+    const uint8_t currentRawState =
+      digitalRead(
+        ButtonPin);
+
+    const unsigned long nowMilliseconds =
+      millis();
+
+    if (currentRawState != buttonRawState)
+    {
+      buttonRawState =
+        currentRawState;
+
+      buttonLastRawChangeMilliseconds =
+        nowMilliseconds;
+
+      return;
+    }
+
+    if (
+      buttonStableState
+      == buttonRawState)
+    {
+      return;
+    }
+
+    if (
+      static_cast<unsigned long>(
+        nowMilliseconds
+        - buttonLastRawChangeMilliseconds)
+      < ButtonDebounceMilliseconds)
+    {
+      return;
+    }
+
+    buttonStableState =
+      buttonRawState;
+
+    if (buttonStableState == LOW)
+    {
+      SendButtonPressedEvent();
+    }
   }
 
   uint8_t ExecuteCommand(
@@ -740,6 +832,20 @@ void setup()
   ApplyBuiltInLedState(
     false);
 
+  pinMode(
+    ButtonPin,
+    INPUT_PULLUP);
+
+  buttonRawState =
+    digitalRead(
+      ButtonPin);
+
+  buttonStableState =
+    buttonRawState;
+
+  buttonLastRawChangeMilliseconds =
+    millis();
+
   Serial.begin(
     SerialBaudRate);
 
@@ -762,4 +868,6 @@ void loop()
           value));
     }
   }
+
+  PollButton();
 }
