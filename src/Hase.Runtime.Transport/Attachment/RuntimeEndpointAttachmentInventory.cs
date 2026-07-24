@@ -12,7 +12,8 @@ namespace Hase.Runtime.Transport.Attachment;
 /// state.
 /// </remarks>
 public sealed class RuntimeEndpointAttachmentInventory
-    : IRuntimeEndpointAttachmentInventory
+    : IRuntimeEndpointAttachmentInventory,
+      IRuntimeEndpointAttachmentInventoryObservationSource
 {
     private readonly IEndpointAttachmentService
         _attachmentService;
@@ -27,6 +28,13 @@ public sealed class RuntimeEndpointAttachmentInventory
         new(
             1,
             1);
+
+    private readonly object _observerSyncRoot =
+        new();
+
+    private readonly List<IRuntimeEndpointAttachmentInventoryObserver>
+        _observers =
+            [];
 
     private bool _isDisposed;
 
@@ -81,6 +89,10 @@ public sealed class RuntimeEndpointAttachmentInventory
                 _entries.Add(
                     entry.EndpointId,
                     entry);
+
+                PublishAttachmentPublished(
+                    new RuntimeEndpointAttachmentPublished(
+                        entry));
 
                 return entry;
             }
@@ -172,10 +184,44 @@ public sealed class RuntimeEndpointAttachmentInventory
                 return false;
             }
 
+            PublishAttachmentEnded(
+                new RuntimeEndpointAttachmentEnded(
+                    entry,
+                    DateTimeOffset.UtcNow));
+
             await entry.AttachmentSession.ShutdownAsync(
                 cancellationToken);
 
             return true;
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public IDisposable Subscribe(
+        IRuntimeEndpointAttachmentInventoryObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observer);
+
+        _operationGate.Wait();
+
+        try
+        {
+            ThrowIfDisposed();
+
+            lock (_observerSyncRoot)
+            {
+                _observers.Add(
+                    observer);
+            }
+
+            return new ObserverRegistration(
+                this,
+                observer);
         }
         finally
         {
@@ -203,6 +249,16 @@ public sealed class RuntimeEndpointAttachmentInventory
 
             _entries.Clear();
 
+            foreach (
+                RuntimeEndpointAttachmentInventoryEntry entry
+                in entries)
+            {
+                PublishAttachmentEnded(
+                    new RuntimeEndpointAttachmentEnded(
+                        entry,
+                        DateTimeOffset.UtcNow));
+            }
+
             List<Exception>? failures =
                 null;
 
@@ -223,6 +279,8 @@ public sealed class RuntimeEndpointAttachmentInventory
                         exception);
                 }
             }
+
+            ClearObservers();
 
             if (failures is null)
             {
@@ -248,10 +306,117 @@ public sealed class RuntimeEndpointAttachmentInventory
         }
     }
 
+    private void PublishAttachmentPublished(
+        RuntimeEndpointAttachmentPublished publication)
+    {
+        foreach (
+            IRuntimeEndpointAttachmentInventoryObserver observer
+            in CaptureObservers())
+        {
+            try
+            {
+                observer.OnAttachmentPublished(
+                    publication);
+            }
+            catch
+            {
+                // Inventory observers are observational. One observer must
+                // not fail the inventory mutation or later observers.
+            }
+        }
+    }
+
+    private void PublishAttachmentEnded(
+        RuntimeEndpointAttachmentEnded ending)
+    {
+        foreach (
+            IRuntimeEndpointAttachmentInventoryObserver observer
+            in CaptureObservers())
+        {
+            try
+            {
+                observer.OnAttachmentEnded(
+                    ending);
+            }
+            catch
+            {
+                // Inventory observers are observational. One observer must
+                // not fail the inventory mutation or later observers.
+            }
+        }
+    }
+
+    private IRuntimeEndpointAttachmentInventoryObserver[] CaptureObservers()
+    {
+        lock (_observerSyncRoot)
+        {
+            return _observers.ToArray();
+        }
+    }
+
+    private void Unsubscribe(
+        IRuntimeEndpointAttachmentInventoryObserver observer)
+    {
+        lock (_observerSyncRoot)
+        {
+            _observers.Remove(
+                observer);
+        }
+    }
+
+    private void ClearObservers()
+    {
+        lock (_observerSyncRoot)
+        {
+            _observers.Clear();
+        }
+    }
+
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(
             _isDisposed,
             this);
+    }
+
+    private sealed class ObserverRegistration
+        : IDisposable
+    {
+        private RuntimeEndpointAttachmentInventory? _inventory;
+
+        private IRuntimeEndpointAttachmentInventoryObserver? _observer;
+
+        public ObserverRegistration(
+            RuntimeEndpointAttachmentInventory inventory,
+            IRuntimeEndpointAttachmentInventoryObserver observer)
+        {
+            _inventory =
+                inventory;
+
+            _observer =
+                observer;
+        }
+
+        public void Dispose()
+        {
+            RuntimeEndpointAttachmentInventory? inventory =
+                Interlocked.Exchange(
+                    ref _inventory,
+                    null);
+
+            IRuntimeEndpointAttachmentInventoryObserver? observer =
+                Interlocked.Exchange(
+                    ref _observer,
+                    null);
+
+            if (inventory is null
+                || observer is null)
+            {
+                return;
+            }
+
+            inventory.Unsubscribe(
+                observer);
+        }
     }
 }
