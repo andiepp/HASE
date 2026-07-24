@@ -40,6 +40,13 @@ public sealed class RuntimeHostObservationService
             new(
                 ReferenceEqualityComparer.Instance);
 
+    private readonly Dictionary<
+        RuntimeEndpointAttachmentInventoryEntry,
+        RuntimeHostEventObservationAdapter>
+        _eventAdapters =
+            new(
+                ReferenceEqualityComparer.Instance);
+
     private bool _isDisposed;
 
     internal RuntimeHostObservationService(
@@ -88,6 +95,9 @@ public sealed class RuntimeHostObservationService
                     attachment);
 
                 EnsurePropertyValueAdapter(
+                    attachment);
+
+                EnsureEventAdapter(
                     attachment);
             }
 
@@ -138,6 +148,9 @@ public sealed class RuntimeHostObservationService
 
                 EnsurePropertyValueAdapter(
                     change.Attachment);
+
+                EnsureEventAdapter(
+                    change.Attachment);
             }
             else if (change.Kind
                      == RuntimeHostAttachmentProjectionChangeKind.Ended)
@@ -146,6 +159,9 @@ public sealed class RuntimeHostObservationService
                     change.Attachment.Entry);
 
                 RetirePropertyValueAdapter(
+                    change.Attachment.Entry);
+
+                RetireEventAdapter(
                     change.Attachment.Entry);
             }
 
@@ -174,6 +190,7 @@ public sealed class RuntimeHostObservationService
         BufferedRuntimeHostObservationSubscription[] subscriptions;
         RuntimeHostConnectionStatusObservationAdapter[] adapters;
         RuntimeHostPropertyValueObservationAdapter[] propertyAdapters;
+        RuntimeHostEventObservationAdapter[] eventAdapters;
 
         lock (_syncRoot)
         {
@@ -199,6 +216,11 @@ public sealed class RuntimeHostObservationService
                 _propertyValueAdapters.Values.ToArray();
 
             _propertyValueAdapters.Clear();
+
+            eventAdapters =
+                _eventAdapters.Values.ToArray();
+
+            _eventAdapters.Clear();
         }
 
         _projectionRegistration.Dispose();
@@ -213,6 +235,13 @@ public sealed class RuntimeHostObservationService
         foreach (
             RuntimeHostPropertyValueObservationAdapter adapter
             in propertyAdapters)
+        {
+            adapter.Dispose();
+        }
+
+        foreach (
+            RuntimeHostEventObservationAdapter adapter
+            in eventAdapters)
         {
             adapter.Dispose();
         }
@@ -389,6 +418,65 @@ public sealed class RuntimeHostObservationService
                                 change.Property.Descriptor.Id,
                                 change.PreviousValue,
                                 change.CurrentValue)));
+            }
+        }
+    }
+
+    private void EnsureEventAdapter(
+        RuntimeHostPublishedAttachment attachment)
+    {
+        if (_eventAdapters.ContainsKey(
+                attachment.Entry))
+        {
+            return;
+        }
+
+        _eventAdapters.Add(
+            attachment.Entry,
+            new RuntimeHostEventObservationAdapter(
+                attachment,
+                PublishEventOccurrence));
+    }
+
+    private void RetireEventAdapter(
+        RuntimeEndpointAttachmentInventoryEntry entry)
+    {
+        if (_eventAdapters.Remove(
+                entry,
+                out RuntimeHostEventObservationAdapter? adapter))
+        {
+            adapter.Dispose();
+        }
+    }
+
+    private void PublishEventOccurrence(
+        RuntimeHostPublishedAttachment attachment,
+        RuntimeEventOccurrence occurrence)
+    {
+        lock (_syncRoot)
+        {
+            if (_isDisposed
+                || !_eventAdapters.ContainsKey(
+                    attachment.Entry))
+            {
+                return;
+            }
+
+            foreach (
+                BufferedRuntimeHostObservationSubscription subscription
+                in _subscriptions.ToArray())
+            {
+                subscription.TryEnqueue(
+                    sequence =>
+                        new RuntimeHostObservation(
+                            sequence,
+                            attachment.Entry.EndpointId,
+                            attachment.Generation,
+                            new RuntimeHostEventOccurredObservationPayload(
+                                occurrence.Event.Instrument.Descriptor.Id,
+                                occurrence.Event.Descriptor.Path,
+                                occurrence.TimestampUtc,
+                                occurrence.Value)));
             }
         }
     }
