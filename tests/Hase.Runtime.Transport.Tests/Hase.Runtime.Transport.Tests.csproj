@@ -22,6 +22,7 @@
 		<ProjectReference Include="..\..\src\Hase.CompactProtocol\Hase.CompactProtocol.csproj" />
 		<ProjectReference Include="..\..\src\Hase.Core\Hase.Core.csproj" />
 		<ProjectReference Include="..\..\src\Hase.Runtime\Hase.Runtime.csproj" />
+		<ProjectReference Include="..\..\src\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
 		<ProjectReference Include="..\..\src\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
 		<ProjectReference Include="..\..\src\Hase.Transport\Hase.Transport.csproj" />
 	</ItemGroup>
