@@ -2,7 +2,7 @@
   "profiles": {
     "HASE.ProtocolExplorer": {
       "commandName": "Project",
-      "commandLineArgs": "c025"
+      "commandLineArgs": "c026 arduino"
     }
   }
 }
