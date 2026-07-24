@@ -545,8 +545,9 @@ Implemented:
 - concurrent first-run convergence;
 - file-backed snapshot composition over the host-owned inventory.
 
-Properties, current cached values, Commands, Events, and active operation
-targeting remain in the dedicated application-service increments below.
+Normalized Properties and active Property targeting are completed in Phase 7.3.
+Commands, Events, and live observation remain in the dedicated
+application-service increments below.
 
 ## 7.2 Runtime-Host Inventory Query Service
 
@@ -567,15 +568,50 @@ Implemented:
 
 ## 7.3 Normalized Property Operations
 
-**Status:** [Planned] Planned
+**Status:** [Completed] Implemented, automated, and physically verified
 
-Provide transport-independent cached-value queries, explicit authoritative
-reads, endpoint-confirmed writes, validation, cancellation, and normalized
-operation failures for both native and compact endpoints.
+Architecture: ADR-0027 - Normalized Northbound Property Operations.
 
-Cached-value queries remain distinct from live endpoint reads. Requested writes
-do not update the runtime cache until endpoint confirmation or another
-authoritative protocol result.
+Implemented:
+
+- immutable generation-scoped `RuntimeHostPropertyTarget`;
+- immutable `PublishedRuntimePropertySnapshot`;
+- separate cached queries, authoritative reads, and endpoint-confirmed writes;
+- normalized success and failure statuses;
+- descriptor-based requested-value validation;
+- one shared attachment-generation authority for snapshots and operations;
+- attachment-bound Property operation ports retained by host-owned sessions;
+- native Protocol Version 1 Property adapter;
+- Compact Serial Protocol Property adapter;
+- compact logical-to-wire reverse lookup hidden below the application boundary;
+- cache updates only from authoritative endpoint results;
+- public `IRuntimeHostPropertyService`;
+- composition over the exact inventory projection used by published snapshots;
+- automated common-contract validation for native and compact endpoints;
+- Protocol Explorer C-026.
+
+Physical C-026 validation confirmed:
+
+```text
+ESP32:
+    published Ready attachment
+    -> cached temperature
+    -> authoritative temperature read
+    -> orderly detachment
+    -> Disconnected
+
+Arduino Uno:
+    published Ready attachment
+    -> cached LED state
+    -> authoritative LED-state read
+    -> endpoint-confirmed toggled write
+    -> restoration of original LED state
+    -> orderly detachment
+    -> Disconnected
+```
+
+The runtime host retains all discovery, attachment, supervision, recovery,
+detachment, and disposal ownership.
 
 ## 7.4 Normalized Command Execution
 
@@ -603,11 +639,14 @@ live observation.
 
 ## 7.6 Unified Native and Compact Validation
 
-**Status:** [Planned] Planned
+**Status:** [Active] Property operations completed
 
-Validate native Protocol Version 1 and Compact Serial Protocol endpoints through
-the same in-process northbound application-service contracts before selecting a
-remote wire technology.
+Normalized Property operations are automated and physically validated for
+native Protocol Version 1 and Compact Serial Protocol endpoints through the same
+in-process northbound application-service contract.
+
+Command and observation validation remain pending before remote wire-technology
+selection.
 
 ## 7.7 Remote API Technology
 
@@ -737,15 +776,15 @@ Current documentation includes:
 - `C-023-USB-Serial-Endpoint-Discovery.md`;
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
-- ADR-0001 through ADR-0026.
+- ADR-0001 through ADR-0027.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-025 and their validation baselines
-   current.
+1. Keep physical capabilities C-015 through C-026 and their validation
+   baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
-3. Keep the Phase 7 northbound API boundary and identity foundation aligned
-   with ADR-0023 through ADR-0026.
+3. Keep the Phase 7 northbound API boundary, identity foundation, and normalized
+   Property service aligned with ADR-0023 through ADR-0027.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -757,17 +796,13 @@ Next:
 
 # Current Priorities
 
-1. Implement Phase 7.3 normalized Property operations with distinct cached and
-   authoritative-read semantics.
-2. Scope active Property operations to authoritative `EndpointId` and expected
-   attachment generation.
-3. Implement Phase 7.4 normalized Command execution.
-4. Implement Phase 7.5 lifecycle, Property, and Event observation.
-5. Validate both physical endpoint families through the same in-process
-   northbound contract.
-6. Select the remote wire technology only after the service boundary is
+1. Implement Phase 7.4 normalized Command execution.
+2. Implement Phase 7.5 lifecycle, Property, and Event observation.
+3. Validate normalized Commands and observations through both endpoint families
+   where supported.
+4. Select the remote wire technology only after the service boundary is
    validated.
-7. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+5. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
 

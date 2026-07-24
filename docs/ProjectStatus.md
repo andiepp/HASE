@@ -23,8 +23,9 @@ physical command execution, physical event notification, IPv4 network endpoint
 discovery, explicit runtime-host-owned endpoint attachment, the authoritative
 runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
-serial endpoint attachment, and compact serial unsolicited event notification
-are implemented. Phase 6 is complete at the C-025 baseline.
+serial endpoint attachment, compact serial unsolicited event notification, and
+normalized northbound Property operations are implemented. Phase 6 is complete
+at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -32,19 +33,25 @@ runtime-host inventory and normalized Properties, Commands, Events, connection
 status, and live observation without exposing or transferring ownership of
 physical endpoint lifecycles.
 
-The Phase 7.1 snapshot and identity foundation is implemented. It provides
+The Phase 7 snapshot, identity, inventory-query, and normalized Property
+foundations are implemented. They provide
 stable runtime-host identity, API contract versioning, immutable endpoint
 attachment snapshots, opaque attachment generations, authoritative inventory
 list and lookup projection, identity resolution precedence, atomic
-cross-process file persistence, and file-backed snapshot composition.
+cross-process file persistence, file-backed snapshot composition, cached
+Property queries, authoritative Property reads, endpoint-confirmed Property
+writes, shared generation authority, and normalized native/compact operation
+results.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
+C-026 validates the same public northbound Property service through both
+physical endpoint families.
 
 The current verified baseline is:
 
 ```text
-1,849 automated tests passing
+1,998 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -56,6 +63,7 @@ Compact serial endpoint attachment verified
 Compact serial event notification verified
 Arduino Uno USB-unplug/replug recovery verified
 Arduino Uno hardware-reset recovery verified
+Physical native and compact northbound Property access verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -303,11 +311,26 @@ Implemented Phase 7 foundation:
 - atomic non-overwriting first-run identity publication;
 - concurrent first-run convergence on one authoritative identity;
 - file-backed runtime-host snapshot composition;
+- shared attachment-generation authority for snapshots and active operations;
+- immutable generation-scoped Property targets and cached snapshots;
+- normalized cached-query and authoritative-operation statuses;
+- attachment-bound Property operation ports;
+- native Protocol Version 1 and Compact Serial Protocol Property adapters;
+- logical compact Property reverse lookup without exposing compact identifiers;
+- descriptor-based requested-value validation;
+- normalized cached Property queries, authoritative reads, and
+  endpoint-confirmed writes;
+- public `IRuntimeHostPropertyService`;
+- snapshot composition exposing the Property service over the exact same
+  attachment projection used by inventory snapshots;
+- automated native/compact contract integration;
+- physical C-026 native cached and authoritative temperature reads;
+- physical C-026 compact cached/read/write/restore LED-state validation;
 - preservation of runtime-host ownership for attachment and endpoint
   lifecycles.
 
-Normalized Property, Command, Event, and live-observation application services
-remain the next Phase 7 work. No remote wire technology has been selected.
+Normalized Command, Event, and live-observation application services remain the
+next Phase 7 work. No remote wire technology has been selected.
 
 ---
 
@@ -366,7 +389,8 @@ responsive.
 ## Northbound Runtime-Host Foundation
 
 `Hase.Runtime.Northbound` contains the transport-independent application-facing
-snapshot and identity foundation.
+snapshot, identity, inventory-query, and normalized Property service
+foundations.
 
 The authoritative attachment inventory is projected into immutable published
 endpoint snapshots containing:
@@ -390,8 +414,25 @@ atomic non-overwriting publication. Malformed, inaccessible, incompatible, or
 ambiguous persistence fails safely and is never treated as an empty store.
 
 `RuntimeHostNorthboundSnapshotComposition` resolves identity once and composes
-snapshot providers over the host-owned attachment inventory. It does not own,
-attach, detach, supervise, recover, or dispose endpoints.
+snapshot providers and `IRuntimeHostPropertyService` over one shared
+attachment-generation projection of the host-owned inventory.
+
+The Property service exposes:
+
+```text
+GetCached(target)
+ReadAsync(target)
+WriteAsync(target, requestedValue)
+```
+
+Every target contains authoritative `EndpointId`, expected attachment
+generation, `InstrumentId`, and `PropertyId`. Cached queries never communicate
+with the endpoint. Explicit reads return only authoritative endpoint results.
+Writes update the cache only after endpoint confirmation. Native and compact
+operation details remain hidden behind attachment-bound adapters.
+
+The composition and Property service do not own, attach, detach, replace,
+supervise, recover, or dispose endpoints.
 
 ## Compact Protocol
 
@@ -426,6 +467,11 @@ The BME280 instrument exposes Temperature, Relative Humidity, and Air Pressure.
 The GPIO controller exposes Boolean properties, commands, and events. Physical
 GPIO17 notification was validated through the complete duplex path and after
 connection recovery.
+
+C-026 additionally validates the public northbound Property service against the
+physical temperature Property. The published attachment generation scopes both
+the cached query and authoritative read. Orderly host detachment ends in
+`Disconnected`.
 
 The verified IPv4 address during physical discovery was `192.168.0.223`. The
 address is dynamically discovered reachability information, not authoritative
@@ -464,7 +510,9 @@ Physical validation now covers:
 - C-023 automatic Windows USB serial discovery and authoritative bootstrap;
 - C-024 explicitly selected compact runtime-host attachment;
 - C-025 unsolicited D7 event delivery, no replay, observer continuity, hardware
-  reset recovery, and USB unplug/replug recovery.
+  reset recovery, and USB unplug/replug recovery;
+- C-026 northbound cached LED query, authoritative read, endpoint-confirmed
+  write, restoration of the original state, and orderly detachment.
 
 ### C-025 event identity
 
@@ -673,6 +721,9 @@ Explorer tracing.
   demultiplexing, descriptor event mappings, current-connection authority,
   native runtime event routing, observer continuity, no queue/replay, bounded
   reset recovery, and physical Arduino Uno validation.
+- C-026 - Generation-scoped physical northbound Property access through one
+  public service for native Protocol Version 1 and Compact Serial Protocol
+  endpoints.
 
 ---
 
@@ -680,7 +731,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-1,849 automated tests pass
+1,998 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -721,13 +772,22 @@ First-run identity creation is atomic and converges across concurrent callers
 Malformed or incompatible identity documents fail without replacement
 File-backed composition supplies the resolved identity to snapshot publication
 Runtime-host snapshot composition does not dispose the attachment inventory
+C-026 publishes the physical ESP32 and Arduino Uno through immutable inventory
+snapshots
+C-026 uses the published attachment generation for every Property target
+C-026 reads the physical ESP32 temperature through cached and authoritative
+northbound operations
+C-026 reads, toggles, confirms, and restores the physical Arduino Uno LED state
+through the same northbound Property service
+C-026 orderly detachment ends both physical endpoint families in Disconnected
+Protocol Explorer C-026 exits with code 0 for both endpoint families
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0026 are accepted.
+ADR-0001 through ADR-0027 are accepted.
 
 Relevant recent decisions:
 
@@ -742,6 +802,7 @@ Relevant recent decisions:
 - ADR-0024 - Stable Runtime-Host Identity.
 - ADR-0025 - Runtime-Host Identity Resolution.
 - ADR-0026 - File-Based Runtime-Host Identity Store.
+- ADR-0027 - Normalized Northbound Property Operations.
 
 ---
 
@@ -762,7 +823,7 @@ The current implementation intentionally excludes:
 - formal compact-profile negotiation;
 - persistent event history and replay;
 - additional compact scalar/event-value encodings;
-- normalized northbound Property, Command, Event, and observation services;
+- normalized northbound Command, Event, and observation services;
 - northbound remote API mapping;
 - Tailscale runtime-host discovery.
 
@@ -770,15 +831,14 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Define normalized Property operations with separate cached-value and
-   authoritative endpoint-read semantics.
-2. Define attachment-generation-scoped Property operation targeting.
-3. Normalize native and compact Command operations behind one application
+1. Normalize native and compact Command operations behind one application
    service.
-4. Define lifecycle, Property, and Event observation services.
-5. Validate both physical endpoint families through the same in-process
-   northbound service contract before selecting a remote wire technology.
-6. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+2. Define lifecycle, Property, and Event observation services.
+3. Validate normalized Commands and observations through both endpoint
+   families where supported.
+4. Select a remote wire technology only after the transport-independent
+   operational service boundary is complete and validated.
+5. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
 
