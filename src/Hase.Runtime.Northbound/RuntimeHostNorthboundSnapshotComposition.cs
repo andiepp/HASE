@@ -3,21 +3,36 @@
 namespace Hase.Runtime.Northbound;
 
 /// <summary>
-/// Represents the resolved identity, snapshot services, Property service, and
-/// Command service composed for one runtime host.
+/// Represents the resolved identity and normalized northbound services
+/// composed for one runtime host.
 /// </summary>
 /// <remarks>
-/// This composition projects a host-owned attachment inventory. It does not
-/// own or dispose the inventory or any endpoint lifecycle resources.
+/// This composition projects a host-owned attachment inventory. It owns its
+/// observation subscriptions and projection registrations, but it does not own
+/// or dispose the inventory or any endpoint lifecycle resources.
 /// </remarks>
 public sealed class RuntimeHostNorthboundSnapshotComposition
+    : IAsyncDisposable
 {
+    private readonly RuntimeHostAttachmentProjection
+        _attachmentProjection;
+
+    private readonly RuntimeHostObservationService
+        _observationService;
+
+    private readonly object _disposeSyncRoot =
+        new();
+
+    private Task? _disposeTask;
+
     private RuntimeHostNorthboundSnapshotComposition(
         RuntimeHostIdentityResolution identityResolution,
         IRuntimeHostInventorySnapshotProvider inventorySnapshotProvider,
         IRuntimeHostSnapshotProvider snapshotProvider,
         IRuntimeHostPropertyService propertyService,
-        IRuntimeHostCommandService commandService)
+        IRuntimeHostCommandService commandService,
+        RuntimeHostAttachmentProjection attachmentProjection,
+        RuntimeHostObservationService observationService)
     {
         IdentityResolution =
             identityResolution;
@@ -33,53 +48,45 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
 
         CommandService =
             commandService;
+
+        _attachmentProjection =
+            attachmentProjection;
+
+        _observationService =
+            observationService;
     }
 
-    /// <summary>
-    /// Gets the authoritative runtime-host identity resolution.
-    /// </summary>
     public RuntimeHostIdentityResolution IdentityResolution
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the northbound projection of the host-owned attachment inventory.
-    /// </summary>
     public IRuntimeHostInventorySnapshotProvider InventorySnapshotProvider
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the complete runtime-host snapshot provider.
-    /// </summary>
     public IRuntimeHostSnapshotProvider SnapshotProvider
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the generation-scoped cached and authoritative Property service.
-    /// </summary>
     public IRuntimeHostPropertyService PropertyService
     {
         get;
     }
 
-    /// <summary>
-    /// Gets the generation-scoped normalized Command service.
-    /// </summary>
     public IRuntimeHostCommandService CommandService
     {
         get;
     }
 
     /// <summary>
-    /// Resolves runtime-host identity from explicit configuration or the
-    /// supplied file path and composes northbound snapshot, Property, and
-    /// Command services over the host-owned attachment inventory.
+    /// Gets the normalized live-observation service.
     /// </summary>
+    public IRuntimeHostObservationService ObservationService =>
+        _observationService;
+
     public static async Task<RuntimeHostNorthboundSnapshotComposition>
         CreateFileBackedAsync(
             IRuntimeEndpointAttachmentInventory attachmentInventory,
@@ -107,32 +114,76 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
                 .ConfigureAwait(
                     false);
 
-        var attachmentProjection =
-            new RuntimeHostAttachmentProjection(
-                attachmentInventory);
+        RuntimeHostAttachmentProjection attachmentProjection =
+            attachmentInventory
+                is IRuntimeEndpointAttachmentInventoryObservationSource
+                    observationSource
+                ? new RuntimeHostAttachmentProjection(
+                    attachmentInventory,
+                    observationSource)
+                : new RuntimeHostAttachmentProjection(
+                    attachmentInventory);
 
-        var inventorySnapshotProvider =
-            RuntimeHostInventorySnapshotProvider.CreateShared(
-                attachmentProjection);
+        try
+        {
+            var inventorySnapshotProvider =
+                RuntimeHostInventorySnapshotProvider.CreateShared(
+                    attachmentProjection);
 
-        var snapshotProvider =
-            new RuntimeHostSnapshotProvider(
-                identityResolution.RuntimeHostId,
-                inventorySnapshotProvider);
+            var snapshotProvider =
+                new RuntimeHostSnapshotProvider(
+                    identityResolution.RuntimeHostId,
+                    inventorySnapshotProvider);
 
-        var propertyService =
-            new RuntimeHostPropertyService(
-                attachmentProjection);
+            var propertyService =
+                new RuntimeHostPropertyService(
+                    attachmentProjection);
 
-        var commandService =
-            new RuntimeHostCommandService(
-                attachmentProjection);
+            var commandService =
+                new RuntimeHostCommandService(
+                    attachmentProjection);
 
-        return new RuntimeHostNorthboundSnapshotComposition(
-            identityResolution,
-            inventorySnapshotProvider,
-            snapshotProvider,
-            propertyService,
-            commandService);
+            var observationService =
+                new RuntimeHostObservationService(
+                    identityResolution.RuntimeHostId,
+                    attachmentProjection);
+
+            return new RuntimeHostNorthboundSnapshotComposition(
+                identityResolution,
+                inventorySnapshotProvider,
+                snapshotProvider,
+                propertyService,
+                commandService,
+                attachmentProjection,
+                observationService);
+        }
+        catch
+        {
+            attachmentProjection.Dispose();
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        lock (_disposeSyncRoot)
+        {
+            _disposeTask ??=
+                DisposeCoreAsync();
+
+            return new ValueTask(
+                _disposeTask);
+        }
+    }
+
+    private async Task DisposeCoreAsync()
+    {
+        await _observationService
+            .DisposeAsync()
+            .ConfigureAwait(
+                false);
+
+        _attachmentProjection.Dispose();
     }
 }
