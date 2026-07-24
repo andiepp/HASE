@@ -70,6 +70,40 @@ public sealed class EndpointAttachmentSessionTests
     }
 
     [Fact]
+    public void Constructor_ExplicitPropertyOperations_ShouldExposeSamePort()
+    {
+        IEndpointAttachmentPropertyOperations propertyOperations =
+            UnavailableEndpointAttachmentPropertyOperations.Instance;
+
+        var session =
+            new EndpointAttachmentSession(
+                CreateRequest(),
+                CreateRuntimeEndpoint(),
+                propertyOperations,
+                Array.Empty<IAsyncDisposable>());
+
+        Assert.Same(
+            propertyOperations,
+            session.PropertyOperations);
+    }
+
+    [Fact]
+    public void Constructor_NullPropertyOperations_ShouldThrow()
+    {
+        void Act()
+        {
+            _ = new EndpointAttachmentSession(
+                CreateRequest(),
+                CreateRuntimeEndpoint(),
+                null!,
+                Array.Empty<IAsyncDisposable>());
+        }
+
+        Assert.Throws<ArgumentNullException>(
+            Act);
+    }
+
+    [Fact]
     public void Constructor_NullOwnedResources_ShouldThrow()
     {
         // Act

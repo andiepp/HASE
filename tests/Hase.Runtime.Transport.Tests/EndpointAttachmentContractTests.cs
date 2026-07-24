@@ -47,6 +47,21 @@ public sealed class EndpointAttachmentContractTests
     }
 
     [Fact]
+    public void AttachmentSession_ShouldExposeAttachmentBoundPropertyOperations()
+    {
+        Type? propertyOperationsType =
+            typeof(IEndpointAttachmentSession)
+                .GetProperty(
+                    nameof(
+                        IEndpointAttachmentSession.PropertyOperations))
+                ?.PropertyType;
+
+        Assert.Equal(
+            typeof(IEndpointAttachmentPropertyOperations),
+            propertyOperationsType);
+    }
+
+    [Fact]
     public void AttachmentSession_ShouldExposeCancellableShutdown()
     {
         // Act

@@ -91,6 +91,7 @@ internal sealed class EndpointAttachmentSuccessfulPath
             return new EndpointAttachmentSession(
                 request,
                 runtimeEndpoint,
+                operationalResources.PropertyOperations,
                 ownedResources);
         }
         catch (Exception attachmentFailure)

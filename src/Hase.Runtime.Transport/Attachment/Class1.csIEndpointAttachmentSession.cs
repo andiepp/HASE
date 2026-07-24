@@ -31,6 +31,13 @@ public interface IEndpointAttachmentSession
     }
 
     /// <summary>
+    /// Gets the transport-independent Property operation port permanently
+    /// bound to this attachment.
+    /// </summary>
+    IEndpointAttachmentPropertyOperations PropertyOperations =>
+        UnavailableEndpointAttachmentPropertyOperations.Instance;
+
+    /// <summary>
     /// Performs an orderly shutdown of the attachment lifecycle.
     /// </summary>
     /// <remarks>

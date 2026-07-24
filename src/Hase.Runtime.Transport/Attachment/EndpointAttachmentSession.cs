@@ -20,11 +20,31 @@ public sealed class EndpointAttachmentSession
     /// <summary>
     /// Initializes an endpoint attachment session.
     /// </summary>
+    public EndpointAttachmentSession(
+        EndpointAttachmentRequest request,
+        RuntimeEndpoint runtimeEndpoint,
+        IEnumerable<IAsyncDisposable>
+            ownedResourcesInShutdownOrder)
+        : this(
+            request,
+            runtimeEndpoint,
+            UnavailableEndpointAttachmentPropertyOperations.Instance,
+            ownedResourcesInShutdownOrder)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an endpoint attachment session with its attachment-bound
+    /// Property operation port.
+    /// </summary>
     /// <param name="request">
     /// The explicit request that created the attachment.
     /// </param>
     /// <param name="runtimeEndpoint">
     /// The attached and initially synchronized runtime endpoint.
+    /// </param>
+    /// <param name="propertyOperations">
+    /// The transport-independent Property port bound to this attachment.
     /// </param>
     /// <param name="ownedResourcesInShutdownOrder">
     /// Resources owned by the session in the exact order in which they
@@ -33,6 +53,7 @@ public sealed class EndpointAttachmentSession
     public EndpointAttachmentSession(
         EndpointAttachmentRequest request,
         RuntimeEndpoint runtimeEndpoint,
+        IEndpointAttachmentPropertyOperations propertyOperations,
         IEnumerable<IAsyncDisposable>
             ownedResourcesInShutdownOrder)
     {
@@ -45,6 +66,11 @@ public sealed class EndpointAttachmentSession
             runtimeEndpoint
             ?? throw new ArgumentNullException(
                 nameof(runtimeEndpoint));
+
+        PropertyOperations =
+            propertyOperations
+            ?? throw new ArgumentNullException(
+                nameof(propertyOperations));
 
         ArgumentNullException.ThrowIfNull(
             ownedResourcesInShutdownOrder);
@@ -73,6 +99,12 @@ public sealed class EndpointAttachmentSession
 
     /// <inheritdoc />
     public RuntimeEndpoint RuntimeEndpoint
+    {
+        get;
+    }
+
+    /// <inheritdoc />
+    public IEndpointAttachmentPropertyOperations PropertyOperations
     {
         get;
     }
