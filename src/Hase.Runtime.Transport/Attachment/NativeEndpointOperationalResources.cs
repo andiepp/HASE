@@ -28,6 +28,12 @@ internal sealed class NativeEndpointOperationalResources
                 NativeEndpointAttachmentPropertyOperations
                     .DefaultOperationTimeout);
 
+        CommandOperations =
+            new NativeEndpointAttachmentCommandOperations(
+                coordinator,
+                NativeEndpointAttachmentCommandOperations
+                    .DefaultOperationTimeout);
+
         ConnectionManager =
             connectionManager;
 
@@ -59,6 +65,15 @@ internal sealed class NativeEndpointOperationalResources
     /// native coordinator.
     /// </summary>
     public IEndpointAttachmentPropertyOperations PropertyOperations
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the transport-independent Command port bound to this attachment's
+    /// native coordinator.
+    /// </summary>
+    public IEndpointAttachmentCommandOperations CommandOperations
     {
         get;
     }
