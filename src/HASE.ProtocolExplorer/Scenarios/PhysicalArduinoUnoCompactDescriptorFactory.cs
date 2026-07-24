@@ -67,7 +67,8 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
             DescriptorReference,
             descriptorDefinition,
             CreatePropertyMappings(),
-            CreateEventMappings());
+            CreateEventMappings(),
+            CreateCommandMappings());
     }
 
     public static EndpointDescriptorDefinition CreateDefinition()
@@ -192,6 +193,18 @@ internal static class PhysicalArduinoUnoCompactDescriptorFactory
                 ControllerInstrumentId,
                 ButtonPressedEventPath,
                 CompactEventValueEncoding.None)
+        ];
+    }
+
+    private static IReadOnlyList<CompactCommandMapping>
+        CreateCommandMappings()
+    {
+        return
+        [
+            new CompactCommandMapping(
+                ToggleBuiltInLedCompactCommandId,
+                ControllerInstrumentId,
+                ToggleBuiltInLedCommandPath)
         ];
     }
 }
