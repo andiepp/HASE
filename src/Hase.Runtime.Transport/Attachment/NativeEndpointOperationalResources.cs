@@ -22,6 +22,12 @@ internal sealed class NativeEndpointOperationalResources
         Coordinator =
             coordinator;
 
+        PropertyOperations =
+            new NativeEndpointAttachmentPropertyOperations(
+                coordinator,
+                NativeEndpointAttachmentPropertyOperations
+                    .DefaultOperationTimeout);
+
         ConnectionManager =
             connectionManager;
 
@@ -44,6 +50,15 @@ internal sealed class NativeEndpointOperationalResources
     /// Gets the coordinator that owns runtime protocol bindings.
     /// </summary>
     internal RuntimeEndpointConnectionCoordinator Coordinator
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the transport-independent Property port bound to this attachment's
+    /// native coordinator.
+    /// </summary>
+    internal IEndpointAttachmentPropertyOperations PropertyOperations
     {
         get;
     }

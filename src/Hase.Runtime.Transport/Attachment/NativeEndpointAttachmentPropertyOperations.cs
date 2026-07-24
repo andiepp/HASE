@@ -13,6 +13,13 @@ namespace Hase.Runtime.Transport.Attachment;
 internal sealed class NativeEndpointAttachmentPropertyOperations
     : IEndpointAttachmentPropertyOperations
 {
+    internal static TimeSpan DefaultOperationTimeout
+    {
+        get;
+    } =
+        TimeSpan.FromSeconds(
+            5);
+
     private static int _nextCorrelationId;
 
     private readonly RuntimeEndpoint _runtimeEndpoint;
