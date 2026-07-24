@@ -154,6 +154,32 @@ internal sealed class RuntimeHostAttachmentProjection
     }
 
     /// <summary>
+    /// Atomically captures current attachments and their internal change-order
+    /// boundary.
+    /// </summary>
+    public RuntimeHostAttachmentProjectionSnapshot Capture()
+    {
+        if (!_isObserved)
+        {
+            _ =
+                List();
+        }
+
+        lock (_syncRoot)
+        {
+            ThrowIfDisposed();
+
+            return new RuntimeHostAttachmentProjectionSnapshot(
+                _nextChangeOrder,
+                _generations.Select(
+                    pair =>
+                        new RuntimeHostPublishedAttachment(
+                            pair.Key,
+                            pair.Value)));
+        }
+    }
+
+    /// <summary>
     /// Registers an observer for later ordered projection changes.
     /// </summary>
     public IDisposable Subscribe(
