@@ -3,8 +3,8 @@
 namespace Hase.Runtime.Northbound;
 
 /// <summary>
-/// Represents the resolved identity and snapshot services composed for one
-/// runtime host.
+/// Represents the resolved identity, snapshot services, and Property service
+/// composed for one runtime host.
 /// </summary>
 /// <remarks>
 /// This composition projects a host-owned attachment inventory. It does not
@@ -15,7 +15,8 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
     private RuntimeHostNorthboundSnapshotComposition(
         RuntimeHostIdentityResolution identityResolution,
         IRuntimeHostInventorySnapshotProvider inventorySnapshotProvider,
-        IRuntimeHostSnapshotProvider snapshotProvider)
+        IRuntimeHostSnapshotProvider snapshotProvider,
+        IRuntimeHostPropertyService propertyService)
     {
         IdentityResolution =
             identityResolution;
@@ -25,6 +26,9 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
 
         SnapshotProvider =
             snapshotProvider;
+
+        PropertyService =
+            propertyService;
     }
 
     /// <summary>
@@ -52,9 +56,17 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
     }
 
     /// <summary>
+    /// Gets the generation-scoped cached and authoritative Property service.
+    /// </summary>
+    public IRuntimeHostPropertyService PropertyService
+    {
+        get;
+    }
+
+    /// <summary>
     /// Resolves runtime-host identity from explicit configuration or the
-    /// supplied file path and composes northbound snapshot services over the
-    /// host-owned attachment inventory.
+    /// supplied file path and composes northbound snapshot and Property
+    /// services over the host-owned attachment inventory.
     /// </summary>
     public static async Task<RuntimeHostNorthboundSnapshotComposition>
         CreateFileBackedAsync(
@@ -83,18 +95,27 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
                 .ConfigureAwait(
                     false);
 
-        var inventorySnapshotProvider =
-            new RuntimeHostInventorySnapshotProvider(
+        var attachmentProjection =
+            new RuntimeHostAttachmentProjection(
                 attachmentInventory);
+
+        var inventorySnapshotProvider =
+            RuntimeHostInventorySnapshotProvider.CreateShared(
+                attachmentProjection);
 
         var snapshotProvider =
             new RuntimeHostSnapshotProvider(
                 identityResolution.RuntimeHostId,
                 inventorySnapshotProvider);
 
+        var propertyService =
+            new RuntimeHostPropertyService(
+                attachmentProjection);
+
         return new RuntimeHostNorthboundSnapshotComposition(
             identityResolution,
             inventorySnapshotProvider,
-            snapshotProvider);
+            snapshotProvider,
+            propertyService);
     }
 }

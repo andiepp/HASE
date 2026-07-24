@@ -1,5 +1,10 @@
-﻿using Hase.Core.Domain.Identity;
+﻿using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 using Hase.Runtime.Northbound;
+using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 
 namespace Hase.Runtime.Tests.Northbound;
@@ -113,8 +118,56 @@ public sealed class RuntimeHostNorthboundSnapshotCompositionTests
         Assert.IsType<RuntimeHostSnapshotProvider>(
             composition.SnapshotProvider);
 
+        Assert.IsType<RuntimeHostPropertyService>(
+            composition.PropertyService);
+
         Assert.False(
             attachmentInventory.IsDisposed);
+    }
+
+    [Fact]
+    public async Task CreateFileBackedAsync_SnapshotsAndPropertiesShareGeneration()
+    {
+        using var directory =
+            new TemporaryDirectory();
+
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry();
+
+        RuntimeHostNorthboundSnapshotComposition composition =
+            await RuntimeHostNorthboundSnapshotComposition
+                .CreateFileBackedAsync(
+                    new TestAttachmentInventory(
+                        entry),
+                    Path.Combine(
+                        directory.Path,
+                        "runtime-host-identity.json"),
+                    new RuntimeHostId(
+                        "runtime-host-shared-generation"));
+
+        PublishedRuntimeEndpointSnapshot endpointSnapshot =
+            Assert.Single(
+                composition.InventorySnapshotProvider.List());
+
+        var target =
+            new RuntimeHostPropertyTarget(
+                endpointSnapshot.EndpointId,
+                endpointSnapshot.Generation,
+                new InstrumentId(
+                    "instrument-one"),
+                new PropertyId(
+                    "property-one"));
+
+        RuntimeHostCachedPropertyResult result =
+            composition.PropertyService.GetCached(
+                target);
+
+        Assert.True(
+            result.IsSuccess);
+
+        Assert.Equal(
+            endpointSnapshot.Generation,
+            result.Snapshot?.Target.AttachmentGeneration);
     }
 
     [Fact]
@@ -184,9 +237,63 @@ public sealed class RuntimeHostNorthboundSnapshotCompositionTests
                 identityDirectoryPath));
     }
 
+    private static RuntimeEndpointAttachmentInventoryEntry CreateEntry()
+    {
+        var propertyDescriptor =
+            new PropertyDescriptor(
+                new PropertyId(
+                    "property-one"),
+                new DescriptorPath(
+                    "Instrument",
+                    "Property"),
+                "Property",
+                new BooleanDataDescriptor());
+
+        var instrumentDescriptor =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "instrument-one"),
+                "Instrument",
+                new InstrumentKind(
+                    "test"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            propertyDescriptor
+                        ])
+            };
+
+        var runtimeEndpoint =
+            new RuntimeEndpoint(
+                new RuntimeContext(),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "endpoint-one"),
+                    [
+                        instrumentDescriptor
+                    ]));
+
+        return new RuntimeEndpointAttachmentInventoryEntry(
+            new TestEndpointAttachmentSession(
+                runtimeEndpoint));
+    }
+
     private sealed class TestAttachmentInventory
         : IRuntimeEndpointAttachmentInventory
     {
+        private readonly IReadOnlyList<
+            RuntimeEndpointAttachmentInventoryEntry>
+            _entries;
+
+        public TestAttachmentInventory(
+            params RuntimeEndpointAttachmentInventoryEntry[] entries)
+        {
+            _entries =
+                entries.ToArray();
+        }
+
         public bool IsDisposed
         {
             get;
@@ -203,12 +310,14 @@ public sealed class RuntimeHostNorthboundSnapshotCompositionTests
         public RuntimeEndpointAttachmentInventoryEntry? Find(
             EndpointId endpointId)
         {
-            return null;
+            return _entries.FirstOrDefault(
+                entry =>
+                    entry.EndpointId == endpointId);
         }
 
         public IReadOnlyList<RuntimeEndpointAttachmentInventoryEntry> List()
         {
-            return [];
+            return _entries.ToArray();
         }
 
         public Task<bool> DetachAsync(
@@ -223,6 +332,41 @@ public sealed class RuntimeHostNorthboundSnapshotCompositionTests
             IsDisposed =
                 true;
 
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TestEndpointAttachmentSession
+        : IEndpointAttachmentSession
+    {
+        public TestEndpointAttachmentSession(
+            RuntimeEndpoint runtimeEndpoint)
+        {
+            RuntimeEndpoint =
+                runtimeEndpoint;
+
+            Request =
+                null!;
+        }
+
+        public EndpointAttachmentRequest Request
+        {
+            get;
+        }
+
+        public RuntimeEndpoint RuntimeEndpoint
+        {
+            get;
+        }
+
+        public Task ShutdownAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync()
+        {
             return ValueTask.CompletedTask;
         }
     }
