@@ -92,6 +92,7 @@ internal sealed class EndpointAttachmentSuccessfulPath
                 request,
                 runtimeEndpoint,
                 operationalResources.PropertyOperations,
+                operationalResources.CommandOperations,
                 ownedResources);
         }
         catch (Exception attachmentFailure)

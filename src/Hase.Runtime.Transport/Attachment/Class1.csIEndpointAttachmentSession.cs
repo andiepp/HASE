@@ -38,6 +38,13 @@ public interface IEndpointAttachmentSession
         UnavailableEndpointAttachmentPropertyOperations.Instance;
 
     /// <summary>
+    /// Gets the transport-independent Command operation port permanently
+    /// bound to this attachment.
+    /// </summary>
+    IEndpointAttachmentCommandOperations CommandOperations =>
+        UnavailableEndpointAttachmentCommandOperations.Instance;
+
+    /// <summary>
     /// Performs an orderly shutdown of the attachment lifecycle.
     /// </summary>
     /// <remarks>

@@ -29,6 +29,7 @@ public sealed class EndpointAttachmentSession
             request,
             runtimeEndpoint,
             UnavailableEndpointAttachmentPropertyOperations.Instance,
+            UnavailableEndpointAttachmentCommandOperations.Instance,
             ownedResourcesInShutdownOrder)
     {
     }
@@ -56,6 +57,42 @@ public sealed class EndpointAttachmentSession
         IEndpointAttachmentPropertyOperations propertyOperations,
         IEnumerable<IAsyncDisposable>
             ownedResourcesInShutdownOrder)
+        : this(
+            request,
+            runtimeEndpoint,
+            propertyOperations,
+            UnavailableEndpointAttachmentCommandOperations.Instance,
+            ownedResourcesInShutdownOrder)
+    {
+    }
+
+    /// <summary>
+    /// Initializes an endpoint attachment session with its attachment-bound
+    /// Property and Command operation ports.
+    /// </summary>
+    /// <param name="request">
+    /// The explicit request that created the attachment.
+    /// </param>
+    /// <param name="runtimeEndpoint">
+    /// The attached and initially synchronized runtime endpoint.
+    /// </param>
+    /// <param name="propertyOperations">
+    /// The transport-independent Property port bound to this attachment.
+    /// </param>
+    /// <param name="commandOperations">
+    /// The transport-independent Command port bound to this attachment.
+    /// </param>
+    /// <param name="ownedResourcesInShutdownOrder">
+    /// Resources owned by the session in the exact order in which they
+    /// must be shut down.
+    /// </param>
+    public EndpointAttachmentSession(
+        EndpointAttachmentRequest request,
+        RuntimeEndpoint runtimeEndpoint,
+        IEndpointAttachmentPropertyOperations propertyOperations,
+        IEndpointAttachmentCommandOperations commandOperations,
+        IEnumerable<IAsyncDisposable>
+            ownedResourcesInShutdownOrder)
     {
         Request =
             request
@@ -71,6 +108,11 @@ public sealed class EndpointAttachmentSession
             propertyOperations
             ?? throw new ArgumentNullException(
                 nameof(propertyOperations));
+
+        CommandOperations =
+            commandOperations
+            ?? throw new ArgumentNullException(
+                nameof(commandOperations));
 
         ArgumentNullException.ThrowIfNull(
             ownedResourcesInShutdownOrder);
@@ -105,6 +147,12 @@ public sealed class EndpointAttachmentSession
 
     /// <inheritdoc />
     public IEndpointAttachmentPropertyOperations PropertyOperations
+    {
+        get;
+    }
+
+    /// <inheritdoc />
+    public IEndpointAttachmentCommandOperations CommandOperations
     {
         get;
     }

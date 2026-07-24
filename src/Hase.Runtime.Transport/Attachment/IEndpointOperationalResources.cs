@@ -14,6 +14,13 @@ internal interface IEndpointOperationalResources
         UnavailableEndpointAttachmentPropertyOperations.Instance;
 
     /// <summary>
+    /// Gets the transport-independent Command port bound to these operational
+    /// resources.
+    /// </summary>
+    IEndpointAttachmentCommandOperations CommandOperations =>
+        UnavailableEndpointAttachmentCommandOperations.Instance;
+
+    /// <summary>
     /// Gets the lifetime that starts and stops endpoint connection
     /// supervision.
     /// </summary>
