@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Descriptors;
+using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 
 namespace Hase.CompactProtocol;
@@ -11,6 +12,11 @@ internal sealed class CompactPropertyMap
 {
     private readonly IReadOnlyDictionary<byte, CompactPropertyMapping>
         _mappingsByCompactPropertyId;
+
+    private readonly IReadOnlyDictionary<
+        (InstrumentId InstrumentId, PropertyId PropertyId),
+        CompactPropertyMapping>
+        _mappingsByPropertyTarget;
 
     public CompactPropertyMap(
         EndpointDescriptorDefinition descriptorDefinition,
@@ -55,6 +61,12 @@ internal sealed class CompactPropertyMap
         _mappingsByCompactPropertyId =
             mappingArray.ToDictionary(
                 mapping => mapping.CompactPropertyId);
+
+        _mappingsByPropertyTarget =
+            mappingArray.ToDictionary(
+                mapping => (
+                    mapping.InstrumentId,
+                    mapping.PropertyId));
     }
 
     public EndpointDescriptorDefinition DescriptorDefinition
@@ -80,6 +92,28 @@ internal sealed class CompactPropertyMap
 
         _mappingsByCompactPropertyId.TryGetValue(
             compactPropertyId,
+            out CompactPropertyMapping? mapping);
+
+        return mapping;
+    }
+
+    /// <summary>
+    /// Finds the compact mapping for one logical Property target.
+    /// </summary>
+    public CompactPropertyMapping? Find(
+        InstrumentId instrumentId,
+        PropertyId propertyId)
+    {
+        ArgumentNullException.ThrowIfNull(
+            instrumentId);
+
+        ArgumentNullException.ThrowIfNull(
+            propertyId);
+
+        _mappingsByPropertyTarget.TryGetValue(
+            (
+                instrumentId,
+                propertyId),
             out CompactPropertyMapping? mapping);
 
         return mapping;

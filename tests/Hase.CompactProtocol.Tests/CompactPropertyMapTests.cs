@@ -106,6 +106,83 @@ public sealed class CompactPropertyMapTests
     }
 
     [Fact]
+    public void Find_KnownLogicalPropertyTarget_ShouldReturnMapping()
+    {
+        CompactPropertyMapping mapping =
+            CreateMapping();
+
+        var map =
+            new CompactPropertyMap(
+                CreateDefinition(),
+                [
+                    mapping
+                ]);
+
+        CompactPropertyMapping? result =
+            map.Find(
+                InstrumentId,
+                LedStatePropertyId);
+
+        Assert.Same(
+            mapping,
+            result);
+    }
+
+    [Fact]
+    public void Find_UnknownLogicalPropertyTarget_ShouldReturnNull()
+    {
+        var map =
+            new CompactPropertyMap(
+                CreateDefinition(),
+                [
+                    CreateMapping()
+                ]);
+
+        CompactPropertyMapping? result =
+            map.Find(
+                InstrumentId,
+                new PropertyId(
+                    "unknown-property"));
+
+        Assert.Null(
+            result);
+    }
+
+    [Fact]
+    public void Find_NullLogicalInstrumentId_ShouldThrow()
+    {
+        var map =
+            new CompactPropertyMap(
+                CreateDefinition(),
+                [
+                    CreateMapping()
+                ]);
+
+        Assert.Throws<ArgumentNullException>(
+            () =>
+                map.Find(
+                    null!,
+                    LedStatePropertyId));
+    }
+
+    [Fact]
+    public void Find_NullLogicalPropertyId_ShouldThrow()
+    {
+        var map =
+            new CompactPropertyMap(
+                CreateDefinition(),
+                [
+                    CreateMapping()
+                ]);
+
+        Assert.Throws<ArgumentNullException>(
+            () =>
+                map.Find(
+                    InstrumentId,
+                    null!));
+    }
+
+    [Fact]
     public void Mapping_ZeroCompactPropertyId_ShouldThrow()
     {
         void Act()
