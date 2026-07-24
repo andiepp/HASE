@@ -14,7 +14,7 @@ public sealed class RuntimeHostInventorySnapshotProviderTests
     {
         Assert.Throws<ArgumentNullException>(
             () => new RuntimeHostInventorySnapshotProvider(
-                null!));
+                (IRuntimeEndpointAttachmentInventory)null!));
     }
 
     [Fact]
@@ -246,6 +246,81 @@ public sealed class RuntimeHostInventorySnapshotProviderTests
         Assert.Null(
             provider.Find(
                 entry.EndpointId));
+    }
+
+    [Fact]
+    public void SharedProjection_ProvidersUseSameGeneration()
+    {
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "shared-projection-endpoint");
+
+        var projection =
+            new RuntimeHostAttachmentProjection(
+                new TestAttachmentInventory(
+                    entry));
+
+        var firstProvider =
+            RuntimeHostInventorySnapshotProvider.CreateShared(
+                projection);
+
+        var secondProvider =
+            RuntimeHostInventorySnapshotProvider.CreateShared(
+                projection);
+
+        Assert.Equal(
+            Assert.Single(
+                    firstProvider.List())
+                .Generation,
+            Assert.Single(
+                    secondProvider.List())
+                .Generation);
+    }
+
+    [Fact]
+    public void SharedProjection_ReattachedEntryReceivesNewGeneration()
+    {
+        RuntimeEndpointAttachmentInventoryEntry firstEntry =
+            CreateEntry(
+                "shared-reattached-endpoint");
+
+        var inventory =
+            new TestAttachmentInventory(
+                firstEntry);
+
+        var projection =
+            new RuntimeHostAttachmentProjection(
+                inventory);
+
+        RuntimeHostPublishedAttachment firstAttachment =
+            Assert.Single(
+                projection.List());
+
+        inventory.SetEntries();
+
+        Assert.Empty(
+            projection.List());
+
+        RuntimeEndpointAttachmentInventoryEntry secondEntry =
+            CreateEntry(
+                "shared-reattached-endpoint");
+
+        inventory.SetEntries(
+            secondEntry);
+
+        RuntimeHostPublishedAttachment secondAttachment =
+            Assert.Single(
+                projection.List());
+
+        Assert.NotEqual(
+            firstAttachment.Generation,
+            secondAttachment.Generation);
+
+        Assert.Same(
+            secondEntry,
+            projection.Find(
+                    secondEntry.EndpointId)
+                ?.Entry);
     }
 
     private static RuntimeEndpointAttachmentInventoryEntry CreateEntry(
