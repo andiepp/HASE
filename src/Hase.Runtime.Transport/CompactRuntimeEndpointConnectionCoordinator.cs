@@ -251,6 +251,52 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
         }
     }
 
+    /// <summary>
+    /// Executes one compact endpoint Command through the active connection.
+    /// </summary>
+    public async Task<CompactCommandExecutionStatus> ExecuteCommandAsync(
+        byte compactCommandId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await _gate.WaitAsync(
+            cancellationToken);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                _disposed,
+                this);
+
+            if (_runtimeEndpoint.ConnectionStatus.State
+                != EndpointConnectionState.Ready)
+            {
+                throw new InvalidOperationException(
+                    "Compact endpoint Commands can be executed only while "
+                    + "the runtime endpoint is Ready.");
+            }
+
+            CompactEndpointConnection activeConnection =
+                _connectionOwner.Current
+                ?? throw new InvalidOperationException(
+                    "The compact runtime endpoint does not have an active "
+                    + "connection.");
+
+            var commandExecutor =
+                new CompactCommandExecutor(
+                    activeConnection.Connection);
+
+            return await commandExecutor.ExecuteAsync(
+                compactCommandId,
+                cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public void MarkFaulted(
         string message)
     {

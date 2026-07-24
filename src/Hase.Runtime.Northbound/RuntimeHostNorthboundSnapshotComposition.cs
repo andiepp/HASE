@@ -3,8 +3,8 @@
 namespace Hase.Runtime.Northbound;
 
 /// <summary>
-/// Represents the resolved identity, snapshot services, and Property service
-/// composed for one runtime host.
+/// Represents the resolved identity, snapshot services, Property service, and
+/// Command service composed for one runtime host.
 /// </summary>
 /// <remarks>
 /// This composition projects a host-owned attachment inventory. It does not
@@ -16,7 +16,8 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
         RuntimeHostIdentityResolution identityResolution,
         IRuntimeHostInventorySnapshotProvider inventorySnapshotProvider,
         IRuntimeHostSnapshotProvider snapshotProvider,
-        IRuntimeHostPropertyService propertyService)
+        IRuntimeHostPropertyService propertyService,
+        IRuntimeHostCommandService commandService)
     {
         IdentityResolution =
             identityResolution;
@@ -29,6 +30,9 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
 
         PropertyService =
             propertyService;
+
+        CommandService =
+            commandService;
     }
 
     /// <summary>
@@ -64,9 +68,17 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
     }
 
     /// <summary>
+    /// Gets the generation-scoped normalized Command service.
+    /// </summary>
+    public IRuntimeHostCommandService CommandService
+    {
+        get;
+    }
+
+    /// <summary>
     /// Resolves runtime-host identity from explicit configuration or the
-    /// supplied file path and composes northbound snapshot and Property
-    /// services over the host-owned attachment inventory.
+    /// supplied file path and composes northbound snapshot, Property, and
+    /// Command services over the host-owned attachment inventory.
     /// </summary>
     public static async Task<RuntimeHostNorthboundSnapshotComposition>
         CreateFileBackedAsync(
@@ -112,10 +124,15 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
             new RuntimeHostPropertyService(
                 attachmentProjection);
 
+        var commandService =
+            new RuntimeHostCommandService(
+                attachmentProjection);
+
         return new RuntimeHostNorthboundSnapshotComposition(
             identityResolution,
             inventorySnapshotProvider,
             snapshotProvider,
-            propertyService);
+            propertyService,
+            commandService);
     }
 }

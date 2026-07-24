@@ -55,6 +55,11 @@ internal sealed class CompactEndpointOperationalResources
                 coordinator,
                 propertyMap);
 
+        CommandOperations =
+            new CompactEndpointAttachmentCommandOperations(
+                coordinator,
+                commandMap);
+
         Supervisor =
             supervisor;
 
@@ -120,6 +125,15 @@ internal sealed class CompactEndpointOperationalResources
     /// compact coordinator and validated Property map.
     /// </summary>
     public IEndpointAttachmentPropertyOperations PropertyOperations
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the transport-independent Command port bound to this attachment's
+    /// compact coordinator and validated Command map.
+    /// </summary>
+    public IEndpointAttachmentCommandOperations CommandOperations
     {
         get;
     }
