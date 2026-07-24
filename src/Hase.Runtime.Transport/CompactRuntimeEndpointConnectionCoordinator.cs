@@ -151,6 +151,56 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
     }
 
     /// <summary>
+    /// Reads one compact endpoint property through the active connection and
+    /// updates the runtime cache only from a successful authoritative response.
+    /// </summary>
+    public async Task<CompactRuntimePropertySynchronizationResult>
+        ReadPropertyAsync(
+            byte compactPropertyId,
+            CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await _gate.WaitAsync(
+            cancellationToken);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                _disposed,
+                this);
+
+            if (_runtimeEndpoint.ConnectionStatus.State
+                != EndpointConnectionState.Ready)
+            {
+                throw new InvalidOperationException(
+                    "Compact endpoint properties can be read only while "
+                    + "the runtime endpoint is Ready.");
+            }
+
+            CompactEndpointConnection activeConnection =
+                _connectionOwner.Current
+                ?? throw new InvalidOperationException(
+                    "The compact runtime endpoint does not have an active "
+                    + "connection.");
+
+            var propertyReader =
+                new CompactRuntimePropertyReader(
+                    activeConnection.Connection,
+                    _propertyMap);
+
+            return await propertyReader.ReadAsync(
+                _runtimeEndpoint,
+                compactPropertyId,
+                cancellationToken);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
     /// Writes one compact endpoint property through the active connection and
     /// updates the runtime cache only from a successful confirmation read.
     /// </summary>

@@ -10,7 +10,7 @@ namespace Hase.Runtime.Transport;
 internal sealed class CompactRuntimePropertySynchronizer
 {
     private readonly CompactPropertyMap _propertyMap;
-    private readonly CompactPropertyReader _propertyReader;
+    private readonly CompactRuntimePropertyReader _propertyReader;
 
     public CompactRuntimePropertySynchronizer(
         ICompactSerialProtocolConnection connection,
@@ -25,7 +25,7 @@ internal sealed class CompactRuntimePropertySynchronizer
                 nameof(propertyMap));
 
         _propertyReader =
-            new CompactPropertyReader(
+            new CompactRuntimePropertyReader(
                 connection,
                 propertyMap);
     }
@@ -50,55 +50,16 @@ internal sealed class CompactRuntimePropertySynchronizer
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            RuntimeProperty runtimeProperty =
-                ResolveRuntimeProperty(
-                    runtimeEndpoint,
-                    mapping);
-
-            CompactPropertyReadResult readResult =
+            CompactRuntimePropertySynchronizationResult readResult =
                 await _propertyReader.ReadAsync(
+                    runtimeEndpoint,
                     mapping.CompactPropertyId,
                     cancellationToken);
 
-            if (readResult.Status
-                    == CompactPropertyReadStatus.Success)
-            {
-                runtimeProperty.UpdateValue(
-                    readResult.Value
-                    ?? throw new InvalidDataException(
-                        "A successful compact property read did not contain "
-                        + "a property value."));
-            }
-
             results.Add(
-                new CompactRuntimePropertySynchronizationResult(
-                    mapping,
-                    runtimeProperty,
-                    readResult.Status));
+                readResult);
         }
 
         return results;
-    }
-
-    private static RuntimeProperty ResolveRuntimeProperty(
-        RuntimeEndpoint runtimeEndpoint,
-        CompactPropertyMapping mapping)
-    {
-        RuntimeInstrument runtimeInstrument =
-            runtimeEndpoint.FindInstrument(
-                mapping.InstrumentId)
-            ?? throw new InvalidDataException(
-                $"Compact property identifier "
-                + $"0x{mapping.CompactPropertyId:X2} maps to instrument "
-                + $"'{mapping.InstrumentId.Value}', which is not present in "
-                + "the runtime endpoint.");
-
-        return runtimeInstrument.FindProperty(
-                mapping.PropertyId)
-            ?? throw new InvalidDataException(
-                $"Compact property identifier "
-                + $"0x{mapping.CompactPropertyId:X2} maps to property "
-                + $"'{mapping.PropertyId.Value}', which is not present in "
-                + $"runtime instrument '{mapping.InstrumentId.Value}'.");
     }
 }
