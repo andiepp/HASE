@@ -85,7 +85,7 @@ internal static class RuntimeHostIdentityDocumentCodec
 
         try
         {
-            StrictUtf8Encoding.GetCharCount(
+            _ = StrictUtf8Encoding.GetString(
                 document.Span);
         }
         catch (DecoderFallbackException exception)
@@ -221,3 +221,4 @@ internal static class RuntimeHostIdentityDocumentCodec
         }
     }
 }
+

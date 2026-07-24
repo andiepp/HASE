@@ -1,0 +1,364 @@
+﻿using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
+using Hase.Runtime.Connections;
+using Hase.Runtime.Northbound;
+using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport.Attachment;
+
+namespace Hase.Runtime.Tests.Northbound;
+
+public sealed class RuntimeHostConnectionStatusObservationTests
+{
+    [Fact]
+    public async Task CurrentAttachment_StatusChange_IsObserved()
+    {
+        var context =
+            CreateContext();
+
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "endpoint-one");
+
+        context.Inventory.Publish(
+            entry);
+
+        await using RuntimeHostObservationSubscription subscription =
+            await context.Service.OpenSubscriptionAsync(
+                new RuntimeHostObservationSubscriptionOptions());
+
+        var ready =
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Ready,
+                DateTimeOffset.UtcNow);
+
+        entry.RuntimeEndpoint.UpdateConnectionStatus(
+            ready);
+
+        RuntimeHostObservation observation =
+            await ReadOneAsync(
+                subscription);
+
+        Assert.Equal(
+            RuntimeHostObservationKind.ConnectionStatusChanged,
+            observation.Kind);
+
+        var payload =
+            Assert.IsType<RuntimeHostConnectionStatusChangedObservationPayload>(
+                observation.Payload);
+
+        Assert.Equal(
+            EndpointConnectionState.Disconnected,
+            payload.PreviousStatus.State);
+
+        Assert.Same(
+            ready,
+            payload.CurrentStatus);
+
+        Assert.Equal(
+            Assert.Single(
+                    subscription.InitialSnapshot.Endpoints)
+                .Generation,
+            observation.AttachmentGeneration);
+
+        await context.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task PublishedAttachment_StatusChange_IsObservedAfterPublication()
+    {
+        var context =
+            CreateContext();
+
+        await using RuntimeHostObservationSubscription subscription =
+            await context.Service.OpenSubscriptionAsync(
+                new RuntimeHostObservationSubscriptionOptions());
+
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "endpoint-one");
+
+        context.Inventory.Publish(
+            entry);
+
+        RuntimeHostObservation publication =
+            await ReadOneAsync(
+                subscription);
+
+        entry.RuntimeEndpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Connecting,
+                DateTimeOffset.UtcNow));
+
+        RuntimeHostObservation statusChange =
+            await ReadOneAsync(
+                subscription);
+
+        Assert.Equal(
+            RuntimeHostObservationKind.AttachmentPublished,
+            publication.Kind);
+
+        Assert.Equal(
+            RuntimeHostObservationKind.ConnectionStatusChanged,
+            statusChange.Kind);
+
+        Assert.Equal(
+            publication.AttachmentGeneration,
+            statusChange.AttachmentGeneration);
+
+        await context.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task EndedAttachment_LaterStatusCallback_IsSuppressed()
+    {
+        var context =
+            CreateContext();
+
+        RuntimeEndpointAttachmentInventoryEntry entry =
+            CreateEntry(
+                "endpoint-one");
+
+        context.Inventory.Publish(
+            entry);
+
+        await using RuntimeHostObservationSubscription subscription =
+            await context.Service.OpenSubscriptionAsync(
+                new RuntimeHostObservationSubscriptionOptions());
+
+        context.Inventory.End(
+            entry,
+            DateTimeOffset.UtcNow);
+
+        RuntimeHostObservation ending =
+            await ReadOneAsync(
+                subscription);
+
+        entry.RuntimeEndpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Ready,
+                DateTimeOffset.UtcNow));
+
+        Assert.Equal(
+            RuntimeHostObservationKind.AttachmentEnded,
+            ending.Kind);
+
+        using var cancellationSource =
+            new CancellationTokenSource(
+                TimeSpan.FromMilliseconds(
+                    100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () =>
+            {
+                await foreach (
+                    RuntimeHostObservation observation
+                    in subscription.ReadAllAsync(
+                        cancellationSource.Token))
+                {
+                    _ =
+                        observation;
+                }
+            });
+
+        await context.DisposeAsync();
+    }
+
+    private static TestContext CreateContext()
+    {
+        var inventory =
+            new TestObservedInventory();
+
+        var projection =
+            new RuntimeHostAttachmentProjection(
+                inventory,
+                inventory);
+
+        var service =
+            (RuntimeHostObservationService)Activator.CreateInstance(
+                typeof(RuntimeHostObservationService),
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic,
+                binder: null,
+                args:
+                [
+                    new RuntimeHostId(
+                        "runtime-host-connection-status-tests"),
+                    projection
+                ],
+                culture: null)!;
+
+        return new TestContext(
+            inventory,
+            projection,
+            service);
+    }
+
+    private static async Task<RuntimeHostObservation> ReadOneAsync(
+        RuntimeHostObservationSubscription subscription)
+    {
+        using var cancellationSource =
+            new CancellationTokenSource(
+                TimeSpan.FromSeconds(
+                    3));
+
+        await using IAsyncEnumerator<RuntimeHostObservation> enumerator =
+            subscription
+                .ReadAllAsync(
+                    cancellationSource.Token)
+                .GetAsyncEnumerator();
+
+        Assert.True(
+            await enumerator.MoveNextAsync());
+
+        return enumerator.Current;
+    }
+
+    private static RuntimeEndpointAttachmentInventoryEntry CreateEntry(
+        string endpointId)
+    {
+        var endpoint =
+            new RuntimeEndpoint(
+                new RuntimeContext(),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        endpointId)));
+
+        return new RuntimeEndpointAttachmentInventoryEntry(
+            new TestAttachmentSession(
+                endpoint));
+    }
+
+    private sealed record TestContext(
+        TestObservedInventory Inventory,
+        RuntimeHostAttachmentProjection Projection,
+        RuntimeHostObservationService Service)
+        : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            await Service.DisposeAsync();
+            Projection.Dispose();
+        }
+    }
+
+    private sealed class TestObservedInventory
+        : IRuntimeEndpointAttachmentInventory,
+          IRuntimeEndpointAttachmentInventoryObservationSource
+    {
+        private readonly List<RuntimeEndpointAttachmentInventoryEntry>
+            _entries =
+                [];
+
+        private IRuntimeEndpointAttachmentInventoryObserver? _observer;
+
+        public Task<RuntimeEndpointAttachmentInventoryEntry> AttachAsync(
+            EndpointAttachmentRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public RuntimeEndpointAttachmentInventoryEntry? Find(
+            EndpointId endpointId) =>
+            _entries.FirstOrDefault(
+                entry =>
+                    entry.EndpointId == endpointId);
+
+        public IReadOnlyList<RuntimeEndpointAttachmentInventoryEntry> List() =>
+            _entries.ToArray();
+
+        public Task<bool> DetachAsync(
+            EndpointId endpointId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IDisposable Subscribe(
+            IRuntimeEndpointAttachmentInventoryObserver observer)
+        {
+            _observer =
+                observer;
+
+            return new DelegateDisposable(
+                () =>
+                    _observer =
+                        null);
+        }
+
+        public ValueTask DisposeAsync() =>
+            ValueTask.CompletedTask;
+
+        public void Publish(
+            RuntimeEndpointAttachmentInventoryEntry entry)
+        {
+            _entries.Add(
+                entry);
+
+            _observer?.OnAttachmentPublished(
+                new RuntimeEndpointAttachmentPublished(
+                    entry));
+        }
+
+        public void End(
+            RuntimeEndpointAttachmentInventoryEntry entry,
+            DateTimeOffset endedAtUtc)
+        {
+            _entries.Remove(
+                entry);
+
+            _observer?.OnAttachmentEnded(
+                new RuntimeEndpointAttachmentEnded(
+                    entry,
+                    endedAtUtc));
+        }
+    }
+
+    private sealed class TestAttachmentSession
+        : IEndpointAttachmentSession
+    {
+        public TestAttachmentSession(
+            RuntimeEndpoint runtimeEndpoint)
+        {
+            RuntimeEndpoint =
+                runtimeEndpoint;
+
+            Request =
+                null!;
+        }
+
+        public EndpointAttachmentRequest Request
+        {
+            get;
+        }
+
+        public RuntimeEndpoint RuntimeEndpoint
+        {
+            get;
+        }
+
+        public Task ShutdownAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public ValueTask DisposeAsync() =>
+            ValueTask.CompletedTask;
+    }
+
+    private sealed class DelegateDisposable
+        : IDisposable
+    {
+        private Action? _dispose;
+
+        public DelegateDisposable(
+            Action dispose)
+        {
+            _dispose =
+                dispose;
+        }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(
+                    ref _dispose,
+                    null)
+                ?.Invoke();
+        }
+    }
+}
