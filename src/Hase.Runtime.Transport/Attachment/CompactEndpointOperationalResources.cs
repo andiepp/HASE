@@ -106,7 +106,7 @@ internal sealed class CompactEndpointOperationalResources
     /// Gets the transport-independent Property port bound to this attachment's
     /// compact coordinator and validated Property map.
     /// </summary>
-    internal IEndpointAttachmentPropertyOperations PropertyOperations
+    public IEndpointAttachmentPropertyOperations PropertyOperations
     {
         get;
     }

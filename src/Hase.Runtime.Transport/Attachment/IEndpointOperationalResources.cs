@@ -7,6 +7,13 @@
 internal interface IEndpointOperationalResources
 {
     /// <summary>
+    /// Gets the transport-independent Property port bound to these operational
+    /// resources.
+    /// </summary>
+    IEndpointAttachmentPropertyOperations PropertyOperations =>
+        UnavailableEndpointAttachmentPropertyOperations.Instance;
+
+    /// <summary>
     /// Gets the lifetime that starts and stops endpoint connection
     /// supervision.
     /// </summary>

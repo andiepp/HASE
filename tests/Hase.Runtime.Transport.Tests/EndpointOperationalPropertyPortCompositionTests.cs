@@ -14,7 +14,7 @@ public sealed class EndpointOperationalPropertyPortCompositionTests
                 .GetProperty(
                     "PropertyOperations",
                     BindingFlags.Instance
-                    | BindingFlags.NonPublic);
+                    | BindingFlags.Public);
 
         Assert.NotNull(
             property);
@@ -32,7 +32,7 @@ public sealed class EndpointOperationalPropertyPortCompositionTests
                 .GetProperty(
                     "PropertyOperations",
                     BindingFlags.Instance
-                    | BindingFlags.NonPublic);
+                    | BindingFlags.Public);
 
         Assert.NotNull(
             property);

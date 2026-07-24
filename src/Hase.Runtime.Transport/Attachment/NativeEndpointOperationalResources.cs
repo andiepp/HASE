@@ -58,7 +58,7 @@ internal sealed class NativeEndpointOperationalResources
     /// Gets the transport-independent Property port bound to this attachment's
     /// native coordinator.
     /// </summary>
-    internal IEndpointAttachmentPropertyOperations PropertyOperations
+    public IEndpointAttachmentPropertyOperations PropertyOperations
     {
         get;
     }
