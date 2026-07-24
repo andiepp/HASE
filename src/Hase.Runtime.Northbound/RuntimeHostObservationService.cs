@@ -1,5 +1,6 @@
 ﻿using Hase.Runtime.Transport.Attachment;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Runtime;
 
 namespace Hase.Runtime.Northbound;
 
@@ -29,6 +30,13 @@ public sealed class RuntimeHostObservationService
         RuntimeEndpointAttachmentInventoryEntry,
         RuntimeHostConnectionStatusObservationAdapter>
         _connectionStatusAdapters =
+            new(
+                ReferenceEqualityComparer.Instance);
+
+    private readonly Dictionary<
+        RuntimeEndpointAttachmentInventoryEntry,
+        RuntimeHostPropertyValueObservationAdapter>
+        _propertyValueAdapters =
             new(
                 ReferenceEqualityComparer.Instance);
 
@@ -78,6 +86,9 @@ public sealed class RuntimeHostObservationService
             {
                 EnsureConnectionStatusAdapter(
                     attachment);
+
+                EnsurePropertyValueAdapter(
+                    attachment);
             }
 
             var endpointSnapshots =
@@ -124,11 +135,17 @@ public sealed class RuntimeHostObservationService
             {
                 EnsureConnectionStatusAdapter(
                     change.Attachment);
+
+                EnsurePropertyValueAdapter(
+                    change.Attachment);
             }
             else if (change.Kind
                      == RuntimeHostAttachmentProjectionChangeKind.Ended)
             {
                 RetireConnectionStatusAdapter(
+                    change.Attachment.Entry);
+
+                RetirePropertyValueAdapter(
                     change.Attachment.Entry);
             }
 
@@ -156,6 +173,7 @@ public sealed class RuntimeHostObservationService
     {
         BufferedRuntimeHostObservationSubscription[] subscriptions;
         RuntimeHostConnectionStatusObservationAdapter[] adapters;
+        RuntimeHostPropertyValueObservationAdapter[] propertyAdapters;
 
         lock (_syncRoot)
         {
@@ -176,6 +194,11 @@ public sealed class RuntimeHostObservationService
                 _connectionStatusAdapters.Values.ToArray();
 
             _connectionStatusAdapters.Clear();
+
+            propertyAdapters =
+                _propertyValueAdapters.Values.ToArray();
+
+            _propertyValueAdapters.Clear();
         }
 
         _projectionRegistration.Dispose();
@@ -183,6 +206,13 @@ public sealed class RuntimeHostObservationService
         foreach (
             RuntimeHostConnectionStatusObservationAdapter adapter
             in adapters)
+        {
+            adapter.Dispose();
+        }
+
+        foreach (
+            RuntimeHostPropertyValueObservationAdapter adapter
+            in propertyAdapters)
         {
             adapter.Dispose();
         }
@@ -300,6 +330,65 @@ public sealed class RuntimeHostObservationService
                             new RuntimeHostConnectionStatusChangedObservationPayload(
                                 change.PreviousStatus,
                                 change.CurrentStatus)));
+            }
+        }
+    }
+
+    private void EnsurePropertyValueAdapter(
+        RuntimeHostPublishedAttachment attachment)
+    {
+        if (_propertyValueAdapters.ContainsKey(
+                attachment.Entry))
+        {
+            return;
+        }
+
+        _propertyValueAdapters.Add(
+            attachment.Entry,
+            new RuntimeHostPropertyValueObservationAdapter(
+                attachment,
+                PublishPropertyValueChange));
+    }
+
+    private void RetirePropertyValueAdapter(
+        RuntimeEndpointAttachmentInventoryEntry entry)
+    {
+        if (_propertyValueAdapters.Remove(
+                entry,
+                out RuntimeHostPropertyValueObservationAdapter? adapter))
+        {
+            adapter.Dispose();
+        }
+    }
+
+    private void PublishPropertyValueChange(
+        RuntimeHostPublishedAttachment attachment,
+        PropertyValueChanged change)
+    {
+        lock (_syncRoot)
+        {
+            if (_isDisposed
+                || !_propertyValueAdapters.ContainsKey(
+                    attachment.Entry))
+            {
+                return;
+            }
+
+            foreach (
+                BufferedRuntimeHostObservationSubscription subscription
+                in _subscriptions.ToArray())
+            {
+                subscription.TryEnqueue(
+                    sequence =>
+                        new RuntimeHostObservation(
+                            sequence,
+                            attachment.Entry.EndpointId,
+                            attachment.Generation,
+                            new RuntimeHostPropertyValueChangedObservationPayload(
+                                change.Property.Instrument.Descriptor.Id,
+                                change.Property.Descriptor.Id,
+                                change.PreviousValue,
+                                change.CurrentValue)));
             }
         }
     }
