@@ -23,9 +23,9 @@ physical command execution, physical event notification, IPv4 network endpoint
 discovery, explicit runtime-host-owned endpoint attachment, the authoritative
 runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
-serial endpoint attachment, compact serial unsolicited event notification, and
-normalized northbound Property operations are implemented. Phase 6 is complete
-at the C-025 baseline.
+serial endpoint attachment, compact serial unsolicited event notification,
+normalized northbound Property operations, and normalized northbound Command
+execution are implemented. Phase 6 is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -33,25 +33,27 @@ runtime-host inventory and normalized Properties, Commands, Events, connection
 status, and live observation without exposing or transferring ownership of
 physical endpoint lifecycles.
 
-The Phase 7 snapshot, identity, inventory-query, and normalized Property
-foundations are implemented. They provide
+The Phase 7 snapshot, identity, inventory-query, normalized Property, and
+normalized Command foundations are implemented. They provide
 stable runtime-host identity, API contract versioning, immutable endpoint
 attachment snapshots, opaque attachment generations, authoritative inventory
 list and lookup projection, identity resolution precedence, atomic
 cross-process file persistence, file-backed snapshot composition, cached
 Property queries, authoritative Property reads, endpoint-confirmed Property
-writes, shared generation authority, and normalized native/compact operation
-results.
+writes, generation-scoped Command execution, shared generation authority, and
+normalized native/compact operation results.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
 C-026 validates the same public northbound Property service through both
 physical endpoint families.
+C-027 validates the same public northbound Command service through both
+physical endpoint families.
 
 The current verified baseline is:
 
 ```text
-1,998 automated tests passing
+2,107 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -64,6 +66,7 @@ Compact serial event notification verified
 Arduino Uno USB-unplug/replug recovery verified
 Arduino Uno hardware-reset recovery verified
 Physical native and compact northbound Property access verified
+Physical native and compact northbound Command execution verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -326,11 +329,25 @@ Implemented Phase 7 foundation:
 - automated native/compact contract integration;
 - physical C-026 native cached and authoritative temperature reads;
 - physical C-026 compact cached/read/write/restore LED-state validation;
+- immutable generation-scoped Command targets;
+- normalized Command execution statuses, optional return values, and safe
+  diagnostics;
+- attachment-bound Command operation ports;
+- native Protocol Version 1 and Compact Serial Protocol Command adapters;
+- compact logical-to-wire Command mapping below the northbound boundary;
+- null-only compact Command arguments;
+- no automatic Command retry after ambiguous timeout or connection loss;
+- no speculative Property-cache updates after successful Commands;
+- public `IRuntimeHostCommandService`;
+- snapshot composition exposing Property and Command services over the same
+  attachment projection;
+- physical C-027 native LED toggle/return/read/restore validation;
+- physical C-027 compact LED toggle/read/restore validation;
 - preservation of runtime-host ownership for attachment and endpoint
   lifecycles.
 
-Normalized Command, Event, and live-observation application services remain the
-next Phase 7 work. No remote wire technology has been selected.
+Event and live-observation application services remain the next Phase 7 work.
+No remote wire technology has been selected.
 
 ---
 
@@ -389,8 +406,8 @@ responsive.
 ## Northbound Runtime-Host Foundation
 
 `Hase.Runtime.Northbound` contains the transport-independent application-facing
-snapshot, identity, inventory-query, and normalized Property service
-foundations.
+snapshot, identity, inventory-query, normalized Property service, and normalized
+Command service foundations.
 
 The authoritative attachment inventory is projected into immutable published
 endpoint snapshots containing:
@@ -414,8 +431,9 @@ atomic non-overwriting publication. Malformed, inaccessible, incompatible, or
 ambiguous persistence fails safely and is never treated as an empty store.
 
 `RuntimeHostNorthboundSnapshotComposition` resolves identity once and composes
-snapshot providers and `IRuntimeHostPropertyService` over one shared
-attachment-generation projection of the host-owned inventory.
+snapshot providers, `IRuntimeHostPropertyService`, and
+`IRuntimeHostCommandService` over one shared attachment-generation projection
+of the host-owned inventory.
 
 The Property service exposes:
 
@@ -431,8 +449,22 @@ with the endpoint. Explicit reads return only authoritative endpoint results.
 Writes update the cache only after endpoint confirmation. Native and compact
 operation details remain hidden behind attachment-bound adapters.
 
-The composition and Property service do not own, attach, detach, replace,
-supervise, recover, or dispose endpoints.
+The Command service exposes:
+
+```text
+ExecuteAsync(target, argument, cancellationToken)
+```
+
+Every Command target contains authoritative `EndpointId`, expected attachment
+generation, `InstrumentId`, and logical `CommandPath`. Native Protocol Version 1
+passes optional arguments and return values through the normalized adapter.
+Compact Commands accept only null arguments and map logical targets to compact
+byte identifiers below the northbound boundary. Commands are never retried
+automatically after ambiguous timeout or connection loss and never
+speculatively update Property caches.
+
+The composition, Property service, and Command service do not own, attach,
+detach, replace, supervise, recover, or dispose endpoints.
 
 ## Compact Protocol
 
@@ -440,8 +472,8 @@ supervise, recover, or dispose endpoints.
 Version 1 defined by ADR-0020 and extended for unsolicited events by ADR-0022.
 
 Compact endpoints expose authoritative identity and a versioned descriptor
-reference while the complete descriptor and compact property/event mappings
-remain in the runtime-host repository.
+reference while the complete descriptor and compact property/event/command
+mappings remain in the runtime-host repository.
 
 One reader owns each compact connection. Correlation identifier zero is reserved
 for unsolicited event notifications; correlated request/response traffic uses
@@ -724,6 +756,9 @@ Explorer tracing.
 - C-026 - Generation-scoped physical northbound Property access through one
   public service for native Protocol Version 1 and Compact Serial Protocol
   endpoints.
+- C-027 - Generation-scoped physical northbound Command execution through one
+  public service for native Protocol Version 1 and Compact Serial Protocol
+  endpoints.
 
 ---
 
@@ -731,7 +766,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-1,998 automated tests pass
+2,107 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -781,13 +816,26 @@ C-026 reads, toggles, confirms, and restores the physical Arduino Uno LED state
 through the same northbound Property service
 C-026 orderly detachment ends both physical endpoint families in Disconnected
 Protocol Explorer C-026 exits with code 0 for both endpoint families
+C-027 publishes the physical ESP32 and Arduino Uno through immutable inventory
+snapshots
+C-027 uses the published attachment generation for every Command target
+C-027 toggles and restores the physical ESP32 status LED through the
+northbound Command service
+C-027 passes through the native Boolean Command return value
+C-027 confirms native Command results through authoritative Property reads
+C-027 maps the logical Arduino Led.Toggle Command to compact CommandId 0x01
+C-027 accepts a null compact argument and exposes no compact return value
+C-027 confirms compact Command results through authoritative Property reads
+C-027 performs no automatic Command retry or speculative Property-cache update
+C-027 orderly detachment ends both physical endpoint families in Disconnected
+Protocol Explorer C-027 exits with code 0 for both endpoint families
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0027 are accepted.
+ADR-0001 through ADR-0028 are accepted.
 
 Relevant recent decisions:
 
@@ -803,6 +851,7 @@ Relevant recent decisions:
 - ADR-0025 - Runtime-Host Identity Resolution.
 - ADR-0026 - File-Based Runtime-Host Identity Store.
 - ADR-0027 - Normalized Northbound Property Operations.
+- ADR-0028 - Normalized Northbound Command Execution.
 
 ---
 
