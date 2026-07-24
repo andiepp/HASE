@@ -4,12 +4,13 @@ namespace Hase.CompactProtocol;
 
 /// <summary>
 /// Contains one exact host-side compact endpoint definition together with the
-/// wire mappings required to operate its properties and events.
+/// wire mappings required to operate its Properties, Events, and Commands.
 /// </summary>
 public sealed class CompactEndpointDefinition
 {
     /// <summary>
-    /// Initializes one compact endpoint definition without event mappings.
+    /// Initializes one compact endpoint definition without Event or Command
+    /// mappings.
     /// </summary>
     public CompactEndpointDefinition(
         DescriptorReference descriptorReference,
@@ -19,7 +20,25 @@ public sealed class CompactEndpointDefinition
             descriptorReference,
             descriptorDefinition,
             propertyMappings,
-            eventMappings: [])
+            eventMappings: [],
+            commandMappings: [])
+    {
+    }
+
+    /// <summary>
+    /// Initializes one compact endpoint definition without Command mappings.
+    /// </summary>
+    public CompactEndpointDefinition(
+        DescriptorReference descriptorReference,
+        EndpointDescriptorDefinition descriptorDefinition,
+        IEnumerable<CompactPropertyMapping> propertyMappings,
+        IEnumerable<CompactEventMapping> eventMappings)
+        : this(
+            descriptorReference,
+            descriptorDefinition,
+            propertyMappings,
+            eventMappings,
+            commandMappings: [])
     {
     }
 
@@ -33,18 +52,23 @@ public sealed class CompactEndpointDefinition
     /// Complete transport-independent endpoint descriptor definition.
     /// </param>
     /// <param name="propertyMappings">
-    /// Compact wire-property mappings associated with this exact descriptor
+    /// Compact wire-Property mappings associated with this exact descriptor
     /// version.
     /// </param>
     /// <param name="eventMappings">
-    /// Compact wire-event mappings associated with this exact descriptor
+    /// Compact wire-Event mappings associated with this exact descriptor
+    /// version.
+    /// </param>
+    /// <param name="commandMappings">
+    /// Compact wire-Command mappings associated with this exact descriptor
     /// version.
     /// </param>
     public CompactEndpointDefinition(
         DescriptorReference descriptorReference,
         EndpointDescriptorDefinition descriptorDefinition,
         IEnumerable<CompactPropertyMapping> propertyMappings,
-        IEnumerable<CompactEventMapping> eventMappings)
+        IEnumerable<CompactEventMapping> eventMappings,
+        IEnumerable<CompactCommandMapping> commandMappings)
     {
         DescriptorReference =
             descriptorReference
@@ -62,6 +86,9 @@ public sealed class CompactEndpointDefinition
         ArgumentNullException.ThrowIfNull(
             eventMappings);
 
+        ArgumentNullException.ThrowIfNull(
+            commandMappings);
+
         CompactPropertyMapping[] propertyMappingArray =
             propertyMappings.ToArray();
 
@@ -70,7 +97,7 @@ public sealed class CompactEndpointDefinition
                     mapping is null))
         {
             throw new ArgumentException(
-                "The compact property mapping collection must not contain "
+                "The compact Property mapping collection must not contain "
                 + "null values.",
                 nameof(propertyMappings));
         }
@@ -83,9 +110,22 @@ public sealed class CompactEndpointDefinition
                     mapping is null))
         {
             throw new ArgumentException(
-                "The compact event mapping collection must not contain "
+                "The compact Event mapping collection must not contain "
                 + "null values.",
                 nameof(eventMappings));
+        }
+
+        CompactCommandMapping[] commandMappingArray =
+            commandMappings.ToArray();
+
+        if (commandMappingArray.Any(
+                static mapping =>
+                    mapping is null))
+        {
+            throw new ArgumentException(
+                "The compact Command mapping collection must not contain "
+                + "null values.",
+                nameof(commandMappings));
         }
 
         _ = new CompactPropertyMap(
@@ -96,11 +136,18 @@ public sealed class CompactEndpointDefinition
             descriptorDefinition,
             eventMappingArray);
 
+        _ = new CompactCommandMap(
+            descriptorDefinition,
+            commandMappingArray);
+
         PropertyMappings =
             propertyMappingArray;
 
         EventMappings =
             eventMappingArray;
+
+        CommandMappings =
+            commandMappingArray;
     }
 
     /// <summary>
@@ -121,7 +168,7 @@ public sealed class CompactEndpointDefinition
     }
 
     /// <summary>
-    /// Gets the validated compact wire-property mappings in declaration order.
+    /// Gets the validated compact wire-Property mappings in declaration order.
     /// </summary>
     public IReadOnlyList<CompactPropertyMapping> PropertyMappings
     {
@@ -129,9 +176,17 @@ public sealed class CompactEndpointDefinition
     }
 
     /// <summary>
-    /// Gets the validated compact wire-event mappings in declaration order.
+    /// Gets the validated compact wire-Event mappings in declaration order.
     /// </summary>
     public IReadOnlyList<CompactEventMapping> EventMappings
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the validated compact wire-Command mappings in declaration order.
+    /// </summary>
+    public IReadOnlyList<CompactCommandMapping> CommandMappings
     {
         get;
     }
@@ -148,5 +203,12 @@ public sealed class CompactEndpointDefinition
         return new CompactEventMap(
             DescriptorDefinition,
             EventMappings);
+    }
+
+    internal CompactCommandMap CreateCommandMap()
+    {
+        return new CompactCommandMap(
+            DescriptorDefinition,
+            CommandMappings);
     }
 }

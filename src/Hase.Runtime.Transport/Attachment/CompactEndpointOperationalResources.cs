@@ -15,6 +15,7 @@ internal sealed class CompactEndpointOperationalResources
         CompactEndpointDefinition definition,
         CompactPropertyMap propertyMap,
         CompactEventMap eventMap,
+        CompactCommandMap commandMap,
         CompactEventNotificationResolver eventResolver,
         CompactMappedEventNotificationSource eventSource,
         CompactRuntimeEndpointEventRouter eventRouter,
@@ -30,6 +31,9 @@ internal sealed class CompactEndpointOperationalResources
 
         EventMap =
             eventMap;
+
+        CommandMap =
+            commandMap;
 
         EventResolver =
             eventResolver;
@@ -71,6 +75,15 @@ internal sealed class CompactEndpointOperationalResources
     }
 
     internal CompactEventMap EventMap
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the validated logical-to-wire Command map retained for this
+    /// attachment.
+    /// </summary>
+    internal CompactCommandMap CommandMap
     {
         get;
     }
@@ -162,6 +175,9 @@ internal sealed class CompactEndpointOperationalResources
         CompactEventMap eventMap =
             definition.CreateEventMap();
 
+        CompactCommandMap commandMap =
+            definition.CreateCommandMap();
+
         var eventResolver =
             new CompactEventNotificationResolver(
                 eventMap);
@@ -211,6 +227,7 @@ internal sealed class CompactEndpointOperationalResources
             definition,
             propertyMap,
             eventMap,
+            commandMap,
             eventResolver,
             eventSource,
             eventRouter,
