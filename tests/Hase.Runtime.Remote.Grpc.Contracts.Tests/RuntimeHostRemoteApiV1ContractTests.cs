@@ -283,14 +283,158 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void InstrumentInterfaceMessages_StartWithoutPrematureFields()
+    public void CommandAndEventMessages_StartWithoutPrematureFields()
     {
-        Assert.Empty(
-            PropertyDescriptor.Descriptor.Fields.InDeclarationOrder());
         Assert.Empty(
             CommandDescriptor.Descriptor.Fields.InDeclarationOrder());
         Assert.Empty(
             EventDescriptor.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void PropertyDescriptor_DefinesIdentityPathMetadataAccessAndData()
+    {
+        FieldDescriptor[] fields =
+            PropertyDescriptor.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertField(
+                field,
+                "property_id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "path_segments",
+                2,
+                FieldType.String,
+                false,
+                true),
+            field => AssertField(
+                field,
+                "display_name",
+                3,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                4,
+                FieldType.String,
+                true,
+                false),
+            field =>
+            {
+                AssertField(
+                    field,
+                    "access_mode",
+                    5,
+                    FieldType.Enum,
+                    false,
+                    false);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.PropertyAccessMode",
+                    field.EnumType.FullName);
+            },
+            field => AssertMessageField(
+                field,
+                "data",
+                6,
+                DataDescriptor.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void PropertyAccessMode_DefinesClrFlagValues()
+    {
+        EnumValueDescriptor[] values =
+            PropertyDescriptor.Descriptor
+                .FindFieldByNumber(5)
+                .EnumType
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_ACCESS_MODE_NONE",
+                0),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_ACCESS_MODE_READ",
+                1),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_ACCESS_MODE_WRITE",
+                2),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_ACCESS_MODE_READ_WRITE",
+                3));
+    }
+
+    [Fact]
+    public void DataDescriptor_StartsWithoutPrematureFields()
+    {
+        Assert.Empty(
+            DataDescriptor.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void PropertyDescriptor_RoundTrip_PreservesDefinedMembers()
+    {
+        var descriptor =
+            new PropertyDescriptor
+            {
+                PropertyId =
+                    "temperature",
+                DisplayName =
+                    "Temperature",
+                Description =
+                    "Environment temperature",
+                AccessMode =
+                    (PropertyAccessMode)1,
+                Data =
+                    new DataDescriptor()
+            };
+
+        descriptor.PathSegments.Add(
+            "physical");
+        descriptor.PathSegments.Add(
+            "environment-sensor");
+        descriptor.PathSegments.Add(
+            "temperature");
+
+        PropertyDescriptor roundTrip =
+            PropertyDescriptor.Parser.ParseFrom(
+                descriptor.ToByteArray());
+
+        Assert.Equal(
+            descriptor.PropertyId,
+            roundTrip.PropertyId);
+        Assert.Equal(
+            descriptor.PathSegments.ToArray(),
+            roundTrip.PathSegments.ToArray());
+        Assert.Equal(
+            descriptor.DisplayName,
+            roundTrip.DisplayName);
+        Assert.True(
+            roundTrip.HasDescription);
+        Assert.Equal(
+            descriptor.Description,
+            roundTrip.Description);
+        Assert.Equal(
+            1,
+            (int)roundTrip.AccessMode);
+        Assert.NotNull(
+            roundTrip.Data);
     }
 
     [Fact]
@@ -643,7 +787,7 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
             expectedName,
             expectedNumber,
             FieldType.Message,
-            false,
+            !expectedRepeated,
             expectedRepeated);
         Assert.Equal(
             expectedMessage.FullName,

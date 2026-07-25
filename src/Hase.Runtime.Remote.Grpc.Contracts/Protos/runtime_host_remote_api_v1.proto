@@ -55,6 +55,22 @@ message InstrumentDescriptor {
 }
 
 message PropertyDescriptor {
+  string property_id = 1;
+  repeated string path_segments = 2;
+  string display_name = 3;
+  optional string description = 4;
+  PropertyAccessMode access_mode = 5;
+  DataDescriptor data = 6;
+}
+
+enum PropertyAccessMode {
+  PROPERTY_ACCESS_MODE_NONE = 0;
+  PROPERTY_ACCESS_MODE_READ = 1;
+  PROPERTY_ACCESS_MODE_WRITE = 2;
+  PROPERTY_ACCESS_MODE_READ_WRITE = 3;
+}
+
+message DataDescriptor {
 }
 
 message CommandDescriptor {
