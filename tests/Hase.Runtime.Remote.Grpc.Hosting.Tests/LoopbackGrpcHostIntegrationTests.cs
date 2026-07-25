@@ -355,6 +355,114 @@ public sealed class LoopbackGrpcHostIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task ExecuteCommand_Ipv4LoopbackHttp2_ShouldReachNorthboundServiceOnce()
+    {
+        var commandService =
+            new TestCommandService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService:
+                    commandService);
+
+        await application.StartAsync();
+
+        try
+        {
+            IServer server =
+                application.Services.GetRequiredService<IServer>();
+            IServerAddressesFeature addressesFeature =
+                server.Features.Get<IServerAddressesFeature>()
+                ?? throw new InvalidOperationException(
+                    "The server addresses feature is unavailable.");
+            var uri =
+                new Uri(
+                    Assert.Single(
+                        addressesFeature.Addresses));
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    uri);
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+            var generation =
+                new Guid(
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd");
+            var target =
+                new GrpcV1.CommandTarget
+                {
+                    EndpointId =
+                        "endpoint-01",
+                    AttachmentGeneration =
+                        generation.ToString(
+                            "D"),
+                    InstrumentId =
+                        "environment-sensor-01"
+                };
+
+            target.CommandPathSegments.Add(
+                "Calibration");
+            target.CommandPathSegments.Add(
+                "Reset");
+
+            GrpcV1.CommandOperationResult response =
+                await client.ExecuteCommandAsync(
+                    new GrpcV1.ExecuteCommandRequest
+                    {
+                        Target =
+                            target,
+                        Argument =
+                            new GrpcV1.RemoteValue
+                            {
+                                BooleanValue =
+                                    true
+                            }
+                    },
+                    deadline:
+                        DateTime.UtcNow.AddSeconds(
+                            10));
+
+            Assert.Equal(
+                GrpcV1.CommandOperationStatus.Success,
+                response.Status);
+            Assert.Equal(
+                "completed",
+                response.ReturnValue.StringValue);
+            Assert.Equal(
+                1,
+                commandService.ExecutionCount);
+            Assert.NotNull(
+                commandService.Target);
+            Assert.Equal(
+                generation,
+                commandService.Target.AttachmentGeneration.Value);
+            Assert.Equal(
+                new[]
+                {
+                    "Calibration",
+                    "Reset"
+                },
+                commandService.Target.CommandPath.Segments);
+            Assert.Equal(
+                true,
+                commandService.Argument);
+            Assert.True(
+                commandService.CancellationToken.CanBeCanceled);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -459,6 +567,52 @@ public sealed class LoopbackGrpcHostIntegrationTests
                     new Hase.Core.Domain.Properties.PropertyValue(
                         requestedValue,
                         DateTimeOffset.UnixEpoch)));
+        }
+    }
+
+    private sealed class TestCommandService
+        : Northbound.IRuntimeHostCommandService
+    {
+        public int ExecutionCount
+        {
+            get;
+            private set;
+        }
+
+        public Northbound.RuntimeHostCommandTarget? Target
+        {
+            get;
+            private set;
+        }
+
+        public object? Argument
+        {
+            get;
+            private set;
+        }
+
+        public CancellationToken CancellationToken
+        {
+            get;
+            private set;
+        }
+
+        public Task<Northbound.RuntimeHostCommandOperationResult> ExecuteAsync(
+            Northbound.RuntimeHostCommandTarget target,
+            object? argument,
+            CancellationToken cancellationToken = default)
+        {
+            ExecutionCount++;
+            Target =
+                target;
+            Argument =
+                argument;
+            CancellationToken =
+                cancellationToken;
+
+            return Task.FromResult(
+                Northbound.RuntimeHostCommandOperationResult.Successful(
+                    "completed"));
         }
     }
 }

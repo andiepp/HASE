@@ -12,6 +12,8 @@ service RuntimeHostRemoteApi {
   rpc ReadCachedProperty (ReadCachedPropertyRequest) returns (CachedPropertyResult);
   rpc ReadAuthoritativeProperty (ReadAuthoritativePropertyRequest) returns (PropertyOperationResult);
   rpc WriteProperty (WritePropertyRequest) returns (PropertyOperationResult);
+  rpc ExecuteCommand (ExecuteCommandRequest) returns (CommandOperationResult);
+  rpc Observe (ObserveRequest) returns (stream ObserveResponse);
 }
 
 message GetSnapshotRequest {
@@ -28,6 +30,11 @@ message ReadAuthoritativePropertyRequest {
 message WritePropertyRequest {
   PropertyTarget target = 1;
   RemoteValue requested_value = 2;
+}
+
+message ExecuteCommandRequest {
+  CommandTarget target = 1;
+  RemoteValue argument = 2;
 }
 
 message GetSnapshotResponse {
@@ -101,6 +108,98 @@ message PropertyOperationResult {
   PropertyOperationStatus status = 1;
   PropertyValue confirmed_value = 2;
   optional string diagnostic = 3;
+}
+
+message CommandTarget {
+  string endpoint_id = 1;
+  string attachment_generation = 2;
+  string instrument_id = 3;
+  repeated string command_path_segments = 4;
+}
+
+enum CommandOperationStatus {
+  COMMAND_OPERATION_STATUS_UNSPECIFIED = 0;
+  COMMAND_OPERATION_STATUS_SUCCESS = 1;
+  COMMAND_OPERATION_STATUS_ATTACHMENT_NOT_CURRENT = 2;
+  COMMAND_OPERATION_STATUS_INSTRUMENT_NOT_FOUND = 3;
+  COMMAND_OPERATION_STATUS_COMMAND_NOT_FOUND = 4;
+  COMMAND_OPERATION_STATUS_ARGUMENT_NOT_SUPPORTED = 5;
+  COMMAND_OPERATION_STATUS_ENDPOINT_UNAVAILABLE = 6;
+  COMMAND_OPERATION_STATUS_ENDPOINT_REJECTED = 7;
+  COMMAND_OPERATION_STATUS_ENDPOINT_FAILURE = 8;
+  COMMAND_OPERATION_STATUS_TIMED_OUT = 9;
+}
+
+message CommandOperationResult {
+  CommandOperationStatus status = 1;
+  RemoteValue return_value = 2;
+  optional string diagnostic = 3;
+}
+
+message ObserveRequest {
+}
+
+message ObserveResponse {
+  oneof content {
+    ObservationInitialSnapshot initial_snapshot = 1;
+    RuntimeHostObservation observation = 2;
+  }
+}
+
+message ObservationInitialSnapshot {
+  GetSnapshotResponse snapshot = 1;
+  uint64 snapshot_sequence = 2;
+}
+
+message RuntimeHostObservation {
+  uint64 sequence = 1;
+  string endpoint_id = 2;
+  string attachment_generation = 3;
+  RuntimeHostObservationKind kind = 4;
+
+  oneof payload {
+    AttachmentPublishedObservation attachment_published = 5;
+    AttachmentEndedObservation attachment_ended = 6;
+    ConnectionStatusChangedObservation connection_status_changed = 7;
+    PropertyValueChangedObservation property_value_changed = 8;
+    EventOccurredObservation event_occurred = 9;
+  }
+}
+
+enum RuntimeHostObservationKind {
+  RUNTIME_HOST_OBSERVATION_KIND_UNSPECIFIED = 0;
+  RUNTIME_HOST_OBSERVATION_KIND_ATTACHMENT_PUBLISHED = 1;
+  RUNTIME_HOST_OBSERVATION_KIND_ATTACHMENT_ENDED = 2;
+  RUNTIME_HOST_OBSERVATION_KIND_CONNECTION_STATUS_CHANGED = 3;
+  RUNTIME_HOST_OBSERVATION_KIND_PROPERTY_VALUE_CHANGED = 4;
+  RUNTIME_HOST_OBSERVATION_KIND_EVENT_OCCURRED = 5;
+}
+
+message AttachmentPublishedObservation {
+  PublishedRuntimeEndpointSnapshot endpoint = 1;
+}
+
+message AttachmentEndedObservation {
+  google.protobuf.Timestamp ended_at_utc = 1;
+}
+
+message ConnectionStatusChangedObservation {
+  EndpointConnectionStatus previous_status = 1;
+  EndpointConnectionStatus current_status = 2;
+}
+
+message PropertyValueChangedObservation {
+  string instrument_id = 1;
+  string property_id = 2;
+  PropertyValue previous_value = 3;
+  PropertyValue current_value = 4;
+}
+
+message EventOccurredObservation {
+  string instrument_id = 1;
+  repeated string event_path_segments = 2;
+  google.protobuf.Timestamp occurred_at_utc = 3;
+  RemoteValue value = 4;
 }
 
 message PublishedRuntimeEndpointSnapshot {

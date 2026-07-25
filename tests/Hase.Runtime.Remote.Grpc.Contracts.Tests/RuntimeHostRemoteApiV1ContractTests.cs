@@ -82,6 +82,34 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
+    public void Contract_DefinesUnaryCommandOperation()
+    {
+        MethodDescriptor method =
+            AssertRemoteMethod(
+                "ExecuteCommand",
+                ExecuteCommandRequest.Descriptor,
+                CommandOperationResult.Descriptor);
+
+        Assert.False(method.IsClientStreaming);
+        Assert.False(method.IsServerStreaming);
+    }
+
+    [Fact]
+    public void Contract_DefinesServerStreamingObservationOperation()
+    {
+        MethodDescriptor method =
+            AssertRemoteMethod(
+                "Observe",
+                ObserveRequest.Descriptor,
+                ObserveResponse.Descriptor);
+
+        Assert.False(method.IsClientStreaming);
+        Assert.True(method.IsServerStreaming);
+        Assert.Empty(
+            ObserveRequest.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
     public void PropertyRequests_DefineTargetsAndRequestedValue()
     {
         FieldDescriptor cachedTarget =
@@ -530,6 +558,402 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 Assert.Equal(FieldType.String, field.FieldType);
                 Assert.True(field.HasPresence);
             });
+    }
+
+    [Fact]
+    public void CommandRequest_DefinesTargetAndOptionalArgument()
+    {
+        Assert.Collection(
+            ExecuteCommandRequest.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "target",
+                1,
+                CommandTarget.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "argument",
+                2,
+                RemoteValue.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void CommandTarget_DefinesGenerationScopedLogicalPath()
+    {
+        Assert.Collection(
+            CommandTarget.Descriptor.Fields.InDeclarationOrder(),
+            field =>
+            {
+                Assert.Equal("endpoint_id", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("attachment_generation", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("instrument_id", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("command_path_segments", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.IsRepeated);
+            });
+    }
+
+    [Fact]
+    public void CommandOperationStatus_DefinesStableNormalizedValues()
+    {
+        EnumValueDescriptor[] values =
+            Assert.Single(
+                    RuntimeHostRemoteApiV1Reflection.Descriptor.EnumTypes,
+                    descriptor =>
+                        descriptor.Name
+                        == "CommandOperationStatus")
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_UNSPECIFIED",
+                0),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_SUCCESS",
+                1),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_ATTACHMENT_NOT_CURRENT",
+                2),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_INSTRUMENT_NOT_FOUND",
+                3),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_COMMAND_NOT_FOUND",
+                4),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_ARGUMENT_NOT_SUPPORTED",
+                5),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_ENDPOINT_UNAVAILABLE",
+                6),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_ENDPOINT_REJECTED",
+                7),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_ENDPOINT_FAILURE",
+                8),
+            value => AssertEnumValue(
+                value,
+                "COMMAND_OPERATION_STATUS_TIMED_OUT",
+                9));
+    }
+
+    [Fact]
+    public void CommandOperationResult_DefinesStatusReturnValueAndDiagnostic()
+    {
+        Assert.Collection(
+            CommandOperationResult.Descriptor.Fields.InDeclarationOrder(),
+            field =>
+            {
+                Assert.Equal("status", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.CommandOperationStatus",
+                    field.EnumType.FullName);
+            },
+            field => AssertMessageField(
+                field,
+                "return_value",
+                2,
+                RemoteValue.Descriptor,
+                false),
+            field =>
+            {
+                Assert.Equal("diagnostic", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            });
+    }
+
+    [Fact]
+    public void ObserveResponse_DefinesInitialSnapshotOrObservationUnion()
+    {
+        OneofDescriptor content =
+            Assert.Single(
+                ObserveResponse.Descriptor.Oneofs);
+
+        Assert.Equal(
+            "content",
+            content.Name);
+        Assert.Collection(
+            content.Fields,
+            field => AssertMessageField(
+                field,
+                "initial_snapshot",
+                1,
+                ObservationInitialSnapshot.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "observation",
+                2,
+                RuntimeHostObservation.Descriptor,
+                false));
+
+        Assert.Collection(
+            ObservationInitialSnapshot.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "snapshot",
+                1,
+                GetSnapshotResponse.Descriptor,
+                false),
+            field => AssertField(
+                field,
+                "snapshot_sequence",
+                2,
+                FieldType.UInt64,
+                false,
+                false));
+    }
+
+    [Fact]
+    public void ObservationKind_DefinesStableNormalizedValues()
+    {
+        EnumValueDescriptor[] values =
+            Assert.Single(
+                    RuntimeHostRemoteApiV1Reflection.Descriptor.EnumTypes,
+                    descriptor =>
+                        descriptor.Name
+                        == "RuntimeHostObservationKind")
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_UNSPECIFIED",
+                0),
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_ATTACHMENT_PUBLISHED",
+                1),
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_ATTACHMENT_ENDED",
+                2),
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_CONNECTION_STATUS_CHANGED",
+                3),
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_PROPERTY_VALUE_CHANGED",
+                4),
+            value => AssertEnumValue(
+                value,
+                "RUNTIME_HOST_OBSERVATION_KIND_EVENT_OCCURRED",
+                5));
+    }
+
+    [Fact]
+    public void Observation_DefinesGenerationScopedEnvelopeAndPayloadUnion()
+    {
+        FieldDescriptor[] fields =
+            RuntimeHostObservation.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+        OneofDescriptor payload =
+            Assert.Single(
+                RuntimeHostObservation.Descriptor.Oneofs);
+
+        Assert.Equal(
+            "payload",
+            payload.Name);
+        Assert.Collection(
+            fields.Take(
+                4),
+            field => AssertField(
+                field,
+                "sequence",
+                1,
+                FieldType.UInt64,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "endpoint_id",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "attachment_generation",
+                3,
+                FieldType.String,
+                false,
+                false),
+            field =>
+            {
+                Assert.Equal("kind", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.RuntimeHostObservationKind",
+                    field.EnumType.FullName);
+            });
+        Assert.Collection(
+            payload.Fields,
+            field => AssertMessageField(
+                field,
+                "attachment_published",
+                5,
+                AttachmentPublishedObservation.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "attachment_ended",
+                6,
+                AttachmentEndedObservation.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "connection_status_changed",
+                7,
+                ConnectionStatusChangedObservation.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "property_value_changed",
+                8,
+                PropertyValueChangedObservation.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "event_occurred",
+                9,
+                EventOccurredObservation.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void ObservationPayloads_DefineNormalizedMembers()
+    {
+        Assert.Collection(
+            AttachmentPublishedObservation.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "endpoint",
+                1,
+                PublishedRuntimeEndpointSnapshot.Descriptor,
+                false));
+        Assert.Collection(
+            AttachmentEndedObservation.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "ended_at_utc",
+                1,
+                Timestamp.Descriptor,
+                false));
+        Assert.Collection(
+            ConnectionStatusChangedObservation.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "previous_status",
+                1,
+                EndpointConnectionStatus.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "current_status",
+                2,
+                EndpointConnectionStatus.Descriptor,
+                false));
+        Assert.Collection(
+            PropertyValueChangedObservation.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "instrument_id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "property_id",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertMessageField(
+                field,
+                "previous_value",
+                3,
+                PropertyValue.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "current_value",
+                4,
+                PropertyValue.Descriptor,
+                false));
+        Assert.Collection(
+            EventOccurredObservation.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "instrument_id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "event_path_segments",
+                2,
+                FieldType.String,
+                false,
+                true),
+            field => AssertMessageField(
+                field,
+                "occurred_at_utc",
+                3,
+                Timestamp.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "value",
+                4,
+                RemoteValue.Descriptor,
+                false));
     }
 
     [Fact]

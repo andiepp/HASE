@@ -18,6 +18,9 @@ public sealed class RuntimeHostRemoteApiService
     private readonly IRuntimeHostCachedPropertyResultMapper? cachedResultMapper;
     private readonly IRuntimeHostPropertyOperationResultMapper? operationResultMapper;
     private readonly IRemoteValueMapper? remoteValueMapper;
+    private readonly Northbound.IRuntimeHostCommandService? commandService;
+    private readonly IRuntimeHostCommandTargetMapper? commandTargetMapper;
+    private readonly IRuntimeHostCommandOperationResultMapper? commandResultMapper;
 
     /// <summary>
     /// Initializes the service adapter.
@@ -29,7 +32,10 @@ public sealed class RuntimeHostRemoteApiService
         IRuntimeHostPropertyTargetMapper? propertyTargetMapper = null,
         IRuntimeHostCachedPropertyResultMapper? cachedResultMapper = null,
         IRuntimeHostPropertyOperationResultMapper? operationResultMapper = null,
-        IRemoteValueMapper? remoteValueMapper = null)
+        IRemoteValueMapper? remoteValueMapper = null,
+        Northbound.IRuntimeHostCommandService? commandService = null,
+        IRuntimeHostCommandTargetMapper? commandTargetMapper = null,
+        IRuntimeHostCommandOperationResultMapper? commandResultMapper = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -45,38 +51,62 @@ public sealed class RuntimeHostRemoteApiService
             propertyService is not null
             || propertyTargetMapper is not null
             || cachedResultMapper is not null
-            || operationResultMapper is not null
-            || remoteValueMapper is not null;
+            || operationResultMapper is not null;
 
-        if (!propertyAccessConfigured)
+        bool commandAccessConfigured =
+            commandService is not null
+            || commandTargetMapper is not null
+            || commandResultMapper is not null;
+
+        if (propertyAccessConfigured)
         {
-            return;
+            this.propertyService =
+                propertyService
+                ?? throw new ArgumentNullException(
+                    nameof(propertyService));
+
+            this.propertyTargetMapper =
+                propertyTargetMapper
+                ?? throw new ArgumentNullException(
+                    nameof(propertyTargetMapper));
+
+            this.cachedResultMapper =
+                cachedResultMapper
+                ?? throw new ArgumentNullException(
+                    nameof(cachedResultMapper));
+
+            this.operationResultMapper =
+                operationResultMapper
+                ?? throw new ArgumentNullException(
+                    nameof(operationResultMapper));
         }
 
-        this.propertyService =
-            propertyService
-            ?? throw new ArgumentNullException(
-                nameof(propertyService));
+        if (commandAccessConfigured)
+        {
+            this.commandService =
+                commandService
+                ?? throw new ArgumentNullException(
+                    nameof(commandService));
 
-        this.propertyTargetMapper =
-            propertyTargetMapper
-            ?? throw new ArgumentNullException(
-                nameof(propertyTargetMapper));
+            this.commandTargetMapper =
+                commandTargetMapper
+                ?? throw new ArgumentNullException(
+                    nameof(commandTargetMapper));
 
-        this.cachedResultMapper =
-            cachedResultMapper
-            ?? throw new ArgumentNullException(
-                nameof(cachedResultMapper));
+            this.commandResultMapper =
+                commandResultMapper
+                ?? throw new ArgumentNullException(
+                    nameof(commandResultMapper));
+        }
 
-        this.operationResultMapper =
-            operationResultMapper
-            ?? throw new ArgumentNullException(
-                nameof(operationResultMapper));
-
-        this.remoteValueMapper =
-            remoteValueMapper
-            ?? throw new ArgumentNullException(
-                nameof(remoteValueMapper));
+        if (propertyAccessConfigured
+            || commandAccessConfigured)
+        {
+            this.remoteValueMapper =
+                remoteValueMapper
+                ?? throw new ArgumentNullException(
+                    nameof(remoteValueMapper));
+        }
     }
 
     /// <inheritdoc />
@@ -235,5 +265,57 @@ public sealed class RuntimeHostRemoteApiService
                 result)
             ?? throw new InvalidOperationException(
                 "The Property operation result mapper returned null.");
+    }
+
+    /// <inheritdoc />
+    public override async Task<GrpcV1.CommandOperationResult> ExecuteCommand(
+        GrpcV1.ExecuteCommandRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        Northbound.IRuntimeHostCommandService commandService =
+            this.commandService
+            ?? throw new InvalidOperationException(
+                "Command execution is not configured.");
+        IRuntimeHostCommandTargetMapper commandTargetMapper =
+            this.commandTargetMapper
+            ?? throw new InvalidOperationException(
+                "Command execution is not configured.");
+        IRuntimeHostCommandOperationResultMapper commandResultMapper =
+            this.commandResultMapper
+            ?? throw new InvalidOperationException(
+                "Command execution is not configured.");
+        IRemoteValueMapper remoteValueMapper =
+            this.remoteValueMapper
+            ?? throw new InvalidOperationException(
+                "Command execution is not configured.");
+
+        Northbound.RuntimeHostCommandTarget target =
+            commandTargetMapper.Map(
+                request.Target)
+            ?? throw new InvalidOperationException(
+                "The Command target mapper returned null.");
+
+        object? argument =
+            request.Argument is null
+                ? null
+                : remoteValueMapper.MapToClr(
+                    request.Argument);
+
+        Northbound.RuntimeHostCommandOperationResult result =
+            await commandService.ExecuteAsync(
+                target,
+                argument,
+                context?.CancellationToken
+                    ?? CancellationToken.None)
+            ?? throw new InvalidOperationException(
+                "The runtime-host Command service returned null.");
+
+        return commandResultMapper.Map(
+                result)
+            ?? throw new InvalidOperationException(
+                "The Command operation result mapper returned null.");
     }
 }

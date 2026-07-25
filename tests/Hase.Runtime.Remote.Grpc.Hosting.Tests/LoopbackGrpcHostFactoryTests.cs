@@ -48,6 +48,21 @@ public sealed class LoopbackGrpcHostFactoryTests
     }
 
     [Fact]
+    public void Create_NullCommandService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "commandService",
+            () =>
+                LoopbackGrpcHostFactory.Create(
+                    new LoopbackGrpcBinding(
+                        IPAddress.Loopback,
+                        0),
+                    new TestSnapshotProvider(),
+                    propertyService: null,
+                    commandService: null!));
+    }
+
+    [Fact]
     public async Task Create_ValidDependencies_ShouldRegisterAndMapService()
     {
         var snapshotProvider =
@@ -107,6 +122,37 @@ public sealed class LoopbackGrpcHostFactoryTests
                 IRemoteValueMapper>());
     }
 
+    [Fact]
+    public async Task Create_CommandDependencies_ShouldRegisterMapperRoots()
+    {
+        var commandService =
+            new TestCommandService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService:
+                    commandService);
+
+        Assert.Same(
+            commandService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostCommandService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCommandTargetMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCommandOperationResultMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRemoteValueMapper>());
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -140,6 +186,18 @@ public sealed class LoopbackGrpcHostFactoryTests
         public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
             Northbound.RuntimeHostPropertyTarget target,
             object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class TestCommandService
+        : Northbound.IRuntimeHostCommandService
+    {
+        public Task<Northbound.RuntimeHostCommandOperationResult> ExecuteAsync(
+            Northbound.RuntimeHostCommandTarget target,
+            object? argument,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

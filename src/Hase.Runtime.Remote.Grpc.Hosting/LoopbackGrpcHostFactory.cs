@@ -23,7 +23,8 @@ public static class LoopbackGrpcHostFactory
         return CreateCore(
             binding,
             snapshotProvider,
-            propertyService: null);
+            propertyService: null,
+            commandService: null);
     }
 
     /// <summary>
@@ -41,13 +42,35 @@ public static class LoopbackGrpcHostFactory
         return CreateCore(
             binding,
             snapshotProvider,
-            propertyService);
+            propertyService,
+            commandService: null);
+    }
+
+    /// <summary>
+    /// Creates an unstarted loopback-only gRPC application with Command
+    /// operations enabled and optional Property operations.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService commandService)
+    {
+        ArgumentNullException.ThrowIfNull(
+            commandService);
+
+        return CreateCore(
+            binding,
+            snapshotProvider,
+            propertyService,
+            commandService);
     }
 
     private static WebApplication CreateCore(
         LoopbackGrpcBinding binding,
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
-        Northbound.IRuntimeHostPropertyService? propertyService)
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -94,6 +117,25 @@ public static class LoopbackGrpcHostFactory
                 propertyMappers.OperationResultMapper);
             builder.Services.AddSingleton(
                 propertyMappers.RemoteValueMapper);
+        }
+
+        if (commandService is not null)
+        {
+            RuntimeHostCommandMappers commandMappers =
+                RuntimeHostCommandMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                commandService);
+            builder.Services.AddSingleton(
+                commandMappers.TargetMapper);
+            builder.Services.AddSingleton(
+                commandMappers.OperationResultMapper);
+
+            if (propertyService is null)
+            {
+                builder.Services.AddSingleton(
+                    commandMappers.RemoteValueMapper);
+            }
         }
 
         WebApplication application =
