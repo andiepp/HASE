@@ -34,6 +34,20 @@ public sealed class LoopbackGrpcHostFactoryTests
     }
 
     [Fact]
+    public void Create_NullPropertyService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "propertyService",
+            () =>
+                LoopbackGrpcHostFactory.Create(
+                    new LoopbackGrpcBinding(
+                        IPAddress.Loopback,
+                        0),
+                    new TestSnapshotProvider(),
+                    null!));
+    }
+
+    [Fact]
     public async Task Create_ValidDependencies_ShouldRegisterAndMapService()
     {
         var snapshotProvider =
@@ -61,6 +75,32 @@ public sealed class LoopbackGrpcHostFactoryTests
             routeBuilder.DataSources);
     }
 
+    [Fact]
+    public async Task Create_PropertyDependencies_ShouldRegisterMapperRoots()
+    {
+        var propertyService =
+            new TestPropertyService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService);
+
+        Assert.Same(
+            propertyService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostPropertyService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostPropertyTargetMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCachedPropertyResultMapper>());
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -71,6 +111,32 @@ public sealed class LoopbackGrpcHostFactoryTests
                     "runtime-host-1"),
                 Northbound.RuntimeHostApiVersion.Current,
                 Array.Empty<Northbound.PublishedRuntimeEndpointSnapshot>());
+        }
+    }
+
+    private sealed class TestPropertyService
+        : Northbound.IRuntimeHostPropertyService
+    {
+        public Northbound.RuntimeHostCachedPropertyResult GetCached(
+            Northbound.RuntimeHostPropertyTarget target)
+        {
+            return Northbound.RuntimeHostCachedPropertyResult.Failed(
+                Northbound.RuntimeHostPropertyOperationStatus.PropertyNotFound);
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> ReadAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 }

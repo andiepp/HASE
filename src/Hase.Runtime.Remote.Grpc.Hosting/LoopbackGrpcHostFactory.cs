@@ -20,6 +20,35 @@ public static class LoopbackGrpcHostFactory
         LoopbackGrpcBinding binding,
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider)
     {
+        return CreateCore(
+            binding,
+            snapshotProvider,
+            propertyService: null);
+    }
+
+    /// <summary>
+    /// Creates an unstarted loopback-only gRPC application with Property
+    /// operations enabled.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService propertyService)
+    {
+        ArgumentNullException.ThrowIfNull(
+            propertyService);
+
+        return CreateCore(
+            binding,
+            snapshotProvider,
+            propertyService);
+    }
+
+    private static WebApplication CreateCore(
+        LoopbackGrpcBinding binding,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService)
+    {
         ArgumentNullException.ThrowIfNull(
             binding);
         ArgumentNullException.ThrowIfNull(
@@ -49,6 +78,19 @@ public static class LoopbackGrpcHostFactory
             snapshotProvider);
         builder.Services.AddSingleton(
             RuntimeHostSnapshotMapperFactory.Create());
+
+        if (propertyService is not null)
+        {
+            RuntimeHostPropertyMappers propertyMappers =
+                RuntimeHostPropertyMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                propertyService);
+            builder.Services.AddSingleton(
+                propertyMappers.TargetMapper);
+            builder.Services.AddSingleton(
+                propertyMappers.CachedResultMapper);
+        }
 
         WebApplication application =
             builder.Build();

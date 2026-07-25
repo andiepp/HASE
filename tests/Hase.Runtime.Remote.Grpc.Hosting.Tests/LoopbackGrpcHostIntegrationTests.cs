@@ -91,6 +91,95 @@ public sealed class LoopbackGrpcHostIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task ReadCachedProperty_Ipv4LoopbackHttp2_ShouldReachNorthboundService()
+    {
+        var propertyService =
+            new TestPropertyService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService);
+
+        await application.StartAsync();
+
+        try
+        {
+            IServer server =
+                application.Services.GetRequiredService<IServer>();
+            IServerAddressesFeature addressesFeature =
+                server.Features.Get<IServerAddressesFeature>()
+                ?? throw new InvalidOperationException(
+                    "The server addresses feature is unavailable.");
+            var uri =
+                new Uri(
+                    Assert.Single(
+                        addressesFeature.Addresses));
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    uri);
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+            var generation =
+                new Guid(
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd");
+
+            GrpcV1.CachedPropertyResult response =
+                await client.ReadCachedPropertyAsync(
+                    new GrpcV1.ReadCachedPropertyRequest
+                    {
+                        Target =
+                            new GrpcV1.PropertyTarget
+                            {
+                                EndpointId =
+                                    "endpoint-01",
+                                AttachmentGeneration =
+                                    generation.ToString(
+                                        "D"),
+                                InstrumentId =
+                                    "environment-sensor-01",
+                                PropertyId =
+                                    "temperature"
+                            }
+                    },
+                    deadline:
+                        DateTime.UtcNow.AddSeconds(
+                            10));
+
+            Assert.Equal(
+                GrpcV1.PropertyOperationStatus.PropertyNotFound,
+                response.Status);
+            Assert.Equal(
+                "Property not found.",
+                response.Diagnostic);
+            Assert.NotNull(
+                propertyService.CachedTarget);
+            Assert.Equal(
+                "endpoint-01",
+                propertyService.CachedTarget.EndpointId.Value);
+            Assert.Equal(
+                generation,
+                propertyService.CachedTarget.AttachmentGeneration.Value);
+            Assert.Equal(
+                "environment-sensor-01",
+                propertyService.CachedTarget.InstrumentId.Value);
+            Assert.Equal(
+                "temperature",
+                propertyService.CachedTarget.PropertyId.Value);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -109,6 +198,42 @@ public sealed class LoopbackGrpcHostIntegrationTests
                     "runtime-host-loopback-integration"),
                 Northbound.RuntimeHostApiVersion.Current,
                 Array.Empty<Northbound.PublishedRuntimeEndpointSnapshot>());
+        }
+    }
+
+    private sealed class TestPropertyService
+        : Northbound.IRuntimeHostPropertyService
+    {
+        public Northbound.RuntimeHostPropertyTarget? CachedTarget
+        {
+            get;
+            private set;
+        }
+
+        public Northbound.RuntimeHostCachedPropertyResult GetCached(
+            Northbound.RuntimeHostPropertyTarget target)
+        {
+            CachedTarget =
+                target;
+
+            return Northbound.RuntimeHostCachedPropertyResult.Failed(
+                Northbound.RuntimeHostPropertyOperationStatus.PropertyNotFound,
+                "Property not found.");
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> ReadAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 }
