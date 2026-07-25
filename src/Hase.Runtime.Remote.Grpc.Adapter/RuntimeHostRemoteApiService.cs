@@ -27,6 +27,8 @@ public sealed class RuntimeHostRemoteApiService
     private readonly IObservationInitialSnapshotMapper? initialSnapshotMapper;
     private readonly IRuntimeHostObservationMapper? observationMapper;
     private readonly IHostApplicationLifetime? applicationLifetime;
+    private readonly IRuntimeHostClientPrincipalProvider? principalProvider;
+    private readonly IRuntimeHostRemoteAuthorizationGate? authorizationGate;
 
     /// <summary>
     /// Initializes the service adapter.
@@ -45,7 +47,9 @@ public sealed class RuntimeHostRemoteApiService
         Northbound.IRuntimeHostObservationService? observationService = null,
         IObservationInitialSnapshotMapper? initialSnapshotMapper = null,
         IRuntimeHostObservationMapper? observationMapper = null,
-        IHostApplicationLifetime? applicationLifetime = null)
+        IHostApplicationLifetime? applicationLifetime = null,
+        IRuntimeHostClientPrincipalProvider? principalProvider = null,
+        IRuntimeHostRemoteAuthorizationGate? authorizationGate = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -71,6 +75,9 @@ public sealed class RuntimeHostRemoteApiService
             observationService is not null
             || initialSnapshotMapper is not null
             || observationMapper is not null;
+        bool authorizationConfigured =
+            principalProvider is not null
+            || authorizationGate is not null;
 
         if (propertyAccessConfigured)
         {
@@ -138,6 +145,18 @@ public sealed class RuntimeHostRemoteApiService
                     nameof(observationMapper));
         }
 
+        if (authorizationConfigured)
+        {
+            this.principalProvider =
+                principalProvider
+                ?? throw new ArgumentNullException(
+                    nameof(principalProvider));
+            this.authorizationGate =
+                authorizationGate
+                ?? throw new ArgumentNullException(
+                    nameof(authorizationGate));
+        }
+
         this.applicationLifetime =
             applicationLifetime;
     }
@@ -149,6 +168,10 @@ public sealed class RuntimeHostRemoteApiService
     {
         ArgumentNullException.ThrowIfNull(
             request);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.GetSnapshot);
 
         Northbound.PublishedRuntimeHostSnapshot snapshot =
             snapshotProvider.Capture()
@@ -170,6 +193,10 @@ public sealed class RuntimeHostRemoteApiService
     {
         ArgumentNullException.ThrowIfNull(
             request);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.ReadCachedProperty);
 
         Northbound.IRuntimeHostPropertyService propertyService =
             this.propertyService
@@ -215,6 +242,10 @@ public sealed class RuntimeHostRemoteApiService
         ArgumentNullException.ThrowIfNull(
             request);
 
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.ReadAuthoritativeProperty);
+
         Northbound.IRuntimeHostPropertyService propertyService =
             this.propertyService
             ?? throw new InvalidOperationException(
@@ -255,6 +286,10 @@ public sealed class RuntimeHostRemoteApiService
     {
         ArgumentNullException.ThrowIfNull(
             request);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.WriteProperty);
 
         Northbound.IRuntimeHostPropertyService propertyService =
             this.propertyService
@@ -307,6 +342,10 @@ public sealed class RuntimeHostRemoteApiService
     {
         ArgumentNullException.ThrowIfNull(
             request);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.ExecuteCommand);
 
         Northbound.IRuntimeHostCommandService commandService =
             this.commandService
@@ -362,6 +401,10 @@ public sealed class RuntimeHostRemoteApiService
             request);
         ArgumentNullException.ThrowIfNull(
             responseStream);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.Observe);
 
         Northbound.IRuntimeHostObservationService observationService =
             this.observationService
@@ -435,6 +478,39 @@ public sealed class RuntimeHostRemoteApiService
                             + "Open a new subscription."));
                 }
             }
+        }
+    }
+
+    private void AuthorizeOperation(
+        ServerCallContext? context,
+        RuntimeHostRemoteOperation operation)
+    {
+        if (principalProvider is null
+            || authorizationGate is null)
+        {
+            return;
+        }
+
+        RuntimeHostClientPrincipal principal =
+            principalProvider.GetPrincipal(
+                context)
+            ?? throw new InvalidOperationException(
+                "The client-principal provider returned null.");
+
+        RuntimeHostAuthorizationDecision decision =
+            authorizationGate.Authorize(
+                principal,
+                operation)
+            ?? throw new InvalidOperationException(
+                "The remote authorization gate returned null.");
+
+        if (!decision.IsAllowed)
+        {
+            throw new RpcException(
+                new Status(
+                    StatusCode.PermissionDenied,
+                    "The authenticated client is not authorized "
+                    + "to perform this operation."));
         }
     }
 }
