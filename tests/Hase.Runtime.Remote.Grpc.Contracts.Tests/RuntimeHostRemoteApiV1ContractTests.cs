@@ -196,6 +196,106 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
+    public void PropertyTarget_DefinesGenerationScopedIdentity()
+    {
+        FieldDescriptor[] fields =
+            PropertyTarget.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field =>
+            {
+                Assert.Equal("endpoint_id", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("attachment_generation", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("instrument_id", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("property_id", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            });
+    }
+
+    [Fact]
+    public void PropertyOperationStatus_DefinesStableNormalizedValues()
+    {
+        EnumValueDescriptor[] values =
+            Assert.Single(
+                    RuntimeHostRemoteApiV1Reflection.Descriptor.EnumTypes,
+                    descriptor =>
+                        descriptor.Name
+                        == "PropertyOperationStatus")
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_UNSPECIFIED",
+                0),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_SUCCESS",
+                1),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_ATTACHMENT_NOT_CURRENT",
+                2),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_INSTRUMENT_NOT_FOUND",
+                3),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_PROPERTY_NOT_FOUND",
+                4),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_READ_NOT_SUPPORTED",
+                5),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_WRITE_NOT_SUPPORTED",
+                6),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_INVALID_VALUE",
+                7),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_ENDPOINT_UNAVAILABLE",
+                8),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_ENDPOINT_REJECTED",
+                9),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_ENDPOINT_FAILURE",
+                10),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_OPERATION_STATUS_TIMED_OUT",
+                11));
+    }
+
+    [Fact]
     public void PublishedEndpointSnapshot_DefinesEnvelopeMembers()
     {
         FieldDescriptor[] fields =
