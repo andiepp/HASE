@@ -22,6 +22,45 @@ public sealed class RuntimeHostRemoteApiServiceTests
                     new TestSnapshotProvider(
                         CreateSnapshot()),
                     null!));
+
+        Assert.Throws<ArgumentNullException>(
+            "propertyService",
+            () =>
+                new RuntimeHostRemoteApiService(
+                    new TestSnapshotProvider(
+                        CreateSnapshot()),
+                    RuntimeHostSnapshotMapperFactory.Create(),
+                    null!,
+                    new TestPropertyTargetMapper(
+                        CreateTarget()),
+                    new TestCachedResultMapper(
+                        new GrpcV1.CachedPropertyResult())));
+
+        Assert.Throws<ArgumentNullException>(
+            "propertyTargetMapper",
+            () =>
+                new RuntimeHostRemoteApiService(
+                    new TestSnapshotProvider(
+                        CreateSnapshot()),
+                    RuntimeHostSnapshotMapperFactory.Create(),
+                    new TestPropertyService(
+                        CreateCachedResult()),
+                    null!,
+                    new TestCachedResultMapper(
+                        new GrpcV1.CachedPropertyResult())));
+
+        Assert.Throws<ArgumentNullException>(
+            "cachedResultMapper",
+            () =>
+                new RuntimeHostRemoteApiService(
+                    new TestSnapshotProvider(
+                        CreateSnapshot()),
+                    RuntimeHostSnapshotMapperFactory.Create(),
+                    new TestPropertyService(
+                        CreateCachedResult()),
+                    new TestPropertyTargetMapper(
+                        CreateTarget()),
+                    null!));
     }
 
     [Fact]
@@ -95,6 +134,225 @@ public sealed class RuntimeHostRemoteApiServiceTests
             exception.Message);
     }
 
+    [Fact]
+    public async Task ReadCachedProperty_NullRequest_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreatePropertyServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult()),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestCachedResultMapper(
+                    new GrpcV1.CachedPropertyResult()));
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            "request",
+            () =>
+                service.ReadCachedProperty(
+                    null!,
+                    null!));
+    }
+
+    [Fact]
+    public async Task ReadCachedProperty_NotConfigured_ShouldThrow()
+    {
+        var service =
+            new RuntimeHostRemoteApiService(
+                new TestSnapshotProvider(
+                    CreateSnapshot()),
+                RuntimeHostSnapshotMapperFactory.Create());
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.ReadCachedProperty(
+                        new GrpcV1.ReadCachedPropertyRequest(),
+                        null!));
+
+        Assert.Equal(
+            "Cached Property access is not configured.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task ReadCachedProperty_ShouldMapQueryAndResult()
+    {
+        Northbound.RuntimeHostPropertyTarget target =
+            CreateTarget();
+        Northbound.RuntimeHostCachedPropertyResult cachedResult =
+            CreateCachedResult();
+        var mappedResult =
+            new GrpcV1.CachedPropertyResult
+            {
+                Status =
+                    GrpcV1.PropertyOperationStatus.PropertyNotFound,
+                Diagnostic =
+                    "Mapped result."
+            };
+        var propertyService =
+            new TestPropertyService(
+                cachedResult);
+        var targetMapper =
+            new TestPropertyTargetMapper(
+                target);
+        var resultMapper =
+            new TestCachedResultMapper(
+                mappedResult);
+        RuntimeHostRemoteApiService service =
+            CreatePropertyServiceAdapter(
+                propertyService,
+                targetMapper,
+                resultMapper);
+        var request =
+            new GrpcV1.ReadCachedPropertyRequest
+            {
+                Target =
+                    new GrpcV1.PropertyTarget
+                    {
+                        EndpointId =
+                            "remote-endpoint"
+                    }
+            };
+
+        GrpcV1.CachedPropertyResult response =
+            await service.ReadCachedProperty(
+                request,
+                null!);
+
+        Assert.Same(
+            request.Target,
+            targetMapper.Input);
+        Assert.Same(
+            target,
+            propertyService.CachedTarget);
+        Assert.Same(
+            cachedResult,
+            resultMapper.Input);
+        Assert.Same(
+            mappedResult,
+            response);
+    }
+
+    [Fact]
+    public async Task ReadCachedProperty_TargetMapperReturnsNull_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreatePropertyServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult()),
+                new TestPropertyTargetMapper(
+                    null!),
+                new TestCachedResultMapper(
+                    new GrpcV1.CachedPropertyResult()));
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.ReadCachedProperty(
+                        new GrpcV1.ReadCachedPropertyRequest
+                        {
+                            Target =
+                                new GrpcV1.PropertyTarget()
+                        },
+                        null!));
+
+        Assert.Equal(
+            "The Property target mapper returned null.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task ReadCachedProperty_PropertyServiceReturnsNull_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreatePropertyServiceAdapter(
+                new TestPropertyService(
+                    null!),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestCachedResultMapper(
+                    new GrpcV1.CachedPropertyResult()));
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.ReadCachedProperty(
+                        new GrpcV1.ReadCachedPropertyRequest
+                        {
+                            Target =
+                                new GrpcV1.PropertyTarget()
+                        },
+                        null!));
+
+        Assert.Equal(
+            "The runtime-host Property service returned null.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task ReadCachedProperty_ResultMapperReturnsNull_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreatePropertyServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult()),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestCachedResultMapper(
+                    null!));
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.ReadCachedProperty(
+                        new GrpcV1.ReadCachedPropertyRequest
+                        {
+                            Target =
+                                new GrpcV1.PropertyTarget()
+                        },
+                        null!));
+
+        Assert.Equal(
+            "The cached Property result mapper returned null.",
+            exception.Message);
+    }
+
+    private static RuntimeHostRemoteApiService CreatePropertyServiceAdapter(
+        Northbound.IRuntimeHostPropertyService propertyService,
+        IRuntimeHostPropertyTargetMapper targetMapper,
+        IRuntimeHostCachedPropertyResultMapper resultMapper)
+    {
+        return new RuntimeHostRemoteApiService(
+            new TestSnapshotProvider(
+                CreateSnapshot()),
+            RuntimeHostSnapshotMapperFactory.Create(),
+            propertyService,
+            targetMapper,
+            resultMapper);
+    }
+
+    private static Northbound.RuntimeHostPropertyTarget CreateTarget()
+    {
+        return new Northbound.RuntimeHostPropertyTarget(
+            new Hase.Core.Domain.Identity.EndpointId(
+                "endpoint-01"),
+            new Northbound.RuntimeEndpointAttachmentGeneration(
+                new Guid(
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd")),
+            new Hase.Core.Domain.Identity.InstrumentId(
+                "environment-sensor-01"),
+            new Hase.Core.Domain.Identity.PropertyId(
+                "temperature"));
+    }
+
+    private static Northbound.RuntimeHostCachedPropertyResult CreateCachedResult()
+    {
+        return Northbound.RuntimeHostCachedPropertyResult.Failed(
+            Northbound.RuntimeHostPropertyOperationStatus.PropertyNotFound,
+            "Property not found.");
+    }
+
     private static Northbound.PublishedRuntimeHostSnapshot CreateSnapshot()
     {
         return new Northbound.PublishedRuntimeHostSnapshot(
@@ -127,6 +385,105 @@ public sealed class RuntimeHostRemoteApiServiceTests
             CaptureCount++;
 
             return snapshot;
+        }
+    }
+
+    private sealed class TestPropertyService
+        : Northbound.IRuntimeHostPropertyService
+    {
+        private readonly Northbound.RuntimeHostCachedPropertyResult cachedResult;
+
+        public TestPropertyService(
+            Northbound.RuntimeHostCachedPropertyResult cachedResult)
+        {
+            this.cachedResult =
+                cachedResult;
+        }
+
+        public Northbound.RuntimeHostPropertyTarget? CachedTarget
+        {
+            get;
+            private set;
+        }
+
+        public Northbound.RuntimeHostCachedPropertyResult GetCached(
+            Northbound.RuntimeHostPropertyTarget target)
+        {
+            CachedTarget =
+                target;
+
+            return cachedResult;
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> ReadAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class TestPropertyTargetMapper
+        : IRuntimeHostPropertyTargetMapper
+    {
+        private readonly Northbound.RuntimeHostPropertyTarget result;
+
+        public TestPropertyTargetMapper(
+            Northbound.RuntimeHostPropertyTarget result)
+        {
+            this.result =
+                result;
+        }
+
+        public GrpcV1.PropertyTarget? Input
+        {
+            get;
+            private set;
+        }
+
+        public Northbound.RuntimeHostPropertyTarget Map(
+            GrpcV1.PropertyTarget source)
+        {
+            Input =
+                source;
+
+            return result;
+        }
+    }
+
+    private sealed class TestCachedResultMapper
+        : IRuntimeHostCachedPropertyResultMapper
+    {
+        private readonly GrpcV1.CachedPropertyResult result;
+
+        public TestCachedResultMapper(
+            GrpcV1.CachedPropertyResult result)
+        {
+            this.result =
+                result;
+        }
+
+        public Northbound.RuntimeHostCachedPropertyResult? Input
+        {
+            get;
+            private set;
+        }
+
+        public GrpcV1.CachedPropertyResult Map(
+            Northbound.RuntimeHostCachedPropertyResult result)
+        {
+            Input =
+                result;
+
+            return this.result;
         }
     }
 }
