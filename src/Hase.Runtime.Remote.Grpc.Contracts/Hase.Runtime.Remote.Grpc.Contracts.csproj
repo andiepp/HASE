@@ -15,6 +15,7 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- Generate the version 1 protobuf messages and gRPC client/server types. -->
   <ItemGroup>
     <Protobuf Include="Protos\runtime_host_remote_api_v1.proto"
               GrpcServices="Both" />
