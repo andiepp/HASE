@@ -25,6 +25,14 @@ message RuntimeHostApiVersion {
   uint32 minor = 2;
 }
 
+message RemoteValue {
+  oneof kind {
+    bool boolean_value = 1;
+    string string_value = 2;
+    double numeric_value = 3;
+  }
+}
+
 message PublishedRuntimeEndpointSnapshot {
   string endpoint_id = 1;
   string attachment_generation = 2;

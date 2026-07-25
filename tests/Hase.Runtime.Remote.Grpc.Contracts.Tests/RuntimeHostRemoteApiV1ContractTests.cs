@@ -101,6 +101,101 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
+    public void RemoteValue_DefinesClosedVersionOneUnion()
+    {
+        OneofDescriptor kind =
+            Assert.Single(
+                RemoteValue.Descriptor.Oneofs);
+
+        Assert.Equal(
+            "kind",
+            kind.Name);
+
+        Assert.Collection(
+            kind.Fields,
+            field =>
+            {
+                Assert.Equal("boolean_value", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.Bool, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("string_value", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("numeric_value", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.Double, field.FieldType);
+            });
+    }
+
+    [Fact]
+    public void RemoteValue_RoundTrip_ShouldPreserveEachVersionOneVariant()
+    {
+        var booleanValue =
+            new RemoteValue
+            {
+                BooleanValue =
+                    true
+            };
+        var stringValue =
+            new RemoteValue
+            {
+                StringValue =
+                    "Ready"
+            };
+        var numericValue =
+            new RemoteValue
+            {
+                NumericValue =
+                    23.75
+            };
+
+        RemoteValue booleanRoundTrip =
+            RemoteValue.Parser.ParseFrom(
+                booleanValue.ToByteArray());
+        RemoteValue stringRoundTrip =
+            RemoteValue.Parser.ParseFrom(
+                stringValue.ToByteArray());
+        RemoteValue numericRoundTrip =
+            RemoteValue.Parser.ParseFrom(
+                numericValue.ToByteArray());
+
+        Assert.Equal(
+            RemoteValue.KindOneofCase.BooleanValue,
+            booleanRoundTrip.KindCase);
+        Assert.True(
+            booleanRoundTrip.BooleanValue);
+        Assert.Equal(
+            RemoteValue.KindOneofCase.StringValue,
+            stringRoundTrip.KindCase);
+        Assert.Equal(
+            "Ready",
+            stringRoundTrip.StringValue);
+        Assert.Equal(
+            RemoteValue.KindOneofCase.NumericValue,
+            numericRoundTrip.KindCase);
+        Assert.Equal(
+            23.75,
+            numericRoundTrip.NumericValue);
+    }
+
+    [Fact]
+    public void RemoteValue_DefaultInstance_ShouldRepresentAbsence()
+    {
+        var value =
+            new RemoteValue();
+
+        Assert.Equal(
+            RemoteValue.KindOneofCase.None,
+            value.KindCase);
+    }
+
+    [Fact]
     public void PublishedEndpointSnapshot_DefinesEnvelopeMembers()
     {
         FieldDescriptor[] fields =
