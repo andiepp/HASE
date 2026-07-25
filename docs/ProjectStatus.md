@@ -25,7 +25,8 @@ runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
 serial endpoint attachment, compact serial unsolicited event notification,
 normalized northbound Property operations, and normalized northbound Command
-execution are implemented. Phase 6 is complete at the C-025 baseline.
+execution, and normalized northbound live observation are implemented. Phase 6
+is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -33,15 +34,16 @@ runtime-host inventory and normalized Properties, Commands, Events, connection
 status, and live observation without exposing or transferring ownership of
 physical endpoint lifecycles.
 
-The Phase 7 snapshot, identity, inventory-query, normalized Property, and
-normalized Command foundations are implemented. They provide
+The Phase 7 snapshot, identity, inventory-query, normalized Property, normalized
+Command, and live-observation foundations are implemented. They provide
 stable runtime-host identity, API contract versioning, immutable endpoint
 attachment snapshots, opaque attachment generations, authoritative inventory
 list and lookup projection, identity resolution precedence, atomic
 cross-process file persistence, file-backed snapshot composition, cached
 Property queries, authoritative Property reads, endpoint-confirmed Property
-writes, generation-scoped Command execution, shared generation authority, and
-normalized native/compact operation results.
+writes, generation-scoped Command execution, shared generation authority,
+normalized native/compact operation results, and snapshot-first bounded
+subscriptions for lifecycle, connection, Property, and Event observations.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
@@ -49,11 +51,13 @@ C-026 validates the same public northbound Property service through both
 physical endpoint families.
 C-027 validates the same public northbound Command service through both
 physical endpoint families.
+C-028 validates the same public northbound live-observation service through
+both physical endpoint families.
 
 The current verified baseline is:
 
 ```text
-2,107 automated tests passing
+2,212 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -67,6 +71,7 @@ Arduino Uno USB-unplug/replug recovery verified
 Arduino Uno hardware-reset recovery verified
 Physical native and compact northbound Property access verified
 Physical native and compact northbound Command execution verified
+Physical native and compact northbound live observation verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -343,10 +348,23 @@ Implemented Phase 7 foundation:
   attachment projection;
 - physical C-027 native LED toggle/return/read/restore validation;
 - physical C-027 compact LED toggle/read/restore validation;
+- ADR-0029 immutable observation kinds, sequences, payloads, and subscription
+  options;
+- authoritative initial snapshot and subscription-local sequence boundary;
+- bounded independently buffered observation subscriptions;
+- explicit gap termination instead of silent observation loss;
+- attachment publication and ending observations;
+- normalized connection-status, Property-cache, and Event observations;
+- generation-bound observation delivery across attachment replacement;
+- snapshot composition exposing one live-observation service over the same
+  attachment projection as inventory, Property, and Command services;
+- native Protocol Version 1 and Compact Serial Protocol observation integration;
+- physical C-028 publication, Property, Event, and orderly-ending validation
+  for both endpoint families;
 - preservation of runtime-host ownership for attachment and endpoint
   lifecycles.
 
-Event and live-observation application services remain the next Phase 7 work.
+Phase 7.5 live observation is complete.
 No remote wire technology has been selected.
 
 ---
@@ -406,8 +424,8 @@ responsive.
 ## Northbound Runtime-Host Foundation
 
 `Hase.Runtime.Northbound` contains the transport-independent application-facing
-snapshot, identity, inventory-query, normalized Property service, and normalized
-Command service foundations.
+snapshot, identity, inventory-query, normalized Property service, normalized
+Command service, and live-observation foundations.
 
 The authoritative attachment inventory is projected into immutable published
 endpoint snapshots containing:
@@ -431,9 +449,9 @@ atomic non-overwriting publication. Malformed, inaccessible, incompatible, or
 ambiguous persistence fails safely and is never treated as an empty store.
 
 `RuntimeHostNorthboundSnapshotComposition` resolves identity once and composes
-snapshot providers, `IRuntimeHostPropertyService`, and
-`IRuntimeHostCommandService` over one shared attachment-generation projection
-of the host-owned inventory.
+snapshot providers, `IRuntimeHostPropertyService`,
+`IRuntimeHostCommandService`, and `RuntimeHostObservationService` over one
+shared attachment-generation projection of the host-owned inventory.
 
 The Property service exposes:
 
@@ -463,8 +481,16 @@ byte identifiers below the northbound boundary. Commands are never retried
 automatically after ambiguous timeout or connection loss and never
 speculatively update Property caches.
 
-The composition, Property service, and Command service do not own, attach,
-detach, replace, supervise, recover, or dispose endpoints.
+The observation service exposes an authoritative initial runtime-host snapshot,
+its exact subscription-local sequence boundary, and later immutable
+generation-bound observations. Independent buffers are bounded. A gap ends the
+affected subscription explicitly rather than losing observations silently.
+Attachment publication and ending, connection status, accepted Property-cache
+updates, and transient Event occurrences share one normalized stream. Events
+remain unqueued and are never replayed.
+
+The composition, Property service, Command service, and observation service do
+not own, attach, detach, replace, supervise, recover, or dispose endpoints.
 
 ## Compact Protocol
 
@@ -759,6 +785,9 @@ Explorer tracing.
 - C-027 - Generation-scoped physical northbound Command execution through one
   public service for native Protocol Version 1 and Compact Serial Protocol
   endpoints.
+- C-028 - Snapshot-first, generation-scoped physical northbound live
+  observation through one public service for native Protocol Version 1 and
+  Compact Serial Protocol endpoints.
 
 ---
 
@@ -766,7 +795,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,107 automated tests pass
+2,212 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -829,13 +858,25 @@ C-027 confirms compact Command results through authoritative Property reads
 C-027 performs no automatic Command retry or speculative Property-cache update
 C-027 orderly detachment ends both physical endpoint families in Disconnected
 Protocol Explorer C-027 exits with code 0 for both endpoint families
+C-028 opens each observation subscription before physical attachment
+C-028 initial snapshots contain zero published endpoints
+C-028 observes AttachmentPublished, PropertyValueChanged, EventOccurred, and
+AttachmentEnded milestones for both physical endpoint families
+C-028 retains one authoritative EndpointId and attachment generation across
+every milestone
+C-028 native observations are delivered consecutively at sequences 1 through 4
+C-028 compact observations retain additional authoritative Property-cache
+updates between required milestones
+C-028 physical button Events carry null values and UTC timestamps
+C-028 orderly attachment ending is observed for both endpoint families
+Protocol Explorer C-028 exits with code 0 for both endpoint families
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0028 are accepted.
+ADR-0001 through ADR-0029 are accepted.
 
 Relevant recent decisions:
 
@@ -852,6 +893,7 @@ Relevant recent decisions:
 - ADR-0026 - File-Based Runtime-Host Identity Store.
 - ADR-0027 - Normalized Northbound Property Operations.
 - ADR-0028 - Normalized Northbound Command Execution.
+- ADR-0029 - Northbound Live Observation.
 
 ---
 
@@ -872,7 +914,6 @@ The current implementation intentionally excludes:
 - formal compact-profile negotiation;
 - persistent event history and replay;
 - additional compact scalar/event-value encodings;
-- normalized northbound Command, Event, and observation services;
 - northbound remote API mapping;
 - Tailscale runtime-host discovery.
 
@@ -880,14 +921,13 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Normalize native and compact Command operations behind one application
-   service.
-2. Define lifecycle, Property, and Event observation services.
-3. Validate normalized Commands and observations through both endpoint
-   families where supported.
-4. Select a remote wire technology only after the transport-independent
-   operational service boundary is complete and validated.
-5. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+1. Review and approve the architecture for the remote API technology.
+2. Define authentication, authorization, encryption, credential lifecycle, and
+   audit behavior before production non-local exposure.
+3. Map the completed transport-independent operational service boundary to the
+   approved remote technology without transferring endpoint lifecycle
+   ownership.
+4. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
 

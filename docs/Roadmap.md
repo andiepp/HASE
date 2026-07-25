@@ -671,29 +671,62 @@ replacement, detachment, and disposal ownership.
 
 ## 7.5 Lifecycle, Property, and Event Observation
 
-**Status:** [Planned] Planned
+**Status:** [Completed] Implemented, automated, and physically verified
 
-Provide live observation of:
+Architecture: ADR-0029 - Northbound Live Observation.
 
-- endpoint attachment and detachment;
-- connection-state changes;
-- Property-value changes;
-- attachment-generation replacement;
-- Event occurrences.
+Implemented:
 
-Initial Event semantics remain transient with no offline queue and no replay.
-Clients obtain a fresh inventory snapshot after reconnecting before resuming
-live observation.
+- immutable observation kinds, subscription-local sequences, payloads, and
+  subscription options;
+- authoritative initial runtime-host snapshot and exact sequence boundary;
+- bounded independently buffered subscriptions;
+- explicit observation-gap termination instead of silent loss;
+- attachment publication and ending observations;
+- normalized connection-status changes;
+- authoritative Property-cache update observations;
+- transient Event occurrence observations with no offline queue or replay;
+- opaque attachment-generation binding on every observation;
+- race-free attachment projection shared with snapshots and operations;
+- deterministic subscription disposal without endpoint lifecycle ownership;
+- native Protocol Version 1 and Compact Serial Protocol integration through the
+  same observation service;
+- Protocol Explorer observation formatting for every normalized kind;
+- Protocol Explorer C-028.
+
+Physical C-028 validation confirmed:
+
+```text
+ESP32:
+    empty initial snapshot
+    -> AttachmentPublished, sequence 1
+    -> PropertyValueChanged, sequence 2
+    -> EventOccurred from GPIO17, sequence 3
+    -> AttachmentEnded, sequence 4
+    -> exit code 0
+
+Arduino Uno:
+    empty initial snapshot
+    -> AttachmentPublished, sequence 1
+    -> PropertyValueChanged, sequence 2
+    -> additional retained Property cache updates
+    -> EventOccurred from D7, sequence 5
+    -> AttachmentEnded, sequence 6
+    -> exit code 0
+```
+
+Both physical runs retained one authoritative endpoint identity and attachment
+generation across all required milestones. Event values were null and Event
+timestamps were expressed in UTC. The runtime host retained attachment,
+connection, synchronization, recovery, detachment, and disposal ownership.
 
 ## 7.6 Unified Native and Compact Validation
 
-**Status:** [Active] Property and Command operations completed
+**Status:** [Completed] Property, Command, and observation services completed
 
-Normalized Property and Command operations are automated and physically
-validated for native Protocol Version 1 and Compact Serial Protocol endpoints
-through the same in-process northbound application-service contract.
-
-Observation validation remains pending before remote wire-technology selection.
+Normalized Property, Command, and live-observation services are automated and
+physically validated for native Protocol Version 1 and Compact Serial Protocol
+endpoints through the same in-process northbound application-service boundary.
 
 ## 7.7 Remote API Technology
 
@@ -823,15 +856,17 @@ Current documentation includes:
 - `C-023-USB-Serial-Endpoint-Discovery.md`;
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
-- ADR-0001 through ADR-0028.
+- `C-028-Northbound-Live-Observation.md`;
+- ADR-0001 through ADR-0029.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-027 and their validation
+1. Keep physical capabilities C-015 through C-028 and their validation
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, and normalized
-   Property and Command services aligned with ADR-0023 through ADR-0028.
+   Property, Command, and observation services aligned with ADR-0023 through
+   ADR-0029.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -843,11 +878,11 @@ Next:
 
 # Current Priorities
 
-1. Implement Phase 7.5 lifecycle, Property, and Event observation.
-2. Validate normalized observations through both endpoint families where
-   supported.
-3. Select the remote wire technology only after the service boundary is
-   validated.
+1. Review and approve the architecture for Phase 7.7 remote API technology.
+2. Define authentication, authorization, encryption, credential lifecycle, and
+   audit behavior before non-local production exposure.
+3. Preserve the completed transport-independent service boundary while mapping
+   it to the selected remote technology.
 4. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
