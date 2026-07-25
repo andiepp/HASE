@@ -381,10 +381,265 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void DataDescriptor_StartsWithoutPrematureFields()
+    public void DataDescriptor_DefinesExclusiveVariants()
+    {
+        OneofDescriptor kind =
+            Assert.Single(
+                DataDescriptor.Descriptor.Oneofs);
+
+        Assert.Equal(
+            "kind",
+            kind.Name);
+
+        Assert.Collection(
+            kind.Fields,
+            field => AssertMessageField(
+                field,
+                "numeric",
+                1,
+                NumericDataDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "boolean_descriptor",
+                2,
+                BooleanDataDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "string_descriptor",
+                3,
+                StringDataDescriptor.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void NumericDataDescriptor_DefinesEngineeringMembers()
+    {
+        FieldDescriptor[] fields =
+            NumericDataDescriptor.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertMessageField(
+                field,
+                "quantity",
+                1,
+                Quantity.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "native_unit",
+                2,
+                Unit.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "range",
+                3,
+                ValueRange.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "resolution",
+                4,
+                Resolution.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void QuantityAndUnit_DefineRequiredTextAndQuantityReference()
+    {
+        Assert.Collection(
+            Quantity.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "display_name",
+                2,
+                FieldType.String,
+                false,
+                false));
+
+        Assert.Collection(
+            Unit.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "display_name",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "symbol",
+                3,
+                FieldType.String,
+                false,
+                false),
+            field => AssertMessageField(
+                field,
+                "quantity",
+                4,
+                Quantity.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void RangeAndResolution_DefineDoubleMembers()
+    {
+        Assert.Collection(
+            ValueRange.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "minimum",
+                1,
+                FieldType.Double,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "maximum",
+                2,
+                FieldType.Double,
+                false,
+                false));
+
+        FieldDescriptor resolution =
+            Assert.Single(
+                Resolution.Descriptor.Fields.InDeclarationOrder());
+
+        AssertField(
+            resolution,
+            "value",
+            1,
+            FieldType.Double,
+            false,
+            false);
+    }
+
+    [Fact]
+    public void BooleanAndStringDataDescriptors_HaveNoAdditionalMembers()
     {
         Assert.Empty(
-            DataDescriptor.Descriptor.Fields.InDeclarationOrder());
+            BooleanDataDescriptor.Descriptor.Fields.InDeclarationOrder());
+        Assert.Empty(
+            StringDataDescriptor.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void DataDescriptor_RoundTrip_PreservesEachVariant()
+    {
+        var quantity =
+            new Quantity
+            {
+                Id =
+                    "temperature",
+                DisplayName =
+                    "Temperature"
+            };
+
+        var numeric =
+            new DataDescriptor
+            {
+                Numeric =
+                    new NumericDataDescriptor
+                    {
+                        Quantity =
+                            quantity,
+                        NativeUnit =
+                            new Unit
+                            {
+                                Id =
+                                    "degree-celsius",
+                                DisplayName =
+                                    "Degree Celsius",
+                                Symbol =
+                                    "°C",
+                                Quantity =
+                                    quantity.Clone()
+                            },
+                        Range =
+                            new ValueRange
+                            {
+                                Minimum = -40.0,
+                                Maximum = 85.0
+                            },
+                        Resolution =
+                            new Resolution
+                            {
+                                Value = 0.01
+                            }
+                    }
+            };
+
+        DataDescriptor numericRoundTrip =
+            DataDescriptor.Parser.ParseFrom(
+                numeric.ToByteArray());
+
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.Numeric,
+            numericRoundTrip.KindCase);
+        Assert.Equal(
+            "temperature",
+            numericRoundTrip.Numeric.Quantity.Id);
+        Assert.Equal(
+            "°C",
+            numericRoundTrip.Numeric.NativeUnit.Symbol);
+        Assert.Equal(
+            -40.0,
+            numericRoundTrip.Numeric.Range.Minimum);
+        Assert.Equal(
+            85.0,
+            numericRoundTrip.Numeric.Range.Maximum);
+        Assert.Equal(
+            0.01,
+            numericRoundTrip.Numeric.Resolution.Value);
+
+        var booleanData =
+            new DataDescriptor
+            {
+                BooleanDescriptor =
+                    new BooleanDataDescriptor()
+            };
+
+        DataDescriptor booleanRoundTrip =
+            DataDescriptor.Parser.ParseFrom(
+                booleanData.ToByteArray());
+
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.BooleanDescriptor,
+            booleanRoundTrip.KindCase);
+
+        var stringData =
+            new DataDescriptor
+            {
+                StringDescriptor =
+                    new StringDataDescriptor()
+            };
+
+        DataDescriptor stringRoundTrip =
+            DataDescriptor.Parser.ParseFrom(
+                stringData.ToByteArray());
+
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.StringDescriptor,
+            stringRoundTrip.KindCase);
     }
 
     [Fact]

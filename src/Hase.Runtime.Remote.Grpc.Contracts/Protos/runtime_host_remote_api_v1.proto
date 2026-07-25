@@ -71,6 +71,45 @@ enum PropertyAccessMode {
 }
 
 message DataDescriptor {
+  oneof kind {
+    NumericDataDescriptor numeric = 1;
+    BooleanDataDescriptor boolean_descriptor = 2;
+    StringDataDescriptor string_descriptor = 3;
+  }
+}
+
+message NumericDataDescriptor {
+  Quantity quantity = 1;
+  Unit native_unit = 2;
+  ValueRange range = 3;
+  Resolution resolution = 4;
+}
+
+message BooleanDataDescriptor {
+}
+
+message StringDataDescriptor {
+}
+
+message Quantity {
+  string id = 1;
+  string display_name = 2;
+}
+
+message Unit {
+  string id = 1;
+  string display_name = 2;
+  string symbol = 3;
+  Quantity quantity = 4;
+}
+
+message ValueRange {
+  double minimum = 1;
+  double maximum = 2;
+}
+
+message Resolution {
+  double value = 1;
 }
 
 message CommandDescriptor {
