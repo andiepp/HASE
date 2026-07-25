@@ -1,5 +1,6 @@
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
+using Google.Protobuf.WellKnownTypes;
 using Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Contracts.Tests;
@@ -146,12 +147,130 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void EndpointNestedMessages_StartWithoutPrematureFields()
+    public void EndpointDescriptor_StartsWithoutPrematureFields()
     {
         Assert.Empty(
             EndpointDescriptor.Descriptor.Fields.InDeclarationOrder());
-        Assert.Empty(
-            EndpointConnectionStatus.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void ConnectionStatus_DefinesNormalizedMembers()
+    {
+        FieldDescriptor[] fields =
+            EndpointConnectionStatus.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field =>
+            {
+                Assert.Equal("state", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.EndpointConnectionState",
+                    field.EnumType.FullName);
+                Assert.False(field.HasPresence);
+            },
+            field =>
+            {
+                Assert.Equal("changed_at_utc", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.Message, field.FieldType);
+                Assert.Equal(
+                    Timestamp.Descriptor.FullName,
+                    field.MessageType.FullName);
+                Assert.True(field.HasPresence);
+            },
+            field =>
+            {
+                Assert.Equal("detail", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            });
+    }
+
+    [Fact]
+    public void ConnectionState_DefinesStableNumericValues()
+    {
+        EnumValueDescriptor[] values =
+            EndpointConnectionStatus.Descriptor
+                .FindFieldByNumber(1)
+                .EnumType
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_UNSPECIFIED",
+                0),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_DISCONNECTED",
+                1),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_CONNECTING",
+                2),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_SYNCHRONIZING",
+                3),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_READY",
+                4),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_RECONNECTING",
+                5),
+            value => AssertEnumValue(
+                value,
+                "ENDPOINT_CONNECTION_STATE_FAULTED",
+                6));
+    }
+
+    [Fact]
+    public void ConnectionStatus_RoundTrip_PreservesOptionalMembers()
+    {
+        var status =
+            new EndpointConnectionStatus
+            {
+                State =
+                    (EndpointConnectionState)4,
+                ChangedAtUtc =
+                    Timestamp.FromDateTimeOffset(
+                        new DateTimeOffset(
+                            2026,
+                            7,
+                            25,
+                            10,
+                            30,
+                            0,
+                            TimeSpan.Zero)),
+                Detail =
+                    "Ready"
+            };
+
+        EndpointConnectionStatus roundTrip =
+            EndpointConnectionStatus.Parser.ParseFrom(
+                status.ToByteArray());
+
+        Assert.Equal(
+            4,
+            (int)roundTrip.State);
+        Assert.Equal(
+            status.ChangedAtUtc,
+            roundTrip.ChangedAtUtc);
+        Assert.True(
+            roundTrip.HasDetail);
+        Assert.Equal(
+            "Ready",
+            roundTrip.Detail);
     }
 
     [Fact]
@@ -210,5 +329,18 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
             endpoint.Descriptor_);
         Assert.NotNull(
             endpoint.ConnectionStatus);
+    }
+
+    private static void AssertEnumValue(
+        EnumValueDescriptor value,
+        string expectedName,
+        int expectedNumber)
+    {
+        Assert.Equal(
+            expectedName,
+            value.Name);
+        Assert.Equal(
+            expectedNumber,
+            value.Number);
     }
 }

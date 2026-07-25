@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package hase.runtime.remote.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option csharp_namespace = "Hase.Runtime.Remote.Grpc.V1";
 
 // Version 1 remote contract for operational runtime-host access.
@@ -34,4 +36,17 @@ message EndpointDescriptor {
 }
 
 message EndpointConnectionStatus {
+  EndpointConnectionState state = 1;
+  google.protobuf.Timestamp changed_at_utc = 2;
+  optional string detail = 3;
+}
+
+enum EndpointConnectionState {
+  ENDPOINT_CONNECTION_STATE_UNSPECIFIED = 0;
+  ENDPOINT_CONNECTION_STATE_DISCONNECTED = 1;
+  ENDPOINT_CONNECTION_STATE_CONNECTING = 2;
+  ENDPOINT_CONNECTION_STATE_SYNCHRONIZING = 3;
+  ENDPOINT_CONNECTION_STATE_READY = 4;
+  ENDPOINT_CONNECTION_STATE_RECONNECTING = 5;
+  ENDPOINT_CONNECTION_STATE_FAULTED = 6;
 }
