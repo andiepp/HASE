@@ -167,8 +167,6 @@ Its response maps the complete immutable `RuntimeHostSnapshot`, including:
 
 - API contract version;
 - stable runtime-host identity;
-- runtime-host display name when present;
-- capture timestamp;
 - every immutable published endpoint snapshot;
 - authoritative `EndpointId`;
 - opaque attachment generation;
@@ -654,8 +652,8 @@ Implementation proceeds in small, independently buildable increments:
 1. add this ADR;
 2. add a dedicated versioned protobuf contract project and the smallest
    snapshot contract skeleton;
-3. map runtime-host identity, API contract version, capture time, and an empty
-   published-endpoint collection;
+3. map runtime-host identity, API contract version, and an empty published-
+   endpoint collection;
 4. map complete published endpoint snapshots and descriptors;
 5. add the unary `GetSnapshot` gRPC adapter;
 6. add enforced loopback-only ASP.NET Core HTTP/2 hosting;
