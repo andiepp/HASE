@@ -11,4 +11,8 @@
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Contracts\Hase.Runtime.Remote.Grpc.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
 </Project>

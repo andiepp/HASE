@@ -24,7 +24,8 @@ public static class LoopbackGrpcHostFactory
             binding,
             snapshotProvider,
             propertyService: null,
-            commandService: null);
+            commandService: null,
+            observationService: null);
     }
 
     /// <summary>
@@ -43,7 +44,8 @@ public static class LoopbackGrpcHostFactory
             binding,
             snapshotProvider,
             propertyService,
-            commandService: null);
+            commandService: null,
+            observationService: null);
     }
 
     /// <summary>
@@ -63,14 +65,38 @@ public static class LoopbackGrpcHostFactory
             binding,
             snapshotProvider,
             propertyService,
-            commandService);
+            commandService,
+            observationService: null);
+    }
+
+    /// <summary>
+    /// Creates an unstarted loopback-only gRPC application with observation
+    /// enabled and optional Property and Command operations.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService observationService)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observationService);
+
+        return CreateCore(
+            binding,
+            snapshotProvider,
+            propertyService,
+            commandService,
+            observationService);
     }
 
     private static WebApplication CreateCore(
         LoopbackGrpcBinding binding,
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
         Northbound.IRuntimeHostPropertyService? propertyService,
-        Northbound.IRuntimeHostCommandService? commandService)
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService? observationService)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -136,6 +162,19 @@ public static class LoopbackGrpcHostFactory
                 builder.Services.AddSingleton(
                     commandMappers.RemoteValueMapper);
             }
+        }
+
+        if (observationService is not null)
+        {
+            RuntimeHostObservationMappers observationMappers =
+                RuntimeHostObservationMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                observationService);
+            builder.Services.AddSingleton(
+                observationMappers.InitialSnapshotMapper);
+            builder.Services.AddSingleton(
+                observationMappers.ObservationMapper);
         }
 
         WebApplication application =

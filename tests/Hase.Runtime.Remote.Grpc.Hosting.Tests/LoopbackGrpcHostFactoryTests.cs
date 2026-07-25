@@ -63,6 +63,22 @@ public sealed class LoopbackGrpcHostFactoryTests
     }
 
     [Fact]
+    public void Create_NullObservationService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "observationService",
+            () =>
+                LoopbackGrpcHostFactory.Create(
+                    new LoopbackGrpcBinding(
+                        IPAddress.Loopback,
+                        0),
+                    new TestSnapshotProvider(),
+                    propertyService: null,
+                    commandService: null,
+                    observationService: null!));
+    }
+
+    [Fact]
     public async Task Create_ValidDependencies_ShouldRegisterAndMapService()
     {
         var snapshotProvider =
@@ -153,6 +169,35 @@ public sealed class LoopbackGrpcHostFactoryTests
                 IRemoteValueMapper>());
     }
 
+    [Fact]
+    public async Task Create_ObservationDependencies_ShouldRegisterMapperRoots()
+    {
+        var observationService =
+            new TestObservationService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService:
+                    observationService);
+
+        Assert.Same(
+            observationService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostObservationService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IObservationInitialSnapshotMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostObservationMapper>());
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -199,6 +244,18 @@ public sealed class LoopbackGrpcHostFactoryTests
             Northbound.RuntimeHostCommandTarget target,
             object? argument,
             CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class TestObservationService
+        : Northbound.IRuntimeHostObservationService
+    {
+        public Task<Northbound.RuntimeHostObservationSubscription>
+            OpenSubscriptionAsync(
+                Northbound.RuntimeHostObservationSubscriptionOptions options,
+                CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

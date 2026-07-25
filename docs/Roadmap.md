@@ -730,22 +730,31 @@ endpoints through the same in-process northbound application-service boundary.
 
 ## 7.7 Remote API Technology
 
-**Status:** [Planned] Requires separate architecture approval
+**Status:** [Completed] Completed under ADR-0030
 
-Evaluate and select a remote mapping that supports:
+Implemented ASP.NET Core gRPC over HTTP/2 with:
 
-- typed request and response operations;
-- cancellation and timeouts;
-- server-to-client streaming or an equivalent subscription mechanism;
-- explicit API compatibility;
-- cross-platform clients;
-- bounded resource use;
-- authentication and authorization.
+- a versioned protobuf package and generated CLR service types;
+- unary snapshot, cached Property read, authoritative Property read, Property
+  write, and Command execution operations;
+- server-streaming live observation;
+- the authoritative initial snapshot and sequence boundary as the first stream
+  message;
+- explicit mapping for every normalized observation kind and payload;
+- bounded application-subscription delivery without an adapter queue;
+- explicit observation-gap termination;
+- cancellation and deadline propagation;
+- deterministic subscription disposal during cancellation, deadline expiry,
+  and graceful host shutdown;
+- independent simultaneous subscriptions;
+- enforced IPv4 and IPv6 loopback-only binding;
+- real HTTP/2 process integration through generated clients.
 
-Candidate technologies may include gRPC over HTTP/2, HTTP/JSON with an approved
-streaming mechanism, or another explicitly evaluated mapping. The selected
-technology adapts to the application services and does not become a dependency
-of the runtime core.
+The completed remote mapping adapts to the application services and does not
+become a dependency of the runtime core. Its verified completion baseline is
+2,520 passing automated tests.
+
+Non-loopback exposure is not part of Phase 7.7.
 
 ## 7.8 Security and Remote Exposure
 
@@ -857,33 +866,33 @@ Current documentation includes:
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
 - `C-028-Northbound-Live-Observation.md`;
-- ADR-0001 through ADR-0029.
+- ADR-0001 through ADR-0030.
 
 Next:
 
 1. Keep physical capabilities C-015 through C-028 and their validation
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
-3. Keep the Phase 7 northbound API boundary, identity foundation, and normalized
-   Property, Command, and observation services aligned with ADR-0023 through
-   ADR-0029.
+3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
+   services, and loopback gRPC mapping aligned with ADR-0023 through ADR-0030.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
    semantics explicit.
-7. Record future wire-technology, security, management, compact-profile,
+7. Record future security, management, compact-profile,
    discovery-concurrency, or Event-history architecture changes in ADRs.
 
 ---
 
 # Current Priorities
 
-1. Review and approve the architecture for Phase 7.7 remote API technology.
-2. Define authentication, authorization, encryption, credential lifecycle, and
+1. Define authentication, authorization, encryption, credential lifecycle, and
    audit behavior before non-local production exposure.
-3. Preserve the completed transport-independent service boundary while mapping
-   it to the selected remote technology.
-4. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+2. Keep the completed ADR-0030 gRPC host restricted to loopback until the
+   Phase 7.8 security boundary is accepted and implemented.
+3. Plan physical native and compact validation through the completed loopback
+   gRPC contract.
+4. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
 

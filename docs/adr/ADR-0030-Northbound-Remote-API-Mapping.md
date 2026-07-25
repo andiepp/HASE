@@ -645,9 +645,9 @@ separate concerns.
 
 ---
 
-# Initial implementation sequence
+# Implementation sequence
 
-Implementation proceeds in small, independently buildable increments:
+Implementation proceeded in small, independently buildable increments:
 
 1. add this ADR;
 2. add a dedicated versioned protobuf contract project and the smallest
@@ -679,6 +679,47 @@ Implementation proceeds in small, independently buildable increments:
 22. update ProjectStatus and Roadmap after verification.
 
 No increment permits non-loopback binding.
+
+---
+
+# Implementation verification
+
+The Phase 7.7 implementation was completed and verified on 2026-07-25.
+
+The completed mapping provides:
+
+- a dedicated versioned protobuf contract assembly;
+- generated version 1 gRPC client and service types;
+- explicit mapping for complete runtime-host snapshots and descriptors;
+- one closed remote value union with deterministic CLR mapping;
+- unary cached and authoritative Property reads;
+- unary endpoint-confirmed Property writes;
+- unary exactly-once Command execution;
+- server-streaming observation with the authoritative initial snapshot first;
+- explicit mapping for every ADR-0029 observation kind and payload;
+- explicit observation-gap termination using gRPC `DataLoss`;
+- request cancellation and deadline propagation;
+- deterministic, exactly-once observation-subscription disposal;
+- isolation between simultaneous observation subscriptions;
+- active observation cancellation during graceful runtime-host shutdown;
+- enforced loopback-only binding;
+- HTTP/2 process integration over IPv4 and, where supported, IPv6 loopback;
+- inward-only dependencies from the remote contract, adapter, and hosting edge
+  to the transport-independent northbound services.
+
+The verified completion baseline is:
+
+```text
+2,520 automated tests passing
+.NET solution builds
+IPv4 loopback HTTP/2 gRPC integration passes
+IPv6 loopback HTTP/2 gRPC integration passes where supported
+```
+
+The implementation does not approve non-loopback exposure. Authentication,
+authorization, encryption, credential lifecycle, audit policy, denial-of-
+service policy, and Tailscale exposure remain the Phase 7.8 architecture
+boundary.
 
 ---
 

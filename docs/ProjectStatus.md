@@ -24,9 +24,9 @@ discovery, explicit runtime-host-owned endpoint attachment, the authoritative
 runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
 serial endpoint attachment, compact serial unsolicited event notification,
-normalized northbound Property operations, and normalized northbound Command
-execution, and normalized northbound live observation are implemented. Phase 6
-is complete at the C-025 baseline.
+normalized northbound Property operations, normalized northbound Command
+execution, normalized northbound live observation, and versioned loopback gRPC
+remote API mapping are implemented. Phase 6 is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -44,6 +44,10 @@ Property queries, authoritative Property reads, endpoint-confirmed Property
 writes, generation-scoped Command execution, shared generation authority,
 normalized native/compact operation results, and snapshot-first bounded
 subscriptions for lifecycle, connection, Property, and Event observations.
+Phase 7.7 maps that boundary through versioned protobuf and ASP.NET Core gRPC
+without transferring endpoint lifecycle ownership. Unary snapshot, Property,
+and Command operations and server-streaming observation are integrated over
+loopback HTTP/2. Non-loopback binding remains prohibited.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
@@ -57,7 +61,7 @@ both physical endpoint families.
 The current verified baseline is:
 
 ```text
-2,212 automated tests passing
+2,520 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -72,6 +76,8 @@ Arduino Uno hardware-reset recovery verified
 Physical native and compact northbound Property access verified
 Physical native and compact northbound Command execution verified
 Physical native and compact northbound live observation verified
+IPv4 loopback HTTP/2 gRPC integration verified
+IPv6 loopback HTTP/2 gRPC integration verified where supported
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -361,11 +367,21 @@ Implemented Phase 7 foundation:
 - native Protocol Version 1 and Compact Serial Protocol observation integration;
 - physical C-028 publication, Property, Event, and orderly-ending validation
   for both endpoint families;
+- ADR-0030 versioned protobuf and ASP.NET Core gRPC mapping;
+- complete snapshot and descriptor mapping;
+- unary cached and authoritative Property reads and Property writes;
+- unary exactly-once Command execution;
+- server-streaming observation with the authoritative initial snapshot first;
+- explicit observation-gap termination;
+- cancellation, deadline, subscription-isolation, and graceful-shutdown
+  disposal verification;
+- enforced IPv4 and IPv6 loopback-only HTTP/2 hosting;
 - preservation of runtime-host ownership for attachment and endpoint
   lifecycles.
 
-Phase 7.5 live observation is complete.
-No remote wire technology has been selected.
+Phase 7.7 remote API mapping is complete.
+Production non-loopback exposure remains prohibited until Phase 7.8 security
+architecture is accepted and implemented.
 
 ---
 
@@ -795,7 +811,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,212 automated tests pass
+2,520 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -870,13 +886,22 @@ updates between required milestones
 C-028 physical button Events carry null values and UTC timestamps
 C-028 orderly attachment ending is observed for both endpoint families
 Protocol Explorer C-028 exits with code 0 for both endpoint families
+ADR-0030 protobuf contracts preserve stable version 1 field and enum mappings
+ADR-0030 maps snapshot, Property, Command, and observation operations explicitly
+ADR-0030 loopback HTTP/2 integration passes over IPv4
+ADR-0030 loopback HTTP/2 integration passes over IPv6 where supported
+ADR-0030 maps observation gaps to explicit gRPC DataLoss termination
+ADR-0030 propagates cancellation and deadline expiry
+ADR-0030 isolates simultaneous observation subscriptions
+ADR-0030 disposes active observation subscriptions during graceful host shutdown
+ADR-0030 rejects wildcard and non-loopback bindings
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0029 are accepted.
+ADR-0001 through ADR-0030 are accepted.
 
 Relevant recent decisions:
 
@@ -894,6 +919,7 @@ Relevant recent decisions:
 - ADR-0027 - Normalized Northbound Property Operations.
 - ADR-0028 - Normalized Northbound Command Execution.
 - ADR-0029 - Northbound Live Observation.
+- ADR-0030 - Northbound Remote API Mapping.
 
 ---
 
@@ -914,20 +940,19 @@ The current implementation intentionally excludes:
 - formal compact-profile negotiation;
 - persistent event history and replay;
 - additional compact scalar/event-value encodings;
-- northbound remote API mapping;
 - Tailscale runtime-host discovery.
 
 ---
 
 # Immediate Next Steps
 
-1. Review and approve the architecture for the remote API technology.
-2. Define authentication, authorization, encryption, credential lifecycle, and
+1. Define authentication, authorization, encryption, credential lifecycle, and
    audit behavior before production non-local exposure.
-3. Map the completed transport-independent operational service boundary to the
-   approved remote technology without transferring endpoint lifecycle
-   ownership.
-4. Keep Linux USB serial discovery, IPv6, BLE, formal compact profiles,
+2. Keep the completed versioned gRPC mapping restricted to loopback until that
+   security architecture is accepted and implemented.
+3. Plan physical native and compact validation through the completed loopback
+   gRPC contract.
+4. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
 

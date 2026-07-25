@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Microsoft.Extensions.Hosting;
 using Northbound = global::Hase.Runtime.Northbound;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
 
@@ -21,6 +22,11 @@ public sealed class RuntimeHostRemoteApiService
     private readonly Northbound.IRuntimeHostCommandService? commandService;
     private readonly IRuntimeHostCommandTargetMapper? commandTargetMapper;
     private readonly IRuntimeHostCommandOperationResultMapper? commandResultMapper;
+    private readonly Northbound.IRuntimeHostObservationService?
+        observationService;
+    private readonly IObservationInitialSnapshotMapper? initialSnapshotMapper;
+    private readonly IRuntimeHostObservationMapper? observationMapper;
+    private readonly IHostApplicationLifetime? applicationLifetime;
 
     /// <summary>
     /// Initializes the service adapter.
@@ -35,7 +41,11 @@ public sealed class RuntimeHostRemoteApiService
         IRemoteValueMapper? remoteValueMapper = null,
         Northbound.IRuntimeHostCommandService? commandService = null,
         IRuntimeHostCommandTargetMapper? commandTargetMapper = null,
-        IRuntimeHostCommandOperationResultMapper? commandResultMapper = null)
+        IRuntimeHostCommandOperationResultMapper? commandResultMapper = null,
+        Northbound.IRuntimeHostObservationService? observationService = null,
+        IObservationInitialSnapshotMapper? initialSnapshotMapper = null,
+        IRuntimeHostObservationMapper? observationMapper = null,
+        IHostApplicationLifetime? applicationLifetime = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -57,6 +67,10 @@ public sealed class RuntimeHostRemoteApiService
             commandService is not null
             || commandTargetMapper is not null
             || commandResultMapper is not null;
+        bool observationConfigured =
+            observationService is not null
+            || initialSnapshotMapper is not null
+            || observationMapper is not null;
 
         if (propertyAccessConfigured)
         {
@@ -107,6 +121,25 @@ public sealed class RuntimeHostRemoteApiService
                 ?? throw new ArgumentNullException(
                     nameof(remoteValueMapper));
         }
+
+        if (observationConfigured)
+        {
+            this.observationService =
+                observationService
+                ?? throw new ArgumentNullException(
+                    nameof(observationService));
+            this.initialSnapshotMapper =
+                initialSnapshotMapper
+                ?? throw new ArgumentNullException(
+                    nameof(initialSnapshotMapper));
+            this.observationMapper =
+                observationMapper
+                ?? throw new ArgumentNullException(
+                    nameof(observationMapper));
+        }
+
+        this.applicationLifetime =
+            applicationLifetime;
     }
 
     /// <inheritdoc />
@@ -317,5 +350,91 @@ public sealed class RuntimeHostRemoteApiService
                 result)
             ?? throw new InvalidOperationException(
                 "The Command operation result mapper returned null.");
+    }
+
+    /// <inheritdoc />
+    public override async Task Observe(
+        GrpcV1.ObserveRequest request,
+        IServerStreamWriter<GrpcV1.ObserveResponse> responseStream,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+        ArgumentNullException.ThrowIfNull(
+            responseStream);
+
+        Northbound.IRuntimeHostObservationService observationService =
+            this.observationService
+            ?? throw new InvalidOperationException(
+                "Runtime-host observation is not configured.");
+        IObservationInitialSnapshotMapper initialSnapshotMapper =
+            this.initialSnapshotMapper
+            ?? throw new InvalidOperationException(
+                "Runtime-host observation is not configured.");
+        IRuntimeHostObservationMapper observationMapper =
+            this.observationMapper
+            ?? throw new InvalidOperationException(
+                "Runtime-host observation is not configured.");
+        CancellationToken requestCancellationToken =
+            context?.CancellationToken
+            ?? CancellationToken.None;
+        CancellationTokenSource? linkedCancellationSource =
+            applicationLifetime is null
+                ? null
+                : CancellationTokenSource.CreateLinkedTokenSource(
+                    requestCancellationToken,
+                    applicationLifetime.ApplicationStopping);
+        using (linkedCancellationSource)
+        {
+            CancellationToken cancellationToken =
+                linkedCancellationSource?.Token
+                ?? requestCancellationToken;
+
+            Northbound.RuntimeHostObservationSubscription subscription =
+                await observationService.OpenSubscriptionAsync(
+                    new Northbound.RuntimeHostObservationSubscriptionOptions(),
+                    cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "The runtime-host observation service returned null.");
+
+            await using (subscription)
+            {
+                GrpcV1.ObserveResponse initialResponse =
+                    initialSnapshotMapper.Map(
+                        subscription.InitialSnapshot,
+                        subscription.SnapshotSequence)
+                    ?? throw new InvalidOperationException(
+                        "The initial observation snapshot mapper returned null.");
+
+                await responseStream.WriteAsync(
+                    initialResponse);
+
+                try
+                {
+                    await foreach (
+                        Northbound.RuntimeHostObservation observation
+                        in subscription.ReadAllAsync(
+                            cancellationToken))
+                    {
+                        GrpcV1.ObserveResponse response =
+                            observationMapper.Map(
+                                observation)
+                            ?? throw new InvalidOperationException(
+                                "The runtime-host observation mapper returned null.");
+
+                        await responseStream.WriteAsync(
+                            response);
+                    }
+                }
+                catch (Northbound.RuntimeHostObservationGapException)
+                {
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.DataLoss,
+                            "The observation stream has a gap. "
+                            + "Open a new subscription."));
+                }
+            }
+        }
     }
 }
