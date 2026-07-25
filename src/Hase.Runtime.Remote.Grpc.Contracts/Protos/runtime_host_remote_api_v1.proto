@@ -40,6 +40,27 @@ message EndpointDescriptor {
 }
 
 message InstrumentDescriptor {
+  string instrument_id = 1;
+  string name = 2;
+  string kind = 3;
+  optional string manufacturer = 4;
+  optional string model = 5;
+  optional string serial_number = 6;
+  optional string firmware_version = 7;
+  optional string hardware_revision = 8;
+  optional string description = 9;
+  repeated PropertyDescriptor properties = 10;
+  repeated CommandDescriptor commands = 11;
+  repeated EventDescriptor events = 12;
+}
+
+message PropertyDescriptor {
+}
+
+message CommandDescriptor {
+}
+
+message EventDescriptor {
 }
 
 message EndpointConnectionStatus {

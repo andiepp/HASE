@@ -190,10 +190,191 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void InstrumentDescriptor_StartsWithoutPrematureFields()
+    public void InstrumentDescriptor_DefinesIdentityMetadataAndInterface()
+    {
+        FieldDescriptor[] fields =
+            InstrumentDescriptor.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertField(
+                field,
+                "instrument_id",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "name",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "kind",
+                3,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "manufacturer",
+                4,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "model",
+                5,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "serial_number",
+                6,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "firmware_version",
+                7,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "hardware_revision",
+                8,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                9,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "properties",
+                10,
+                PropertyDescriptor.Descriptor,
+                true),
+            field => AssertMessageField(
+                field,
+                "commands",
+                11,
+                CommandDescriptor.Descriptor,
+                true),
+            field => AssertMessageField(
+                field,
+                "events",
+                12,
+                EventDescriptor.Descriptor,
+                true));
+    }
+
+    [Fact]
+    public void InstrumentInterfaceMessages_StartWithoutPrematureFields()
     {
         Assert.Empty(
-            InstrumentDescriptor.Descriptor.Fields.InDeclarationOrder());
+            PropertyDescriptor.Descriptor.Fields.InDeclarationOrder());
+        Assert.Empty(
+            CommandDescriptor.Descriptor.Fields.InDeclarationOrder());
+        Assert.Empty(
+            EventDescriptor.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void InstrumentDescriptor_RoundTrip_PreservesMetadataAndInterface()
+    {
+        var descriptor =
+            new InstrumentDescriptor
+            {
+                InstrumentId =
+                    "instrument-01",
+                Name =
+                    "Instrument 01",
+                Kind =
+                    "environment-sensor",
+                Manufacturer =
+                    "HASE",
+                Model =
+                    "Validation",
+                SerialNumber =
+                    "SN-01",
+                FirmwareVersion =
+                    "1.0",
+                HardwareRevision =
+                    "A",
+                Description =
+                    "Validation instrument"
+            };
+
+        descriptor.Properties.Add(
+            new PropertyDescriptor());
+        descriptor.Commands.Add(
+            new CommandDescriptor());
+        descriptor.Events.Add(
+            new EventDescriptor());
+
+        InstrumentDescriptor roundTrip =
+            InstrumentDescriptor.Parser.ParseFrom(
+                descriptor.ToByteArray());
+
+        Assert.Equal(
+            descriptor.InstrumentId,
+            roundTrip.InstrumentId);
+        Assert.Equal(
+            descriptor.Name,
+            roundTrip.Name);
+        Assert.Equal(
+            descriptor.Kind,
+            roundTrip.Kind);
+        Assert.True(
+            roundTrip.HasManufacturer);
+        Assert.Equal(
+            descriptor.Manufacturer,
+            roundTrip.Manufacturer);
+        Assert.True(
+            roundTrip.HasModel);
+        Assert.Equal(
+            descriptor.Model,
+            roundTrip.Model);
+        Assert.True(
+            roundTrip.HasSerialNumber);
+        Assert.Equal(
+            descriptor.SerialNumber,
+            roundTrip.SerialNumber);
+        Assert.True(
+            roundTrip.HasFirmwareVersion);
+        Assert.Equal(
+            descriptor.FirmwareVersion,
+            roundTrip.FirmwareVersion);
+        Assert.True(
+            roundTrip.HasHardwareRevision);
+        Assert.Equal(
+            descriptor.HardwareRevision,
+            roundTrip.HardwareRevision);
+        Assert.True(
+            roundTrip.HasDescription);
+        Assert.Equal(
+            descriptor.Description,
+            roundTrip.Description);
+        Assert.Single(
+            roundTrip.Properties);
+        Assert.Single(
+            roundTrip.Commands);
+        Assert.Single(
+            roundTrip.Events);
     }
 
     [Fact]
@@ -423,5 +604,49 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             expectedNumber,
             value.Number);
+    }
+
+    private static void AssertField(
+        FieldDescriptor field,
+        string expectedName,
+        int expectedNumber,
+        FieldType expectedType,
+        bool expectedPresence,
+        bool expectedRepeated)
+    {
+        Assert.Equal(
+            expectedName,
+            field.Name);
+        Assert.Equal(
+            expectedNumber,
+            field.FieldNumber);
+        Assert.Equal(
+            expectedType,
+            field.FieldType);
+        Assert.Equal(
+            expectedPresence,
+            field.HasPresence);
+        Assert.Equal(
+            expectedRepeated,
+            field.IsRepeated);
+    }
+
+    private static void AssertMessageField(
+        FieldDescriptor field,
+        string expectedName,
+        int expectedNumber,
+        MessageDescriptor expectedMessage,
+        bool expectedRepeated)
+    {
+        AssertField(
+            field,
+            expectedName,
+            expectedNumber,
+            FieldType.Message,
+            false,
+            expectedRepeated);
+        Assert.Equal(
+            expectedMessage.FullName,
+            field.MessageType.FullName);
     }
 }
