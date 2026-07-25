@@ -1,0 +1,148 @@
+using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
+
+namespace Hase.Runtime.Remote.Grpc.Adapter.Tests;
+
+public sealed class RemoteValueMapperTests
+{
+    [Fact]
+    public void Map_NullValue_ShouldThrow()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        Assert.Throws<ArgumentNullException>(
+            "value",
+            () =>
+                mapper.Map(
+                    null!));
+    }
+
+    [Fact]
+    public void Map_BooleanValue_ShouldSelectBooleanVariant()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        GrpcV1.RemoteValue result =
+            mapper.Map(
+                true);
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.BooleanValue,
+            result.KindCase);
+        Assert.True(
+            result.BooleanValue);
+    }
+
+    [Fact]
+    public void Map_StringValue_ShouldSelectStringVariant()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        GrpcV1.RemoteValue result =
+            mapper.Map(
+                "Ready");
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.StringValue,
+            result.KindCase);
+        Assert.Equal(
+            "Ready",
+            result.StringValue);
+    }
+
+    [Theory]
+    [MemberData(nameof(NumericValues))]
+    public void Map_NumericValue_ShouldNormalizeToDouble(
+        object source,
+        double expected)
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        GrpcV1.RemoteValue result =
+            mapper.Map(
+                source);
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.NumericValue,
+            result.KindCase);
+        Assert.Equal(
+            expected,
+            result.NumericValue);
+    }
+
+    [Fact]
+    public void Map_UnsupportedValue_ShouldThrow()
+    {
+        var value =
+            new object();
+
+        var mapper =
+            new RemoteValueMapper();
+
+        ArgumentOutOfRangeException exception =
+            Assert.Throws<ArgumentOutOfRangeException>(
+                "value",
+                () =>
+                    mapper.Map(
+                        value));
+
+        Assert.Same(
+            value,
+            exception.ActualValue);
+    }
+
+    public static TheoryData<object, double> NumericValues
+    {
+        get;
+    } =
+        new()
+        {
+            {
+                (byte)12,
+                12.0
+            },
+            {
+                (sbyte)-12,
+                -12.0
+            },
+            {
+                (short)-1234,
+                -1234.0
+            },
+            {
+                (ushort)1234,
+                1234.0
+            },
+            {
+                -123456,
+                -123456.0
+            },
+            {
+                123456U,
+                123456.0
+            },
+            {
+                -123456789L,
+                -123456789.0
+            },
+            {
+                123456789UL,
+                123456789.0
+            },
+            {
+                23.5F,
+                23.5
+            },
+            {
+                23.75,
+                23.75
+            },
+            {
+                23.125M,
+                23.125
+            }
+        };
+}
