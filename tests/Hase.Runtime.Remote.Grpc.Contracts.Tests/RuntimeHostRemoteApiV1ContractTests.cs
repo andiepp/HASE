@@ -296,6 +296,156 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
+    public void PropertyQuality_DefinesStableNormalizedValues()
+    {
+        EnumValueDescriptor[] values =
+            Assert.Single(
+                    RuntimeHostRemoteApiV1Reflection.Descriptor.EnumTypes,
+                    descriptor =>
+                        descriptor.Name
+                        == "PropertyQuality")
+                .Values
+                .ToArray();
+
+        Assert.Collection(
+            values,
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_QUALITY_UNSPECIFIED",
+                0),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_QUALITY_GOOD",
+                1),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_QUALITY_UNCERTAIN",
+                2),
+            value => AssertEnumValue(
+                value,
+                "PROPERTY_QUALITY_BAD",
+                3));
+    }
+
+    [Fact]
+    public void PropertyValue_DefinesValueTimestampAndQuality()
+    {
+        Assert.Collection(
+            PropertyValue.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "value",
+                1,
+                RemoteValue.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "timestamp_utc",
+                2,
+                Timestamp.Descriptor,
+                false),
+            field =>
+            {
+                Assert.Equal("quality", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.PropertyQuality",
+                    field.EnumType.FullName);
+            });
+    }
+
+    [Fact]
+    public void PublishedPropertySnapshot_DefinesAuthoritativeMembers()
+    {
+        Assert.Collection(
+            PublishedRuntimePropertySnapshot.Descriptor.Fields
+                .InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "target",
+                1,
+                PropertyTarget.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "descriptor",
+                2,
+                PropertyDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "connection_status",
+                3,
+                EndpointConnectionStatus.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "current_value",
+                4,
+                PropertyValue.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void CachedPropertyResult_DefinesStatusSnapshotAndDiagnostic()
+    {
+        Assert.Collection(
+            CachedPropertyResult.Descriptor.Fields.InDeclarationOrder(),
+            field =>
+            {
+                Assert.Equal("status", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.PropertyOperationStatus",
+                    field.EnumType.FullName);
+            },
+            field => AssertMessageField(
+                field,
+                "snapshot",
+                2,
+                PublishedRuntimePropertySnapshot.Descriptor,
+                false),
+            field =>
+            {
+                Assert.Equal("diagnostic", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            });
+    }
+
+    [Fact]
+    public void PropertyOperationResult_DefinesStatusConfirmedValueAndDiagnostic()
+    {
+        Assert.Collection(
+            PropertyOperationResult.Descriptor.Fields.InDeclarationOrder(),
+            field =>
+            {
+                Assert.Equal("status", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.Enum, field.FieldType);
+                Assert.Equal(
+                    "hase.runtime.remote.v1.PropertyOperationStatus",
+                    field.EnumType.FullName);
+            },
+            field => AssertMessageField(
+                field,
+                "confirmed_value",
+                2,
+                PropertyValue.Descriptor,
+                false),
+            field =>
+            {
+                Assert.Equal("diagnostic", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            });
+    }
+
+    [Fact]
     public void PublishedEndpointSnapshot_DefinesEnvelopeMembers()
     {
         FieldDescriptor[] fields =

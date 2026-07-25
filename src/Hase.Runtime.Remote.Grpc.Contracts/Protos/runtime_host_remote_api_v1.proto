@@ -55,6 +55,38 @@ enum PropertyOperationStatus {
   PROPERTY_OPERATION_STATUS_TIMED_OUT = 11;
 }
 
+message PropertyValue {
+  RemoteValue value = 1;
+  google.protobuf.Timestamp timestamp_utc = 2;
+  PropertyQuality quality = 3;
+}
+
+enum PropertyQuality {
+  PROPERTY_QUALITY_UNSPECIFIED = 0;
+  PROPERTY_QUALITY_GOOD = 1;
+  PROPERTY_QUALITY_UNCERTAIN = 2;
+  PROPERTY_QUALITY_BAD = 3;
+}
+
+message PublishedRuntimePropertySnapshot {
+  PropertyTarget target = 1;
+  PropertyDescriptor descriptor = 2;
+  EndpointConnectionStatus connection_status = 3;
+  PropertyValue current_value = 4;
+}
+
+message CachedPropertyResult {
+  PropertyOperationStatus status = 1;
+  PublishedRuntimePropertySnapshot snapshot = 2;
+  optional string diagnostic = 3;
+}
+
+message PropertyOperationResult {
+  PropertyOperationStatus status = 1;
+  PropertyValue confirmed_value = 2;
+  optional string diagnostic = 3;
+}
+
 message PublishedRuntimeEndpointSnapshot {
   string endpoint_id = 1;
   string attachment_generation = 2;
