@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package hase.runtime.remote.v1;
+
+option csharp_namespace = "Hase.Runtime.Remote.Grpc.V1";
+
+service RuntimeHostRemoteApi {
+  rpc GetSnapshot (GetSnapshotRequest) returns (GetSnapshotResponse);
+}
+
+message GetSnapshotRequest {
+}
+
+message GetSnapshotResponse {
+}
