@@ -72,6 +72,31 @@ public sealed class RemoteValueMapper
         };
     }
 
+    /// <inheritdoc />
+    public object? MapToClr(
+        GrpcV1.RemoteValue value)
+    {
+        ArgumentNullException.ThrowIfNull(
+            value);
+
+        return value.KindCase switch
+        {
+            GrpcV1.RemoteValue.KindOneofCase.None =>
+                null,
+            GrpcV1.RemoteValue.KindOneofCase.BooleanValue =>
+                value.BooleanValue,
+            GrpcV1.RemoteValue.KindOneofCase.StringValue =>
+                value.StringValue,
+            GrpcV1.RemoteValue.KindOneofCase.NumericValue =>
+                value.NumericValue,
+            _ =>
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value.KindCase,
+                    "The remote value variant is not supported.")
+        };
+    }
+
     private static GrpcV1.RemoteValue CreateNumeric(
         double value)
     {

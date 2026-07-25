@@ -92,6 +92,8 @@ public static class LoopbackGrpcHostFactory
                 propertyMappers.CachedResultMapper);
             builder.Services.AddSingleton(
                 propertyMappers.OperationResultMapper);
+            builder.Services.AddSingleton(
+                propertyMappers.RemoteValueMapper);
         }
 
         WebApplication application =

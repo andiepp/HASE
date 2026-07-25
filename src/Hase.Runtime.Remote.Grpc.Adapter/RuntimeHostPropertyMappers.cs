@@ -10,6 +10,7 @@ public sealed class RuntimeHostPropertyMappers
     /// </summary>
     public RuntimeHostPropertyMappers(
         IRuntimeHostPropertyTargetMapper targetMapper,
+        IRemoteValueMapper remoteValueMapper,
         IRuntimeHostCachedPropertyResultMapper cachedResultMapper,
         IRuntimeHostPropertyOperationResultMapper operationResultMapper)
     {
@@ -17,6 +18,11 @@ public sealed class RuntimeHostPropertyMappers
             targetMapper
             ?? throw new ArgumentNullException(
                 nameof(targetMapper));
+
+        RemoteValueMapper =
+            remoteValueMapper
+            ?? throw new ArgumentNullException(
+                nameof(remoteValueMapper));
 
         CachedResultMapper =
             cachedResultMapper
@@ -33,6 +39,14 @@ public sealed class RuntimeHostPropertyMappers
     /// Gets the inbound generation-scoped Property target mapper.
     /// </summary>
     public IRuntimeHostPropertyTargetMapper TargetMapper
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the bidirectional normalized value mapper.
+    /// </summary>
+    public IRemoteValueMapper RemoteValueMapper
     {
         get;
     }

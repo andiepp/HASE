@@ -207,5 +207,11 @@ public sealed class PropertyValueMapperTests
 
             return result;
         }
+
+        public object? MapToClr(
+            GrpcV1.RemoteValue value)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

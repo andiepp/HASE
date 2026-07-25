@@ -265,6 +265,96 @@ public sealed class LoopbackGrpcHostIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task WriteProperty_Ipv4LoopbackHttp2_ShouldReachNorthboundService()
+    {
+        var propertyService =
+            new TestPropertyService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService);
+
+        await application.StartAsync();
+
+        try
+        {
+            IServer server =
+                application.Services.GetRequiredService<IServer>();
+            IServerAddressesFeature addressesFeature =
+                server.Features.Get<IServerAddressesFeature>()
+                ?? throw new InvalidOperationException(
+                    "The server addresses feature is unavailable.");
+            var uri =
+                new Uri(
+                    Assert.Single(
+                        addressesFeature.Addresses));
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    uri);
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+            var generation =
+                new Guid(
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd");
+
+            GrpcV1.PropertyOperationResult response =
+                await client.WritePropertyAsync(
+                    new GrpcV1.WritePropertyRequest
+                    {
+                        Target =
+                            new GrpcV1.PropertyTarget
+                            {
+                                EndpointId =
+                                    "endpoint-01",
+                                AttachmentGeneration =
+                                    generation.ToString(
+                                        "D"),
+                                InstrumentId =
+                                    "environment-sensor-01",
+                                PropertyId =
+                                    "enabled"
+                            },
+                        RequestedValue =
+                            new GrpcV1.RemoteValue
+                            {
+                                BooleanValue =
+                                    true
+                            }
+                    },
+                    deadline:
+                        DateTime.UtcNow.AddSeconds(
+                            10));
+
+            Assert.Equal(
+                GrpcV1.PropertyOperationStatus.Success,
+                response.Status);
+            Assert.True(
+                response.ConfirmedValue.Value.BooleanValue);
+            Assert.NotNull(
+                propertyService.WriteTarget);
+            Assert.Equal(
+                generation,
+                propertyService.WriteTarget.AttachmentGeneration.Value);
+            Assert.Equal(
+                true,
+                propertyService.RequestedValue);
+            Assert.True(
+                propertyService.WriteCancellationToken.CanBeCanceled);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -307,6 +397,24 @@ public sealed class LoopbackGrpcHostIntegrationTests
             private set;
         }
 
+        public Northbound.RuntimeHostPropertyTarget? WriteTarget
+        {
+            get;
+            private set;
+        }
+
+        public object? RequestedValue
+        {
+            get;
+            private set;
+        }
+
+        public CancellationToken WriteCancellationToken
+        {
+            get;
+            private set;
+        }
+
         public Northbound.RuntimeHostCachedPropertyResult GetCached(
             Northbound.RuntimeHostPropertyTarget target)
         {
@@ -339,7 +447,18 @@ public sealed class LoopbackGrpcHostIntegrationTests
             object? requestedValue,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            WriteTarget =
+                target;
+            RequestedValue =
+                requestedValue;
+            WriteCancellationToken =
+                cancellationToken;
+
+            return Task.FromResult(
+                Northbound.RuntimeHostPropertyOperationResult.Successful(
+                    new Hase.Core.Domain.Properties.PropertyValue(
+                        requestedValue,
+                        DateTimeOffset.UnixEpoch)));
         }
     }
 }

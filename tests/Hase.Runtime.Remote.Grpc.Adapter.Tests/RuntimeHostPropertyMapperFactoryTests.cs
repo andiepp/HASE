@@ -47,6 +47,14 @@ public sealed class RuntimeHostPropertyMapperFactoryTests
         Assert.Equal(
             remoteTarget.PropertyId,
             target.PropertyId.Value);
+        Assert.Equal(
+            23.75,
+            mappers.RemoteValueMapper.MapToClr(
+                new GrpcV1.RemoteValue
+                {
+                    NumericValue =
+                        23.75
+                }));
 
         var descriptor =
             new PropertyDescriptor(

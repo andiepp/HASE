@@ -48,6 +48,7 @@ public static class RuntimeHostPropertyMapperFactory
 
         return new RuntimeHostPropertyMappers(
             new RuntimeHostPropertyTargetMapper(),
+            remoteValueMapper,
             new RuntimeHostCachedPropertyResultMapper(
                 statusMapper,
                 publishedSnapshotMapper),

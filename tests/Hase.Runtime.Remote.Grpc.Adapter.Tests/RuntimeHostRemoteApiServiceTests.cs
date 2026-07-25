@@ -36,7 +36,9 @@ public sealed class RuntimeHostRemoteApiServiceTests
                     new TestCachedResultMapper(
                         new GrpcV1.CachedPropertyResult()),
                     new TestOperationResultMapper(
-                        new GrpcV1.PropertyOperationResult())));
+                        new GrpcV1.PropertyOperationResult()),
+                    new TestRemoteValueMapper(
+                        null)));
 
         Assert.Throws<ArgumentNullException>(
             "propertyTargetMapper",
@@ -51,7 +53,9 @@ public sealed class RuntimeHostRemoteApiServiceTests
                     new TestCachedResultMapper(
                         new GrpcV1.CachedPropertyResult()),
                     new TestOperationResultMapper(
-                        new GrpcV1.PropertyOperationResult())));
+                        new GrpcV1.PropertyOperationResult()),
+                    new TestRemoteValueMapper(
+                        null)));
 
         Assert.Throws<ArgumentNullException>(
             "cachedResultMapper",
@@ -66,7 +70,9 @@ public sealed class RuntimeHostRemoteApiServiceTests
                         CreateTarget()),
                     null!,
                     new TestOperationResultMapper(
-                        new GrpcV1.PropertyOperationResult())));
+                        new GrpcV1.PropertyOperationResult()),
+                    new TestRemoteValueMapper(
+                        null)));
 
         Assert.Throws<ArgumentNullException>(
             "operationResultMapper",
@@ -81,6 +87,25 @@ public sealed class RuntimeHostRemoteApiServiceTests
                         CreateTarget()),
                     new TestCachedResultMapper(
                         new GrpcV1.CachedPropertyResult()),
+                    null!,
+                    new TestRemoteValueMapper(
+                        null)));
+
+        Assert.Throws<ArgumentNullException>(
+            "remoteValueMapper",
+            () =>
+                new RuntimeHostRemoteApiService(
+                    new TestSnapshotProvider(
+                        CreateSnapshot()),
+                    RuntimeHostSnapshotMapperFactory.Create(),
+                    new TestPropertyService(
+                        CreateCachedResult()),
+                    new TestPropertyTargetMapper(
+                        CreateTarget()),
+                    new TestCachedResultMapper(
+                        new GrpcV1.CachedPropertyResult()),
+                    new TestOperationResultMapper(
+                        new GrpcV1.PropertyOperationResult()),
                     null!));
     }
 
@@ -495,6 +520,178 @@ public sealed class RuntimeHostRemoteApiServiceTests
             exception.Message);
     }
 
+    [Fact]
+    public async Task WriteProperty_NullRequest_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreateWriteServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult()),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestOperationResultMapper(
+                    new GrpcV1.PropertyOperationResult()),
+                new TestRemoteValueMapper(
+                    true));
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            "request",
+            () =>
+                service.WriteProperty(
+                    null!,
+                    null!));
+    }
+
+    [Fact]
+    public async Task WriteProperty_NotConfigured_ShouldThrow()
+    {
+        var service =
+            new RuntimeHostRemoteApiService(
+                new TestSnapshotProvider(
+                    CreateSnapshot()),
+                RuntimeHostSnapshotMapperFactory.Create());
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.WriteProperty(
+                        new GrpcV1.WritePropertyRequest(),
+                        null!));
+
+        Assert.Equal(
+            "Property write access is not configured.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task WriteProperty_ShouldMapValueAwaitAndMapResult()
+    {
+        Northbound.RuntimeHostPropertyTarget target =
+            CreateTarget();
+        Northbound.RuntimeHostPropertyOperationResult operationResult =
+            CreateOperationResult();
+        var mappedResult =
+            new GrpcV1.PropertyOperationResult
+            {
+                Status =
+                    GrpcV1.PropertyOperationStatus.Success
+            };
+        var propertyService =
+            new TestPropertyService(
+                CreateCachedResult(),
+                operationResult);
+        var targetMapper =
+            new TestPropertyTargetMapper(
+                target);
+        var resultMapper =
+            new TestOperationResultMapper(
+                mappedResult);
+        var valueMapper =
+            new TestRemoteValueMapper(
+                true);
+        RuntimeHostRemoteApiService service =
+            CreateWriteServiceAdapter(
+                propertyService,
+                targetMapper,
+                resultMapper,
+                valueMapper);
+        var requestedValue =
+            new GrpcV1.RemoteValue
+            {
+                BooleanValue =
+                    true
+            };
+        var request =
+            new GrpcV1.WritePropertyRequest
+            {
+                Target =
+                    new GrpcV1.PropertyTarget(),
+                RequestedValue =
+                    requestedValue
+            };
+
+        GrpcV1.PropertyOperationResult response =
+            await service.WriteProperty(
+                request,
+                null!);
+
+        Assert.Same(
+            request.Target,
+            targetMapper.Input);
+        Assert.Same(
+            requestedValue,
+            valueMapper.Input);
+        Assert.Same(
+            target,
+            propertyService.WriteTarget);
+        Assert.Equal(
+            true,
+            propertyService.RequestedValue);
+        Assert.Equal(
+            CancellationToken.None,
+            propertyService.WriteCancellationToken);
+        Assert.Same(
+            operationResult,
+            resultMapper.Input);
+        Assert.Same(
+            mappedResult,
+            response);
+    }
+
+    [Fact]
+    public async Task WriteProperty_PropertyServiceReturnsNull_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreateWriteServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult(),
+                    null!),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestOperationResultMapper(
+                    new GrpcV1.PropertyOperationResult()),
+                new TestRemoteValueMapper(
+                    null));
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.WriteProperty(
+                        new GrpcV1.WritePropertyRequest(),
+                        null!));
+
+        Assert.Equal(
+            "The runtime-host Property service returned null.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task WriteProperty_ResultMapperReturnsNull_ShouldThrow()
+    {
+        RuntimeHostRemoteApiService service =
+            CreateWriteServiceAdapter(
+                new TestPropertyService(
+                    CreateCachedResult(),
+                    CreateOperationResult()),
+                new TestPropertyTargetMapper(
+                    CreateTarget()),
+                new TestOperationResultMapper(
+                    null!),
+                new TestRemoteValueMapper(
+                    null));
+
+        InvalidOperationException exception =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () =>
+                    service.WriteProperty(
+                        new GrpcV1.WritePropertyRequest(),
+                        null!));
+
+        Assert.Equal(
+            "The Property operation result mapper returned null.",
+            exception.Message);
+    }
+
     private static RuntimeHostRemoteApiService CreatePropertyServiceAdapter(
         Northbound.IRuntimeHostPropertyService propertyService,
         IRuntimeHostPropertyTargetMapper targetMapper,
@@ -508,7 +705,9 @@ public sealed class RuntimeHostRemoteApiServiceTests
             targetMapper,
             resultMapper,
             new TestOperationResultMapper(
-                new GrpcV1.PropertyOperationResult()));
+                new GrpcV1.PropertyOperationResult()),
+            new TestRemoteValueMapper(
+                null));
     }
 
     private static RuntimeHostRemoteApiService CreateAuthoritativeServiceAdapter(
@@ -524,7 +723,27 @@ public sealed class RuntimeHostRemoteApiServiceTests
             targetMapper,
             new TestCachedResultMapper(
                 new GrpcV1.CachedPropertyResult()),
-            resultMapper);
+            resultMapper,
+            new TestRemoteValueMapper(
+                null));
+    }
+
+    private static RuntimeHostRemoteApiService CreateWriteServiceAdapter(
+        Northbound.IRuntimeHostPropertyService propertyService,
+        IRuntimeHostPropertyTargetMapper targetMapper,
+        IRuntimeHostPropertyOperationResultMapper resultMapper,
+        IRemoteValueMapper valueMapper)
+    {
+        return new RuntimeHostRemoteApiService(
+            new TestSnapshotProvider(
+                CreateSnapshot()),
+            RuntimeHostSnapshotMapperFactory.Create(),
+            propertyService,
+            targetMapper,
+            new TestCachedResultMapper(
+                new GrpcV1.CachedPropertyResult()),
+            resultMapper,
+            valueMapper);
     }
 
     private static Northbound.RuntimeHostPropertyTarget CreateTarget()
@@ -624,6 +843,24 @@ public sealed class RuntimeHostRemoteApiServiceTests
             private set;
         }
 
+        public Northbound.RuntimeHostPropertyTarget? WriteTarget
+        {
+            get;
+            private set;
+        }
+
+        public object? RequestedValue
+        {
+            get;
+            private set;
+        }
+
+        public CancellationToken WriteCancellationToken
+        {
+            get;
+            private set;
+        }
+
         public Northbound.RuntimeHostCachedPropertyResult GetCached(
             Northbound.RuntimeHostPropertyTarget target)
         {
@@ -651,7 +888,15 @@ public sealed class RuntimeHostRemoteApiServiceTests
             object? requestedValue,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            WriteTarget =
+                target;
+            RequestedValue =
+                requestedValue;
+            WriteCancellationToken =
+                cancellationToken;
+
+            return Task.FromResult(
+                operationResult);
         }
     }
 
@@ -736,6 +981,40 @@ public sealed class RuntimeHostRemoteApiServiceTests
                 result;
 
             return this.result;
+        }
+    }
+
+    private sealed class TestRemoteValueMapper
+        : IRemoteValueMapper
+    {
+        private readonly object? result;
+
+        public TestRemoteValueMapper(
+            object? result)
+        {
+            this.result =
+                result;
+        }
+
+        public GrpcV1.RemoteValue? Input
+        {
+            get;
+            private set;
+        }
+
+        public GrpcV1.RemoteValue Map(
+            object value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public object? MapToClr(
+            GrpcV1.RemoteValue value)
+        {
+            Input =
+                value;
+
+            return result;
         }
     }
 }

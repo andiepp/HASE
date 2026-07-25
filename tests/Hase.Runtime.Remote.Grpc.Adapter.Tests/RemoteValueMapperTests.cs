@@ -94,6 +94,65 @@ public sealed class RemoteValueMapperTests
             exception.ActualValue);
     }
 
+    [Fact]
+    public void MapToClr_NullValue_ShouldThrow()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        Assert.Throws<ArgumentNullException>(
+            "value",
+            () =>
+                mapper.MapToClr(
+                    null!));
+    }
+
+    [Fact]
+    public void MapToClr_AbsentVariant_ShouldReturnNull()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        object? result =
+            mapper.MapToClr(
+                new GrpcV1.RemoteValue());
+
+        Assert.Null(
+            result);
+    }
+
+    [Fact]
+    public void MapToClr_DefinedVariants_ShouldReturnNormalizedValues()
+    {
+        var mapper =
+            new RemoteValueMapper();
+
+        Assert.Equal(
+            true,
+            mapper.MapToClr(
+                new GrpcV1.RemoteValue
+                {
+                    BooleanValue =
+                        true
+                }));
+        Assert.Equal(
+            "Ready",
+            mapper.MapToClr(
+                new GrpcV1.RemoteValue
+                {
+                    StringValue =
+                        "Ready"
+                }));
+        Assert.Equal(
+            23.75,
+            mapper.MapToClr(
+                new GrpcV1.RemoteValue
+                {
+                    NumericValue =
+                        23.75
+                }));
+    }
+
     public static TheoryData<object, double> NumericValues
     {
         get;

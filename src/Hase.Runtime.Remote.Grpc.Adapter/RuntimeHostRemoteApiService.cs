@@ -17,6 +17,7 @@ public sealed class RuntimeHostRemoteApiService
     private readonly IRuntimeHostPropertyTargetMapper? propertyTargetMapper;
     private readonly IRuntimeHostCachedPropertyResultMapper? cachedResultMapper;
     private readonly IRuntimeHostPropertyOperationResultMapper? operationResultMapper;
+    private readonly IRemoteValueMapper? remoteValueMapper;
 
     /// <summary>
     /// Initializes the service adapter.
@@ -27,7 +28,8 @@ public sealed class RuntimeHostRemoteApiService
         Northbound.IRuntimeHostPropertyService? propertyService = null,
         IRuntimeHostPropertyTargetMapper? propertyTargetMapper = null,
         IRuntimeHostCachedPropertyResultMapper? cachedResultMapper = null,
-        IRuntimeHostPropertyOperationResultMapper? operationResultMapper = null)
+        IRuntimeHostPropertyOperationResultMapper? operationResultMapper = null,
+        IRemoteValueMapper? remoteValueMapper = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -43,7 +45,8 @@ public sealed class RuntimeHostRemoteApiService
             propertyService is not null
             || propertyTargetMapper is not null
             || cachedResultMapper is not null
-            || operationResultMapper is not null;
+            || operationResultMapper is not null
+            || remoteValueMapper is not null;
 
         if (!propertyAccessConfigured)
         {
@@ -69,6 +72,11 @@ public sealed class RuntimeHostRemoteApiService
             operationResultMapper
             ?? throw new ArgumentNullException(
                 nameof(operationResultMapper));
+
+        this.remoteValueMapper =
+            remoteValueMapper
+            ?? throw new ArgumentNullException(
+                nameof(remoteValueMapper));
     }
 
     /// <inheritdoc />
@@ -166,6 +174,58 @@ public sealed class RuntimeHostRemoteApiService
         Northbound.RuntimeHostPropertyOperationResult result =
             await propertyService.ReadAsync(
                 target,
+                context?.CancellationToken
+                    ?? CancellationToken.None)
+            ?? throw new InvalidOperationException(
+                "The runtime-host Property service returned null.");
+
+        return operationResultMapper.Map(
+                result)
+            ?? throw new InvalidOperationException(
+                "The Property operation result mapper returned null.");
+    }
+
+    /// <inheritdoc />
+    public override async Task<GrpcV1.PropertyOperationResult> WriteProperty(
+        GrpcV1.WritePropertyRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        Northbound.IRuntimeHostPropertyService propertyService =
+            this.propertyService
+            ?? throw new InvalidOperationException(
+                "Property write access is not configured.");
+        IRuntimeHostPropertyTargetMapper propertyTargetMapper =
+            this.propertyTargetMapper
+            ?? throw new InvalidOperationException(
+                "Property write access is not configured.");
+        IRuntimeHostPropertyOperationResultMapper operationResultMapper =
+            this.operationResultMapper
+            ?? throw new InvalidOperationException(
+                "Property write access is not configured.");
+        IRemoteValueMapper remoteValueMapper =
+            this.remoteValueMapper
+            ?? throw new InvalidOperationException(
+                "Property write access is not configured.");
+
+        Northbound.RuntimeHostPropertyTarget target =
+            propertyTargetMapper.Map(
+                request.Target)
+            ?? throw new InvalidOperationException(
+                "The Property target mapper returned null.");
+
+        object? requestedValue =
+            request.RequestedValue is null
+                ? null
+                : remoteValueMapper.MapToClr(
+                    request.RequestedValue);
+
+        Northbound.RuntimeHostPropertyOperationResult result =
+            await propertyService.WriteAsync(
+                target,
+                requestedValue,
                 context?.CancellationToken
                     ?? CancellationToken.None)
             ?? throw new InvalidOperationException(

@@ -12,4 +12,11 @@ public interface IRemoteValueMapper
     /// </summary>
     GrpcV1.RemoteValue Map(
         object value);
+
+    /// <summary>
+    /// Maps one version 1 remote value to its normalized CLR representation.
+    /// An unselected union represents null.
+    /// </summary>
+    object? MapToClr(
+        GrpcV1.RemoteValue value);
 }
