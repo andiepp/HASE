@@ -180,6 +180,91 @@ public sealed class LoopbackGrpcHostIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task ReadAuthoritativeProperty_Ipv4LoopbackHttp2_ShouldReturnConfirmedValue()
+    {
+        var propertyService =
+            new TestPropertyService();
+
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                new TestSnapshotProvider(),
+                propertyService);
+
+        await application.StartAsync();
+
+        try
+        {
+            IServer server =
+                application.Services.GetRequiredService<IServer>();
+            IServerAddressesFeature addressesFeature =
+                server.Features.Get<IServerAddressesFeature>()
+                ?? throw new InvalidOperationException(
+                    "The server addresses feature is unavailable.");
+            var uri =
+                new Uri(
+                    Assert.Single(
+                        addressesFeature.Addresses));
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    uri);
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+            var generation =
+                new Guid(
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd");
+
+            GrpcV1.PropertyOperationResult response =
+                await client.ReadAuthoritativePropertyAsync(
+                    new GrpcV1.ReadAuthoritativePropertyRequest
+                    {
+                        Target =
+                            new GrpcV1.PropertyTarget
+                            {
+                                EndpointId =
+                                    "endpoint-01",
+                                AttachmentGeneration =
+                                    generation.ToString(
+                                        "D"),
+                                InstrumentId =
+                                    "environment-sensor-01",
+                                PropertyId =
+                                    "temperature"
+                            }
+                    },
+                    deadline:
+                        DateTime.UtcNow.AddSeconds(
+                            10));
+
+            Assert.Equal(
+                GrpcV1.PropertyOperationStatus.Success,
+                response.Status);
+            Assert.Equal(
+                23.75,
+                response.ConfirmedValue.Value.NumericValue);
+            Assert.Equal(
+                GrpcV1.PropertyQuality.Good,
+                response.ConfirmedValue.Quality);
+            Assert.NotNull(
+                propertyService.ReadTarget);
+            Assert.Equal(
+                generation,
+                propertyService.ReadTarget.AttachmentGeneration.Value);
+            Assert.True(
+                propertyService.ReadCancellationToken.CanBeCanceled);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
     private sealed class TestSnapshotProvider
         : Northbound.IRuntimeHostSnapshotProvider
     {
@@ -210,6 +295,18 @@ public sealed class LoopbackGrpcHostIntegrationTests
             private set;
         }
 
+        public Northbound.RuntimeHostPropertyTarget? ReadTarget
+        {
+            get;
+            private set;
+        }
+
+        public CancellationToken ReadCancellationToken
+        {
+            get;
+            private set;
+        }
+
         public Northbound.RuntimeHostCachedPropertyResult GetCached(
             Northbound.RuntimeHostPropertyTarget target)
         {
@@ -225,7 +322,16 @@ public sealed class LoopbackGrpcHostIntegrationTests
             Northbound.RuntimeHostPropertyTarget target,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            ReadTarget =
+                target;
+            ReadCancellationToken =
+                cancellationToken;
+
+            return Task.FromResult(
+                Northbound.RuntimeHostPropertyOperationResult.Successful(
+                    new Hase.Core.Domain.Properties.PropertyValue(
+                        23.75,
+                        DateTimeOffset.UnixEpoch)));
         }
 
         public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(

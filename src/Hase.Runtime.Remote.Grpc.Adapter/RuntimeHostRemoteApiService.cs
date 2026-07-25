@@ -16,6 +16,7 @@ public sealed class RuntimeHostRemoteApiService
     private readonly Northbound.IRuntimeHostPropertyService? propertyService;
     private readonly IRuntimeHostPropertyTargetMapper? propertyTargetMapper;
     private readonly IRuntimeHostCachedPropertyResultMapper? cachedResultMapper;
+    private readonly IRuntimeHostPropertyOperationResultMapper? operationResultMapper;
 
     /// <summary>
     /// Initializes the service adapter.
@@ -25,7 +26,8 @@ public sealed class RuntimeHostRemoteApiService
         RuntimeHostSnapshotMapper snapshotMapper,
         Northbound.IRuntimeHostPropertyService? propertyService = null,
         IRuntimeHostPropertyTargetMapper? propertyTargetMapper = null,
-        IRuntimeHostCachedPropertyResultMapper? cachedResultMapper = null)
+        IRuntimeHostCachedPropertyResultMapper? cachedResultMapper = null,
+        IRuntimeHostPropertyOperationResultMapper? operationResultMapper = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -40,7 +42,8 @@ public sealed class RuntimeHostRemoteApiService
         bool propertyAccessConfigured =
             propertyService is not null
             || propertyTargetMapper is not null
-            || cachedResultMapper is not null;
+            || cachedResultMapper is not null
+            || operationResultMapper is not null;
 
         if (!propertyAccessConfigured)
         {
@@ -61,6 +64,11 @@ public sealed class RuntimeHostRemoteApiService
             cachedResultMapper
             ?? throw new ArgumentNullException(
                 nameof(cachedResultMapper));
+
+        this.operationResultMapper =
+            operationResultMapper
+            ?? throw new ArgumentNullException(
+                nameof(operationResultMapper));
     }
 
     /// <inheritdoc />
@@ -125,5 +133,47 @@ public sealed class RuntimeHostRemoteApiService
 
         return Task.FromResult(
             response);
+    }
+
+    /// <inheritdoc />
+    public override async Task<GrpcV1.PropertyOperationResult>
+        ReadAuthoritativeProperty(
+            GrpcV1.ReadAuthoritativePropertyRequest request,
+            ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        Northbound.IRuntimeHostPropertyService propertyService =
+            this.propertyService
+            ?? throw new InvalidOperationException(
+                "Authoritative Property access is not configured.");
+        IRuntimeHostPropertyTargetMapper propertyTargetMapper =
+            this.propertyTargetMapper
+            ?? throw new InvalidOperationException(
+                "Authoritative Property access is not configured.");
+        IRuntimeHostPropertyOperationResultMapper operationResultMapper =
+            this.operationResultMapper
+            ?? throw new InvalidOperationException(
+                "Authoritative Property access is not configured.");
+
+        Northbound.RuntimeHostPropertyTarget target =
+            propertyTargetMapper.Map(
+                request.Target)
+            ?? throw new InvalidOperationException(
+                "The Property target mapper returned null.");
+
+        Northbound.RuntimeHostPropertyOperationResult result =
+            await propertyService.ReadAsync(
+                target,
+                context?.CancellationToken
+                    ?? CancellationToken.None)
+            ?? throw new InvalidOperationException(
+                "The runtime-host Property service returned null.");
+
+        return operationResultMapper.Map(
+                result)
+            ?? throw new InvalidOperationException(
+                "The Property operation result mapper returned null.");
     }
 }

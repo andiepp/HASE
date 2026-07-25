@@ -99,6 +99,9 @@ public sealed class LoopbackGrpcHostFactoryTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 IRuntimeHostCachedPropertyResultMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostPropertyOperationResultMapper>());
     }
 
     private sealed class TestSnapshotProvider
