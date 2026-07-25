@@ -4,7 +4,7 @@ using Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Contracts.Tests;
 
-// Verifies the generated version 1 protobuf and gRPC contract surface.
+// Verifies the generated version 1 host and endpoint-envelope contract surface.
 public sealed class RuntimeHostRemoteApiV1ContractTests
 {
     [Fact]
@@ -100,11 +100,58 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void PublishedEndpointSnapshot_StartsWithoutPrematureFields()
+    public void PublishedEndpointSnapshot_DefinesEnvelopeMembers()
+    {
+        FieldDescriptor[] fields =
+            PublishedRuntimeEndpointSnapshot.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field =>
+            {
+                Assert.Equal("endpoint_id", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.False(field.IsRepeated);
+            },
+            field =>
+            {
+                Assert.Equal("attachment_generation", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.False(field.IsRepeated);
+            },
+            field =>
+            {
+                Assert.Equal("descriptor", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.Message, field.FieldType);
+                Assert.Equal(
+                    EndpointDescriptor.Descriptor.FullName,
+                    field.MessageType.FullName);
+                Assert.False(field.IsRepeated);
+            },
+            field =>
+            {
+                Assert.Equal("connection_status", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.Message, field.FieldType);
+                Assert.Equal(
+                    EndpointConnectionStatus.Descriptor.FullName,
+                    field.MessageType.FullName);
+                Assert.False(field.IsRepeated);
+            });
+    }
+
+    [Fact]
+    public void EndpointNestedMessages_StartWithoutPrematureFields()
     {
         Assert.Empty(
-            PublishedRuntimeEndpointSnapshot.Descriptor.Fields
-                .InDeclarationOrder());
+            EndpointDescriptor.Descriptor.Fields.InDeclarationOrder());
+        Assert.Empty(
+            EndpointConnectionStatus.Descriptor.Fields.InDeclarationOrder());
     }
 
     [Fact]
@@ -124,7 +171,17 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
             };
 
         response.Endpoints.Add(
-            new PublishedRuntimeEndpointSnapshot());
+            new PublishedRuntimeEndpointSnapshot
+            {
+                EndpointId =
+                    "endpoint-01",
+                AttachmentGeneration =
+                    "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd",
+                Descriptor_ =
+                    new EndpointDescriptor(),
+                ConnectionStatus =
+                    new EndpointConnectionStatus()
+            });
 
         GetSnapshotResponse roundTrip =
             GetSnapshotResponse.Parser.ParseFrom(
@@ -139,7 +196,19 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             0u,
             roundTrip.ApiVersion.Minor);
-        Assert.Single(
-            roundTrip.Endpoints);
+        PublishedRuntimeEndpointSnapshot endpoint =
+            Assert.Single(
+                roundTrip.Endpoints);
+
+        Assert.Equal(
+            "endpoint-01",
+            endpoint.EndpointId);
+        Assert.Equal(
+            "868e79d4-b1a4-4a63-81cd-5a800d9ba3fd",
+            endpoint.AttachmentGeneration);
+        Assert.NotNull(
+            endpoint.Descriptor_);
+        Assert.NotNull(
+            endpoint.ConnectionStatus);
     }
 }

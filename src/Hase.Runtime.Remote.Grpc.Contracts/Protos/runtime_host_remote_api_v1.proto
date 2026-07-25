@@ -24,4 +24,14 @@ message RuntimeHostApiVersion {
 }
 
 message PublishedRuntimeEndpointSnapshot {
+  string endpoint_id = 1;
+  string attachment_generation = 2;
+  EndpointDescriptor descriptor = 3;
+  EndpointConnectionStatus connection_status = 4;
+}
+
+message EndpointDescriptor {
+}
+
+message EndpointConnectionStatus {
 }
