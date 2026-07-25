@@ -7,24 +7,37 @@ namespace Hase.Runtime.Remote.Grpc.Adapter;
 public sealed record RuntimeHostClientPrincipal
 {
     /// <summary>
-    /// Initializes one immutable authenticated client principal.
+    /// Initializes one immutable authenticated client principal from the
+    /// transport-independent authentication values.
     /// </summary>
     public RuntimeHostClientPrincipal(
-        string principalId,
-        string credentialId,
-        string authenticationMechanism,
+        RuntimeHostClientPrincipalId principalIdentifier,
+        RuntimeHostClientCredentialId credentialIdentifier,
+        RuntimeHostAuthenticationMechanism authenticationMechanismValue,
         DateTimeOffset authenticatedAtUtc,
         string trustPolicyId)
     {
-        PrincipalId = RequireNonEmpty(
-            principalId,
-            nameof(principalId));
-        CredentialId = RequireNonEmpty(
-            credentialId,
-            nameof(credentialId));
-        AuthenticationMechanism = RequireNonEmpty(
-            authenticationMechanism,
-            nameof(authenticationMechanism));
+        if (principalIdentifier == default)
+        {
+            throw new ArgumentException(
+                "The client-principal identifier must be specified.",
+                nameof(principalIdentifier));
+        }
+
+        if (credentialIdentifier == default)
+        {
+            throw new ArgumentException(
+                "The client-credential identifier must be specified.",
+                nameof(credentialIdentifier));
+        }
+
+        if (authenticationMechanismValue == default)
+        {
+            throw new ArgumentException(
+                "The authentication mechanism must be specified.",
+                nameof(authenticationMechanismValue));
+        }
+
         TrustPolicyId = RequireNonEmpty(
             trustPolicyId,
             nameof(trustPolicyId));
@@ -36,23 +49,70 @@ public sealed record RuntimeHostClientPrincipal
                 nameof(authenticatedAtUtc));
         }
 
+        PrincipalIdentifier = principalIdentifier;
+        CredentialIdentifier = credentialIdentifier;
+        AuthenticationMechanismValue = authenticationMechanismValue;
         AuthenticatedAtUtc = authenticatedAtUtc;
+    }
+
+    /// <summary>
+    /// Initializes one immutable authenticated client principal while
+    /// preserving the original string-based construction boundary.
+    /// </summary>
+    public RuntimeHostClientPrincipal(
+        string principalId,
+        string credentialId,
+        string authenticationMechanism,
+        DateTimeOffset authenticatedAtUtc,
+        string trustPolicyId)
+        : this(
+            new RuntimeHostClientPrincipalId(
+                principalId),
+            new RuntimeHostClientCredentialId(
+                credentialId),
+            new RuntimeHostAuthenticationMechanism(
+                authenticationMechanism),
+            authenticatedAtUtc,
+            trustPolicyId)
+    {
+    }
+
+    /// <summary>
+    /// Gets the stable typed HASE application-principal identifier.
+    /// </summary>
+    public RuntimeHostClientPrincipalId PrincipalIdentifier { get; }
+
+    /// <summary>
+    /// Gets the typed identifier of the individual credential used to
+    /// authenticate.
+    /// </summary>
+    public RuntimeHostClientCredentialId CredentialIdentifier { get; }
+
+    /// <summary>
+    /// Gets the typed authentication mechanism that established the principal.
+    /// </summary>
+    public RuntimeHostAuthenticationMechanism AuthenticationMechanismValue
+    {
+        get;
     }
 
     /// <summary>
     /// Gets the stable HASE application-principal identifier.
     /// </summary>
-    public string PrincipalId { get; }
+    public string PrincipalId =>
+        PrincipalIdentifier.Value;
 
     /// <summary>
     /// Gets the identifier of the individual credential used to authenticate.
     /// </summary>
-    public string CredentialId { get; }
+    public string CredentialId =>
+        CredentialIdentifier.Value;
 
     /// <summary>
     /// Gets the authentication mechanism that established the principal.
     /// </summary>
-    public string AuthenticationMechanism { get; }
+    public string AuthenticationMechanism =>
+        AuthenticationMechanismValue.Value;
 
     /// <summary>
     /// Gets the UTC time at which authentication completed.
