@@ -147,10 +147,91 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void EndpointDescriptor_StartsWithoutPrematureFields()
+    public void EndpointDescriptor_DefinesIdentityMetadataAndInstruments()
+    {
+        FieldDescriptor[] fields =
+            EndpointDescriptor.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field =>
+            {
+                Assert.Equal("endpoint_id", field.Name);
+                Assert.Equal(1, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.False(field.HasPresence);
+            },
+            field =>
+            {
+                Assert.Equal("display_name", field.Name);
+                Assert.Equal(2, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            },
+            field =>
+            {
+                Assert.Equal("description", field.Name);
+                Assert.Equal(3, field.FieldNumber);
+                Assert.Equal(FieldType.String, field.FieldType);
+                Assert.True(field.HasPresence);
+            },
+            field =>
+            {
+                Assert.Equal("instruments", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.Message, field.FieldType);
+                Assert.Equal(
+                    InstrumentDescriptor.Descriptor.FullName,
+                    field.MessageType.FullName);
+                Assert.True(field.IsRepeated);
+            });
+    }
+
+    [Fact]
+    public void InstrumentDescriptor_StartsWithoutPrematureFields()
     {
         Assert.Empty(
-            EndpointDescriptor.Descriptor.Fields.InDeclarationOrder());
+            InstrumentDescriptor.Descriptor.Fields.InDeclarationOrder());
+    }
+
+    [Fact]
+    public void EndpointDescriptor_RoundTrip_PreservesOptionalMetadata()
+    {
+        var descriptor =
+            new EndpointDescriptor
+            {
+                EndpointId =
+                    "endpoint-01",
+                DisplayName =
+                    "Endpoint 01",
+                Description =
+                    "Validation endpoint"
+            };
+
+        descriptor.Instruments.Add(
+            new InstrumentDescriptor());
+
+        EndpointDescriptor roundTrip =
+            EndpointDescriptor.Parser.ParseFrom(
+                descriptor.ToByteArray());
+
+        Assert.Equal(
+            "endpoint-01",
+            roundTrip.EndpointId);
+        Assert.True(
+            roundTrip.HasDisplayName);
+        Assert.Equal(
+            "Endpoint 01",
+            roundTrip.DisplayName);
+        Assert.True(
+            roundTrip.HasDescription);
+        Assert.Equal(
+            "Validation endpoint",
+            roundTrip.Description);
+        Assert.Single(
+            roundTrip.Instruments);
     }
 
     [Fact]
