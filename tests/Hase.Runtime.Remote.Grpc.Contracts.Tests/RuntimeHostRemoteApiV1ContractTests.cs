@@ -24,7 +24,12 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
 
         Assert.Equal("RuntimeHostRemoteApi", service.Name);
 
-        var method = Assert.Single(service.Methods);
+        MethodDescriptor method =
+            Assert.Single(
+                service.Methods,
+                candidate =>
+                    candidate.Name
+                    == "GetSnapshot");
 
         Assert.Equal("GetSnapshot", method.Name);
         Assert.False(method.IsClientStreaming);
@@ -35,6 +40,88 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             GetSnapshotResponse.Descriptor.FullName,
             method.OutputType.FullName);
+    }
+
+    [Fact]
+    public void Contract_DefinesUnaryCachedPropertyOperation()
+    {
+        MethodDescriptor method =
+            AssertRemoteMethod(
+                "ReadCachedProperty",
+                ReadCachedPropertyRequest.Descriptor,
+                CachedPropertyResult.Descriptor);
+
+        Assert.False(method.IsClientStreaming);
+        Assert.False(method.IsServerStreaming);
+    }
+
+    [Fact]
+    public void Contract_DefinesUnaryAuthoritativePropertyOperation()
+    {
+        MethodDescriptor method =
+            AssertRemoteMethod(
+                "ReadAuthoritativeProperty",
+                ReadAuthoritativePropertyRequest.Descriptor,
+                PropertyOperationResult.Descriptor);
+
+        Assert.False(method.IsClientStreaming);
+        Assert.False(method.IsServerStreaming);
+    }
+
+    [Fact]
+    public void Contract_DefinesUnaryWritePropertyOperation()
+    {
+        MethodDescriptor method =
+            AssertRemoteMethod(
+                "WriteProperty",
+                WritePropertyRequest.Descriptor,
+                PropertyOperationResult.Descriptor);
+
+        Assert.False(method.IsClientStreaming);
+        Assert.False(method.IsServerStreaming);
+    }
+
+    [Fact]
+    public void PropertyRequests_DefineTargetsAndRequestedValue()
+    {
+        FieldDescriptor cachedTarget =
+            Assert.Single(
+                ReadCachedPropertyRequest.Descriptor.Fields
+                    .InDeclarationOrder());
+
+        AssertMessageField(
+            cachedTarget,
+            "target",
+            1,
+            PropertyTarget.Descriptor,
+            false);
+
+        FieldDescriptor authoritativeTarget =
+            Assert.Single(
+                ReadAuthoritativePropertyRequest.Descriptor.Fields
+                    .InDeclarationOrder());
+
+        AssertMessageField(
+            authoritativeTarget,
+            "target",
+            1,
+            PropertyTarget.Descriptor,
+            false);
+
+        Assert.Collection(
+            WritePropertyRequest.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertMessageField(
+                field,
+                "target",
+                1,
+                PropertyTarget.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "requested_value",
+                2,
+                RemoteValue.Descriptor,
+                false));
     }
 
     [Fact]
@@ -1416,6 +1503,31 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             expectedNumber,
             value.Number);
+    }
+
+    private static MethodDescriptor AssertRemoteMethod(
+        string name,
+        MessageDescriptor inputType,
+        MessageDescriptor outputType)
+    {
+        ServiceDescriptor service =
+            Assert.Single(
+                RuntimeHostRemoteApiV1Reflection.Descriptor.Services);
+        MethodDescriptor method =
+            Assert.Single(
+                service.Methods,
+                candidate =>
+                    candidate.Name
+                    == name);
+
+        Assert.Equal(
+            inputType.FullName,
+            method.InputType.FullName);
+        Assert.Equal(
+            outputType.FullName,
+            method.OutputType.FullName);
+
+        return method;
     }
 
     private static void AssertPathDescriptor(

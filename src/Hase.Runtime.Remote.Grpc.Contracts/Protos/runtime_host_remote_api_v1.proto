@@ -9,9 +9,25 @@ option csharp_namespace = "Hase.Runtime.Remote.Grpc.V1";
 // Version 1 remote contract for operational runtime-host access.
 service RuntimeHostRemoteApi {
   rpc GetSnapshot (GetSnapshotRequest) returns (GetSnapshotResponse);
+  rpc ReadCachedProperty (ReadCachedPropertyRequest) returns (CachedPropertyResult);
+  rpc ReadAuthoritativeProperty (ReadAuthoritativePropertyRequest) returns (PropertyOperationResult);
+  rpc WriteProperty (WritePropertyRequest) returns (PropertyOperationResult);
 }
 
 message GetSnapshotRequest {
+}
+
+message ReadCachedPropertyRequest {
+  PropertyTarget target = 1;
+}
+
+message ReadAuthoritativePropertyRequest {
+  PropertyTarget target = 1;
+}
+
+message WritePropertyRequest {
+  PropertyTarget target = 1;
+  RemoteValue requested_value = 2;
 }
 
 message GetSnapshotResponse {
