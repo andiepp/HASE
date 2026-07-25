@@ -113,9 +113,15 @@ message Resolution {
 }
 
 message CommandDescriptor {
+  repeated string path_segments = 1;
+  string display_name = 2;
+  optional string description = 3;
 }
 
 message EventDescriptor {
+  repeated string path_segments = 1;
+  string display_name = 2;
+  optional string description = 3;
 }
 
 message EndpointConnectionStatus {

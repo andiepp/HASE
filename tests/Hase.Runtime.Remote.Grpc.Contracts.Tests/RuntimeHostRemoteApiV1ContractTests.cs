@@ -283,12 +283,80 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void CommandAndEventMessages_StartWithoutPrematureFields()
+    public void CommandAndEventDescriptors_DefinePathAndMetadata()
     {
-        Assert.Empty(
-            CommandDescriptor.Descriptor.Fields.InDeclarationOrder());
-        Assert.Empty(
-            EventDescriptor.Descriptor.Fields.InDeclarationOrder());
+        AssertPathDescriptor(
+            CommandDescriptor.Descriptor);
+        AssertPathDescriptor(
+            EventDescriptor.Descriptor);
+    }
+
+    [Fact]
+    public void CommandAndEventDescriptors_RoundTripIndependently()
+    {
+        var command =
+            new CommandDescriptor
+            {
+                DisplayName =
+                    "Start Sweep",
+                Description =
+                    "Starts the configured sweep"
+            };
+
+        command.PathSegments.Add(
+            "DDS");
+        command.PathSegments.Add(
+            "Sweep");
+        command.PathSegments.Add(
+            "Start");
+
+        CommandDescriptor commandRoundTrip =
+            CommandDescriptor.Parser.ParseFrom(
+                command.ToByteArray());
+
+        Assert.Equal(
+            command.PathSegments.ToArray(),
+            commandRoundTrip.PathSegments.ToArray());
+        Assert.Equal(
+            command.DisplayName,
+            commandRoundTrip.DisplayName);
+        Assert.True(
+            commandRoundTrip.HasDescription);
+        Assert.Equal(
+            command.Description,
+            commandRoundTrip.Description);
+
+        var eventDescriptor =
+            new EventDescriptor
+            {
+                DisplayName =
+                    "PLL Lock Lost",
+                Description =
+                    "Reports loss of PLL lock"
+            };
+
+        eventDescriptor.PathSegments.Add(
+            "DDS");
+        eventDescriptor.PathSegments.Add(
+            "PLL");
+        eventDescriptor.PathSegments.Add(
+            "LockLost");
+
+        EventDescriptor eventRoundTrip =
+            EventDescriptor.Parser.ParseFrom(
+                eventDescriptor.ToByteArray());
+
+        Assert.Equal(
+            eventDescriptor.PathSegments.ToArray(),
+            eventRoundTrip.PathSegments.ToArray());
+        Assert.Equal(
+            eventDescriptor.DisplayName,
+            eventRoundTrip.DisplayName);
+        Assert.True(
+            eventRoundTrip.HasDescription);
+        Assert.Equal(
+            eventDescriptor.Description,
+            eventRoundTrip.Description);
     }
 
     [Fact]
@@ -1003,6 +1071,34 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             expectedNumber,
             value.Number);
+    }
+
+    private static void AssertPathDescriptor(
+        MessageDescriptor descriptor)
+    {
+        Assert.Collection(
+            descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "path_segments",
+                1,
+                FieldType.String,
+                false,
+                true),
+            field => AssertField(
+                field,
+                "display_name",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                3,
+                FieldType.String,
+                true,
+                false));
     }
 
     private static void AssertField(
