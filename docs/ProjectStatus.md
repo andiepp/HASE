@@ -50,7 +50,7 @@ subscriptions for lifecycle, connection, Property, and Event observations.
 Phase 7.7 maps that boundary through versioned protobuf and ASP.NET Core gRPC
 without transferring endpoint lifecycle ownership. Unary snapshot, Property,
 and Command operations and server-streaming observation are integrated over
-loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-033
+loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-034
 implement authorization, certificate authentication, and mutual-TLS Kestrel
 integration, including physically verified authenticated authoritative Property and Command
 RPCs, while retaining loopback-only binding. Production non-loopback
@@ -68,11 +68,13 @@ C-032 validates an authenticated authoritative Property RPC through the
 mutual-TLS gRPC host against the physical ESP32/BME280 endpoint.
 C-033 validates authenticated Command execution and authoritative state
 confirmation through the mutual-TLS gRPC host against the physical Arduino Uno.
+C-034 validates authenticated server-streaming observation through the
+mutual-TLS gRPC host against the physical ESP32/BME280 and GPIO17 endpoint.
 
 The current verified baseline is:
 
 ```text
-2,831 automated tests passing
+2,850 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -96,6 +98,9 @@ Authenticated physical ESP32 Property RPC verified
 Rejected Property credentials never reach the Property service
 Authenticated physical Arduino Command RPC verified
 Rejected Command credentials never reach the Command service
+Authenticated physical ESP32 observation stream verified
+Rejected observation credentials never open a subscription
+Physical AttachmentPublished, PropertyValueChanged, EventOccurred, and AttachmentEnded verified through mutual TLS
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -419,10 +424,18 @@ Implemented Phase 7 foundation:
   execution;
 - authoritative `Led.State` confirmation and restoration through secured
   Property RPCs;
-- orderly secure-host shutdown and physical Arduino endpoint detachment.
+- orderly secure-host shutdown and physical Arduino endpoint detachment;
+- authenticated physical ESP32 server-streaming observation through real
+  HTTPS/HTTP/2 gRPC;
+- missing and unenrolled credential rejection before observation-subscription
+  creation;
+- authenticated empty initial snapshot followed by `AttachmentPublished`,
+  `PropertyValueChanged`, GPIO17 `EventOccurred`, and `AttachmentEnded`;
+- strictly increasing subscription-local sequences and orderly physical
+  endpoint detachment.
 
 Phase 7.7 remote API mapping is complete.
-The C-033 authenticated physical northbound Command validation baseline is
+The C-034 authenticated physical northbound observation validation baseline is
 complete.
 Production non-loopback exposure remains prohibited pending separately approved
 deployment, credential-lifecycle, and audit increments.
@@ -868,7 +881,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,831 automated tests pass
+2,850 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -1018,7 +1031,7 @@ The current implementation intentionally excludes:
    production non-local deployment, credential lifecycle, and audit behavior
    are separately approved and implemented.
 2. Decide the next authenticated operational validation separately while
-   preserving the completed physical Property and Command baselines.
+   preserving the completed physical Property, Command, and observation baselines.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
@@ -1044,3 +1057,4 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
+

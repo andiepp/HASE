@@ -31,6 +31,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             snapshotProvider,
             propertyService: null,
             commandService: null,
+            observationService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -57,6 +58,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             snapshotProvider,
             propertyService,
             commandService: null,
+            observationService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -84,6 +86,36 @@ public static class MutualTlsLoopbackGrpcHostFactory
             snapshotProvider,
             propertyService,
             commandService,
+            observationService: null,
+            certificateAuthenticationService,
+            timeProvider);
+    }
+
+    /// <summary>
+    /// Creates an unstarted mutual-TLS loopback gRPC application exposing
+    /// observation and optional Property and Command operations.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService observationService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observationService);
+
+        return CreateCore(
+            binding,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService,
+            commandService,
+            observationService,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -94,6 +126,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
         Northbound.IRuntimeHostPropertyService? propertyService,
         Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService? observationService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
@@ -186,6 +219,19 @@ public static class MutualTlsLoopbackGrpcHostFactory
                 builder.Services.AddSingleton(
                     commandMappers.RemoteValueMapper);
             }
+        }
+
+        if (observationService is not null)
+        {
+            RuntimeHostObservationMappers observationMappers =
+                RuntimeHostObservationMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                observationService);
+            builder.Services.AddSingleton(
+                observationMappers.InitialSnapshotMapper);
+            builder.Services.AddSingleton(
+                observationMappers.ObservationMapper);
         }
 
         builder.Services.AddSingleton(
