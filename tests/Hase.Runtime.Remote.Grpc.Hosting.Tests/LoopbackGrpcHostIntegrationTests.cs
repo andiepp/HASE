@@ -934,15 +934,17 @@ public sealed class LoopbackGrpcHostIntegrationTests
                     new GrpcV1.ObserveRequest(),
                     cancellationToken:
                         firstCancellation.Token);
+
+            Assert.True(
+                await firstCall.ResponseStream.MoveNext(
+                    CancellationToken.None));
+
             using AsyncServerStreamingCall<GrpcV1.ObserveResponse> secondCall =
                 client.Observe(
                     new GrpcV1.ObserveRequest(),
                     cancellationToken:
                         secondCancellation.Token);
 
-            Assert.True(
-                await firstCall.ResponseStream.MoveNext(
-                    CancellationToken.None));
             Assert.True(
                 await secondCall.ResponseStream.MoveNext(
                     CancellationToken.None));

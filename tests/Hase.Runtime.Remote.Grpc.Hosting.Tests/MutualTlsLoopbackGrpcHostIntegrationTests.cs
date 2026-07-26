@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Grpc.Core;
 using Grpc.Net.Client;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
@@ -125,6 +126,110 @@ public sealed class MutualTlsLoopbackGrpcHostIntegrationTests
             Assert.Equal(
                 Northbound.RuntimeHostApiVersion.Current.Minor,
                 response.ApiVersion.Minor);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task GetSnapshot_MissingClientCertificate_ShouldRejectBeforeService()
+    {
+        using X509Certificate2 certificateAuthority =
+            CreateCertificateAuthority();
+        using X509Certificate2 serverCertificate =
+            CreateServerCertificate(
+                certificateAuthority);
+        using X509Certificate2 enrolledClientCertificate =
+            CreateClientCertificate(
+                certificateAuthority);
+
+        var identityExtractor =
+            new RuntimeHostX509ClientCredentialIdentityExtractor();
+        RuntimeHostClientCredentialIdentity credentialIdentity =
+            identityExtractor.Extract(
+                enrolledClientCertificate);
+        var enrollmentRegistry =
+            new RuntimeHostClientCredentialEnrollmentRegistry(
+                new[]
+                {
+                    new RuntimeHostClientCredentialEnrollment(
+                        credentialIdentity,
+                        new RuntimeHostClientPrincipalId(
+                            "client-01"),
+                        "integration-trust-v1")
+                });
+        var certificateAuthenticationService =
+            new RuntimeHostCertificateAuthenticationService(
+                new RuntimeHostClientCertificateValidator(),
+                new RuntimeHostCertificateTrustValidator(
+                    new ExactCertificateTrustEvaluator(
+                        enrolledClientCertificate)),
+                identityExtractor,
+                new RuntimeHostClientAuthenticationService(
+                    enrollmentRegistry));
+        var snapshotProvider =
+            new TrackingSnapshotProvider();
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    serverCertificate),
+                snapshotProvider,
+                certificateAuthenticationService,
+                new FixedTimeProvider(
+                    AuthenticationTimeUtc));
+
+        await application.StartAsync();
+
+        try
+        {
+            Uri address =
+                GetListeningAddress(
+                    application);
+
+            using var handler =
+                new HttpClientHandler
+                {
+                    ClientCertificateOptions =
+                        ClientCertificateOption.Manual,
+                    ServerCertificateCustomValidationCallback =
+                        static (_, _, _, _) => true
+                };
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    address,
+                    new GrpcChannelOptions
+                    {
+                        HttpHandler =
+                            handler
+                    });
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+
+            RpcException exception =
+                await Assert.ThrowsAsync<RpcException>(
+                    async () =>
+                    {
+                        await client.GetSnapshotAsync(
+                            new GrpcV1.GetSnapshotRequest(),
+                            deadline:
+                                DateTime.UtcNow.AddSeconds(
+                                    10));
+                    });
+
+            Assert.Equal(
+                StatusCode.Unavailable,
+                exception.StatusCode);
+            Assert.False(
+                snapshotProvider.WasCalled);
         }
         finally
         {
