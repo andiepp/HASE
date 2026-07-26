@@ -63,6 +63,10 @@ public sealed class MutualTlsLoopbackGrpcHostIntegrationTests
                     enrollmentRegistry));
         var snapshotProvider =
             new TrackingSnapshotProvider();
+        bool? projectedIdentityAuthenticated =
+            null;
+        string? projectedIdentityName =
+            null;
 
         await using WebApplication application =
             MutualTlsLoopbackGrpcHostFactory.Create(
@@ -75,6 +79,17 @@ public sealed class MutualTlsLoopbackGrpcHostIntegrationTests
                 certificateAuthenticationService,
                 new FixedTimeProvider(
                     AuthenticationTimeUtc));
+
+        application.Use(
+            async (httpContext, next) =>
+            {
+                projectedIdentityAuthenticated =
+                    httpContext.User.Identity?.IsAuthenticated;
+                projectedIdentityName =
+                    httpContext.User.Identity?.Name;
+
+                await next();
+            });
 
         await application.StartAsync();
 
@@ -126,6 +141,11 @@ public sealed class MutualTlsLoopbackGrpcHostIntegrationTests
             Assert.Equal(
                 Northbound.RuntimeHostApiVersion.Current.Minor,
                 response.ApiVersion.Minor);
+            Assert.True(
+                projectedIdentityAuthenticated);
+            Assert.Equal(
+                "client-01",
+                projectedIdentityName);
         }
         finally
         {
@@ -227,6 +247,115 @@ public sealed class MutualTlsLoopbackGrpcHostIntegrationTests
 
             Assert.Equal(
                 StatusCode.Unavailable,
+                exception.StatusCode);
+            Assert.False(
+                snapshotProvider.WasCalled);
+        }
+        finally
+        {
+            await application.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task GetSnapshot_UntrustedClientCertificate_ShouldRejectBeforeService()
+    {
+        using X509Certificate2 certificateAuthority =
+            CreateCertificateAuthority();
+        using X509Certificate2 serverCertificate =
+            CreateServerCertificate(
+                certificateAuthority);
+        using X509Certificate2 trustedClientCertificate =
+            CreateClientCertificate(
+                certificateAuthority);
+        using X509Certificate2 untrustedClientCertificate =
+            CreateClientCertificate(
+                certificateAuthority);
+
+        var identityExtractor =
+            new RuntimeHostX509ClientCredentialIdentityExtractor();
+        RuntimeHostClientCredentialIdentity trustedCredentialIdentity =
+            identityExtractor.Extract(
+                trustedClientCertificate);
+        var enrollmentRegistry =
+            new RuntimeHostClientCredentialEnrollmentRegistry(
+                new[]
+                {
+                    new RuntimeHostClientCredentialEnrollment(
+                        trustedCredentialIdentity,
+                        new RuntimeHostClientPrincipalId(
+                            "client-01"),
+                        "integration-trust-v1")
+                });
+        var certificateAuthenticationService =
+            new RuntimeHostCertificateAuthenticationService(
+                new RuntimeHostClientCertificateValidator(),
+                new RuntimeHostCertificateTrustValidator(
+                    new ExactCertificateTrustEvaluator(
+                        trustedClientCertificate)),
+                identityExtractor,
+                new RuntimeHostClientAuthenticationService(
+                    enrollmentRegistry));
+        var snapshotProvider =
+            new TrackingSnapshotProvider();
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    serverCertificate),
+                snapshotProvider,
+                certificateAuthenticationService,
+                new FixedTimeProvider(
+                    AuthenticationTimeUtc));
+
+        await application.StartAsync();
+
+        try
+        {
+            Uri address =
+                GetListeningAddress(
+                    application);
+
+            using var handler =
+                new HttpClientHandler
+                {
+                    ClientCertificateOptions =
+                        ClientCertificateOption.Manual,
+                    ServerCertificateCustomValidationCallback =
+                        static (_, _, _, _) => true
+                };
+            handler.ClientCertificates.Add(
+                untrustedClientCertificate);
+
+            using GrpcChannel channel =
+                GrpcChannel.ForAddress(
+                    address,
+                    new GrpcChannelOptions
+                    {
+                        HttpHandler =
+                            handler
+                    });
+            var client =
+                new GrpcV1.RuntimeHostRemoteApi
+                    .RuntimeHostRemoteApiClient(
+                        channel);
+
+            RpcException exception =
+                await Assert.ThrowsAsync<RpcException>(
+                    async () =>
+                    {
+                        await client.GetSnapshotAsync(
+                            new GrpcV1.GetSnapshotRequest(),
+                            deadline:
+                                DateTime.UtcNow.AddSeconds(
+                                    10));
+                    });
+
+            Assert.Equal(
+                StatusCode.Unauthenticated,
                 exception.StatusCode);
             Assert.False(
                 snapshotProvider.WasCalled);

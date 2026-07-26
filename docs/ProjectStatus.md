@@ -25,8 +25,10 @@ runtime-host attachment inventory, compact runtime property synchronization,
 compact serial connection supervision, Windows USB serial discovery, compact
 serial endpoint attachment, compact serial unsolicited event notification,
 normalized northbound Property operations, normalized northbound Command
-execution, normalized northbound live observation, and versioned loopback gRPC
-remote API mapping are implemented. Phase 6 is complete at the C-025 baseline.
+execution, normalized northbound live observation, versioned loopback gRPC
+remote API mapping, northbound authorization, certificate authentication, and
+mutual-TLS Kestrel hosting are implemented. Phase 6 is complete at the C-025
+baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -47,7 +49,10 @@ subscriptions for lifecycle, connection, Property, and Event observations.
 Phase 7.7 maps that boundary through versioned protobuf and ASP.NET Core gRPC
 without transferring endpoint lifecycle ownership. Unary snapshot, Property,
 and Command operations and server-streaming observation are integrated over
-loopback HTTP/2. Non-loopback binding remains prohibited.
+loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-031
+implement authorization, certificate authentication, and mutual-TLS Kestrel
+integration while retaining loopback-only binding. Production non-loopback
+exposure remains prohibited.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
@@ -61,7 +66,7 @@ both physical endpoint families.
 The current verified baseline is:
 
 ```text
-2,520 automated tests passing
+2,783 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -78,6 +83,9 @@ Physical native and compact northbound Command execution verified
 Physical native and compact northbound live observation verified
 IPv4 loopback HTTP/2 gRPC integration verified
 IPv6 loopback HTTP/2 gRPC integration verified where supported
+Mutual-TLS HTTP/2 gRPC hosting verified
+Missing and untrusted client-certificate rejection verified
+Authenticated principal projection verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -378,10 +386,22 @@ Implemented Phase 7 foundation:
 - enforced IPv4 and IPv6 loopback-only HTTP/2 hosting;
 - preservation of runtime-host ownership for attachment and endpoint
   lifecycles.
+- ADR-0031 northbound security boundary;
+- generation-scoped northbound authorization;
+- enrolled X.509 client-certificate authentication;
+- system certificate-chain trust validation;
+- authenticated principal projection into `HttpContext.User`;
+- HTTPS-only, HTTP/2-only Kestrel hosting with TLS 1.2 or TLS 1.3;
+- required client certificates at the TLS boundary;
+- missing-certificate rejection before service execution;
+- structurally valid but unenrolled client-certificate rejection before service
+  execution;
+- authenticated gRPC service execution through the existing remote adapter.
 
 Phase 7.7 remote API mapping is complete.
-Production non-loopback exposure remains prohibited until Phase 7.8 security
-architecture is accepted and implemented.
+The C-031 mutual-TLS runtime-host integration baseline is complete.
+Production non-loopback exposure remains prohibited pending separately approved
+deployment, credential-lifecycle, and audit increments.
 
 ---
 
@@ -804,6 +824,13 @@ Explorer tracing.
 - C-028 - Snapshot-first, generation-scoped physical northbound live
   observation through one public service for native Protocol Version 1 and
   Compact Serial Protocol endpoints.
+- C-029 - Generation-scoped northbound authorization integrated with the
+  operational gRPC boundary.
+- C-030 - Enrolled X.509 client-certificate authentication, system trust
+  validation, and authenticated-principal construction.
+- C-031 - Mutual-TLS Kestrel runtime-host integration with authenticated gRPC
+  success, TLS-boundary missing-certificate rejection, application-boundary
+  unenrolled-certificate rejection, and principal projection.
 
 ---
 
@@ -811,7 +838,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,520 automated tests pass
+2,783 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -901,7 +928,7 @@ ADR-0030 rejects wildcard and non-loopback bindings
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0030 are accepted.
+ADR-0001 through ADR-0031 are accepted.
 
 Relevant recent decisions:
 
@@ -920,6 +947,7 @@ Relevant recent decisions:
 - ADR-0028 - Normalized Northbound Command Execution.
 - ADR-0029 - Northbound Live Observation.
 - ADR-0030 - Northbound Remote API Mapping.
+- ADR-0031 - Northbound Security Boundary.
 
 ---
 
@@ -929,7 +957,8 @@ The current implementation intentionally excludes:
 
 - IPv6 discovery;
 - live Added/Updated/Removed presence tracking;
-- production northbound authentication, authorization, encryption, and audit;
+- production non-loopback deployment;
+- production credential provisioning, rotation, revocation, and audit;
 - automatic attachment without an explicit request;
 - automatic endpoint replacement;
 - cross-subnet mDNS relaying;
@@ -946,13 +975,12 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Define authentication, authorization, encryption, credential lifecycle, and
-   audit behavior before production non-local exposure.
-2. Keep the completed versioned gRPC mapping restricted to loopback until that
-   security architecture is accepted and implemented.
-3. Plan physical native and compact validation through the completed loopback
-   gRPC contract.
-4. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
+1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
+   production non-local deployment, credential lifecycle, and audit behavior
+   are separately approved and implemented.
+2. Plan physical native and compact validation through the authenticated
+   loopback gRPC contract.
+3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
 

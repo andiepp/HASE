@@ -751,20 +751,36 @@ Implemented ASP.NET Core gRPC over HTTP/2 with:
 - real HTTP/2 process integration through generated clients.
 
 The completed remote mapping adapts to the application services and does not
-become a dependency of the runtime core. Its verified completion baseline is
-2,520 passing automated tests.
+become a dependency of the runtime core. Its current verified baseline is
+2,783 passing automated tests.
 
 Non-loopback exposure is not part of Phase 7.7.
 
 ## 7.8 Security and Remote Exposure
 
-**Status:** [Planned] Requires separate architecture approval
+**Status:** [Completed] Automated security foundation completed through C-031
 
-Define authentication, authorization, encryption, credential lifecycle, and
-audit behavior before production non-local exposure.
+Architecture: ADR-0031 - Northbound Security Boundary.
+
+Implemented:
+
+- generation-scoped northbound authorization;
+- enrolled X.509 client-certificate authentication;
+- system certificate-chain trust validation;
+- authenticated HASE principal construction;
+- principal projection into `HttpContext.User`;
+- HTTPS-only, HTTP/2-only Kestrel hosting;
+- TLS 1.2 or TLS 1.3;
+- required client certificates;
+- authenticated gRPC service execution;
+- TLS-boundary rejection when no client certificate is presented;
+- HASE authentication rejection for a structurally valid but unenrolled client
+  certificate;
+- loopback-only automated integration.
 
 Network reachability, including Tailscale connectivity, does not grant HASE
-authority.
+authority. Production non-loopback deployment, credential provisioning and
+rotation, revocation operations, and audit remain separate backlog.
 
 ## 7.9 Future Management API
 
@@ -866,7 +882,8 @@ Current documentation includes:
 - `C-024-Compact-Serial-Endpoint-Attachment.md`;
 - `C-025-Compact-Serial-Event-Notifications.md`;
 - `C-028-Northbound-Live-Observation.md`;
-- ADR-0001 through ADR-0030.
+- `C-031-Mutual-TLS-Runtime-Host-Integration.md`;
+- ADR-0001 through ADR-0031.
 
 Next:
 
@@ -874,25 +891,26 @@ Next:
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
-   services, and loopback gRPC mapping aligned with ADR-0023 through ADR-0030.
+   services, loopback gRPC mapping, and security boundary aligned with ADR-0023
+   through ADR-0031.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
    semantics explicit.
-7. Record future security, management, compact-profile,
+7. Record future deployment, credential-lifecycle, audit, management,
+   compact-profile,
    discovery-concurrency, or Event-history architecture changes in ADRs.
 
 ---
 
 # Current Priorities
 
-1. Define authentication, authorization, encryption, credential lifecycle, and
-   audit behavior before non-local production exposure.
-2. Keep the completed ADR-0030 gRPC host restricted to loopback until the
-   Phase 7.8 security boundary is accepted and implemented.
-3. Plan physical native and compact validation through the completed loopback
-   gRPC contract.
-4. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
+1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
+   production non-local deployment, credential lifecycle, revocation, and audit
+   behavior are separately approved and implemented.
+2. Plan physical native and compact validation through the authenticated
+   loopback gRPC contract.
+3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
 
