@@ -25,6 +25,49 @@ public static class MutualTlsLoopbackGrpcHostFactory
             certificateAuthenticationService,
         TimeProvider? timeProvider = null)
     {
+        return CreateCore(
+            binding,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService: null,
+            certificateAuthenticationService,
+            timeProvider);
+    }
+
+    /// <summary>
+    /// Creates an unstarted mutual-TLS loopback gRPC application exposing the
+    /// runtime-host snapshot and Property operations.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService propertyService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            propertyService);
+
+        return CreateCore(
+            binding,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService,
+            certificateAuthenticationService,
+            timeProvider);
+    }
+
+    private static WebApplication CreateCore(
+        LoopbackGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider)
+    {
         ArgumentNullException.ThrowIfNull(
             binding);
         ArgumentNullException.ThrowIfNull(
@@ -78,6 +121,24 @@ public static class MutualTlsLoopbackGrpcHostFactory
             snapshotProvider);
         builder.Services.AddSingleton(
             RuntimeHostSnapshotMapperFactory.Create());
+
+        if (propertyService is not null)
+        {
+            RuntimeHostPropertyMappers propertyMappers =
+                RuntimeHostPropertyMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                propertyService);
+            builder.Services.AddSingleton(
+                propertyMappers.TargetMapper);
+            builder.Services.AddSingleton(
+                propertyMappers.CachedResultMapper);
+            builder.Services.AddSingleton(
+                propertyMappers.OperationResultMapper);
+            builder.Services.AddSingleton(
+                propertyMappers.RemoteValueMapper);
+        }
+
         builder.Services.AddSingleton(
             certificateAuthenticationService);
         builder.Services.AddSingleton(

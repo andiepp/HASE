@@ -87,6 +87,24 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
     }
 
     [Fact]
+    public void Create_MissingPropertyService_ShouldReject()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+
+        Assert.Throws<ArgumentNullException>(
+            () => MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    certificate),
+                new TestSnapshotProvider(),
+                null!,
+                new TestCertificateAuthenticationService()));
+    }
+
+    [Fact]
     public async Task Create_ShouldRegisterAuthenticationComposition()
     {
         using X509Certificate2 certificate =
@@ -131,6 +149,43 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
         Assert.Same(
             timeProvider,
             application.Services.GetRequiredService<TimeProvider>());
+    }
+
+    [Fact]
+    public async Task Create_WithPropertyService_ShouldRegisterPropertyComposition()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+        var propertyService =
+            new TestPropertyService();
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    certificate),
+                new TestSnapshotProvider(),
+                propertyService,
+                new TestCertificateAuthenticationService());
+
+        Assert.Same(
+            propertyService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostPropertyService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostPropertyTargetMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCachedPropertyResultMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostPropertyOperationResultMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRemoteValueMapper>());
     }
 
     [Fact]
@@ -219,6 +274,31 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
         {
             return RuntimeHostCertificateAuthenticationResult
                 .UnknownCredential();
+        }
+    }
+
+    private sealed class TestPropertyService
+        : Northbound.IRuntimeHostPropertyService
+    {
+        public Northbound.RuntimeHostCachedPropertyResult GetCached(
+            Northbound.RuntimeHostPropertyTarget target)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> ReadAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
+            Northbound.RuntimeHostPropertyTarget target,
+            object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

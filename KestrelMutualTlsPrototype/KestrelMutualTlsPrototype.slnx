@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="src/KestrelMtls.Certificates/KestrelMtls.Certificates.csproj" />
-  <Project Path="src/KestrelMtls.Server/KestrelMtls.Server.csproj" />
-  <Project Path="src/KestrelMtls.Client/KestrelMtls.Client.csproj" />
-</Solution>
