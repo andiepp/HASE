@@ -752,14 +752,14 @@ Implemented ASP.NET Core gRPC over HTTP/2 with:
 
 The completed remote mapping adapts to the application services and does not
 become a dependency of the runtime core. Its current verified baseline is
-2,813 passing automated tests.
+2,831 passing automated tests.
 
 Non-loopback exposure is not part of Phase 7.7.
 
 ## 7.8 Security and Remote Exposure
 
 **Status:** [Completed] Automated and physical security validation completed
-through C-032
+through C-033
 
 Architecture: ADR-0031 - Northbound Security Boundary.
 
@@ -784,7 +784,12 @@ Implemented:
   execution;
 - physical ESP32/BME280 temperature access through the authenticated gRPC
   path;
-- orderly secure-host shutdown and physical endpoint detachment.
+- orderly secure-host shutdown and physical endpoint detachment;
+- authenticated physical Arduino Command execution through real HTTPS/HTTP/2
+  gRPC;
+- missing and unenrolled credential rejection before Command-service execution;
+- authoritative `Led.State` confirmation and restoration through the secured
+  Property RPC path.
 
 Network reachability, including Tailscale connectivity, does not grant HASE
 authority. Production non-loopback deployment, credential provisioning and
@@ -892,11 +897,12 @@ Current documentation includes:
 - `C-028-Northbound-Live-Observation.md`;
 - `C-031-Mutual-TLS-Runtime-Host-Integration.md`;
 - `C-032-Authenticated-Physical-Northbound-gRPC-Validation.md`;
+- `C-033-Authenticated-Physical-Northbound-Command-Validation.md`;
 - ADR-0001 through ADR-0031.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-032 and their validation
+1. Keep physical capabilities C-015 through C-033 and their validation
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
@@ -918,7 +924,7 @@ Next:
    production non-local deployment, credential lifecycle, revocation, and audit
    behavior are separately approved and implemented.
 2. Decide the next authenticated operational validation separately while
-   preserving the completed physical Property baseline.
+   preserving the completed physical Property and Command baselines.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
@@ -969,3 +975,4 @@ Phase 6 is complete. Optional extensions remain backlog:
 - formal compact-profile compatibility.
 
 The northbound runtime-host API begins in Phase 7 under ADR-0023.
+

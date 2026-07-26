@@ -105,6 +105,25 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
     }
 
     [Fact]
+    public void Create_MissingCommandService_ShouldReject()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+
+        Assert.Throws<ArgumentNullException>(
+            () => MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    certificate),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null!,
+                new TestCertificateAuthenticationService()));
+    }
+
+    [Fact]
     public async Task Create_ShouldRegisterAuthenticationComposition()
     {
         using X509Certificate2 certificate =
@@ -186,6 +205,76 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 IRemoteValueMapper>());
+    }
+
+    [Fact]
+    public async Task Create_WithCommandService_ShouldRegisterCommandComposition()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+        var commandService =
+            new TestCommandService();
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    certificate),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService:
+                    commandService,
+                new TestCertificateAuthenticationService());
+
+        Assert.Same(
+            commandService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostCommandService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCommandTargetMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostCommandOperationResultMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRemoteValueMapper>());
+    }
+
+    [Fact]
+    public async Task Create_WithPropertyAndCommandServices_ShouldShareRemoteValueMapper()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+        var propertyService =
+            new TestPropertyService();
+        var commandService =
+            new TestCommandService();
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(
+                    IPAddress.Loopback,
+                    0),
+                RuntimeHostMutualTlsOptions.EnabledWith(
+                    certificate),
+                new TestSnapshotProvider(),
+                propertyService,
+                commandService,
+                new TestCertificateAuthenticationService());
+
+        Assert.Same(
+            propertyService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostPropertyService>());
+        Assert.Same(
+            commandService,
+            application.Services.GetRequiredService<
+                Northbound.IRuntimeHostCommandService>());
+        Assert.Single(
+            application.Services.GetServices<IRemoteValueMapper>());
     }
 
     [Fact]
@@ -296,6 +385,18 @@ public sealed class MutualTlsLoopbackGrpcHostFactoryTests
         public Task<Northbound.RuntimeHostPropertyOperationResult> WriteAsync(
             Northbound.RuntimeHostPropertyTarget target,
             object? requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class TestCommandService
+        : Northbound.IRuntimeHostCommandService
+    {
+        public Task<Northbound.RuntimeHostCommandOperationResult> ExecuteAsync(
+            Northbound.RuntimeHostCommandTarget target,
+            object? argument,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

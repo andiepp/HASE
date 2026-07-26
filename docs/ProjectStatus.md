@@ -27,8 +27,9 @@ serial endpoint attachment, compact serial unsolicited event notification,
 normalized northbound Property operations, normalized northbound Command
 execution, normalized northbound live observation, versioned loopback gRPC
 remote API mapping, northbound authorization, certificate authentication, and
-mutual-TLS Kestrel hosting, and authenticated physical northbound Property
-validation are implemented. Phase 6 is complete at the C-025 baseline.
+mutual-TLS Kestrel hosting, authenticated physical northbound Property
+validation, and authenticated physical northbound Command validation are
+implemented. Phase 6 is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -49,10 +50,10 @@ subscriptions for lifecycle, connection, Property, and Event observations.
 Phase 7.7 maps that boundary through versioned protobuf and ASP.NET Core gRPC
 without transferring endpoint lifecycle ownership. Unary snapshot, Property,
 and Command operations and server-streaming observation are integrated over
-loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-032
+loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-033
 implement authorization, certificate authentication, and mutual-TLS Kestrel
-integration, including a physically verified authenticated authoritative
-Property RPC, while retaining loopback-only binding. Production non-loopback
+integration, including physically verified authenticated authoritative Property and Command
+RPCs, while retaining loopback-only binding. Production non-loopback
 exposure remains prohibited.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
@@ -65,11 +66,13 @@ C-028 validates the same public northbound live-observation service through
 both physical endpoint families.
 C-032 validates an authenticated authoritative Property RPC through the
 mutual-TLS gRPC host against the physical ESP32/BME280 endpoint.
+C-033 validates authenticated Command execution and authoritative state
+confirmation through the mutual-TLS gRPC host against the physical Arduino Uno.
 
 The current verified baseline is:
 
 ```text
-2,813 automated tests passing
+2,831 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -91,6 +94,8 @@ Missing and untrusted client-certificate rejection verified
 Authenticated principal projection verified
 Authenticated physical ESP32 Property RPC verified
 Rejected Property credentials never reach the Property service
+Authenticated physical Arduino Command RPC verified
+Rejected Command credentials never reach the Command service
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -407,10 +412,17 @@ Implemented Phase 7 foundation:
   execution;
 - physical ESP32/BME280 temperature access through the authenticated gRPC
   path;
-- orderly secure-host shutdown and physical endpoint detachment.
+- orderly secure-host shutdown and physical endpoint detachment;
+- authenticated physical Arduino Command execution through real HTTPS/HTTP/2
+  gRPC;
+- missing and unenrolled credential rejection before Command-service
+  execution;
+- authoritative `Led.State` confirmation and restoration through secured
+  Property RPCs;
+- orderly secure-host shutdown and physical Arduino endpoint detachment.
 
 Phase 7.7 remote API mapping is complete.
-The C-032 authenticated physical northbound gRPC validation baseline is
+The C-033 authenticated physical northbound Command validation baseline is
 complete.
 Production non-loopback exposure remains prohibited pending separately approved
 deployment, credential-lifecycle, and audit increments.
@@ -846,6 +858,9 @@ Explorer tracing.
 - C-032 - Authenticated authoritative Property RPC through the mutual-TLS host,
   including rejection before service execution and physical ESP32/BME280
   validation.
+- C-033 - Authenticated physical Arduino `Led.Toggle` through the mutual-TLS
+  host, including rejection before Command execution and authoritative
+  `Led.State` confirmation with restoration.
 
 ---
 
@@ -853,7 +868,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,813 automated tests pass
+2,831 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -941,6 +956,11 @@ C-032 authenticates client-01 through the mutual-TLS Property host
 C-032 rejects missing and unenrolled credentials before Property execution
 C-032 reads the physical ESP32 temperature authoritatively through gRPC
 C-032 detaches the physical endpoint orderly to Disconnected
+C-033 authenticates client-01 through the mutual-TLS Command host
+C-033 rejects missing and unenrolled credentials before Command execution
+C-033 toggles the physical Arduino LED through gRPC
+C-033 confirms and restores Led.State through authoritative Property RPCs
+C-033 detaches the physical endpoint orderly to Disconnected
 ```
 
 ---
@@ -998,7 +1018,7 @@ The current implementation intentionally excludes:
    production non-local deployment, credential lifecycle, and audit behavior
    are separately approved and implemented.
 2. Decide the next authenticated operational validation separately while
-   preserving the completed physical Property baseline.
+   preserving the completed physical Property and Command baselines.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.

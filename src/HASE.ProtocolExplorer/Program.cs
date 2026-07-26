@@ -1,4 +1,4 @@
-﻿using Hase.ProtocolExplorer.Hosting;
+using Hase.ProtocolExplorer.Hosting;
 using Hase.ProtocolExplorer.Scenarios;
 
 namespace Hase.ProtocolExplorer;
@@ -62,7 +62,8 @@ internal static class Program
                     new CapabilityC026Scenario(),
                     new CapabilityC027Scenario(),
                     new CapabilityC028Scenario(),
-                    new CapabilityC032Scenario()
+                    new CapabilityC032Scenario(),
+                    new CapabilityC033Scenario()
                 ]);
 
         string scenarioName =
@@ -200,6 +201,9 @@ internal static class Program
 
         Console.WriteLine(
             "  c032 <ESP32 host>");
+
+        Console.WriteLine(
+            "  c033 [baud rate] [verification timeout seconds]");
 
         Console.WriteLine();
 

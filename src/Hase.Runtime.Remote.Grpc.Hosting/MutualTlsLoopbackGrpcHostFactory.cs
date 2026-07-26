@@ -30,6 +30,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             mutualTlsOptions,
             snapshotProvider,
             propertyService: null,
+            commandService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -55,6 +56,34 @@ public static class MutualTlsLoopbackGrpcHostFactory
             mutualTlsOptions,
             snapshotProvider,
             propertyService,
+            commandService: null,
+            certificateAuthenticationService,
+            timeProvider);
+    }
+
+    /// <summary>
+    /// Creates an unstarted mutual-TLS loopback gRPC application exposing
+    /// Command operations and optional Property operations.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService commandService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            commandService);
+
+        return CreateCore(
+            binding,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService,
+            commandService,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -64,6 +93,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
         RuntimeHostMutualTlsOptions mutualTlsOptions,
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
         Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
@@ -137,6 +167,25 @@ public static class MutualTlsLoopbackGrpcHostFactory
                 propertyMappers.OperationResultMapper);
             builder.Services.AddSingleton(
                 propertyMappers.RemoteValueMapper);
+        }
+
+        if (commandService is not null)
+        {
+            RuntimeHostCommandMappers commandMappers =
+                RuntimeHostCommandMapperFactory.Create();
+
+            builder.Services.AddSingleton(
+                commandService);
+            builder.Services.AddSingleton(
+                commandMappers.TargetMapper);
+            builder.Services.AddSingleton(
+                commandMappers.OperationResultMapper);
+
+            if (propertyService is null)
+            {
+                builder.Services.AddSingleton(
+                    commandMappers.RemoteValueMapper);
+            }
         }
 
         builder.Services.AddSingleton(
