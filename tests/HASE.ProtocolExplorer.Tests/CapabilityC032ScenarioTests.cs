@@ -17,6 +17,16 @@ public sealed class CapabilityC032ScenarioTests
     }
 
     [Fact]
+    public void Scenario_ShouldImplementParameterizedScenario()
+    {
+        var scenario =
+            new CapabilityC032Scenario();
+
+        Assert.IsAssignableFrom<IParameterizedScenario>(
+            scenario);
+    }
+
+    [Fact]
     public void ParseArguments_EndpointHost_ShouldReturnArguments()
     {
         CapabilityC032Arguments arguments =

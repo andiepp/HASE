@@ -752,13 +752,14 @@ Implemented ASP.NET Core gRPC over HTTP/2 with:
 
 The completed remote mapping adapts to the application services and does not
 become a dependency of the runtime core. Its current verified baseline is
-2,783 passing automated tests.
+2,813 passing automated tests.
 
 Non-loopback exposure is not part of Phase 7.7.
 
 ## 7.8 Security and Remote Exposure
 
-**Status:** [Completed] Automated security foundation completed through C-031
+**Status:** [Completed] Automated and physical security validation completed
+through C-032
 
 Architecture: ADR-0031 - Northbound Security Boundary.
 
@@ -776,7 +777,14 @@ Implemented:
 - TLS-boundary rejection when no client certificate is presented;
 - HASE authentication rejection for a structurally valid but unenrolled client
   certificate;
-- loopback-only automated integration.
+- loopback-only automated integration;
+- authenticated authoritative Property execution through real HTTPS/HTTP/2
+  gRPC;
+- missing and unenrolled credential rejection before Property-service
+  execution;
+- physical ESP32/BME280 temperature access through the authenticated gRPC
+  path;
+- orderly secure-host shutdown and physical endpoint detachment.
 
 Network reachability, including Tailscale connectivity, does not grant HASE
 authority. Production non-loopback deployment, credential provisioning and
@@ -883,11 +891,12 @@ Current documentation includes:
 - `C-025-Compact-Serial-Event-Notifications.md`;
 - `C-028-Northbound-Live-Observation.md`;
 - `C-031-Mutual-TLS-Runtime-Host-Integration.md`;
+- `C-032-Authenticated-Physical-Northbound-gRPC-Validation.md`;
 - ADR-0001 through ADR-0031.
 
 Next:
 
-1. Keep physical capabilities C-015 through C-028 and their validation
+1. Keep physical capabilities C-015 through C-032 and their validation
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
@@ -908,8 +917,8 @@ Next:
 1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
    production non-local deployment, credential lifecycle, revocation, and audit
    behavior are separately approved and implemented.
-2. Plan physical native and compact validation through the authenticated
-   loopback gRPC contract.
+2. Decide the next authenticated operational validation separately while
+   preserving the completed physical Property baseline.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.

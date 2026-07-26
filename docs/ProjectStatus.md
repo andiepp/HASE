@@ -27,8 +27,8 @@ serial endpoint attachment, compact serial unsolicited event notification,
 normalized northbound Property operations, normalized northbound Command
 execution, normalized northbound live observation, versioned loopback gRPC
 remote API mapping, northbound authorization, certificate authentication, and
-mutual-TLS Kestrel hosting are implemented. Phase 6 is complete at the C-025
-baseline.
+mutual-TLS Kestrel hosting, and authenticated physical northbound Property
+validation are implemented. Phase 6 is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
 with transport-independent application services that expose the authoritative
@@ -49,9 +49,10 @@ subscriptions for lifecycle, connection, Property, and Event observations.
 Phase 7.7 maps that boundary through versioned protobuf and ASP.NET Core gRPC
 without transferring endpoint lifecycle ownership. Unary snapshot, Property,
 and Command operations and server-streaming observation are integrated over
-loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-031
+loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-032
 implement authorization, certificate authentication, and mutual-TLS Kestrel
-integration while retaining loopback-only binding. Production non-loopback
+integration, including a physically verified authenticated authoritative
+Property RPC, while retaining loopback-only binding. Production non-loopback
 exposure remains prohibited.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
@@ -62,11 +63,13 @@ C-027 validates the same public northbound Command service through both
 physical endpoint families.
 C-028 validates the same public northbound live-observation service through
 both physical endpoint families.
+C-032 validates an authenticated authoritative Property RPC through the
+mutual-TLS gRPC host against the physical ESP32/BME280 endpoint.
 
 The current verified baseline is:
 
 ```text
-2,783 automated tests passing
+2,813 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -86,6 +89,8 @@ IPv6 loopback HTTP/2 gRPC integration verified where supported
 Mutual-TLS HTTP/2 gRPC hosting verified
 Missing and untrusted client-certificate rejection verified
 Authenticated principal projection verified
+Authenticated physical ESP32 Property RPC verified
+Rejected Property credentials never reach the Property service
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -397,9 +402,16 @@ Implemented Phase 7 foundation:
 - structurally valid but unenrolled client-certificate rejection before service
   execution;
 - authenticated gRPC service execution through the existing remote adapter.
+- authenticated authoritative Property execution through the mutual-TLS host;
+- missing and unenrolled credential rejection before Property-service
+  execution;
+- physical ESP32/BME280 temperature access through the authenticated gRPC
+  path;
+- orderly secure-host shutdown and physical endpoint detachment.
 
 Phase 7.7 remote API mapping is complete.
-The C-031 mutual-TLS runtime-host integration baseline is complete.
+The C-032 authenticated physical northbound gRPC validation baseline is
+complete.
 Production non-loopback exposure remains prohibited pending separately approved
 deployment, credential-lifecycle, and audit increments.
 
@@ -831,6 +843,9 @@ Explorer tracing.
 - C-031 - Mutual-TLS Kestrel runtime-host integration with authenticated gRPC
   success, TLS-boundary missing-certificate rejection, application-boundary
   unenrolled-certificate rejection, and principal projection.
+- C-032 - Authenticated authoritative Property RPC through the mutual-TLS host,
+  including rejection before service execution and physical ESP32/BME280
+  validation.
 
 ---
 
@@ -838,7 +853,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,783 automated tests pass
+2,813 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -922,6 +937,10 @@ ADR-0030 propagates cancellation and deadline expiry
 ADR-0030 isolates simultaneous observation subscriptions
 ADR-0030 disposes active observation subscriptions during graceful host shutdown
 ADR-0030 rejects wildcard and non-loopback bindings
+C-032 authenticates client-01 through the mutual-TLS Property host
+C-032 rejects missing and unenrolled credentials before Property execution
+C-032 reads the physical ESP32 temperature authoritatively through gRPC
+C-032 detaches the physical endpoint orderly to Disconnected
 ```
 
 ---
@@ -978,8 +997,8 @@ The current implementation intentionally excludes:
 1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
    production non-local deployment, credential lifecycle, and audit behavior
    are separately approved and implemented.
-2. Plan physical native and compact validation through the authenticated
-   loopback gRPC contract.
+2. Decide the next authenticated operational validation separately while
+   preserving the completed physical Property baseline.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.

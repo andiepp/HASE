@@ -61,7 +61,8 @@ internal static class Program
                     new CapabilityC025Scenario(),
                     new CapabilityC026Scenario(),
                     new CapabilityC027Scenario(),
-                    new CapabilityC028Scenario()
+                    new CapabilityC028Scenario(),
+                    new CapabilityC032Scenario()
                 ]);
 
         string scenarioName =
@@ -196,6 +197,9 @@ internal static class Program
 
         Console.WriteLine(
             "  c028 arduino [baud rate] [verification timeout seconds]");
+
+        Console.WriteLine(
+            "  c032 <ESP32 host>");
 
         Console.WriteLine();
 
