@@ -192,6 +192,26 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void ApplyObservationState_ShouldNotifyEndpointCount()
+    {
+        var viewModel =
+            new MainWindowViewModel();
+        var changedProperties =
+            new List<string?>();
+        viewModel.PropertyChanged +=
+            (_, eventArgs) =>
+                changedProperties.Add(
+                    eventArgs.PropertyName);
+
+        viewModel.ApplyObservationState(
+            RemoteObservationState.Empty);
+
+        Assert.Contains(
+            nameof(MainWindowViewModel.EndpointCount),
+            changedProperties);
+    }
+
+    [Fact]
     public async Task ConnectAsync_SelectedConfiguration_ShouldUseController()
     {
         var controller =

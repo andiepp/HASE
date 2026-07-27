@@ -46,6 +46,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="20" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="12" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock FontWeight="SemiBold" Text="Session state" />
@@ -69,8 +71,17 @@
                     Grid.Column="1"
                     Text="{Binding ApiVersion}" />
 
-                <StackPanel
+                <TextBlock
                     Grid.Row="6"
+                    FontWeight="SemiBold"
+                    Text="Published endpoints" />
+                <TextBlock
+                    Grid.Row="6"
+                    Grid.Column="1"
+                    Text="{Binding EndpointCount}" />
+
+                <StackPanel
+                    Grid.Row="8"
                     Grid.ColumnSpan="2"
                     Orientation="Horizontal">
                     <Button
