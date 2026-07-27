@@ -2,6 +2,7 @@ using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Northbound = global::Hase.Runtime.Northbound;
 
 namespace Hase.Runtime.Remote.Grpc.Hosting;
@@ -25,15 +26,21 @@ public static class MutualTlsLoopbackGrpcHostFactory
             certificateAuthenticationService,
         TimeProvider? timeProvider = null)
     {
+        ArgumentNullException.ThrowIfNull(
+            binding);
+
         return CreateCore(
-            binding,
+            binding.Address,
+            binding.Port,
             mutualTlsOptions,
             snapshotProvider,
             propertyService: null,
             commandService: null,
             observationService: null,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            clearLoggingProviders:
+                false);
     }
 
     /// <summary>
@@ -50,17 +57,22 @@ public static class MutualTlsLoopbackGrpcHostFactory
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(
+            binding);
+        ArgumentNullException.ThrowIfNull(
             propertyService);
 
         return CreateCore(
-            binding,
+            binding.Address,
+            binding.Port,
             mutualTlsOptions,
             snapshotProvider,
             propertyService,
             commandService: null,
             observationService: null,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            clearLoggingProviders:
+                false);
     }
 
     /// <summary>
@@ -78,17 +90,22 @@ public static class MutualTlsLoopbackGrpcHostFactory
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(
+            binding);
+        ArgumentNullException.ThrowIfNull(
             commandService);
 
         return CreateCore(
-            binding,
+            binding.Address,
+            binding.Port,
             mutualTlsOptions,
             snapshotProvider,
             propertyService,
             commandService,
             observationService: null,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            clearLoggingProviders:
+                false);
     }
 
     /// <summary>
@@ -107,21 +124,27 @@ public static class MutualTlsLoopbackGrpcHostFactory
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(
+            binding);
+        ArgumentNullException.ThrowIfNull(
             observationService);
 
         return CreateCore(
-            binding,
+            binding.Address,
+            binding.Port,
             mutualTlsOptions,
             snapshotProvider,
             propertyService,
             commandService,
             observationService,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            clearLoggingProviders:
+                false);
     }
 
-    private static WebApplication CreateCore(
-        LoopbackGrpcBinding binding,
+    internal static WebApplication CreateCore(
+        System.Net.IPAddress address,
+        int port,
         RuntimeHostMutualTlsOptions mutualTlsOptions,
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
         Northbound.IRuntimeHostPropertyService? propertyService,
@@ -129,10 +152,11 @@ public static class MutualTlsLoopbackGrpcHostFactory
         Northbound.IRuntimeHostObservationService? observationService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider)
+        TimeProvider? timeProvider,
+        bool clearLoggingProviders)
     {
         ArgumentNullException.ThrowIfNull(
-            binding);
+            address);
         ArgumentNullException.ThrowIfNull(
             mutualTlsOptions);
         ArgumentNullException.ThrowIfNull(
@@ -166,11 +190,16 @@ public static class MutualTlsLoopbackGrpcHostFactory
                             .FullName
                 });
 
+        if (clearLoggingProviders)
+        {
+            builder.Logging.ClearProviders();
+        }
+
         builder.WebHost.ConfigureKestrel(
             options =>
                 options.Listen(
-                    binding.Address,
-                    binding.Port,
+                    address,
+                    port,
                     listenOptions =>
                     {
                         listenOptions.Protocols =

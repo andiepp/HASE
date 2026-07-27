@@ -64,7 +64,10 @@ internal static class Program
                     new CapabilityC028Scenario(),
                     new CapabilityC032Scenario(),
                     new CapabilityC033Scenario(),
-                    new CapabilityC034Scenario()
+                    new CapabilityC034Scenario(),
+                    new ProvisionClientEnrollmentScenario(),
+                    new PrivateNetworkHostScenario(),
+                    new PrivateNetworkClientScenario()
                 ]);
 
         string scenarioName =
@@ -203,5 +206,14 @@ internal static class Program
             "  network-discovery");
         Console.WriteLine(
             "  usb-serial-candidates");
+        Console.WriteLine(
+            "  provision-client-enrollment "
+            + "<public certificate file> <enrollment file> "
+            + "<principal id> <trust policy id>");
+        Console.WriteLine(
+            "  private-network-host <desktop configuration file> "
+            + "<ESP32 host>");
+        Console.WriteLine(
+            "  private-network-client <laptop configuration file>");
     }
 }

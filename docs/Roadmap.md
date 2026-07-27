@@ -799,11 +799,43 @@ Implemented:
 - strictly increasing subscription-local sequences and orderly physical
   endpoint detachment.
 
-Network reachability, including Tailscale connectivity, does not grant HASE
-authority. Production non-loopback deployment, credential provisioning and
-rotation, revocation operations, and audit remain separate backlog.
+Network reachability does not grant HASE authority. Production non-loopback
+deployment, credential rotation, revocation operations, governance, and audit
+remain separate backlog.
 
-## 7.9 Future Management API
+## 7.9 Controlled Private-Network Deployment
+
+**Status:** [Completed] Implemented and physically validated under ADR-0032
+
+Implemented:
+
+- explicit non-loopback, non-wildcard, fixed-port HTTPS/HTTP/2 binding;
+- external versioned desktop and laptop configuration;
+- operating-system certificate-store private-key custody;
+- server IP-identity validation plus exact client-side certificate pinning;
+- system-trusted and explicitly enrolled client-certificate authentication;
+- one desktop-owned heterogeneous attachment inventory;
+- physical native-network and compact-serial endpoint publication;
+- authenticated laptop snapshot and authoritative Property access;
+- authenticated Arduino Command execution, confirmation, and restoration;
+- authenticated Property and physical Event observation;
+- explicit stream cancellation and orderly shutdown;
+- provisioning and installation tooling that keeps machine-specific deployment
+  data outside the repository.
+
+Verified baseline:
+
+```text
+3,029 automated tests pass
+Controlled two-computer physical validation succeeds
+```
+
+The profile is approved for controlled private-network validation only.
+Production promotion remains blocked by the outstanding ADR-0031 audit,
+resource-governance, authorization-deployment, revocation, rotation, and
+operational-hardening requirements.
+
+## 7.10 Future Management API
 
 **Status:** [Backlog] Not part of the first northbound capability
 
@@ -814,7 +846,7 @@ administration, persistent host configuration, and host shutdown.
 Operational access and lifecycle administration remain separate authorization
 surfaces.
 
-## 7.10 Application and Tooling Expansion
+## 7.11 Application and Tooling Expansion
 
 **Status:** [Backlog] Planned after the operational service boundary
 
@@ -907,7 +939,7 @@ Current documentation includes:
 - `C-032-Authenticated-Physical-Northbound-gRPC-Validation.md`;
 - `C-033-Authenticated-Physical-Northbound-Command-Validation.md`;
 - `C-034-Authenticated-Physical-Northbound-Observation-Validation.md`;
-- ADR-0001 through ADR-0031.
+- ADR-0001 through ADR-0032.
 
 Next:
 
@@ -915,8 +947,8 @@ Next:
    baselines current.
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
-   services, loopback gRPC mapping, and security boundary aligned with ADR-0023
-   through ADR-0031.
+   services, gRPC mapping, security boundary, and controlled private-network
+   deployment aligned with ADR-0023 through ADR-0032.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -929,11 +961,11 @@ Next:
 
 # Current Priorities
 
-1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
-   production non-local deployment, credential lifecycle, revocation, and audit
-   behavior are separately approved and implemented.
-2. Decide the next authenticated operational validation separately while
-   preserving the completed physical Property, Command, and observation baselines.
+1. Keep the ADR-0032 non-loopback profile classified as controlled validation
+   until production credential lifecycle, revocation, governance, audit, and
+   operational-hardening behavior are separately approved and implemented.
+2. Preserve the completed private-network snapshot, Property, Command,
+   observation, restoration, and orderly-shutdown baselines.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, lifecycle administration, and Tailscale host
    discovery as separately approved backlog.
@@ -984,5 +1016,4 @@ Phase 6 is complete. Optional extensions remain backlog:
 - formal compact-profile compatibility.
 
 The northbound runtime-host API begins in Phase 7 under ADR-0023.
-
 

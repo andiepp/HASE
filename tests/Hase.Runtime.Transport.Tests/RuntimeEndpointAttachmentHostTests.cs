@@ -1,4 +1,5 @@
-﻿using Hase.Core.Domain.Endpoints;
+﻿using Hase.CompactProtocol;
+using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Connections;
@@ -10,6 +11,89 @@ namespace Hase.Runtime.Transport.Tests;
 
 public sealed class RuntimeEndpointAttachmentHostTests
 {
+    [Fact]
+    public async Task CreateNativeNetworkAndCompactSerial_ShouldCreateSharedHost()
+    {
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost
+                .CreateNativeNetworkAndCompactSerial(
+                    new ProtocolNativeEndpointBootstrapper(),
+                    new ProtocolRuntimeEndpointSynchronizer(
+                        new EndpointDescriptorCompatibilityValidator()),
+                    new InMemoryCompactEndpointDefinitionRepository(
+                        []),
+                    new DefaultRuntimeEndpointReconnectPolicy());
+
+        Assert.NotNull(
+            host.RuntimeContext);
+        Assert.NotNull(
+            host.AttachmentInventory);
+        Assert.Empty(
+            host.AttachmentInventory.List());
+    }
+
+    [Fact]
+    public void CreateNativeNetworkAndCompactSerial_NullBootstrapper_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "bootstrapper",
+            () =>
+                RuntimeEndpointAttachmentHost
+                    .CreateNativeNetworkAndCompactSerial(
+                        null!,
+                        new ProtocolRuntimeEndpointSynchronizer(
+                            new EndpointDescriptorCompatibilityValidator()),
+                        new InMemoryCompactEndpointDefinitionRepository(
+                            []),
+                        new DefaultRuntimeEndpointReconnectPolicy()));
+    }
+
+    [Fact]
+    public void CreateNativeNetworkAndCompactSerial_NullSynchronizer_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "synchronizer",
+            () =>
+                RuntimeEndpointAttachmentHost
+                    .CreateNativeNetworkAndCompactSerial(
+                        new ProtocolNativeEndpointBootstrapper(),
+                        null!,
+                        new InMemoryCompactEndpointDefinitionRepository(
+                            []),
+                        new DefaultRuntimeEndpointReconnectPolicy()));
+    }
+
+    [Fact]
+    public void CreateNativeNetworkAndCompactSerial_NullRepository_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "definitionRepository",
+            () =>
+                RuntimeEndpointAttachmentHost
+                    .CreateNativeNetworkAndCompactSerial(
+                        new ProtocolNativeEndpointBootstrapper(),
+                        new ProtocolRuntimeEndpointSynchronizer(
+                            new EndpointDescriptorCompatibilityValidator()),
+                        null!,
+                        new DefaultRuntimeEndpointReconnectPolicy()));
+    }
+
+    [Fact]
+    public void CreateNativeNetworkAndCompactSerial_NullReconnectPolicy_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "reconnectPolicy",
+            () =>
+                RuntimeEndpointAttachmentHost
+                    .CreateNativeNetworkAndCompactSerial(
+                        new ProtocolNativeEndpointBootstrapper(),
+                        new ProtocolRuntimeEndpointSynchronizer(
+                            new EndpointDescriptorCompatibilityValidator()),
+                        new InMemoryCompactEndpointDefinitionRepository(
+                            []),
+                        null!));
+    }
+
     [Fact]
     public async Task CreateNativeNetwork_ShouldCreateOwnedContextAndInventory()
     {

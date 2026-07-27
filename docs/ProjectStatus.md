@@ -28,7 +28,8 @@ normalized northbound Property operations, normalized northbound Command
 execution, normalized northbound live observation, versioned loopback gRPC
 remote API mapping, northbound authorization, certificate authentication, and
 mutual-TLS Kestrel hosting, authenticated physical northbound Property
-validation, and authenticated physical northbound Command validation are
+validation, authenticated physical northbound Command validation, and the
+ADR-0032 controlled private-network runtime-host deployment profile are
 implemented. Phase 6 is complete at the C-025 baseline.
 
 ADR-0023 defines the Phase 7 northbound runtime-host API boundary. Phase 7 begins
@@ -53,8 +54,10 @@ and Command operations and server-streaming observation are integrated over
 loopback HTTP/2. ADR-0031 defines the security boundary. C-029 through C-034
 implement authorization, certificate authentication, and mutual-TLS Kestrel
 integration, including physically verified authenticated authoritative Property and Command
-RPCs, while retaining loopback-only binding. Production non-loopback
-exposure remains prohibited.
+RPCs. ADR-0032 adds a controlled non-loopback validation profile with external
+configuration, operating-system credential custody, exact server-certificate
+pinning, explicit client enrollment, and a desktop-owned two-endpoint physical
+inventory. Unrestricted production or Internet exposure remains prohibited.
 
 C-016 and C-017 are validated through the physical ESP32/BME280 endpoint.
 C-018 through C-025 are validated through the physical Arduino Uno endpoint.
@@ -70,11 +73,14 @@ C-033 validates authenticated Command execution and authoritative state
 confirmation through the mutual-TLS gRPC host against the physical Arduino Uno.
 C-034 validates authenticated server-streaming observation through the
 mutual-TLS gRPC host against the physical ESP32/BME280 and GPIO17 endpoint.
+ADR-0032 validates authenticated snapshot, Property, Command, and observation
+access from a separate laptop to one desktop runtime host owning both the
+physical ESP32 and Arduino endpoints.
 
 The current verified baseline is:
 
 ```text
-2,850 automated tests passing
+3,029 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -101,6 +107,12 @@ Rejected Command credentials never reach the Command service
 Authenticated physical ESP32 observation stream verified
 Rejected observation credentials never open a subscription
 Physical AttachmentPublished, PropertyValueChanged, EventOccurred, and AttachmentEnded verified through mutual TLS
+Controlled private-network mutual-TLS deployment verified
+Desktop-owned two-endpoint snapshot verified from a separate laptop
+Private-network authoritative Property access verified for both endpoint families
+Private-network Arduino Command confirmation and state restoration verified
+Private-network Property and physical Event observation verified
+Orderly client, stream, host, and physical endpoint shutdown verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -437,8 +449,10 @@ Implemented Phase 7 foundation:
 Phase 7.7 remote API mapping is complete.
 The C-034 authenticated physical northbound observation validation baseline is
 complete.
-Production non-loopback exposure remains prohibited pending separately approved
-deployment, credential-lifecycle, and audit increments.
+The ADR-0032 controlled private-network deployment and physical validation
+baseline is complete. Production promotion remains prohibited pending the
+separately approved audit, governance, revocation, rotation, authorization
+deployment, and operational-hardening work.
 
 ---
 
@@ -874,6 +888,12 @@ Explorer tracing.
 - C-033 - Authenticated physical Arduino `Led.Toggle` through the mutual-TLS
   host, including rejection before Command execution and authoritative
   `Led.State` confirmation with restoration.
+- C-034 - Authenticated physical server-streaming observation through the
+  mutual-TLS host, including Property and Event delivery and orderly ending.
+- ADR-0032 - Controlled private-network deployment with external credential
+  provisioning, one desktop-owned heterogeneous inventory, and authenticated
+  laptop snapshot, Property, Command, observation, restoration, and shutdown
+  validation.
 
 ---
 
@@ -881,7 +901,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-2,850 automated tests pass
+3,029 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -980,7 +1000,7 @@ C-033 detaches the physical endpoint orderly to Disconnected
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0031 are accepted.
+ADR-0001 through ADR-0032 are accepted.
 
 Relevant recent decisions:
 
@@ -1000,6 +1020,8 @@ Relevant recent decisions:
 - ADR-0029 - Northbound Live Observation.
 - ADR-0030 - Northbound Remote API Mapping.
 - ADR-0031 - Northbound Security Boundary.
+- ADR-0032 - Private-Network Runtime-Host Deployment and Credential
+  Provisioning.
 
 ---
 
@@ -1027,11 +1049,11 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Keep the authenticated mutual-TLS gRPC host restricted to loopback until
-   production non-local deployment, credential lifecycle, and audit behavior
-   are separately approved and implemented.
-2. Decide the next authenticated operational validation separately while
-   preserving the completed physical Property, Command, and observation baselines.
+1. Keep the ADR-0032 non-loopback profile classified as controlled validation;
+   do not promote it to production until audit, governance, revocation,
+   rotation, authorization deployment, and operational hardening are complete.
+2. Preserve the completed private-network snapshot, Property, Command,
+   observation, restoration, and orderly-shutdown baselines.
 3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
@@ -1057,4 +1079,3 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
-

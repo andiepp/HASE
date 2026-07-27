@@ -18,6 +18,67 @@ public sealed class RuntimeEndpointAttachmentHost
 {
     /// <summary>
     /// Creates a host configured for native HASE endpoints reached through
+    /// framed TCP and compact HASE endpoints reached through production
+    /// System.IO.Ports serial transport.
+    /// </summary>
+    /// <remarks>
+    /// Both attachment services share one runtime context and one attachment
+    /// inventory. The caller still explicitly selects and attaches every
+    /// endpoint; this factory performs no discovery or automatic attachment.
+    /// </remarks>
+    public static RuntimeEndpointAttachmentHost CreateNativeNetworkAndCompactSerial(
+        INativeEndpointBootstrapper bootstrapper,
+        IRuntimeEndpointSynchronizer synchronizer,
+        ICompactEndpointDefinitionRepository definitionRepository,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        int maximumPayloadLength =
+            TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
+        CompactEndpointHealthProbeOptions? compactProbeOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            bootstrapper);
+
+        ArgumentNullException.ThrowIfNull(
+            synchronizer);
+
+        ArgumentNullException.ThrowIfNull(
+            definitionRepository);
+
+        ArgumentNullException.ThrowIfNull(
+            reconnectPolicy);
+
+        var runtimeContext =
+            new RuntimeContext();
+
+        var nativeNetworkService =
+            new NativeNetworkEndpointAttachmentService(
+                runtimeContext,
+                bootstrapper,
+                synchronizer,
+                reconnectPolicy,
+                maximumPayloadLength);
+
+        var compactSerialService =
+            new CompactSerialEndpointAttachmentService(
+                runtimeContext,
+                new SystemIoPortsSerialByteStreamFactory(),
+                definitionRepository,
+                reconnectPolicy,
+                compactProbeOptions
+                ?? CompactEndpointHealthProbeOptions.Default);
+
+        var attachmentService =
+            new EndpointAttachmentServiceRouter(
+                nativeNetworkService,
+                compactSerialService);
+
+        return new RuntimeEndpointAttachmentHost(
+            runtimeContext,
+            attachmentService);
+    }
+
+    /// <summary>
+    /// Creates a host configured for native HASE endpoints reached through
     /// framed TCP.
     /// </summary>
     public static RuntimeEndpointAttachmentHost CreateNativeNetwork(
