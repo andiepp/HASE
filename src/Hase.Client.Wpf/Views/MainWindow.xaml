@@ -107,8 +107,55 @@
             <TextBlock
                 Margin="0,12,0,0"
                 Foreground="#FF666666"
-                Text="Endpoint inventory will be added in the next reviewed increment."
-                TextWrapping="Wrap" />
+                Text="No endpoints are currently published."
+                TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasEndpoints}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <ItemsControl
+                Margin="0,12,0,0"
+                ItemsSource="{Binding Endpoints}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border
+                            Margin="0,0,0,12"
+                            Padding="16"
+                            BorderBrush="#FFD0D0D0"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Text="{Binding DisplayName}" />
+                                <TextBlock Text="{Binding EndpointId, StringFormat='Endpoint: {0}'}" />
+                                <TextBlock Text="{Binding AttachmentGeneration, StringFormat='Generation: {0}'}" />
+                                <TextBlock Text="{Binding ConnectionState, StringFormat='State: {0}'}" />
+                                <ItemsControl
+                                    Margin="16,8,0,0"
+                                    ItemsSource="{Binding Instruments}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock>
+                                                <Run Text="{Binding Name}" />
+                                                <Run Text=" — " />
+                                                <Run Text="{Binding Kind}" />
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </StackPanel>
     </Grid>
 </Window>

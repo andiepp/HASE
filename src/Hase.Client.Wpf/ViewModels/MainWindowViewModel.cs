@@ -21,6 +21,8 @@ public sealed class MainWindowViewModel
     private bool isBusy;
     private string? failureMessage;
     private RuntimeHostClientFailureCategory? lastFailureCategory;
+    private IReadOnlyList<EndpointInventoryItemViewModel> endpoints =
+        [];
 
     public MainWindowViewModel()
     {
@@ -82,6 +84,12 @@ public sealed class MainWindowViewModel
     public int EndpointCount =>
         currentState.Snapshot?.Attachments.Count
         ?? 0;
+
+    public IReadOnlyList<EndpointInventoryItemViewModel> Endpoints =>
+        endpoints;
+
+    public bool HasEndpoints =>
+        endpoints.Count > 0;
 
     public bool IsBusy
     {
@@ -187,8 +195,15 @@ public sealed class MainWindowViewModel
             ref currentState,
             value,
             nameof(CurrentState));
+        SetProperty(
+            ref endpoints,
+            RuntimeHostInventoryProjector.Project(
+                value),
+            nameof(Endpoints));
         RaisePropertyChanged(
             nameof(EndpointCount));
+        RaisePropertyChanged(
+            nameof(HasEndpoints));
     }
 
     public async Task ConnectAsync()
