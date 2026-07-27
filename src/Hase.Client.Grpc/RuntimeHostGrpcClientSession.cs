@@ -16,7 +16,8 @@ namespace Hase.Client.Grpc;
 public sealed class RuntimeHostGrpcClientSession
     : IRuntimeHostGrpcRecoverableSession,
       IRuntimeHostPropertyReader,
-      IRuntimeHostPropertyWriter
+      IRuntimeHostPropertyWriter,
+      IRuntimeHostCommandExecutor
 {
     private readonly object gate =
         new();
@@ -326,6 +327,35 @@ public sealed class RuntimeHostGrpcClientSession
             result);
     }
 
+    public async Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+        RemoteCommandExecutionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        IRuntimeHostGrpcSessionResources activeResources =
+            GetConnectedResources(
+                "Command execution");
+        var mapper =
+            new RuntimeHostGrpcCommandMapper();
+        using var operationCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                sessionCancellation.Token);
+
+        GrpcV1.CommandOperationResult result =
+            await activeResources.CommandClient.ExecuteAsync(
+                    mapper.MapRequest(
+                        request),
+                    operationCancellation.Token)
+                .ConfigureAwait(
+                    false);
+
+        return mapper.MapResult(
+            result);
+    }
+
     private IRuntimeHostGrpcSessionResources GetConnectedResources(
         string operationName)
     {
@@ -567,6 +597,11 @@ internal interface IRuntimeHostGrpcSessionResources
     {
         get;
     }
+
+    IRuntimeHostGrpcCommandClient CommandClient
+    {
+        get;
+    }
 }
 
 internal interface IRuntimeHostGrpcRecoverableSession
@@ -602,12 +637,14 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
     private readonly RuntimeHostPrivateNetworkClientDeployment deployment;
     private readonly RuntimeHostGrpcObservationStream observationStream;
     private readonly RuntimeHostGrpcPropertyClient propertyClient;
+    private readonly RuntimeHostGrpcCommandClient commandClient;
     private bool disposed;
 
     private RuntimeHostPrivateNetworkSessionResources(
         RuntimeHostPrivateNetworkClientDeployment deployment,
         RuntimeHostGrpcObservationStream observationStream,
-        RuntimeHostGrpcPropertyClient propertyClient)
+        RuntimeHostGrpcPropertyClient propertyClient,
+        RuntimeHostGrpcCommandClient commandClient)
     {
         this.deployment =
             deployment;
@@ -615,6 +652,8 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
             observationStream;
         this.propertyClient =
             propertyClient;
+        this.commandClient =
+            commandClient;
     }
 
     public IRemoteObservationStream ObservationStream =>
@@ -622,6 +661,9 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
 
     public IRuntimeHostGrpcPropertyClient PropertyClient =>
         propertyClient;
+
+    public IRuntimeHostGrpcCommandClient CommandClient =>
+        commandClient;
 
     public static RuntimeHostPrivateNetworkSessionResources Create(
         RuntimeHostPrivateNetworkClientOptions options)
@@ -637,6 +679,8 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
                 new RuntimeHostGrpcObservationStream(
                     deployment.Client.Client),
                 new RuntimeHostGrpcPropertyClient(
+                    deployment.Client.Client),
+                new RuntimeHostGrpcCommandClient(
                     deployment.Client.Client));
         }
         catch

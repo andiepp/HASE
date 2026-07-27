@@ -242,6 +242,49 @@ public sealed class RuntimeHostClientSessionController
                 false);
     }
 
+    public async Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+        RemoteCommandExecutionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        IRuntimeHostClientSession activeSession;
+
+        await gate.WaitAsync(
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+            activeSession =
+                session
+                ?? throw new InvalidOperationException(
+                    "Command execution requires an active runtime-host "
+                    + "client session.");
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        if (activeSession is not IRuntimeHostCommandExecutor executor)
+        {
+            throw new NotSupportedException(
+                "The active runtime-host session does not support Command "
+                + "execution.");
+        }
+
+        return await executor.ExecuteCommandAsync(
+                request,
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync()

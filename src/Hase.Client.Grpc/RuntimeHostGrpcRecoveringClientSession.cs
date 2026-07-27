@@ -10,7 +10,8 @@ namespace Hase.Client.Grpc;
 public sealed class RuntimeHostGrpcRecoveringClientSession
     : IRuntimeHostClientSession,
       IRuntimeHostPropertyReader,
-      IRuntimeHostPropertyWriter
+      IRuntimeHostPropertyWriter,
+      IRuntimeHostCommandExecutor
 {
     private readonly object gate =
         new();
@@ -389,6 +390,49 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
             return await writer.WritePropertyAsync(
                     target,
                     requestedValue,
+                    cancellationToken)
+                .ConfigureAwait(
+                    false);
+        }
+        catch (Exception exception)
+        {
+            throw failureMapper.Map(
+                exception);
+        }
+    }
+
+    public async Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+        RemoteCommandExecutionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            request);
+
+        IRuntimeHostGrpcRecoverableSession session;
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+            session =
+                activeSession
+                ?? throw new RuntimeHostClientException(
+                    RuntimeHostClientFailureCategory.TransportUnavailable,
+                    "The runtime-host session is not connected.");
+        }
+
+        if (session is not IRuntimeHostCommandExecutor executor)
+        {
+            throw new NotSupportedException(
+                "The connected runtime-host session does not support "
+                + "Command execution.");
+        }
+
+        try
+        {
+            return await executor.ExecuteCommandAsync(
+                    request,
                     cancellationToken)
                 .ConfigureAwait(
                     false);

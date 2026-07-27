@@ -252,6 +252,28 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <ItemsControl
+                                                    Margin="16,4,0,8"
+                                                    ItemsSource="{Binding Commands}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="0,4">
+                                                                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                                                                <TextBlock Text="{Binding Path, StringFormat='Command: {0}'}" />
+                                                                <TextBlock Text="{Binding Description}" />
+                                                                <Button
+                                                                    MinWidth="100"
+                                                                    Margin="0,4,0,0"
+                                                                    HorizontalAlignment="Left"
+                                                                    Padding="10,4"
+                                                                    Command="{Binding DataContext.ExecuteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    Content="Execute"
+                                                                    IsEnabled="{Binding CanExecute}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
                                             </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>

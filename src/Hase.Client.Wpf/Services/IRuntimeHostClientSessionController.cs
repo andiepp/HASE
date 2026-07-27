@@ -17,4 +17,8 @@ public interface IRuntimeHostClientSessionController
         RemotePropertyTarget target,
         RemoteValue requestedValue,
         CancellationToken cancellationToken = default);
+
+    Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+        RemoteCommandExecutionRequest request,
+        CancellationToken cancellationToken = default);
 }

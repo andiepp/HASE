@@ -68,6 +68,15 @@ public sealed class MainWindowViewModel
                     && IsOperational
                     && !IsBusy
                     && property.CanWrite);
+        ExecuteCommand =
+            new DelegateCommand<CommandInventoryItemViewModel>(
+                ExecuteParameterlessCommand,
+                command =>
+                    command is not null
+                    && sessionController is not null
+                    && IsOperational
+                    && !IsBusy
+                    && command.CanExecute);
     }
 
     public string Title =>
@@ -182,6 +191,11 @@ public sealed class MainWindowViewModel
 
     public DelegateCommand<PropertyInventoryItemViewModel>
         WriteBooleanPropertyCommand
+    {
+        get;
+    }
+
+    public DelegateCommand<CommandInventoryItemViewModel> ExecuteCommand
     {
         get;
     }
@@ -489,6 +503,62 @@ public sealed class MainWindowViewModel
         }
     }
 
+    public async Task ExecuteCommandAsync(
+        CommandInventoryItemViewModel command)
+    {
+        ArgumentNullException.ThrowIfNull(
+            command);
+
+        if (sessionController is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        if (!IsOperational
+            || !command.CanExecute)
+        {
+            return;
+        }
+
+        IsBusy =
+            true;
+        PropertyReadMessage =
+            $"Executing {command.DisplayName}...";
+
+        try
+        {
+            RemoteCommandOperationResult result =
+                await sessionController.ExecuteCommandAsync(
+                        new RemoteCommandExecutionRequest(
+                            command.Target))
+                    .ConfigureAwait(
+                        true);
+
+            PropertyReadMessage =
+                result.IsSuccess
+                    ? $"{command.DisplayName}: Command completed."
+                    : $"{command.DisplayName}: Command failed "
+                        + $"({result.Status}).";
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            PropertyReadMessage =
+                $"{command.DisplayName}: Command failed "
+                + $"({exception.Category}).";
+        }
+        catch
+        {
+            PropertyReadMessage =
+                $"{command.DisplayName}: Command failed.";
+        }
+        finally
+        {
+            IsBusy =
+                false;
+        }
+    }
+
     private async void ExecuteConnect()
     {
         await ConnectAsync();
@@ -569,11 +639,22 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private async void ExecuteParameterlessCommand(
+        CommandInventoryItemViewModel? command)
+    {
+        if (command is not null)
+        {
+            await ExecuteCommandAsync(
+                command);
+        }
+    }
+
     private void RaiseCommandStateChanged()
     {
         ConnectCommand.RaiseCanExecuteChanged();
         DisconnectCommand.RaiseCanExecuteChanged();
         ReadPropertyCommand.RaiseCanExecuteChanged();
         WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
+        ExecuteCommand.RaiseCanExecuteChanged();
     }
 }

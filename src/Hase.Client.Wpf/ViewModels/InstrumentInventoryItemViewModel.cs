@@ -4,4 +4,5 @@ public sealed record InstrumentInventoryItemViewModel(
     string InstrumentId,
     string Name,
     string Kind,
-    IReadOnlyList<PropertyInventoryItemViewModel> Properties);
+    IReadOnlyList<PropertyInventoryItemViewModel> Properties,
+    IReadOnlyList<CommandInventoryItemViewModel> Commands);

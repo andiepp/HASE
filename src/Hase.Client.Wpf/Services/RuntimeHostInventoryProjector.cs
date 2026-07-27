@@ -49,6 +49,20 @@ public static class RuntimeHostInventoryProjector
                                                         property,
                                                         confirmedReads,
                                                         requestedBooleanValues))
+                                            .ToArray(),
+                                        instrument.Interface.Commands
+                                            .Select(
+                                                command =>
+                                                    new CommandInventoryItemViewModel(
+                                                        new RemoteCommandTarget(
+                                                            attachment.Key,
+                                                            instrument.Id,
+                                                            command.Path),
+                                                        command.Path.ToString(),
+                                                        command.DisplayName,
+                                                        command.Description,
+                                                        attachment.ConnectionStatus.State
+                                                            == RemoteEndpointConnectionState.Ready))
                                             .ToArray()))
                             .ToArray()))
             .ToArray()

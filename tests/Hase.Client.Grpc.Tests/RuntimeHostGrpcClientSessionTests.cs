@@ -336,6 +336,12 @@ public sealed class RuntimeHostGrpcClientSessionTests
         } =
             new StubPropertyClient();
 
+        public IRuntimeHostGrpcCommandClient CommandClient
+        {
+            get;
+        } =
+            new StubCommandClient();
+
         public CancellationToken InitialCancellationToken =>
             observationStream.InitialCancellationToken;
 
@@ -392,6 +398,19 @@ public sealed class RuntimeHostGrpcClientSessionTests
             Hase.Runtime.Remote.Grpc.V1.PropertyOperationResult>
             WritePropertyAsync(
                 Hase.Runtime.Remote.Grpc.V1.WritePropertyRequest request,
+                CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class StubCommandClient
+        : IRuntimeHostGrpcCommandClient
+    {
+        public Task<
+            Hase.Runtime.Remote.Grpc.V1.CommandOperationResult>
+            ExecuteAsync(
+                Hase.Runtime.Remote.Grpc.V1.ExecuteCommandRequest request,
                 CancellationToken cancellationToken)
         {
             throw new NotSupportedException();

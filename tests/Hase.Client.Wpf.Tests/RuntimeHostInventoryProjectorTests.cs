@@ -122,6 +122,8 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             "Environment Sensor",
             projectedInstrument.Name);
+        Assert.Empty(
+            projectedInstrument.Commands);
         PropertyInventoryItemViewModel property =
             Assert.Single(
                 projectedInstrument.Properties);

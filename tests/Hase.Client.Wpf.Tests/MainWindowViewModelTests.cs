@@ -447,6 +447,53 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ExecuteCommandAsync_ShouldSendParameterlessCommandOnce()
+    {
+        var target =
+            new RemoteCommandTarget(
+                new RemoteEndpointAttachmentKey(
+                    new Hase.Core.Domain.Identity.EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "6f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new Hase.Core.Domain.Identity.InstrumentId(
+                    "controller-01"),
+                Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                    "Controller.ToggleLed"));
+        var controller =
+            new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var command =
+            new CommandInventoryItemViewModel(
+                target,
+                "Controller.ToggleLed",
+                "Toggle LED",
+                null,
+                true);
+
+        await viewModel.ExecuteCommandAsync(
+            command);
+
+        Assert.Same(
+            target,
+            controller.CommandRequest!.Target);
+        Assert.Null(
+            controller.CommandRequest.Argument);
+        Assert.Equal(
+            "Toggle LED: Command completed.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
     public void Configure_SecondCall_ShouldThrow()
     {
         var viewModel =
@@ -603,6 +650,12 @@ public sealed class MainWindowViewModelTests
             private set;
         }
 
+        public RemoteCommandExecutionRequest? CommandRequest
+        {
+            get;
+            private set;
+        }
+
         public Task ConnectAsync(
             string configurationFilePath,
             CancellationToken cancellationToken = default)
@@ -650,6 +703,17 @@ public sealed class MainWindowViewModelTests
                 ReadResult
                 ?? RemotePropertyOperationResult.Failed(
                     RemotePropertyOperationStatus.EndpointUnavailable));
+        }
+
+        public Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+            RemoteCommandExecutionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            CommandRequest =
+                request;
+
+            return Task.FromResult(
+                RemoteCommandOperationResult.Successful());
         }
 
         public ValueTask DisposeAsync() =>
