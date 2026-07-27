@@ -9,7 +9,8 @@ namespace Hase.Client.Grpc;
 /// </summary>
 public sealed class RuntimeHostGrpcRecoveringClientSession
     : IRuntimeHostClientSession,
-      IRuntimeHostPropertyReader
+      IRuntimeHostPropertyReader,
+      IRuntimeHostPropertyWriter
 {
     private readonly object gate =
         new();
@@ -340,6 +341,54 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         {
             return await reader.ReadPropertyAsync(
                     target,
+                    cancellationToken)
+                .ConfigureAwait(
+                    false);
+        }
+        catch (Exception exception)
+        {
+            throw failureMapper.Map(
+                exception);
+        }
+    }
+
+    public async Task<RemotePropertyOperationResult> WritePropertyAsync(
+        RemotePropertyTarget target,
+        RemoteValue requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+        ArgumentNullException.ThrowIfNull(
+            requestedValue);
+
+        IRuntimeHostGrpcRecoverableSession session;
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            session =
+                activeSession
+                ?? throw new RuntimeHostClientException(
+                    RuntimeHostClientFailureCategory.TransportUnavailable,
+                    "The runtime-host session is not connected.");
+        }
+
+        if (session is not IRuntimeHostPropertyWriter writer)
+        {
+            throw new NotSupportedException(
+                "The connected runtime-host session does not support "
+                + "authoritative Property writes.");
+        }
+
+        try
+        {
+            return await writer.WritePropertyAsync(
+                    target,
+                    requestedValue,
                     cancellationToken)
                 .ConfigureAwait(
                     false);

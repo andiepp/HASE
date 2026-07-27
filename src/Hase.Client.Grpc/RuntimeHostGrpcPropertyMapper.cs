@@ -3,8 +3,8 @@ using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
 namespace Hase.Client.Grpc;
 
 /// <summary>
-/// Maps authoritative Property reads between normalized client contracts and
-/// the version-1 gRPC contract.
+/// Maps authoritative Property operations between normalized client contracts
+/// and the version-1 gRPC contract.
 /// </summary>
 public sealed class RuntimeHostGrpcPropertyMapper
 {
@@ -17,17 +17,28 @@ public sealed class RuntimeHostGrpcPropertyMapper
         return new GrpcV1.ReadAuthoritativePropertyRequest
         {
             Target =
-                new GrpcV1.PropertyTarget
-                {
-                    EndpointId =
-                        target.EndpointId.Value,
-                    AttachmentGeneration =
-                        target.AttachmentGeneration.ToString(),
-                    InstrumentId =
-                        target.InstrumentId.Value,
-                    PropertyId =
-                        target.PropertyId.Value
-                }
+                MapTarget(
+                    target)
+        };
+    }
+
+    public GrpcV1.WritePropertyRequest MapWriteRequest(
+        RemotePropertyTarget target,
+        RemoteValue requestedValue)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+        ArgumentNullException.ThrowIfNull(
+            requestedValue);
+
+        return new GrpcV1.WritePropertyRequest
+        {
+            Target =
+                MapTarget(
+                    target),
+            RequestedValue =
+                MapValue(
+                    requestedValue)
         };
     }
 
@@ -53,7 +64,7 @@ public sealed class RuntimeHostGrpcPropertyMapper
         GrpcV1.PropertyValue confirmedValue =
             result.ConfirmedValue
             ?? throw new InvalidDataException(
-                "A successful Property read has no confirmed value.");
+                "A successful Property operation has no confirmed value.");
 
         return RemotePropertyOperationResult.Successful(
             new RemotePropertyValue(
@@ -125,6 +136,47 @@ public sealed class RuntimeHostGrpcPropertyMapper
             _ =>
                 throw new InvalidDataException(
                     "The confirmed remote value has no supported kind.")
+        };
+
+    private static GrpcV1.PropertyTarget MapTarget(
+        RemotePropertyTarget target) =>
+        new()
+        {
+            EndpointId =
+                target.EndpointId.Value,
+            AttachmentGeneration =
+                target.AttachmentGeneration.ToString(),
+            InstrumentId =
+                target.InstrumentId.Value,
+            PropertyId =
+                target.PropertyId.Value
+        };
+
+    private static GrpcV1.RemoteValue MapValue(
+        RemoteValue value) =>
+        value.Kind switch
+        {
+            RemoteValueKind.Boolean =>
+                new GrpcV1.RemoteValue
+                {
+                    BooleanValue =
+                        value.BooleanValue!.Value
+                },
+            RemoteValueKind.String =>
+                new GrpcV1.RemoteValue
+                {
+                    StringValue =
+                        value.StringValue!
+                },
+            RemoteValueKind.Numeric =>
+                new GrpcV1.RemoteValue
+                {
+                    NumericValue =
+                        value.NumericValue!.Value
+                },
+            _ =>
+                throw new InvalidDataException(
+                    "The requested remote value has no supported kind.")
         };
 
     private static DateTimeOffset MapTimestamp(

@@ -206,6 +206,33 @@
                                                                         </Style>
                                                                     </Button.Style>
                                                                 </Button>
+                                                                <StackPanel
+                                                                    Margin="0,6,0,0"
+                                                                    Orientation="Horizontal">
+                                                                    <StackPanel.Style>
+                                                                        <Style TargetType="StackPanel">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding SupportsBooleanWrite}" Value="False">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </StackPanel.Style>
+                                                                    <CheckBox
+                                                                        VerticalAlignment="Center"
+                                                                        Content="Requested value"
+                                                                        IsChecked="{Binding RequestedBooleanValue, Mode=TwoWay}"
+                                                                        IsEnabled="{Binding CanWrite}" />
+                                                                    <Button
+                                                                        MinWidth="90"
+                                                                        Margin="12,0,0,0"
+                                                                        Padding="10,4"
+                                                                        Command="{Binding DataContext.WriteBooleanPropertyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Content="Write"
+                                                                        IsEnabled="{Binding CanWrite}" />
+                                                                </StackPanel>
                                                                 <TextBlock
                                                                     Foreground="#FFB06000"
                                                                     FontWeight="SemiBold"

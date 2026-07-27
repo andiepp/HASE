@@ -193,6 +193,55 @@ public sealed class RuntimeHostClientSessionController
                 false);
     }
 
+    public async Task<RemotePropertyOperationResult> WritePropertyAsync(
+        RemotePropertyTarget target,
+        RemoteValue requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+        ArgumentNullException.ThrowIfNull(
+            requestedValue);
+
+        IRuntimeHostClientSession activeSession;
+
+        await gate.WaitAsync(
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            activeSession =
+                session
+                ?? throw new InvalidOperationException(
+                    "An authoritative Property write requires an active "
+                    + "runtime-host client session.");
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        if (activeSession is not IRuntimeHostPropertyWriter writer)
+        {
+            throw new NotSupportedException(
+                "The active runtime-host client session does not support "
+                + "authoritative Property writes.");
+        }
+
+        return await writer.WritePropertyAsync(
+                target,
+                requestedValue,
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync()

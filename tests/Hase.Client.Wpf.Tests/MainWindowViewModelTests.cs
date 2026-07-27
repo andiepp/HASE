@@ -346,7 +346,9 @@ public sealed class MainWindowViewModelTests
                 null,
                 false,
                 true,
-                true);
+                true,
+                false,
+                false);
 
         await viewModel.ReadPropertyAsync(
             property);
@@ -356,6 +358,89 @@ public sealed class MainWindowViewModelTests
             controller.ReadTarget);
         Assert.Equal(
             "Temperature: endpoint-confirmed value received.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task WriteBooleanPropertyAsync_ShouldSendSelectedValueOnce()
+    {
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new Hase.Core.Domain.Identity.EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "5f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new Hase.Core.Domain.Identity.InstrumentId(
+                    "controller-01"),
+                new Hase.Core.Domain.Identity.PropertyId(
+                    "led-enabled"));
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromBoolean(
+                                true),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                27,
+                                14,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                "led-enabled",
+                "Controller.StatusLedEnabled",
+                "Status LED Enabled",
+                "ReadWrite",
+                "Boolean",
+                null,
+                "False",
+                null,
+                null,
+                false,
+                true,
+                true,
+                true,
+                true)
+            {
+                RequestedBooleanValue =
+                    true
+            };
+
+        await viewModel.WriteBooleanPropertyAsync(
+            property);
+
+        Assert.Same(
+            target,
+            controller.WriteTarget);
+        Assert.Equal(
+            1,
+            controller.WriteCount);
+        Assert.Equal(
+            RemoteValueKind.Boolean,
+            controller.RequestedValue!.Kind);
+        Assert.True(
+            controller.RequestedValue.BooleanValue!.Value);
+        Assert.Equal(
+            "Status LED Enabled: endpoint-confirmed write completed.",
             viewModel.PropertyReadMessage);
         Assert.False(
             viewModel.IsBusy);
@@ -500,6 +585,24 @@ public sealed class MainWindowViewModelTests
             private set;
         }
 
+        public RemotePropertyTarget? WriteTarget
+        {
+            get;
+            private set;
+        }
+
+        public RemoteValue? RequestedValue
+        {
+            get;
+            private set;
+        }
+
+        public int WriteCount
+        {
+            get;
+            private set;
+        }
+
         public Task ConnectAsync(
             string configurationFilePath,
             CancellationToken cancellationToken = default)
@@ -525,6 +628,23 @@ public sealed class MainWindowViewModelTests
         {
             ReadTarget =
                 target;
+
+            return Task.FromResult(
+                ReadResult
+                ?? RemotePropertyOperationResult.Failed(
+                    RemotePropertyOperationStatus.EndpointUnavailable));
+        }
+
+        public Task<RemotePropertyOperationResult> WritePropertyAsync(
+            RemotePropertyTarget target,
+            RemoteValue requestedValue,
+            CancellationToken cancellationToken = default)
+        {
+            WriteCount++;
+            WriteTarget =
+                target;
+            RequestedValue =
+                requestedValue;
 
             return Task.FromResult(
                 ReadResult

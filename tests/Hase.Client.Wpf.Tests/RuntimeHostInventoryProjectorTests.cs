@@ -149,6 +149,10 @@ public sealed class RuntimeHostInventoryProjectorTests
             property.SupportsRead);
         Assert.True(
             property.CanRead);
+        Assert.False(
+            property.SupportsBooleanWrite);
+        Assert.False(
+            property.CanWrite);
     }
 
     [Fact]
@@ -188,5 +192,89 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             "Reconnecting",
             endpoint.ConnectionState);
+    }
+
+    [Fact]
+    public void Project_ObservationRefresh_ShouldPreserveRequestedBooleanValue()
+    {
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "controller-01"),
+                "Controller",
+                new InstrumentKind(
+                    "Controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            new PropertyDescriptor(
+                                new PropertyId(
+                                    "led-enabled"),
+                                DescriptorPath.Parse(
+                                    "Controller.LedEnabled"),
+                                "LED Enabled",
+                                new BooleanDataDescriptor())
+                            {
+                                AccessMode =
+                                    PropertyAccessMode.ReadWrite
+                            }
+                        ])
+            };
+        var attachment =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "40d9ef89-267a-4de4-9ed1-04848635e6ab")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "endpoint-03"),
+                    [instrument]),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Ready));
+        RemoteObservationState state =
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [attachment]),
+                    new RemoteObservationSequence(
+                        1)));
+        var target =
+            new RemotePropertyTarget(
+                attachment.Key,
+                instrument.Id,
+                new PropertyId(
+                    "led-enabled"));
+
+        PropertyInventoryItemViewModel property =
+            Assert.Single(
+                Assert.Single(
+                    RuntimeHostInventoryProjector.Project(
+                        state,
+                        confirmedReads:
+                            null,
+                        requestedBooleanValues:
+                            new Dictionary<
+                                RemotePropertyTarget,
+                                bool>
+                            {
+                                [target] =
+                                    true
+                            }))
+                    .Instruments)
+                .Properties
+                .Single();
+
+        Assert.True(
+            property.SupportsBooleanWrite);
+        Assert.True(
+            property.CanWrite);
+        Assert.True(
+            property.RequestedBooleanValue);
     }
 }

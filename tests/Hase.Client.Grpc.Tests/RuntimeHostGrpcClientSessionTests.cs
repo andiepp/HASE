@@ -387,6 +387,15 @@ public sealed class RuntimeHostGrpcClientSessionTests
         {
             throw new NotSupportedException();
         }
+
+        public Task<
+            Hase.Runtime.Remote.Grpc.V1.PropertyOperationResult>
+            WritePropertyAsync(
+                Hase.Runtime.Remote.Grpc.V1.WritePropertyRequest request,
+                CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     private sealed class StubObservationStream

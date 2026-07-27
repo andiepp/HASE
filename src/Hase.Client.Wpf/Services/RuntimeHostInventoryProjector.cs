@@ -10,7 +10,10 @@ public static class RuntimeHostInventoryProjector
         RemoteObservationState state,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            RemotePropertyValue>? confirmedReads = null)
+            RemotePropertyValue>? confirmedReads = null,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            bool>? requestedBooleanValues = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -44,7 +47,8 @@ public static class RuntimeHostInventoryProjector
                                                         attachment,
                                                         instrument.Id,
                                                         property,
-                                                        confirmedReads))
+                                                        confirmedReads,
+                                                        requestedBooleanValues))
                                             .ToArray()))
                             .ToArray()))
             .ToArray()
@@ -58,7 +62,10 @@ public static class RuntimeHostInventoryProjector
         Hase.Core.Domain.Properties.PropertyDescriptor property,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            RemotePropertyValue>? confirmedReads)
+            RemotePropertyValue>? confirmedReads,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            bool>? requestedBooleanValues)
     {
         var target =
             new RemotePropertyTarget(
@@ -84,6 +91,21 @@ public static class RuntimeHostInventoryProjector
             property.AccessMode is
                 Hase.Core.Domain.Properties.PropertyAccessMode.Read
                 or Hase.Core.Domain.Properties.PropertyAccessMode.ReadWrite;
+        bool booleanWritable =
+            property.Data is BooleanDataDescriptor
+            && (property.AccessMode is
+                    Hase.Core.Domain.Properties.PropertyAccessMode.Write
+                    or Hase.Core.Domain.Properties.PropertyAccessMode
+                        .ReadWrite);
+        bool requestedBooleanValue =
+            booleanWritable
+            && requestedBooleanValues is not null
+            && requestedBooleanValues.TryGetValue(
+                target,
+                out bool requested)
+                ? requested
+                : cached?.Value?.BooleanValue
+                    ?? false;
 
         return new PropertyInventoryItemViewModel(
             target,
@@ -114,7 +136,14 @@ public static class RuntimeHostInventoryProjector
             !endpointReady,
             readable,
             endpointReady
-                && readable);
+                && readable,
+            booleanWritable,
+            endpointReady
+                && booleanWritable)
+        {
+            RequestedBooleanValue =
+                requestedBooleanValue
+        };
     }
 
     private static string FormatValue(

@@ -12,4 +12,9 @@ public interface IRuntimeHostClientSessionController
     Task<RemotePropertyOperationResult> ReadPropertyAsync(
         RemotePropertyTarget target,
         CancellationToken cancellationToken = default);
+
+    Task<RemotePropertyOperationResult> WritePropertyAsync(
+        RemotePropertyTarget target,
+        RemoteValue requestedValue,
+        CancellationToken cancellationToken = default);
 }

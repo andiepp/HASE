@@ -13,4 +13,13 @@ public sealed record PropertyInventoryItemViewModel(
     string? Quality,
     bool IsStale,
     bool SupportsRead,
-    bool CanRead);
+    bool CanRead,
+    bool SupportsBooleanWrite,
+    bool CanWrite)
+{
+    public bool RequestedBooleanValue
+    {
+        get;
+        set;
+    }
+}

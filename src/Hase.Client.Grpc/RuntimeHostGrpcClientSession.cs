@@ -15,7 +15,8 @@ namespace Hase.Client.Grpc;
 /// </remarks>
 public sealed class RuntimeHostGrpcClientSession
     : IRuntimeHostGrpcRecoverableSession,
-      IRuntimeHostPropertyReader
+      IRuntimeHostPropertyReader,
+      IRuntimeHostPropertyWriter
 {
     private readonly object gate =
         new();
@@ -290,6 +291,63 @@ public sealed class RuntimeHostGrpcClientSession
 
         return mapper.MapResult(
             result);
+    }
+
+    public async Task<RemotePropertyOperationResult> WritePropertyAsync(
+        RemotePropertyTarget target,
+        RemoteValue requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+        ArgumentNullException.ThrowIfNull(
+            requestedValue);
+
+        IRuntimeHostGrpcSessionResources activeResources =
+            GetConnectedResources(
+                "write");
+        var mapper =
+            new RuntimeHostGrpcPropertyMapper();
+        using var operationCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                sessionCancellation.Token);
+
+        GrpcV1.PropertyOperationResult result =
+            await activeResources.PropertyClient.WritePropertyAsync(
+                    mapper.MapWriteRequest(
+                        target,
+                        requestedValue),
+                    operationCancellation.Token)
+                .ConfigureAwait(
+                    false);
+
+        return mapper.MapResult(
+            result);
+    }
+
+    private IRuntimeHostGrpcSessionResources GetConnectedResources(
+        string operationName)
+    {
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            if (status.State
+                != RuntimeHostClientSessionState.Connected)
+            {
+                throw new InvalidOperationException(
+                    $"An authoritative Property {operationName} requires a "
+                    + "connected runtime-host session.");
+            }
+
+            return resources
+                ?? throw new InvalidOperationException(
+                    "The connected runtime-host session has no active "
+                    + "resources.");
+        }
     }
 
     /// <summary>

@@ -28,6 +28,10 @@ public sealed class MainWindowViewModel
         RemotePropertyTarget,
         RemotePropertyValue> confirmedReads =
         [];
+    private readonly Dictionary<
+        RemotePropertyTarget,
+        bool> requestedBooleanValues =
+        [];
     private string? propertyReadMessage;
 
     public MainWindowViewModel()
@@ -55,6 +59,15 @@ public sealed class MainWindowViewModel
                     && IsOperational
                     && !IsBusy
                     && property.CanRead);
+        WriteBooleanPropertyCommand =
+            new DelegateCommand<PropertyInventoryItemViewModel>(
+                ExecuteWriteBooleanProperty,
+                property =>
+                    property is not null
+                    && sessionController is not null
+                    && IsOperational
+                    && !IsBusy
+                    && property.CanWrite);
     }
 
     public string Title =>
@@ -167,6 +180,12 @@ public sealed class MainWindowViewModel
         get;
     }
 
+    public DelegateCommand<PropertyInventoryItemViewModel>
+        WriteBooleanPropertyCommand
+    {
+        get;
+    }
+
     public void Configure(
         IRuntimeHostClientSessionController controller,
         IClientConfigurationFilePicker filePicker)
@@ -222,6 +241,7 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(
             value);
 
+        PreserveRequestedBooleanValues();
         SetProperty(
             ref currentState,
             value,
@@ -231,7 +251,8 @@ public sealed class MainWindowViewModel
             ref endpoints,
             RuntimeHostInventoryProjector.Project(
                 value,
-                confirmedReads),
+                confirmedReads,
+                requestedBooleanValues),
             nameof(Endpoints));
         RaisePropertyChanged(
             nameof(EndpointCount));
@@ -356,7 +377,8 @@ public sealed class MainWindowViewModel
                     ref endpoints,
                     RuntimeHostInventoryProjector.Project(
                         currentState,
-                        confirmedReads),
+                        confirmedReads,
+                        requestedBooleanValues),
                     nameof(Endpoints));
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed value "
@@ -387,9 +409,110 @@ public sealed class MainWindowViewModel
         }
     }
 
+    public async Task WriteBooleanPropertyAsync(
+        PropertyInventoryItemViewModel property)
+    {
+        ArgumentNullException.ThrowIfNull(
+            property);
+
+        if (sessionController is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        if (!IsOperational
+            || !property.CanWrite
+            || !property.SupportsBooleanWrite)
+        {
+            return;
+        }
+
+        IsBusy =
+            true;
+        requestedBooleanValues[property.Target] =
+            property.RequestedBooleanValue;
+        PropertyReadMessage =
+            $"Writing {property.DisplayName}...";
+
+        try
+        {
+            RemotePropertyOperationResult result =
+                await sessionController.WritePropertyAsync(
+                        property.Target,
+                        RemoteValue.FromBoolean(
+                            property.RequestedBooleanValue))
+                    .ConfigureAwait(
+                        true);
+
+            if (result.IsSuccess)
+            {
+                RemotePropertyValue confirmedValue =
+                    result.ConfirmedValue
+                    ?? throw new InvalidDataException(
+                        "A successful Property write has no confirmed value.");
+                confirmedReads[property.Target] =
+                    confirmedValue;
+                SetProperty(
+                    ref endpoints,
+                    RuntimeHostInventoryProjector.Project(
+                        currentState,
+                        confirmedReads,
+                        requestedBooleanValues),
+                    nameof(Endpoints));
+                PropertyReadMessage =
+                    $"{property.DisplayName}: endpoint-confirmed write "
+                    + "completed.";
+            }
+            else
+            {
+                PropertyReadMessage =
+                    $"{property.DisplayName}: write failed "
+                    + $"({result.Status}).";
+            }
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            PropertyReadMessage =
+                $"{property.DisplayName}: write failed "
+                + $"({exception.Category}).";
+        }
+        catch
+        {
+            PropertyReadMessage =
+                $"{property.DisplayName}: write failed.";
+        }
+        finally
+        {
+            IsBusy =
+                false;
+        }
+    }
+
     private async void ExecuteConnect()
     {
         await ConnectAsync();
+    }
+
+    private void PreserveRequestedBooleanValues()
+    {
+        requestedBooleanValues.Clear();
+
+        foreach (PropertyInventoryItemViewModel property
+            in endpoints
+                .SelectMany(
+                    endpoint =>
+                        endpoint.Instruments)
+                .SelectMany(
+                    instrument =>
+                        instrument.Properties)
+                .Where(
+                    property =>
+                        property.SupportsBooleanWrite))
+        {
+            requestedBooleanValues[property.Target] =
+                property.RequestedBooleanValue;
+        }
     }
 
     public void ApplySessionFailure(
@@ -436,10 +559,21 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private async void ExecuteWriteBooleanProperty(
+        PropertyInventoryItemViewModel? property)
+    {
+        if (property is not null)
+        {
+            await WriteBooleanPropertyAsync(
+                property);
+        }
+    }
+
     private void RaiseCommandStateChanged()
     {
         ConnectCommand.RaiseCanExecuteChanged();
         DisconnectCommand.RaiseCanExecuteChanged();
         ReadPropertyCommand.RaiseCanExecuteChanged();
+        WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
     }
 }

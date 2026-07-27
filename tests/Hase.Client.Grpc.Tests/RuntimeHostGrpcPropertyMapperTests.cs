@@ -97,6 +97,44 @@ public sealed class RuntimeHostGrpcPropertyMapperTests
     }
 
     [Fact]
+    public void MapWriteRequest_ShouldPreserveTargetAndBooleanValue()
+    {
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-02"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "8206a38d-d980-4495-bc11-f7cdf9f14ebd"))),
+                new InstrumentId(
+                    "controller-01"),
+                new PropertyId(
+                    "led-enabled"));
+
+        GrpcV1.WritePropertyRequest result =
+            new RuntimeHostGrpcPropertyMapper().MapWriteRequest(
+                target,
+                RemoteValue.FromBoolean(
+                    true));
+
+        Assert.Equal(
+            "endpoint-02",
+            result.Target.EndpointId);
+        Assert.Equal(
+            "controller-01",
+            result.Target.InstrumentId);
+        Assert.Equal(
+            "led-enabled",
+            result.Target.PropertyId);
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.BooleanValue,
+            result.RequestedValue.KindCase);
+        Assert.True(
+            result.RequestedValue.BooleanValue);
+    }
+
+    [Fact]
     public void MapResult_Failure_ShouldPreserveStatusAndDiagnostic()
     {
         var source =
