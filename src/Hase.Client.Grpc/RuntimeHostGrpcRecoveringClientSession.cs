@@ -8,7 +8,7 @@ namespace Hase.Client.Grpc;
 /// observation failures.
 /// </summary>
 public sealed class RuntimeHostGrpcRecoveringClientSession
-    : IAsyncDisposable
+    : IRuntimeHostClientSession
 {
     private readonly object gate =
         new();
