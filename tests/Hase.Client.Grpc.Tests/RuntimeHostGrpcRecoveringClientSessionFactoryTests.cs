@@ -188,6 +188,17 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactoryTests
     private sealed class StubSession
         : IRuntimeHostClientSession
     {
+        public event EventHandler<
+            RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged
+        {
+            add
+            {
+            }
+            remove
+            {
+            }
+        }
+
         public RuntimeHostClientSessionStatus Status
         {
             get;

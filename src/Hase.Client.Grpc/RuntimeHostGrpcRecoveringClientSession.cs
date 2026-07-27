@@ -25,6 +25,9 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
     private bool started;
     private bool disposed;
 
+    public event EventHandler<
+        RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged;
+
     public RuntimeHostGrpcRecoveringClientSession(
         RuntimeHostPrivateNetworkClientOptions options,
         RuntimeHostClientRecoveryPolicy? recoveryPolicy = null)
@@ -299,11 +302,16 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
     private void SetStatus(
         RuntimeHostClientSessionState state)
     {
+        RuntimeHostClientSessionStatus previous;
+        RuntimeHostClientSessionStatus current;
+
         lock (gate)
         {
+            previous =
+                status;
             RemoteRuntimeHostSnapshot? snapshot =
                 currentState?.Snapshot;
-            status =
+            current =
                 new RuntimeHostClientSessionStatus(
                     state,
                     state is RuntimeHostClientSessionState.Disconnected
@@ -314,17 +322,49 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
                         or RuntimeHostClientSessionState.Connecting
                         ? null
                         : snapshot?.ApiVersion);
+            status =
+                current;
         }
+
+        PublishStatusChanged(
+            previous,
+            current);
     }
 
     private void SetDisconnected()
     {
+        RuntimeHostClientSessionStatus previous;
+        RuntimeHostClientSessionStatus current =
+            new(
+                RuntimeHostClientSessionState.Disconnected);
+
         lock (gate)
         {
+            previous =
+                status;
             status =
-                new RuntimeHostClientSessionStatus(
-                    RuntimeHostClientSessionState.Disconnected);
+                current;
         }
+
+        PublishStatusChanged(
+            previous,
+            current);
+    }
+
+    private void PublishStatusChanged(
+        RuntimeHostClientSessionStatus previous,
+        RuntimeHostClientSessionStatus current)
+    {
+        if (previous == current)
+        {
+            return;
+        }
+
+        StatusChanged?.Invoke(
+            this,
+            new RuntimeHostClientSessionStatusChangedEventArgs(
+                previous,
+                current));
     }
 
     private static async Task<MoveNextResult> MoveNextAsync(

@@ -7,6 +7,7 @@ namespace Hase.Client.Grpc;
 /// recovering runtime-host client session without connecting it.
 /// </summary>
 public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
+    : IRuntimeHostClientSessionFactory
 {
     private readonly Func<
         string,

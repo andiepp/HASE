@@ -8,6 +8,48 @@ namespace Hase.Client.Grpc.Tests;
 public sealed class RuntimeHostGrpcRecoveringClientSessionTests
 {
     [Fact]
+    public async Task ReadStatesAsync_ShouldPublishConnectionTransitions()
+    {
+        var session =
+            ScriptedSession.WithStates(
+                [CreateState(
+                    "runtime-01")]);
+        await using var recovering =
+            CreateRecoveringSession(
+                new Queue<ScriptedSession>(
+                    [session]),
+                []);
+        var transitions =
+            new List<RuntimeHostClientSessionStatusChangedEventArgs>();
+        recovering.StatusChanged +=
+            (_, eventArgs) =>
+                transitions.Add(
+                    eventArgs);
+        await using IAsyncEnumerator<RemoteObservationState> states =
+            recovering.ReadStatesAsync()
+                .GetAsyncEnumerator();
+
+        Assert.True(
+            await states.MoveNextAsync());
+
+        Assert.Equal(
+            new[]
+            {
+                RuntimeHostClientSessionState.Connecting,
+                RuntimeHostClientSessionState.Connected
+            },
+            transitions.Select(
+                transition =>
+                    transition.Current.State));
+        Assert.Equal(
+            RuntimeHostClientSessionState.Disconnected,
+            transitions[0].Previous.State);
+        Assert.Equal(
+            "runtime-01",
+            transitions[1].Current.RuntimeHostId!.Value);
+    }
+
+    [Fact]
     public async Task ReadStatesAsync_UnavailableConnect_ShouldUseFreshSession()
     {
         var first =

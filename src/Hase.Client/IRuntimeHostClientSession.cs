@@ -7,6 +7,12 @@ public interface IRuntimeHostClientSession
     : IAsyncDisposable
 {
     /// <summary>
+    /// Occurs after the normalized session status changes.
+    /// </summary>
+    event EventHandler<RuntimeHostClientSessionStatusChangedEventArgs>?
+        StatusChanged;
+
+    /// <summary>
     /// Gets the current normalized session status.
     /// </summary>
     RuntimeHostClientSessionStatus Status
