@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hase.Client\Hase.Client.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Contracts\Hase.Runtime.Remote.Grpc.Contracts.csproj" />
+    <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Hosting\Hase.Runtime.Remote.Grpc.Hosting.csproj" />
   </ItemGroup>
 
 </Project>
