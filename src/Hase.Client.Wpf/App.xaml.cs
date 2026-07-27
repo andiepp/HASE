@@ -1,18 +1,8 @@
-﻿using System.Windows;
-using Hase.Client.Wpf.Views;
-using Prism.DryIoc;
-using Prism.Ioc;
+﻿namespace Hase.Client.Wpf;
 
-namespace Hase.Client.Wpf;
-
-public partial class App
-    : PrismApplication
+/// <summary>
+/// Marks the transport-independent WPF presentation assembly.
+/// </summary>
+internal static class PresentationAssemblyMarker
 {
-    protected override Window CreateShell() =>
-        Container.Resolve<MainWindow>();
-
-    protected override void RegisterTypes(
-        IContainerRegistry containerRegistry)
-    {
-    }
 }

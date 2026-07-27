@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -12,11 +13,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ApplicationDefinition Remove="App.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Hase.Client\Hase.Client.csproj" />
+    <ProjectReference Include="..\Hase.Client.Grpc\Hase.Client.Grpc.csproj" />
+    <ProjectReference Include="..\Hase.Client.Wpf\Hase.Client.Wpf.csproj" />
   </ItemGroup>
 
 </Project>
