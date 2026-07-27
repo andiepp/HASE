@@ -79,7 +79,7 @@ public sealed class RuntimeHostClientSessionController
             sessionTask =
                 RunSessionAsync(
                     createdSession,
-                    createdCancellation.Token);
+                    createdCancellation);
         }
         finally
         {
@@ -176,8 +176,12 @@ public sealed class RuntimeHostClientSessionController
 
     private async Task RunSessionAsync(
         IRuntimeHostClientSession activeSession,
-        CancellationToken cancellationToken)
+        CancellationTokenSource activeCancellation)
     {
+        await Task.Yield();
+        CancellationToken cancellationToken =
+            activeCancellation.Token;
+
         try
         {
             await foreach (RemoteObservationState state
@@ -200,6 +204,28 @@ public sealed class RuntimeHostClientSessionController
             when (cancellationToken.IsCancellationRequested)
         {
         }
+        catch (RuntimeHostClientException exception)
+        {
+            dispatcher.Post(
+                () =>
+                    viewModel.ApplySessionFailure(
+                        exception.Category));
+        }
+        catch
+        {
+            dispatcher.Post(
+                () =>
+                    viewModel.ApplySessionFailure(
+                        RuntimeHostClientFailureCategory.Unknown));
+        }
+        finally
+        {
+            await ReleaseCompletedSessionAsync(
+                    activeSession,
+                    activeCancellation)
+                .ConfigureAwait(
+                    false);
+        }
     }
 
     private void SessionStatusChanged(
@@ -210,5 +236,50 @@ public sealed class RuntimeHostClientSessionController
             () =>
                 viewModel.ApplySessionStatus(
                     eventArgs.Current));
+    }
+
+    private async Task ReleaseCompletedSessionAsync(
+        IRuntimeHostClientSession completedSession,
+        CancellationTokenSource completedCancellation)
+    {
+        bool ownsCleanup =
+            false;
+
+        await gate.WaitAsync()
+            .ConfigureAwait(
+                false);
+
+        try
+        {
+            if (ReferenceEquals(
+                    session,
+                    completedSession))
+            {
+                session =
+                    null;
+                sessionCancellation =
+                    null;
+                sessionTask =
+                    null;
+                ownsCleanup =
+                    true;
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        if (!ownsCleanup)
+        {
+            return;
+        }
+
+        completedSession.StatusChanged -=
+            SessionStatusChanged;
+        await completedSession.DisposeAsync()
+            .ConfigureAwait(
+                false);
+        completedCancellation.Dispose();
     }
 }

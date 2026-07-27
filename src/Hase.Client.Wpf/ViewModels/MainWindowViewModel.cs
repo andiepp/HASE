@@ -20,6 +20,7 @@ public sealed class MainWindowViewModel
     private IClientConfigurationFilePicker? configurationFilePicker;
     private bool isBusy;
     private string? failureMessage;
+    private RuntimeHostClientFailureCategory? lastFailureCategory;
 
     public MainWindowViewModel()
     {
@@ -104,6 +105,16 @@ public sealed class MainWindowViewModel
         private set =>
             SetProperty(
                 ref failureMessage,
+                value);
+    }
+
+    public RuntimeHostClientFailureCategory? LastFailureCategory
+    {
+        get =>
+            lastFailureCategory;
+        private set =>
+            SetProperty(
+                ref lastFailureCategory,
                 value);
     }
 
@@ -201,6 +212,8 @@ public sealed class MainWindowViewModel
             true;
         FailureMessage =
             null;
+        LastFailureCategory =
+            null;
 
         try
         {
@@ -255,6 +268,35 @@ public sealed class MainWindowViewModel
     private async void ExecuteConnect()
     {
         await ConnectAsync();
+    }
+
+    public void ApplySessionFailure(
+        RuntimeHostClientFailureCategory category)
+    {
+        if (!Enum.IsDefined(
+                category)
+            || category == RuntimeHostClientFailureCategory.Unspecified)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(category));
+        }
+
+        LastFailureCategory =
+            category;
+        FailureMessage =
+            category switch
+            {
+                RuntimeHostClientFailureCategory.Authentication =>
+                    "Runtime-host authentication failed.",
+                RuntimeHostClientFailureCategory.Authorization =>
+                    "Runtime-host access was denied.",
+                RuntimeHostClientFailureCategory.ApiCompatibility =>
+                    "The runtime-host API version is not supported.",
+                RuntimeHostClientFailureCategory.LocalConfiguration =>
+                    "The client configuration is invalid.",
+                _ =>
+                    "The runtime-host session ended unexpectedly."
+            };
     }
 
     private async void ExecuteDisconnect()

@@ -107,6 +107,49 @@ public sealed class RuntimeHostClientSessionControllerTests
             session.DisposeCount);
     }
 
+    [Fact]
+    public async Task BackgroundFailure_ShouldBeObservedAndReleaseSession()
+    {
+        var failedSession =
+            new StubSession
+            {
+                StreamFailure =
+                    new RuntimeHostClientException(
+                        RuntimeHostClientFailureCategory.Authentication,
+                        "Sensitive diagnostic")
+            };
+        var replacementSession =
+            new StubSession();
+        var factory =
+            new QueueFactory(
+                [failedSession, replacementSession]);
+        var viewModel =
+            new MainWindowViewModel();
+        await using var controller =
+            new RuntimeHostClientSessionController(
+                factory,
+                new RecordingDispatcher(),
+                viewModel);
+
+        await controller.ConnectAsync(
+            @"C:\HASE\client.json");
+        await failedSession.Disposed.Task;
+
+        Assert.Equal(
+            RuntimeHostClientFailureCategory.Authentication,
+            viewModel.LastFailureCategory);
+        Assert.Equal(
+            "Runtime-host authentication failed.",
+            viewModel.FailureMessage);
+        Assert.Equal(
+            1,
+            failedSession.DisposeCount);
+
+        await controller.ConnectAsync(
+            @"C:\HASE\client.json");
+        await replacementSession.StateDelivered.Task;
+    }
+
     private sealed class StubFactory
         : IRuntimeHostClientSessionFactory
     {
@@ -124,6 +167,26 @@ public sealed class RuntimeHostClientSessionControllerTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult(
                 session);
+    }
+
+    private sealed class QueueFactory
+        : IRuntimeHostClientSessionFactory
+    {
+        private readonly Queue<IRuntimeHostClientSession> sessions;
+
+        public QueueFactory(
+            IEnumerable<IRuntimeHostClientSession> sessions)
+        {
+            this.sessions =
+                new Queue<IRuntimeHostClientSession>(
+                    sessions);
+        }
+
+        public Task<IRuntimeHostClientSession> CreateAsync(
+            string configurationFilePath,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                sessions.Dequeue());
     }
 
     private sealed class RecordingDispatcher
@@ -182,6 +245,19 @@ public sealed class RuntimeHostClientSessionControllerTests
             private set;
         }
 
+        public Exception? StreamFailure
+        {
+            get;
+            init;
+        }
+
+        public TaskCompletionSource Disposed
+        {
+            get;
+        } =
+            new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async IAsyncEnumerable<RemoteObservationState> ReadStatesAsync(
             [EnumeratorCancellation]
             CancellationToken cancellationToken = default)
@@ -200,6 +276,11 @@ public sealed class RuntimeHostClientSessionControllerTests
             yield return CurrentState;
             StateDelivered.SetResult();
 
+            if (StreamFailure is not null)
+            {
+                throw StreamFailure;
+            }
+
             try
             {
                 await Task.Delay(
@@ -216,6 +297,7 @@ public sealed class RuntimeHostClientSessionControllerTests
         public ValueTask DisposeAsync()
         {
             DisposeCount++;
+            Disposed.TrySetResult();
             return ValueTask.CompletedTask;
         }
 

@@ -288,6 +288,23 @@ public sealed class MainWindowViewModelTests
                         null)));
     }
 
+    [Fact]
+    public void ApplySessionFailure_ShouldPreserveCategoryAndRedactDiagnostic()
+    {
+        var viewModel =
+            new MainWindowViewModel();
+
+        viewModel.ApplySessionFailure(
+            RuntimeHostClientFailureCategory.Authentication);
+
+        Assert.Equal(
+            RuntimeHostClientFailureCategory.Authentication,
+            viewModel.LastFailureCategory);
+        Assert.Equal(
+            "Runtime-host authentication failed.",
+            viewModel.FailureMessage);
+    }
+
     [Theory]
     [InlineData(
         RuntimeHostClientSessionState.Connecting,
