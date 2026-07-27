@@ -8,7 +8,8 @@ namespace Hase.Client.Grpc;
 /// observation failures.
 /// </summary>
 public sealed class RuntimeHostGrpcRecoveringClientSession
-    : IRuntimeHostClientSession
+    : IRuntimeHostClientSession,
+      IRuntimeHostPropertyReader
 {
     private readonly object gate =
         new();
@@ -22,6 +23,7 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         new(
             RuntimeHostClientSessionState.Disconnected);
     private RemoteObservationState? currentState;
+    private IRuntimeHostGrpcRecoverableSession? activeSession;
     private bool started;
     private bool disposed;
 
@@ -163,6 +165,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
                     {
                         currentState =
                             initialState;
+                        activeSession =
+                            session;
                     }
 
                     SetStatus(
@@ -216,6 +220,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
 
                 if (session is not null)
                 {
+                    ClearActiveSession(
+                        session);
                     await session.DisposeAsync()
                         .ConfigureAwait(
                             false);
@@ -271,6 +277,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
             {
                 if (session is not null)
                 {
+                    ClearActiveSession(
+                        session);
                     await session.DisposeAsync()
                         .ConfigureAwait(
                             false);
@@ -297,6 +305,65 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         SetDisconnected();
 
         return ValueTask.CompletedTask;
+    }
+
+    public async Task<RemotePropertyOperationResult> ReadPropertyAsync(
+        RemotePropertyTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+
+        IRuntimeHostGrpcRecoverableSession session;
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            session =
+                activeSession
+                ?? throw new RuntimeHostClientException(
+                    RuntimeHostClientFailureCategory.TransportUnavailable,
+                    "The runtime-host session is not connected.");
+        }
+
+        if (session is not IRuntimeHostPropertyReader reader)
+        {
+            throw new NotSupportedException(
+                "The connected runtime-host session does not support "
+                + "authoritative Property reads.");
+        }
+
+        try
+        {
+            return await reader.ReadPropertyAsync(
+                    target,
+                    cancellationToken)
+                .ConfigureAwait(
+                    false);
+        }
+        catch (Exception exception)
+        {
+            throw failureMapper.Map(
+                exception);
+        }
+    }
+
+    private void ClearActiveSession(
+        IRuntimeHostGrpcRecoverableSession session)
+    {
+        lock (gate)
+        {
+            if (ReferenceEquals(
+                    activeSession,
+                    session))
+            {
+                activeSession =
+                    null;
+            }
+        }
     }
 
     private void SetStatus(

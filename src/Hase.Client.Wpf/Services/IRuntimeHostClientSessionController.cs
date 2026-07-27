@@ -8,4 +8,8 @@ public interface IRuntimeHostClientSessionController
         CancellationToken cancellationToken = default);
 
     Task DisconnectAsync();
+
+    Task<RemotePropertyOperationResult> ReadPropertyAsync(
+        RemotePropertyTarget target,
+        CancellationToken cancellationToken = default);
 }

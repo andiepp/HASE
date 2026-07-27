@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Hase.Runtime.Remote.Grpc.Hosting;
+using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Client.Grpc;
 
@@ -13,7 +14,8 @@ namespace Hase.Client.Grpc;
 /// immutable normalized state.
 /// </remarks>
 public sealed class RuntimeHostGrpcClientSession
-    : IRuntimeHostGrpcRecoverableSession
+    : IRuntimeHostGrpcRecoverableSession,
+      IRuntimeHostPropertyReader
 {
     private readonly object gate =
         new();
@@ -241,6 +243,55 @@ public sealed class RuntimeHostGrpcClientSession
         }
     }
 
+    public async Task<RemotePropertyOperationResult> ReadPropertyAsync(
+        RemotePropertyTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+
+        IRuntimeHostGrpcSessionResources activeResources;
+
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            if (status.State
+                != RuntimeHostClientSessionState.Connected)
+            {
+                throw new InvalidOperationException(
+                    "An authoritative Property read requires a connected "
+                    + "runtime-host session.");
+            }
+
+            activeResources =
+                resources
+                ?? throw new InvalidOperationException(
+                    "The connected runtime-host session has no active "
+                    + "resources.");
+        }
+
+        var mapper =
+            new RuntimeHostGrpcPropertyMapper();
+        using var operationCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                sessionCancellation.Token);
+
+        GrpcV1.PropertyOperationResult result =
+            await activeResources.PropertyClient.ReadPropertyAsync(
+                    mapper.MapRequest(
+                        target),
+                    operationCancellation.Token)
+                .ConfigureAwait(
+                    false);
+
+        return mapper.MapResult(
+            result);
+    }
+
     /// <summary>
     /// Disconnects and disposes the connected resources in ownership order.
     /// </summary>
@@ -453,6 +504,11 @@ internal interface IRuntimeHostGrpcSessionResources
     {
         get;
     }
+
+    IRuntimeHostGrpcPropertyClient PropertyClient
+    {
+        get;
+    }
 }
 
 internal interface IRuntimeHostGrpcRecoverableSession
@@ -487,20 +543,27 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
 {
     private readonly RuntimeHostPrivateNetworkClientDeployment deployment;
     private readonly RuntimeHostGrpcObservationStream observationStream;
+    private readonly RuntimeHostGrpcPropertyClient propertyClient;
     private bool disposed;
 
     private RuntimeHostPrivateNetworkSessionResources(
         RuntimeHostPrivateNetworkClientDeployment deployment,
-        RuntimeHostGrpcObservationStream observationStream)
+        RuntimeHostGrpcObservationStream observationStream,
+        RuntimeHostGrpcPropertyClient propertyClient)
     {
         this.deployment =
             deployment;
         this.observationStream =
             observationStream;
+        this.propertyClient =
+            propertyClient;
     }
 
     public IRemoteObservationStream ObservationStream =>
         observationStream;
+
+    public IRuntimeHostGrpcPropertyClient PropertyClient =>
+        propertyClient;
 
     public static RuntimeHostPrivateNetworkSessionResources Create(
         RuntimeHostPrivateNetworkClientOptions options)
@@ -514,6 +577,8 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
             return new RuntimeHostPrivateNetworkSessionResources(
                 deployment,
                 new RuntimeHostGrpcObservationStream(
+                    deployment.Client.Client),
+                new RuntimeHostGrpcPropertyClient(
                     deployment.Client.Client));
         }
         catch

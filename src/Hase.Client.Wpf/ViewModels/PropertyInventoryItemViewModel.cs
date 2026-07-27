@@ -11,4 +11,6 @@ public sealed record PropertyInventoryItemViewModel(
     string Value,
     string? TimestampUtc,
     string? Quality,
-    bool IsStale);
+    bool IsStale,
+    bool SupportsRead,
+    bool CanRead);

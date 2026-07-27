@@ -145,6 +145,10 @@ public sealed class RuntimeHostInventoryProjectorTests
             property.Target.Attachment);
         Assert.False(
             property.IsStale);
+        Assert.True(
+            property.SupportsRead);
+        Assert.True(
+            property.CanRead);
     }
 
     [Fact]

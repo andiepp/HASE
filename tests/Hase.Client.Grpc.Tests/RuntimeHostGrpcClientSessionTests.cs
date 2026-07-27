@@ -330,6 +330,12 @@ public sealed class RuntimeHostGrpcClientSessionTests
         public IRemoteObservationStream ObservationStream =>
             observationStream;
 
+        public IRuntimeHostGrpcPropertyClient PropertyClient
+        {
+            get;
+        } =
+            new StubPropertyClient();
+
         public CancellationToken InitialCancellationToken =>
             observationStream.InitialCancellationToken;
 
@@ -366,6 +372,20 @@ public sealed class RuntimeHostGrpcClientSessionTests
             DisposeCount++;
 
             return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class StubPropertyClient
+        : IRuntimeHostGrpcPropertyClient
+    {
+        public Task<
+            Hase.Runtime.Remote.Grpc.V1.PropertyOperationResult>
+            ReadPropertyAsync(
+                Hase.Runtime.Remote.Grpc.V1
+                    .ReadAuthoritativePropertyRequest request,
+                CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
         }
     }
 

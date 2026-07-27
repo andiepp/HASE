@@ -148,6 +148,51 @@ public sealed class RuntimeHostClientSessionController
         }
     }
 
+    public async Task<RemotePropertyOperationResult> ReadPropertyAsync(
+        RemotePropertyTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            target);
+
+        IRuntimeHostClientSession activeSession;
+
+        await gate.WaitAsync(
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+
+        try
+        {
+            ObjectDisposedException.ThrowIf(
+                disposed,
+                this);
+
+            activeSession =
+                session
+                ?? throw new InvalidOperationException(
+                    "An authoritative Property read requires an active "
+                    + "runtime-host client session.");
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        if (activeSession is not IRuntimeHostPropertyReader reader)
+        {
+            throw new NotSupportedException(
+                "The active runtime-host client session does not support "
+                + "authoritative Property reads.");
+        }
+
+        return await reader.ReadPropertyAsync(
+                target,
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync()

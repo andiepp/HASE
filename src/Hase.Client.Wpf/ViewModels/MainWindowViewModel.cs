@@ -1,4 +1,5 @@
-﻿using Hase.Client.Wpf.Services;
+﻿using System.IO;
+using Hase.Client.Wpf.Services;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -23,6 +24,11 @@ public sealed class MainWindowViewModel
     private RuntimeHostClientFailureCategory? lastFailureCategory;
     private IReadOnlyList<EndpointInventoryItemViewModel> endpoints =
         [];
+    private readonly Dictionary<
+        RemotePropertyTarget,
+        RemotePropertyValue> confirmedReads =
+        [];
+    private string? propertyReadMessage;
 
     public MainWindowViewModel()
     {
@@ -40,6 +46,15 @@ public sealed class MainWindowViewModel
                     sessionController is not null
                     && !IsBusy
                     && CanDisconnect);
+        ReadPropertyCommand =
+            new DelegateCommand<PropertyInventoryItemViewModel>(
+                ExecuteReadProperty,
+                property =>
+                    property is not null
+                    && sessionController is not null
+                    && IsOperational
+                    && !IsBusy
+                    && property.CanRead);
     }
 
     public string Title =>
@@ -116,6 +131,16 @@ public sealed class MainWindowViewModel
                 value);
     }
 
+    public string? PropertyReadMessage
+    {
+        get =>
+            propertyReadMessage;
+        private set =>
+            SetProperty(
+                ref propertyReadMessage,
+                value);
+    }
+
     public RuntimeHostClientFailureCategory? LastFailureCategory
     {
         get =>
@@ -132,6 +157,12 @@ public sealed class MainWindowViewModel
     }
 
     public DelegateCommand DisconnectCommand
+    {
+        get;
+    }
+
+    public DelegateCommand<PropertyInventoryItemViewModel>
+        ReadPropertyCommand
     {
         get;
     }
@@ -195,10 +226,12 @@ public sealed class MainWindowViewModel
             ref currentState,
             value,
             nameof(CurrentState));
+        confirmedReads.Clear();
         SetProperty(
             ref endpoints,
             RuntimeHostInventoryProjector.Project(
-                value),
+                value,
+                confirmedReads),
             nameof(Endpoints));
         RaisePropertyChanged(
             nameof(EndpointCount));
@@ -280,6 +313,80 @@ public sealed class MainWindowViewModel
         }
     }
 
+    public async Task ReadPropertyAsync(
+        PropertyInventoryItemViewModel property)
+    {
+        ArgumentNullException.ThrowIfNull(
+            property);
+
+        if (sessionController is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        if (!IsOperational
+            || !property.CanRead)
+        {
+            return;
+        }
+
+        IsBusy =
+            true;
+        PropertyReadMessage =
+            $"Reading {property.DisplayName}...";
+
+        try
+        {
+            RemotePropertyOperationResult result =
+                await sessionController.ReadPropertyAsync(
+                        property.Target)
+                    .ConfigureAwait(
+                        true);
+
+            if (result.IsSuccess)
+            {
+                RemotePropertyValue confirmedValue =
+                    result.ConfirmedValue
+                    ?? throw new InvalidDataException(
+                        "A successful Property read has no confirmed value.");
+                confirmedReads[property.Target] =
+                    confirmedValue;
+                SetProperty(
+                    ref endpoints,
+                    RuntimeHostInventoryProjector.Project(
+                        currentState,
+                        confirmedReads),
+                    nameof(Endpoints));
+                PropertyReadMessage =
+                    $"{property.DisplayName}: endpoint-confirmed value "
+                    + "received.";
+            }
+            else
+            {
+                PropertyReadMessage =
+                    $"{property.DisplayName}: read failed "
+                    + $"({result.Status}).";
+            }
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            PropertyReadMessage =
+                $"{property.DisplayName}: read failed "
+                + $"({exception.Category}).";
+        }
+        catch
+        {
+            PropertyReadMessage =
+                $"{property.DisplayName}: read failed.";
+        }
+        finally
+        {
+            IsBusy =
+                false;
+        }
+    }
+
     private async void ExecuteConnect()
     {
         await ConnectAsync();
@@ -319,9 +426,20 @@ public sealed class MainWindowViewModel
         await DisconnectAsync();
     }
 
+    private async void ExecuteReadProperty(
+        PropertyInventoryItemViewModel? property)
+    {
+        if (property is not null)
+        {
+            await ReadPropertyAsync(
+                property);
+        }
+    }
+
     private void RaiseCommandStateChanged()
     {
         ConnectCommand.RaiseCanExecuteChanged();
         DisconnectCommand.RaiseCanExecuteChanged();
+        ReadPropertyCommand.RaiseCanExecuteChanged();
     }
 }

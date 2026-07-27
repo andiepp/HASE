@@ -293,6 +293,75 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ReadPropertyAsync_ConnectedReadableProperty_ShouldUseExactTarget()
+    {
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new Hase.Core.Domain.Identity.EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "4f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new Hase.Core.Domain.Identity.InstrumentId(
+                    "instrument-01"),
+                new Hase.Core.Domain.Identity.PropertyId(
+                    "property-01"));
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromNumeric(
+                                22.5),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                27,
+                                13,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                "property-01",
+                "Environment.Temperature",
+                "Temperature",
+                "Read",
+                "Numeric",
+                "°C",
+                "No cached value",
+                null,
+                null,
+                false,
+                true,
+                true);
+
+        await viewModel.ReadPropertyAsync(
+            property);
+
+        Assert.Same(
+            target,
+            controller.ReadTarget);
+        Assert.Equal(
+            "Temperature: endpoint-confirmed value received.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
     public void Configure_SecondCall_ShouldThrow()
     {
         var viewModel =
@@ -419,6 +488,18 @@ public sealed class MainWindowViewModelTests
             private set;
         }
 
+        public RemotePropertyOperationResult? ReadResult
+        {
+            get;
+            init;
+        }
+
+        public RemotePropertyTarget? ReadTarget
+        {
+            get;
+            private set;
+        }
+
         public Task ConnectAsync(
             string configurationFilePath,
             CancellationToken cancellationToken = default)
@@ -436,6 +517,19 @@ public sealed class MainWindowViewModelTests
         {
             DisconnectCount++;
             return Task.CompletedTask;
+        }
+
+        public Task<RemotePropertyOperationResult> ReadPropertyAsync(
+            RemotePropertyTarget target,
+            CancellationToken cancellationToken = default)
+        {
+            ReadTarget =
+                target;
+
+            return Task.FromResult(
+                ReadResult
+                ?? RemotePropertyOperationResult.Failed(
+                    RemotePropertyOperationStatus.EndpointUnavailable));
         }
 
         public ValueTask DisposeAsync() =>

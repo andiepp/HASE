@@ -7,7 +7,10 @@ namespace Hase.Client.Wpf.Services;
 public static class RuntimeHostInventoryProjector
 {
     public static IReadOnlyList<EndpointInventoryItemViewModel> Project(
-        RemoteObservationState state)
+        RemoteObservationState state,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            RemotePropertyValue>? confirmedReads = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -40,7 +43,8 @@ public static class RuntimeHostInventoryProjector
                                                         state,
                                                         attachment,
                                                         instrument.Id,
-                                                        property))
+                                                        property,
+                                                        confirmedReads))
                                             .ToArray()))
                             .ToArray()))
             .ToArray()
@@ -51,7 +55,10 @@ public static class RuntimeHostInventoryProjector
         RemoteObservationState state,
         RemoteEndpointAttachmentSnapshot attachment,
         Hase.Core.Domain.Identity.InstrumentId instrumentId,
-        Hase.Core.Domain.Properties.PropertyDescriptor property)
+        Hase.Core.Domain.Properties.PropertyDescriptor property,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            RemotePropertyValue>? confirmedReads)
     {
         var target =
             new RemotePropertyTarget(
@@ -61,6 +68,22 @@ public static class RuntimeHostInventoryProjector
         state.PropertyValues.TryGetValue(
             target,
             out RemotePropertyValue? cached);
+        if (confirmedReads is not null
+            && confirmedReads.TryGetValue(
+                target,
+                out RemotePropertyValue? confirmed))
+        {
+            cached =
+                confirmed;
+        }
+
+        bool endpointReady =
+            attachment.ConnectionStatus.State
+            == RemoteEndpointConnectionState.Ready;
+        bool readable =
+            property.AccessMode is
+                Hase.Core.Domain.Properties.PropertyAccessMode.Read
+                or Hase.Core.Domain.Properties.PropertyAccessMode.ReadWrite;
 
         return new PropertyInventoryItemViewModel(
             target,
@@ -88,8 +111,10 @@ public static class RuntimeHostInventoryProjector
                 "O",
                 CultureInfo.InvariantCulture),
             cached?.Quality.ToString(),
-            attachment.ConnectionStatus.State
-                != RemoteEndpointConnectionState.Ready);
+            !endpointReady,
+            readable,
+            endpointReady
+                && readable);
     }
 
     private static string FormatValue(
