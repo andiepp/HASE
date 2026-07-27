@@ -12,6 +12,8 @@ public sealed class MainWindowViewModel
     private RuntimeHostClientSessionStatus sessionStatus =
         new(
             RuntimeHostClientSessionState.Disconnected);
+    private RemoteObservationState currentState =
+        RemoteObservationState.Empty;
 
     public string Title =>
         "HASE Laptop Client";
@@ -49,6 +51,13 @@ public sealed class MainWindowViewModel
         sessionStatus.State
             == RuntimeHostClientSessionState.Reconnecting;
 
+    public RemoteObservationState CurrentState =>
+        currentState;
+
+    public int EndpointCount =>
+        currentState.Snapshot?.Attachments.Count
+        ?? 0;
+
     public void ApplySessionStatus(
         RuntimeHostClientSessionStatus value)
     {
@@ -73,5 +82,19 @@ public sealed class MainWindowViewModel
             nameof(IsOperational));
         RaisePropertyChanged(
             nameof(IsStale));
+    }
+
+    public void ApplyObservationState(
+        RemoteObservationState value)
+    {
+        ArgumentNullException.ThrowIfNull(
+            value);
+
+        SetProperty(
+            ref currentState,
+            value,
+            nameof(CurrentState));
+        RaisePropertyChanged(
+            nameof(EndpointCount));
     }
 }

@@ -161,6 +161,35 @@ public sealed class MainWindowViewModelTests
                     null!));
     }
 
+    [Fact]
+    public void ApplyObservationState_ShouldExposeStateAndEndpointCount()
+    {
+        var viewModel =
+            new MainWindowViewModel();
+
+        viewModel.ApplyObservationState(
+            RemoteObservationState.Empty);
+
+        Assert.Same(
+            RemoteObservationState.Empty,
+            viewModel.CurrentState);
+        Assert.Equal(
+            0,
+            viewModel.EndpointCount);
+    }
+
+    [Fact]
+    public void ApplyObservationState_Null_ShouldThrow()
+    {
+        var viewModel =
+            new MainWindowViewModel();
+
+        Assert.Throws<ArgumentNullException>(
+            () =>
+                viewModel.ApplyObservationState(
+                    null!));
+    }
+
     [Theory]
     [InlineData(
         RuntimeHostClientSessionState.Connecting,
