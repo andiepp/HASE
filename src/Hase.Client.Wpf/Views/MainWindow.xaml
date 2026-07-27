@@ -44,6 +44,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="12" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="20" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock FontWeight="SemiBold" Text="Session state" />
@@ -66,14 +68,36 @@
                     Grid.Row="4"
                     Grid.Column="1"
                     Text="{Binding ApiVersion}" />
+
+                <StackPanel
+                    Grid.Row="6"
+                    Grid.ColumnSpan="2"
+                    Orientation="Horizontal">
+                    <Button
+                        MinWidth="100"
+                        Padding="16,8"
+                        Command="{Binding ConnectCommand}"
+                        Content="Connect" />
+                    <Button
+                        MinWidth="100"
+                        Margin="12,0,0,0"
+                        Padding="16,8"
+                        Command="{Binding DisconnectCommand}"
+                        Content="Disconnect" />
+                </StackPanel>
             </Grid>
         </Border>
 
-        <TextBlock
-            Grid.Row="3"
-            Margin="0,32,0,0"
-            Foreground="#FF666666"
-            Text="Connection configuration and endpoint inventory will be added in the next reviewed increments."
-            TextWrapping="Wrap" />
+        <StackPanel Grid.Row="3" Margin="0,32,0,0">
+            <TextBlock
+                Foreground="#FFB00020"
+                Text="{Binding FailureMessage}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Margin="0,12,0,0"
+                Foreground="#FF666666"
+                Text="Endpoint inventory will be added in the next reviewed increment."
+                TextWrapping="Wrap" />
+        </StackPanel>
     </Grid>
 </Window>

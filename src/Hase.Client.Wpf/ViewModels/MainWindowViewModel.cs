@@ -1,4 +1,6 @@
-﻿using Prism.Mvvm;
+﻿using Hase.Client.Wpf.Services;
+using Prism.Commands;
+using Prism.Mvvm;
 
 namespace Hase.Client.Wpf.ViewModels;
 
@@ -14,6 +16,28 @@ public sealed class MainWindowViewModel
             RuntimeHostClientSessionState.Disconnected);
     private RemoteObservationState currentState =
         RemoteObservationState.Empty;
+    private IRuntimeHostClientSessionController? sessionController;
+    private IClientConfigurationFilePicker? configurationFilePicker;
+    private bool isBusy;
+    private string? failureMessage;
+
+    public MainWindowViewModel()
+    {
+        ConnectCommand =
+            new DelegateCommand(
+                ExecuteConnect,
+                () =>
+                    sessionController is not null
+                    && !IsBusy
+                    && CanConnect);
+        DisconnectCommand =
+            new DelegateCommand(
+                ExecuteDisconnect,
+                () =>
+                    sessionController is not null
+                    && !IsBusy
+                    && CanDisconnect);
+    }
 
     public string Title =>
         "HASE Laptop Client";
@@ -58,6 +82,63 @@ public sealed class MainWindowViewModel
         currentState.Snapshot?.Attachments.Count
         ?? 0;
 
+    public bool IsBusy
+    {
+        get =>
+            isBusy;
+        private set
+        {
+            if (SetProperty(
+                    ref isBusy,
+                    value))
+            {
+                RaiseCommandStateChanged();
+            }
+        }
+    }
+
+    public string? FailureMessage
+    {
+        get =>
+            failureMessage;
+        private set =>
+            SetProperty(
+                ref failureMessage,
+                value);
+    }
+
+    public DelegateCommand ConnectCommand
+    {
+        get;
+    }
+
+    public DelegateCommand DisconnectCommand
+    {
+        get;
+    }
+
+    public void Configure(
+        IRuntimeHostClientSessionController controller,
+        IClientConfigurationFilePicker filePicker)
+    {
+        ArgumentNullException.ThrowIfNull(
+            controller);
+        ArgumentNullException.ThrowIfNull(
+            filePicker);
+
+        if (sessionController is not null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are already configured.");
+        }
+
+        sessionController =
+            controller;
+        configurationFilePicker =
+            filePicker;
+        RaiseCommandStateChanged();
+    }
+
     public void ApplySessionStatus(
         RuntimeHostClientSessionStatus value)
     {
@@ -82,6 +163,7 @@ public sealed class MainWindowViewModel
             nameof(IsOperational));
         RaisePropertyChanged(
             nameof(IsStale));
+        RaiseCommandStateChanged();
     }
 
     public void ApplyObservationState(
@@ -96,5 +178,93 @@ public sealed class MainWindowViewModel
             nameof(CurrentState));
         RaisePropertyChanged(
             nameof(EndpointCount));
+    }
+
+    public async Task ConnectAsync()
+    {
+        if (sessionController is null
+            || configurationFilePicker is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        string? configurationFilePath =
+            configurationFilePicker.PickConfigurationFile();
+
+        if (configurationFilePath is null)
+        {
+            return;
+        }
+
+        IsBusy =
+            true;
+        FailureMessage =
+            null;
+
+        try
+        {
+            await sessionController.ConnectAsync(
+                    configurationFilePath)
+                .ConfigureAwait(
+                    true);
+        }
+        catch
+        {
+            FailureMessage =
+                "The runtime-host connection could not be started.";
+        }
+        finally
+        {
+            IsBusy =
+                false;
+        }
+    }
+
+    public async Task DisconnectAsync()
+    {
+        if (sessionController is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        IsBusy =
+            true;
+        FailureMessage =
+            null;
+
+        try
+        {
+            await sessionController.DisconnectAsync()
+                .ConfigureAwait(
+                    true);
+        }
+        catch
+        {
+            FailureMessage =
+                "The runtime-host connection could not be stopped cleanly.";
+        }
+        finally
+        {
+            IsBusy =
+                false;
+        }
+    }
+
+    private async void ExecuteConnect()
+    {
+        await ConnectAsync();
+    }
+
+    private async void ExecuteDisconnect()
+    {
+        await DisconnectAsync();
+    }
+
+    private void RaiseCommandStateChanged()
+    {
+        ConnectCommand.RaiseCanExecuteChanged();
+        DisconnectCommand.RaiseCanExecuteChanged();
     }
 }

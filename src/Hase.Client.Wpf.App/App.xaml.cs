@@ -16,6 +16,10 @@ public partial class App
     {
         sessionController =
             Container.Resolve<RuntimeHostClientSessionController>();
+        Container.Resolve<MainWindowViewModel>()
+            .Configure(
+                sessionController,
+                Container.Resolve<IClientConfigurationFilePicker>());
 
         return Container.Resolve<MainWindow>();
     }
@@ -29,6 +33,9 @@ public partial class App
         containerRegistry.RegisterInstance<IClientUiDispatcher>(
             RuntimeHostClientComposition.CreateDispatcher(
                 Dispatcher));
+        containerRegistry.RegisterSingleton<
+            IClientConfigurationFilePicker,
+            WpfClientConfigurationFilePicker>();
         containerRegistry.RegisterSingleton<
             RuntimeHostClientSessionController>();
     }

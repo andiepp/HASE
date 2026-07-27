@@ -1,4 +1,5 @@
-﻿using Hase.Client.Wpf.ViewModels;
+﻿using Hase.Client.Wpf.Services;
+using Hase.Client.Wpf.ViewModels;
 
 namespace Hase.Client.Wpf.Tests;
 
@@ -190,6 +191,103 @@ public sealed class MainWindowViewModelTests
                     null!));
     }
 
+    [Fact]
+    public async Task ConnectAsync_SelectedConfiguration_ShouldUseController()
+    {
+        var controller =
+            new StubController();
+        var viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                @"C:\HASE\client.json");
+
+        await viewModel.ConnectAsync();
+
+        Assert.Equal(
+            @"C:\HASE\client.json",
+            controller.ConfigurationFilePath);
+        Assert.Null(
+            viewModel.FailureMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_CancelledSelection_ShouldNotConnect()
+    {
+        var controller =
+            new StubController();
+        var viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+
+        await viewModel.ConnectAsync();
+
+        Assert.Null(
+            controller.ConfigurationFilePath);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_Failure_ShouldExposeGenericMessage()
+    {
+        var controller =
+            new StubController
+            {
+                ConnectFailure =
+                    new InvalidDataException(
+                        "Secret path and thumbprint")
+            };
+        var viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                @"C:\Secret\client.json");
+
+        await viewModel.ConnectAsync();
+
+        Assert.Equal(
+            "The runtime-host connection could not be started.",
+            viewModel.FailureMessage);
+        Assert.DoesNotContain(
+            "Secret",
+            viewModel.FailureMessage);
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_ShouldUseController()
+    {
+        var controller =
+            new StubController();
+        var viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+
+        await viewModel.DisconnectAsync();
+
+        Assert.Equal(
+            1,
+            controller.DisconnectCount);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
+    public void Configure_SecondCall_ShouldThrow()
+    {
+        var viewModel =
+            CreateConfiguredViewModel(
+                new StubController(),
+                null);
+
+        Assert.Throws<InvalidOperationException>(
+            () =>
+                viewModel.Configure(
+                    new StubController(),
+                    new StubFilePicker(
+                        null)));
+    }
+
     [Theory]
     [InlineData(
         RuntimeHostClientSessionState.Connecting,
@@ -232,4 +330,78 @@ public sealed class MainWindowViewModelTests
             new RuntimeHostClientApiVersion(
                 1,
                 0));
+
+    private static MainWindowViewModel CreateConfiguredViewModel(
+        StubController controller,
+        string? configurationFilePath)
+    {
+        var viewModel =
+            new MainWindowViewModel();
+        viewModel.Configure(
+            controller,
+            new StubFilePicker(
+                configurationFilePath));
+
+        return viewModel;
+    }
+
+    private sealed class StubFilePicker
+        : IClientConfigurationFilePicker
+    {
+        private readonly string? configurationFilePath;
+
+        public StubFilePicker(
+            string? configurationFilePath)
+        {
+            this.configurationFilePath =
+                configurationFilePath;
+        }
+
+        public string? PickConfigurationFile() =>
+            configurationFilePath;
+    }
+
+    private sealed class StubController
+        : IRuntimeHostClientSessionController
+    {
+        public Exception? ConnectFailure
+        {
+            get;
+            init;
+        }
+
+        public string? ConfigurationFilePath
+        {
+            get;
+            private set;
+        }
+
+        public int DisconnectCount
+        {
+            get;
+            private set;
+        }
+
+        public Task ConnectAsync(
+            string configurationFilePath,
+            CancellationToken cancellationToken = default)
+        {
+            ConfigurationFilePath =
+                configurationFilePath;
+
+            return ConnectFailure is null
+                ? Task.CompletedTask
+                : Task.FromException(
+                    ConnectFailure);
+        }
+
+        public Task DisconnectAsync()
+        {
+            DisconnectCount++;
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() =>
+            ValueTask.CompletedTask;
+    }
 }

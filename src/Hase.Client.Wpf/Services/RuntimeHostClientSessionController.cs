@@ -7,7 +7,7 @@ namespace Hase.Client.Wpf.Services;
 /// onto the WPF UI thread.
 /// </summary>
 public sealed class RuntimeHostClientSessionController
-    : IAsyncDisposable
+    : IRuntimeHostClientSessionController
 {
     private readonly SemaphoreSlim gate =
         new(
