@@ -99,16 +99,21 @@
             </Grid>
         </Border>
 
-        <StackPanel Grid.Row="3" Margin="0,32,0,0">
-            <TextBlock
-                Foreground="#FFB00020"
-                Text="{Binding FailureMessage}"
-                TextWrapping="Wrap" />
-            <TextBlock
-                Margin="0,12,0,0"
-                Foreground="#FF666666"
-                Text="No endpoints are currently published."
-                TextWrapping="Wrap">
+        <ScrollViewer
+            Grid.Row="3"
+            Margin="0,32,0,0"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock
+                    Foreground="#FFB00020"
+                    Text="{Binding FailureMessage}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,12,0,0"
+                    Foreground="#FF666666"
+                    Text="No endpoints are currently published."
+                    TextWrapping="Wrap">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">
                         <Style.Triggers>
@@ -118,10 +123,10 @@
                         </Style.Triggers>
                     </Style>
                 </TextBlock.Style>
-            </TextBlock>
-            <ItemsControl
-                Margin="0,12,0,0"
-                ItemsSource="{Binding Endpoints}">
+                </TextBlock>
+                <ItemsControl
+                    Margin="0,12,0,0"
+                    ItemsSource="{Binding Endpoints}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border
@@ -143,11 +148,31 @@
                                     ItemsSource="{Binding Instruments}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock>
-                                                <Run Text="{Binding Name}" />
-                                                <Run Text=" — " />
-                                                <Run Text="{Binding Kind}" />
-                                            </TextBlock>
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="{Binding Name}" />
+                                                    <Run Text=" — " />
+                                                    <Run Text="{Binding Kind}" />
+                                                </TextBlock>
+                                                <ItemsControl
+                                                    Margin="16,4,0,8"
+                                                    ItemsSource="{Binding Properties}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Margin="0,2">
+                                                                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                                                                <TextBlock Text="{Binding Path, StringFormat='Path: {0}'}" />
+                                                                <TextBlock Text="{Binding AccessMode, StringFormat='Access: {0}'}" />
+                                                                <TextBlock Text="{Binding DataType, StringFormat='Type: {0}'}" />
+                                                                <TextBlock Text="{Binding Unit, StringFormat='Unit: {0}'}" />
+                                                                <TextBlock Text="{Binding Value, StringFormat='Value: {0}'}" />
+                                                                <TextBlock Text="{Binding TimestampUtc, StringFormat='UTC: {0}'}" />
+                                                                <TextBlock Text="{Binding Quality, StringFormat='Quality: {0}'}" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
@@ -155,7 +180,8 @@
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>

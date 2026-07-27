@@ -1,13 +1,25 @@
 ﻿using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.Client.Wpf.Tests;
 
 public sealed class RuntimeHostInventoryProjectorTests
 {
+    [Fact]
+    public void Project_NullState_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "state",
+            () =>
+                RuntimeHostInventoryProjector.Project(
+                    null!));
+    }
+
     [Fact]
     public void Project_EmptyState_ShouldReturnEmptyInventory()
     {
@@ -28,7 +40,25 @@ public sealed class RuntimeHostInventoryProjectorTests
                     "sensor-01"),
                 "Environment Sensor",
                 new InstrumentKind(
-                    "Sensor"));
+                    "Sensor"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            new PropertyDescriptor(
+                                new PropertyId(
+                                    "temperature"),
+                                DescriptorPath.Parse(
+                                    "Environment.Temperature"),
+                                "Temperature",
+                                new StringDataDescriptor())
+                            {
+                                AccessMode =
+                                    PropertyAccessMode.Read
+                            }
+                        ])
+            };
         var descriptor =
             new EndpointDescriptor(
                 new EndpointId(
@@ -88,5 +118,26 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             "Environment Sensor",
             projectedInstrument.Name);
+        PropertyInventoryItemViewModel property =
+            Assert.Single(
+                projectedInstrument.Properties);
+        Assert.Equal(
+            "temperature",
+            property.PropertyId);
+        Assert.Equal(
+            "Environment.Temperature",
+            property.Path);
+        Assert.Equal(
+            "Read",
+            property.AccessMode);
+        Assert.Equal(
+            "String",
+            property.DataType);
+        Assert.Equal(
+            "No cached value",
+            property.Value);
+        Assert.Equal(
+            endpoint.Key,
+            property.Target.Attachment);
     }
 }
