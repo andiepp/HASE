@@ -109,6 +109,10 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             "Ready",
             endpoint.ConnectionState);
+        Assert.True(
+            endpoint.IsReady);
+        Assert.False(
+            endpoint.IsStale);
         InstrumentInventoryItemViewModel projectedInstrument =
             Assert.Single(
                 endpoint.Instruments);
@@ -139,5 +143,46 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             endpoint.Key,
             property.Target.Attachment);
+        Assert.False(
+            property.IsStale);
+    }
+
+    [Fact]
+    public void Project_UnavailableEndpoint_ShouldMarkInventoryStale()
+    {
+        var attachment =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "30d9ef89-267a-4de4-9ed1-04848635e6ab")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "endpoint-02")),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Reconnecting));
+        RemoteObservationState state =
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [attachment]),
+                    new RemoteObservationSequence(
+                        1)));
+
+        EndpointInventoryItemViewModel endpoint =
+            Assert.Single(
+                RuntimeHostInventoryProjector.Project(
+                    state));
+
+        Assert.False(
+            endpoint.IsReady);
+        Assert.True(
+            endpoint.IsStale);
+        Assert.Equal(
+            "Reconnecting",
+            endpoint.ConnectionState);
     }
 }

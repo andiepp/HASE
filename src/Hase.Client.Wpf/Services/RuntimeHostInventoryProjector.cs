@@ -22,6 +22,10 @@ public static class RuntimeHostInventoryProjector
                         attachment.Descriptor.Metadata.DisplayName
                             ?? attachment.EndpointId.Value,
                         attachment.ConnectionStatus.State.ToString(),
+                        attachment.ConnectionStatus.State
+                            == RemoteEndpointConnectionState.Ready,
+                        attachment.ConnectionStatus.State
+                            != RemoteEndpointConnectionState.Ready,
                         attachment.Descriptor.Instruments
                             .Select(
                                 instrument =>
@@ -83,7 +87,9 @@ public static class RuntimeHostInventoryProjector
             cached?.TimestampUtc.ToString(
                 "O",
                 CultureInfo.InvariantCulture),
-            cached?.Quality.ToString());
+            cached?.Quality.ToString(),
+            attachment.ConnectionStatus.State
+                != RemoteEndpointConnectionState.Ready);
     }
 
     private static string FormatValue(

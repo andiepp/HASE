@@ -200,6 +200,69 @@ public sealed class RuntimeEndpointConnectionCoordinatorHealthProbeTests
             runtimeEndpoint.ConnectionStatus.State);
     }
 
+    [Fact]
+    public async Task NativeProbeAsync_SilentEndpoint_ShouldFaultTransportAndRuntimeEndpoint()
+    {
+        // Arrange
+        var transportConnection =
+            new NonRespondingDuplexTransportConnection();
+
+        var transportFactory =
+            new TestTransportFactory(
+                transportConnection);
+
+        await using var connectionManager =
+            new TransportConnectionManager(
+                transportFactory);
+
+        RuntimeEndpoint runtimeEndpoint =
+            CreateRuntimeEndpoint();
+
+        var synchronizer =
+            new TestProtocolSynchronizer();
+
+        await using var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                connectionManager,
+                runtimeEndpoint,
+                synchronizer);
+
+        await coordinator.ConnectAsync();
+
+        var probe =
+            new NativeEndpointHealthProbe(
+                coordinator,
+                new NativeEndpointHealthProbeOptions(
+                    probeInterval:
+                        TimeSpan.FromMilliseconds(
+                            10),
+                    probeTimeout:
+                        TimeSpan.FromMilliseconds(
+                            50)));
+
+        // Act
+        Task Act()
+        {
+            return probe.ProbeAsync();
+        }
+
+        // Assert
+        await Assert.ThrowsAsync<TimeoutException>(
+            Act);
+
+        Assert.Equal(
+            1,
+            transportConnection.SendCount);
+
+        Assert.Equal(
+            TransportConnectionState.Faulted,
+            transportConnection.State);
+
+        Assert.Equal(
+            EndpointConnectionState.Faulted,
+            runtimeEndpoint.ConnectionStatus.State);
+    }
+
     private static DiscoverRequest CreateRequest(
         uint correlationId)
     {

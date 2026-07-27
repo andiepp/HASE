@@ -10,4 +10,5 @@ public sealed record PropertyInventoryItemViewModel(
     string? Unit,
     string Value,
     string? TimestampUtc,
-    string? Quality);
+    string? Quality,
+    bool IsStale);

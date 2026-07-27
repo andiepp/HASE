@@ -142,7 +142,20 @@
                                     Text="{Binding DisplayName}" />
                                 <TextBlock Text="{Binding EndpointId, StringFormat='Endpoint: {0}'}" />
                                 <TextBlock Text="{Binding AttachmentGeneration, StringFormat='Generation: {0}'}" />
-                                <TextBlock Text="{Binding ConnectionState, StringFormat='State: {0}'}" />
+                                <TextBlock
+                                    FontWeight="SemiBold"
+                                    Text="{Binding ConnectionState, StringFormat='State: {0}'}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#FFB00020" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsReady}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF147A3D" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <ItemsControl
                                     Margin="16,8,0,0"
                                     ItemsSource="{Binding Instruments}">
@@ -168,6 +181,21 @@
                                                                 <TextBlock Text="{Binding Value, StringFormat='Value: {0}'}" />
                                                                 <TextBlock Text="{Binding TimestampUtc, StringFormat='UTC: {0}'}" />
                                                                 <TextBlock Text="{Binding Quality, StringFormat='Quality: {0}'}" />
+                                                                <TextBlock
+                                                                    Foreground="#FFB06000"
+                                                                    FontWeight="SemiBold"
+                                                                    Text="Retained value — endpoint unavailable">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsStale}" Value="False">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
                                                             </StackPanel>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>

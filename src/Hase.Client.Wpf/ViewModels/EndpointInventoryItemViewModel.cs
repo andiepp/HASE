@@ -6,4 +6,6 @@ public sealed record EndpointInventoryItemViewModel(
     string AttachmentGeneration,
     string DisplayName,
     string ConnectionState,
+    bool IsReady,
+    bool IsStale,
     IReadOnlyList<InstrumentInventoryItemViewModel> Instruments);

@@ -17,6 +17,7 @@ public sealed class RuntimeEndpointConnectionSupervisor
 {
     private readonly RuntimeEndpointConnectionCoordinator _coordinator;
     private readonly IRuntimeEndpointReconnectPolicy _reconnectPolicy;
+    private readonly NativeEndpointHealthProbeOptions _probeOptions;
     private readonly TimeProvider _timeProvider;
 
     private readonly SemaphoreSlim _statusChanged =
@@ -48,6 +49,23 @@ public sealed class RuntimeEndpointConnectionSupervisor
         : this(
             coordinator,
             reconnectPolicy,
+            NativeEndpointHealthProbeOptions.Default,
+            TimeProvider.System)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a runtime endpoint connection supervisor using the system
+    /// time provider and explicit native health-probe options.
+    /// </summary>
+    public RuntimeEndpointConnectionSupervisor(
+        RuntimeEndpointConnectionCoordinator coordinator,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        NativeEndpointHealthProbeOptions probeOptions)
+        : this(
+            coordinator,
+            reconnectPolicy,
+            probeOptions,
             TimeProvider.System)
     {
     }
@@ -59,6 +77,19 @@ public sealed class RuntimeEndpointConnectionSupervisor
         RuntimeEndpointConnectionCoordinator coordinator,
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
         TimeProvider timeProvider)
+        : this(
+            coordinator,
+            reconnectPolicy,
+            NativeEndpointHealthProbeOptions.Default,
+            timeProvider)
+    {
+    }
+
+    internal RuntimeEndpointConnectionSupervisor(
+        RuntimeEndpointConnectionCoordinator coordinator,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        NativeEndpointHealthProbeOptions probeOptions,
+        TimeProvider timeProvider)
     {
         _coordinator =
             coordinator
@@ -69,6 +100,11 @@ public sealed class RuntimeEndpointConnectionSupervisor
             reconnectPolicy
             ?? throw new ArgumentNullException(
                 nameof(reconnectPolicy));
+
+        _probeOptions =
+            probeOptions
+            ?? throw new ArgumentNullException(
+                nameof(probeOptions));
 
         _timeProvider =
             timeProvider
@@ -87,6 +123,12 @@ public sealed class RuntimeEndpointConnectionSupervisor
     /// </summary>
     public IRuntimeEndpointReconnectPolicy ReconnectPolicy =>
         _reconnectPolicy;
+
+    /// <summary>
+    /// Gets the native endpoint health-probe timing.
+    /// </summary>
+    public NativeEndpointHealthProbeOptions ProbeOptions =>
+        _probeOptions;
 
     /// <summary>
     /// Gets the time provider used for recovery timing.
@@ -157,9 +199,15 @@ public sealed class RuntimeEndpointConnectionSupervisor
             await ConnectWithRetryAsync(
                 cancellationToken);
 
+            var healthProbe =
+                new NativeEndpointHealthProbe(
+                    _coordinator,
+                    _probeOptions);
+
             while (true)
             {
-                await WaitForFaultAsync(
+                await MonitorReadyConnectionAsync(
+                    healthProbe,
                     cancellationToken);
 
                 await RecoverWithRetryAsync(
@@ -238,14 +286,47 @@ public sealed class RuntimeEndpointConnectionSupervisor
         }
     }
 
-    private async Task WaitForFaultAsync(
+    private async Task MonitorReadyConnectionAsync(
+        NativeEndpointHealthProbe healthProbe,
         CancellationToken cancellationToken)
     {
         while (_coordinator.RuntimeEndpoint.ConnectionStatus.State
             != EndpointConnectionState.Faulted)
         {
-            await _statusChanged.WaitAsync(
+            bool statusChanged =
+                await _statusChanged.WaitAsync(
+                _probeOptions.ProbeInterval,
                 cancellationToken);
+
+            if (_coordinator.RuntimeEndpoint.ConnectionStatus.State
+                == EndpointConnectionState.Faulted)
+            {
+                return;
+            }
+
+            if (statusChanged)
+            {
+                continue;
+            }
+
+            try
+            {
+                await healthProbe.ProbeAsync(
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch
+            {
+                if (_coordinator.RuntimeEndpoint.ConnectionStatus.State
+                    != EndpointConnectionState.Faulted)
+                {
+                    throw;
+                }
+            }
         }
     }
 
