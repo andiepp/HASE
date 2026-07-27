@@ -11,7 +11,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
     : IRuntimeHostClientSession,
       IRuntimeHostPropertyReader,
       IRuntimeHostPropertyWriter,
-      IRuntimeHostCommandExecutor
+      IRuntimeHostCommandExecutor,
+      IRuntimeHostEventSource
 {
     private readonly object gate =
         new();
@@ -31,6 +32,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
 
     public event EventHandler<
         RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged;
+
+    public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
 
     public RuntimeHostGrpcRecoveringClientSession(
         RuntimeHostPrivateNetworkClientOptions options,
@@ -142,6 +145,11 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
                         sessionFactory()
                         ?? throw new InvalidOperationException(
                             "The recovering session factory returned null.");
+                    if (session is IRuntimeHostEventSource eventSource)
+                    {
+                        eventSource.EventOccurred +=
+                            SessionEventOccurred;
+                    }
                     await session.ConnectAsync(
                             sessionToken)
                         .ConfigureAwait(
@@ -222,6 +230,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
 
                 if (session is not null)
                 {
+                    UnsubscribeEvents(
+                        session);
                     ClearActiveSession(
                         session);
                     await session.DisposeAsync()
@@ -279,6 +289,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
             {
                 if (session is not null)
                 {
+                    UnsubscribeEvents(
+                        session);
                     ClearActiveSession(
                         session);
                     await session.DisposeAsync()
@@ -456,6 +468,25 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
                 activeSession =
                     null;
             }
+        }
+    }
+
+    private void SessionEventOccurred(
+        object? sender,
+        RemoteEventOccurredEventArgs eventArgs)
+    {
+        EventOccurred?.Invoke(
+            this,
+            eventArgs);
+    }
+
+    private void UnsubscribeEvents(
+        IRuntimeHostGrpcRecoverableSession session)
+    {
+        if (session is IRuntimeHostEventSource eventSource)
+        {
+            eventSource.EventOccurred -=
+                SessionEventOccurred;
         }
     }
 

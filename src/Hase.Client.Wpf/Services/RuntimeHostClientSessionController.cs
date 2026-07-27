@@ -72,6 +72,11 @@ public sealed class RuntimeHostClientSessionController
 
             createdSession.StatusChanged +=
                 SessionStatusChanged;
+            if (createdSession is IRuntimeHostEventSource eventSource)
+            {
+                eventSource.EventOccurred +=
+                    SessionEventOccurred;
+            }
             session =
                 createdSession;
             sessionCancellation =
@@ -136,6 +141,11 @@ public sealed class RuntimeHostClientSessionController
         {
             activeSession.StatusChanged -=
                 SessionStatusChanged;
+            if (activeSession is IRuntimeHostEventSource eventSource)
+            {
+                eventSource.EventOccurred -=
+                    SessionEventOccurred;
+            }
             await activeSession.DisposeAsync()
                 .ConfigureAwait(
                     false);
@@ -375,6 +385,16 @@ public sealed class RuntimeHostClientSessionController
                     eventArgs.Current));
     }
 
+    private void SessionEventOccurred(
+        object? sender,
+        RemoteEventOccurredEventArgs eventArgs)
+    {
+        dispatcher.Post(
+            () =>
+                viewModel.ApplyEventOccurred(
+                    eventArgs.Observation));
+    }
+
     private async Task ReleaseCompletedSessionAsync(
         IRuntimeHostClientSession completedSession,
         CancellationTokenSource completedCancellation)
@@ -414,6 +434,11 @@ public sealed class RuntimeHostClientSessionController
 
         completedSession.StatusChanged -=
             SessionStatusChanged;
+        if (completedSession is IRuntimeHostEventSource eventSource)
+        {
+            eventSource.EventOccurred -=
+                SessionEventOccurred;
+        }
         await completedSession.DisposeAsync()
             .ConfigureAwait(
                 false);

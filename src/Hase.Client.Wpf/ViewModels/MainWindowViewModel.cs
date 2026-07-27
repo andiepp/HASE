@@ -12,6 +12,8 @@ namespace Hase.Client.Wpf.ViewModels;
 public sealed class MainWindowViewModel
     : BindableBase
 {
+    private const int MaximumEventOccurrences =
+        100;
     private RuntimeHostClientSessionStatus sessionStatus =
         new(
             RuntimeHostClientSessionState.Disconnected);
@@ -33,6 +35,8 @@ public sealed class MainWindowViewModel
         bool> requestedBooleanValues =
         [];
     private string? propertyReadMessage;
+    private IReadOnlyList<EventOccurrenceItemViewModel> eventOccurrences =
+        [];
 
     public MainWindowViewModel()
     {
@@ -127,6 +131,12 @@ public sealed class MainWindowViewModel
 
     public bool HasEndpoints =>
         endpoints.Count > 0;
+
+    public IReadOnlyList<EventOccurrenceItemViewModel> EventOccurrences =>
+        eventOccurrences;
+
+    public bool HasEventOccurrences =>
+        eventOccurrences.Count > 0;
 
     public bool IsBusy
     {
@@ -228,6 +238,8 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(
             value);
 
+        RuntimeHostClientSessionState previousState =
+            sessionStatus.State;
         SetProperty(
             ref sessionStatus,
             value,
@@ -246,7 +258,75 @@ public sealed class MainWindowViewModel
             nameof(IsOperational));
         RaisePropertyChanged(
             nameof(IsStale));
+        if (value.State
+                == RuntimeHostClientSessionState.Connected
+            && previousState
+                != RuntimeHostClientSessionState.Connected)
+        {
+            ClearEventOccurrences();
+        }
         RaiseCommandStateChanged();
+    }
+
+    public void ApplyEventOccurred(
+        RemoteRuntimeHostObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observation);
+
+        if (observation.Payload
+            is not RemoteEventOccurredObservationPayload payload)
+        {
+            throw new ArgumentException(
+                "An Event-occurrence observation is required.",
+                nameof(observation));
+        }
+
+        RemoteEndpointAttachmentSnapshot endpoint =
+            currentState.Snapshot?.Attachments.SingleOrDefault(
+                attachment =>
+                    attachment.Key
+                    == observation.Attachment)
+            ?? throw new InvalidDataException(
+                "The Event attachment is not present in the current "
+                + "runtime-host snapshot.");
+        Hase.Core.Domain.Instruments.InstrumentDescriptor instrument =
+            endpoint.Descriptor.Instruments.Single(
+                candidate =>
+                    candidate.Id
+                    == payload.InstrumentId);
+        Hase.Core.Domain.Events.EventDescriptor descriptor =
+            instrument.Interface.Events.Single(
+                candidate =>
+                    candidate.Path
+                    == payload.EventPath);
+        var occurrence =
+            new EventOccurrenceItemViewModel(
+                observation.Sequence.Value,
+                observation.Attachment.EndpointId.Value,
+                observation.Attachment.Generation.ToString(),
+                payload.InstrumentId.Value,
+                payload.EventPath.ToString(),
+                descriptor.DisplayName,
+                payload.OccurredAtUtc.ToString(
+                    "O",
+                    System.Globalization.CultureInfo.InvariantCulture),
+                FormatEventValue(
+                    payload.Value));
+        SetProperty(
+            ref eventOccurrences,
+            new[]
+            {
+                occurrence
+            }
+                .Concat(
+                    eventOccurrences)
+                .Take(
+                    MaximumEventOccurrences)
+                .ToArray(),
+            nameof(EventOccurrences));
+        RaisePropertyChanged(
+            nameof(HasEventOccurrences));
     }
 
     public void ApplyObservationState(
@@ -584,6 +664,34 @@ public sealed class MainWindowViewModel
                 property.RequestedBooleanValue;
         }
     }
+
+    private void ClearEventOccurrences()
+    {
+        SetProperty(
+            ref eventOccurrences,
+            [],
+            nameof(EventOccurrences));
+        RaisePropertyChanged(
+            nameof(HasEventOccurrences));
+    }
+
+    private static string FormatEventValue(
+        RemoteValue? value) =>
+        value?.Kind switch
+        {
+            RemoteValueKind.Boolean =>
+                value.BooleanValue!.Value
+                    ? "True"
+                    : "False",
+            RemoteValueKind.String =>
+                value.StringValue!,
+            RemoteValueKind.Numeric =>
+                value.NumericValue!.Value.ToString(
+                    "G17",
+                    System.Globalization.CultureInfo.InvariantCulture),
+            _ =>
+                "No value"
+        };
 
     public void ApplySessionFailure(
         RuntimeHostClientFailureCategory category)

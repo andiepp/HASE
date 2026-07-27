@@ -3,7 +3,10 @@ using System.Threading.Channels;
 using Hase.Client;
 using Hase.Client.Grpc;
 using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.Client.Grpc.Tests;
 
@@ -69,6 +72,69 @@ public sealed class RuntimeHostGrpcClientSessionTests
         Assert.Equal(
             1UL,
             session.CurrentState!.LastSequence!.Value);
+    }
+
+    [Fact]
+    public async Task EventObservation_ShouldPublishTransientEventAndAdvanceState()
+    {
+        RemoteEndpointAttachmentSnapshot endpoint =
+            CreateEndpointWithEvent();
+        var resources =
+            new StubSessionResources(
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [endpoint]),
+                    new RemoteObservationSequence(
+                        0)));
+        await using var session =
+            CreateSession(
+                resources);
+        var occurred =
+            new TaskCompletionSource<
+                RemoteRuntimeHostObservation>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+        session.EventOccurred +=
+            (_, eventArgs) =>
+                occurred.TrySetResult(
+                    eventArgs.Observation);
+
+        await session.ConnectAsync();
+        resources.Publish(
+            new RemoteRuntimeHostObservation(
+                new RemoteObservationSequence(
+                    1),
+                endpoint.Key,
+                new RemoteEventOccurredObservationPayload(
+                    new InstrumentId(
+                        "controller-01"),
+                    DescriptorPath.Parse(
+                        "Controller.ButtonPressed"),
+                    new DateTimeOffset(
+                        2026,
+                        7,
+                        27,
+                        15,
+                        0,
+                        0,
+                        TimeSpan.Zero),
+                    null)));
+
+        RemoteRuntimeHostObservation observation =
+            await occurred.Task.WaitAsync(
+                TimeSpan.FromSeconds(
+                    2));
+
+        Assert.Equal(
+            RemoteObservationKind.EventOccurred,
+            observation.Kind);
+        Assert.Equal(
+            1UL,
+            session.CurrentState!.LastSequence!.Value);
+        Assert.Empty(
+            session.CurrentState.PropertyValues);
     }
 
     [Fact]
@@ -312,6 +378,38 @@ public sealed class RuntimeHostGrpcClientSessionTests
             endpoint.Key,
             new RemoteAttachmentPublishedObservationPayload(
                 endpoint));
+    }
+
+    private static RemoteEndpointAttachmentSnapshot CreateEndpointWithEvent()
+    {
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "controller-01"),
+                "Controller",
+                new InstrumentKind(
+                    "Controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        events:
+                        [
+                            new EventDescriptor(
+                                DescriptorPath.Parse(
+                                    "Controller.ButtonPressed"),
+                                "Button Pressed")
+                        ])
+            };
+
+        return new RemoteEndpointAttachmentSnapshot(
+            new RemoteEndpointAttachmentGeneration(
+                Generation),
+            new EndpointDescriptor(
+                new EndpointId(
+                    "endpoint-01"),
+                [instrument]),
+            new RemoteEndpointConnectionStatus(
+                RemoteEndpointConnectionState.Ready));
     }
 
     private sealed class StubSessionResources

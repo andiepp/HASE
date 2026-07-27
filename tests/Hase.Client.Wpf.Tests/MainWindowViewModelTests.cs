@@ -1,5 +1,10 @@
 ﻿using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
+using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Events;
+using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Instruments;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.Client.Wpf.Tests;
 
@@ -209,6 +214,87 @@ public sealed class MainWindowViewModelTests
         Assert.Contains(
             nameof(MainWindowViewModel.EndpointCount),
             changedProperties);
+    }
+
+    [Fact]
+    public void ApplyEventOccurred_ShouldAddTransientOccurrence()
+    {
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "controller-01"),
+                "Controller",
+                new InstrumentKind(
+                    "Controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        events:
+                        [
+                            new EventDescriptor(
+                                DescriptorPath.Parse(
+                                    "Controller.ButtonPressed"),
+                                "Button Pressed")
+                        ])
+            };
+        var endpoint =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "7f88a60b-ff77-420f-bc7d-73ad82c718e9")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "endpoint-01"),
+                    [instrument]),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Ready));
+        var viewModel =
+            new MainWindowViewModel();
+        viewModel.ApplyObservationState(
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [endpoint]),
+                    new RemoteObservationSequence(
+                        0))));
+
+        viewModel.ApplyEventOccurred(
+            new RemoteRuntimeHostObservation(
+                new RemoteObservationSequence(
+                    1),
+                endpoint.Key,
+                new RemoteEventOccurredObservationPayload(
+                    instrument.Id,
+                    DescriptorPath.Parse(
+                        "Controller.ButtonPressed"),
+                    new DateTimeOffset(
+                        2026,
+                        7,
+                        27,
+                        16,
+                        0,
+                        0,
+                        TimeSpan.Zero),
+                    null)));
+
+        EventOccurrenceItemViewModel occurrence =
+            Assert.Single(
+                viewModel.EventOccurrences);
+        Assert.Equal(
+            "Button Pressed",
+            occurrence.DisplayName);
+        Assert.Equal(
+            "2026-07-27T16:00:00.0000000+00:00",
+            occurrence.OccurredAtUtc);
+        Assert.Equal(
+            "No value",
+            occurrence.Value);
+        Assert.True(
+            viewModel.HasEventOccurrences);
     }
 
     [Fact]

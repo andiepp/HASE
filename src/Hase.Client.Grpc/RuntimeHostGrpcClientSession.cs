@@ -17,8 +17,11 @@ public sealed class RuntimeHostGrpcClientSession
     : IRuntimeHostGrpcRecoverableSession,
       IRuntimeHostPropertyReader,
       IRuntimeHostPropertyWriter,
-      IRuntimeHostCommandExecutor
+      IRuntimeHostCommandExecutor,
+      IRuntimeHostEventSource
 {
+    public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
+
     private readonly object gate =
         new();
     private readonly Func<
@@ -498,6 +501,15 @@ public sealed class RuntimeHostGrpcClientSession
                 {
                     currentState =
                         state;
+                }
+
+                if (observation.Payload
+                    is RemoteEventOccurredObservationPayload)
+                {
+                    EventOccurred?.Invoke(
+                        this,
+                        new RemoteEventOccurredEventArgs(
+                            observation));
                 }
 
                 await stateChanges.Writer.WriteAsync(
