@@ -13,7 +13,7 @@ namespace Hase.Client.Grpc;
 /// immutable normalized state.
 /// </remarks>
 public sealed class RuntimeHostGrpcClientSession
-    : IAsyncDisposable
+    : IRuntimeHostGrpcRecoverableSession
 {
     private readonly object gate =
         new();
@@ -453,6 +453,33 @@ internal interface IRuntimeHostGrpcSessionResources
     {
         get;
     }
+}
+
+internal interface IRuntimeHostGrpcRecoverableSession
+    : IAsyncDisposable
+{
+    RuntimeHostClientSessionStatus Status
+    {
+        get;
+    }
+
+    RemoteObservationState? CurrentState
+    {
+        get;
+    }
+
+    Task Completion
+    {
+        get;
+    }
+
+    Task ConnectAsync(
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<RemoteObservationState> ReadStateChangesAsync(
+        CancellationToken cancellationToken = default);
+
+    Task DisconnectAsync();
 }
 
 internal sealed class RuntimeHostPrivateNetworkSessionResources
