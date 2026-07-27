@@ -1,0 +1,122 @@
+<Window
+    x:Class="Hase.DesktopHost.App.Views.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="{Binding ApplicationTitle}"
+    Width="760"
+    Height="560"
+    MinWidth="640"
+    MinHeight="480"
+    WindowStartupLocation="CenterScreen">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid Margin="32">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <TextBlock
+                    FontSize="28"
+                    FontWeight="SemiBold"
+                    Text="{Binding ApplicationTitle}" />
+                <TextBlock
+                    Margin="0,6,0,0"
+                    Foreground="DimGray"
+                    Text="Operator shell for the HASE runtime-host process" />
+            </StackPanel>
+
+            <GroupBox Grid.Row="2" Header="Runtime">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock FontWeight="SemiBold" Text="Status" />
+                    <TextBlock Grid.Column="1" Text="{Binding RuntimeHost.StatusText}" />
+
+                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Composition" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ShellInformation.Composition}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Last error" />
+                    <TextBlock
+                        Grid.Row="4"
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ErrorMessage, TargetNullValue=None}"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Row="4" Header="Host">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock FontWeight="SemiBold" Text="Identity" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ShellInformation.HostIdentity}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="API version" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ShellInformation.ApiVersion}"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Row="6" Header="Northbound API">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock FontWeight="SemiBold" Text="Loopback" />
+                    <TextBlock
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ShellInformation.LoopbackBinding}"
+                        TextWrapping="Wrap" />
+
+                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Private network" />
+                    <TextBlock
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Text="{Binding RuntimeHost.ShellInformation.PrivateNetworkBinding}"
+                        TextWrapping="Wrap" />
+                </Grid>
+            </GroupBox>
+        </Grid>
+    </ScrollViewer>
+</Window>
