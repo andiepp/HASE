@@ -51,6 +51,8 @@ public sealed class DesktopRuntimeInstrumentViewModel
             snapshot.Properties);
         ReconcileCommands(
             snapshot.Commands);
+        ReconcileEvents(
+            snapshot.Events);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -158,6 +160,15 @@ public sealed class DesktopRuntimeInstrumentViewModel
     public int CommandCount =>
         Commands.Count;
 
+    public ObservableCollection<DesktopRuntimeEventViewModel> Events
+    {
+        get;
+    } =
+        [];
+
+    public int EventCount =>
+        Events.Count;
+
     public void Update(
         DesktopRuntimeInstrumentSnapshot snapshot)
     {
@@ -202,6 +213,8 @@ public sealed class DesktopRuntimeInstrumentViewModel
             snapshot.Properties);
         ReconcileCommands(
             snapshot.Commands);
+        ReconcileEvents(
+            snapshot.Events);
     }
 
     private void ReconcileProperties(
@@ -382,6 +395,97 @@ public sealed class DesktopRuntimeInstrumentViewModel
         {
             if (string.Equals(
                     Commands[index].Path,
+                    path,
+                    StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void ReconcileEvents(
+        IReadOnlyList<DesktopRuntimeEventSnapshot> snapshots)
+    {
+        var desiredPaths =
+            snapshots
+                .Select(
+                    eventSnapshot =>
+                        eventSnapshot.Path)
+                .ToHashSet(
+                    StringComparer.Ordinal);
+
+        for (
+            int index = Events.Count - 1;
+            index >= 0;
+            index--)
+        {
+            if (!desiredPaths.Contains(
+                    Events[index].Path))
+            {
+                Events.RemoveAt(
+                    index);
+            }
+        }
+
+        for (
+            int desiredIndex = 0;
+            desiredIndex < snapshots.Count;
+            desiredIndex++)
+        {
+            DesktopRuntimeEventSnapshot snapshot =
+                snapshots[desiredIndex];
+            int currentIndex =
+                FindEventIndex(
+                    snapshot.Path);
+
+            if (currentIndex < 0)
+            {
+                Events.Insert(
+                    desiredIndex,
+                    new DesktopRuntimeEventViewModel(
+                        snapshot));
+                continue;
+            }
+
+            DesktopRuntimeEventViewModel existing =
+                Events[currentIndex];
+
+            if (!existing.HasSameDescriptor(
+                    snapshot))
+            {
+                Events[currentIndex] =
+                    new DesktopRuntimeEventViewModel(
+                        snapshot);
+            }
+
+            currentIndex =
+                FindEventIndex(
+                    snapshot.Path);
+
+            if (currentIndex != desiredIndex)
+            {
+                Events.Move(
+                    currentIndex,
+                    desiredIndex);
+            }
+        }
+
+        OnPropertyChanged(
+            nameof(EventCount));
+    }
+
+    private int FindEventIndex(
+        string path)
+    {
+        for (
+            int index = 0;
+            index < Events.Count;
+            index++)
+        {
+            if (string.Equals(
+                    Events[index].Path,
                     path,
                     StringComparison.Ordinal))
             {

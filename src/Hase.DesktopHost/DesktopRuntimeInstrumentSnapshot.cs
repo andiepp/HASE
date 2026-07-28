@@ -24,4 +24,11 @@ public sealed record DesktopRuntimeInstrumentSnapshot(
         init;
     } =
         [];
+
+    public IReadOnlyList<DesktopRuntimeEventSnapshot> Events
+    {
+        get;
+        init;
+    } =
+        [];
 }

@@ -701,6 +701,62 @@
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
                                                                 </ItemsControl>
+
+                                                                <TextBlock
+                                                                    Margin="0,12,0,0"
+                                                                    FontWeight="SemiBold"
+                                                                    Text="{Binding EventCount, StringFormat=Events ({0})}" />
+
+                                                                <ItemsControl
+                                                                    Margin="0,8,0,0"
+                                                                    ItemsSource="{Binding Events}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Border
+                                                                                Margin="0,0,0,8"
+                                                                                Padding="10"
+                                                                                Background="White"
+                                                                                BorderBrush="Gainsboro"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3">
+                                                                                <Grid>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="110" />
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Grid.RowDefinitions>
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                    </Grid.RowDefinitions>
+
+                                                                                    <TextBlock FontWeight="SemiBold" Text="Event" />
+                                                                                    <TextBlock
+                                                                                        Grid.Column="1"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Text="{Binding DisplayName}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Path" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="2"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding Path}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Description" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="4"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding Description}"
+                                                                                        TextWrapping="Wrap" />
+                                                                                </Grid>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>

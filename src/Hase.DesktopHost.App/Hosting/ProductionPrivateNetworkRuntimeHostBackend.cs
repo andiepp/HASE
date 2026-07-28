@@ -112,6 +112,15 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                                                 command.Description,
                                                                 endpoint.ConnectionStatus.State
                                                                     == EndpointConnectionState.Ready))
+                                                    .ToArray(),
+                                            Events =
+                                                instrument.Interface.Events
+                                                    .Select(
+                                                        eventDescriptor =>
+                                                            new DesktopRuntimeEventSnapshot(
+                                                                eventDescriptor.Path.ToString(),
+                                                                eventDescriptor.DisplayName,
+                                                                eventDescriptor.Description))
                                                     .ToArray()
                                         })
                                 .ToArray()
