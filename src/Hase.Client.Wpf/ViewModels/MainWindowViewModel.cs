@@ -604,9 +604,30 @@ public sealed class MainWindowViewModel
         }
 
         if (!IsOperational
-            || !command.CanExecute)
+            || !command.EndpointReady)
         {
             return;
+        }
+
+        RemoteValue? argument =
+            null;
+
+        if (command.RequiresArgument)
+        {
+            if (command.ArgumentDataType != "ByteArray"
+                || !ByteArrayHexadecimalParser.TryParse(
+                    command.RequestedArgumentText,
+                    out Hase.Core.Domain.Data.ByteArrayValue?
+                        byteArrayArgument))
+            {
+                PropertyReadMessage =
+                    $"{command.DisplayName}: enter valid hexadecimal bytes.";
+                return;
+            }
+
+            argument =
+                RemoteValue.FromByteArray(
+                    byteArrayArgument);
         }
 
         IsBusy =
@@ -618,8 +639,9 @@ public sealed class MainWindowViewModel
         {
             RemoteCommandOperationResult result =
                 await sessionController.ExecuteCommandAsync(
-                        new RemoteCommandExecutionRequest(
-                            command.Target))
+                    new RemoteCommandExecutionRequest(
+                            command.Target,
+                            argument))
                     .ConfigureAwait(
                         true);
 

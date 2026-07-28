@@ -1,4 +1,4 @@
-﻿using Hase.Client.Wpf.Services;
+using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
@@ -580,6 +580,132 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ExecuteCommandAsync_ValidByteArrayArgument_ShouldSendExactBytesOnce()
+    {
+        var target =
+            new RemoteCommandTarget(
+                new RemoteEndpointAttachmentKey(
+                    new Hase.Core.Domain.Identity.EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "7f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new Hase.Core.Domain.Identity.InstrumentId(
+                    "controller-01"),
+                Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                    "Controller.Send"));
+        var controller =
+            new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var command =
+            new CommandInventoryItemViewModel(
+                target,
+                "Controller.Send",
+                "Send",
+                null,
+                true)
+            {
+                RequiresArgument =
+                    true,
+                ArgumentDisplayName =
+                    "Payload",
+                ArgumentDataType =
+                    "ByteArray",
+                RequestedArgumentText =
+                    "00 7f FF"
+            };
+
+        await viewModel.ExecuteCommandAsync(
+            command);
+
+        Assert.Equal(
+            1,
+            controller.CommandCount);
+        Assert.Same(
+            target,
+            controller.CommandRequest!.Target);
+        Assert.Equal(
+            RemoteValueKind.ByteArray,
+            controller.CommandRequest.Argument!.Kind);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x7F,
+                0xFF
+            },
+            controller.CommandRequest.Argument.ByteArrayValue!.ToArray());
+        Assert.Equal(
+            "Send: Command completed.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task ExecuteCommandAsync_InvalidByteArrayArgument_ShouldRemainLocal()
+    {
+        var target =
+            new RemoteCommandTarget(
+                new RemoteEndpointAttachmentKey(
+                    new Hase.Core.Domain.Identity.EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "8f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new Hase.Core.Domain.Identity.InstrumentId(
+                    "controller-01"),
+                Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                    "Controller.Send"));
+        var controller =
+            new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var command =
+            new CommandInventoryItemViewModel(
+                target,
+                "Controller.Send",
+                "Send",
+                null,
+                true)
+            {
+                RequiresArgument =
+                    true,
+                ArgumentDisplayName =
+                    "Payload",
+                ArgumentDataType =
+                    "ByteArray",
+                RequestedArgumentText =
+                    "0"
+            };
+
+        await viewModel.ExecuteCommandAsync(
+            command);
+
+        Assert.Equal(
+            0,
+            controller.CommandCount);
+        Assert.Null(
+            controller.CommandRequest);
+        Assert.Equal(
+            "Send: enter valid hexadecimal bytes.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
     public void Configure_SecondCall_ShouldThrow()
     {
         var viewModel =
@@ -742,6 +868,12 @@ public sealed class MainWindowViewModelTests
             private set;
         }
 
+        public int CommandCount
+        {
+            get;
+            private set;
+        }
+
         public Task ConnectAsync(
             string configurationFilePath,
             CancellationToken cancellationToken = default)
@@ -795,6 +927,7 @@ public sealed class MainWindowViewModelTests
             RemoteCommandExecutionRequest request,
             CancellationToken cancellationToken = default)
         {
+            CommandCount++;
             CommandRequest =
                 request;
 
