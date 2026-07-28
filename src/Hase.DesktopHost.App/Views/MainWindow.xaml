@@ -409,10 +409,22 @@
                                                                             <Border
                                                                                 Margin="0,0,0,8"
                                                                                 Padding="10"
-                                                                                BorderBrush="Gainsboro"
                                                                                 BorderThickness="1"
-                                                                                CornerRadius="3"
-                                                                                Background="White">
+                                                                                CornerRadius="3">
+                                                                                <Border.Style>
+                                                                                    <Style TargetType="Border">
+                                                                                        <Setter Property="BorderBrush" Value="Gainsboro" />
+                                                                                        <Setter Property="Background" Value="White" />
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger
+                                                                                                Binding="{Binding IsRecentlyChanged}"
+                                                                                                Value="True">
+                                                                                                <Setter Property="BorderBrush" Value="Goldenrod" />
+                                                                                                <Setter Property="Background" Value="LightYellow" />
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Border.Style>
                                                                                 <Grid>
                                                                                     <Grid.ColumnDefinitions>
                                                                                         <ColumnDefinition Width="110" />

@@ -1,7 +1,21 @@
-﻿namespace Hase.DesktopHost.App.ViewModels;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace Hase.DesktopHost.App.ViewModels;
 
 public sealed class DesktopRuntimeInstrumentViewModel
+    : INotifyPropertyChanged
 {
+    private string name;
+    private string kind;
+    private string manufacturer;
+    private string model;
+    private string serialNumber;
+    private string firmwareVersion;
+    private string hardwareRevision;
+    private string description;
+
     public DesktopRuntimeInstrumentViewModel(
         DesktopRuntimeInstrumentSnapshot snapshot)
     {
@@ -10,6 +24,146 @@ public sealed class DesktopRuntimeInstrumentViewModel
 
         InstrumentId =
             snapshot.InstrumentId;
+        name =
+            snapshot.Name;
+        kind =
+            snapshot.Kind;
+        manufacturer =
+            snapshot.Manufacturer
+            ?? string.Empty;
+        model =
+            snapshot.Model
+            ?? string.Empty;
+        serialNumber =
+            snapshot.SerialNumber
+            ?? string.Empty;
+        firmwareVersion =
+            snapshot.FirmwareVersion
+            ?? string.Empty;
+        hardwareRevision =
+            snapshot.HardwareRevision
+            ?? string.Empty;
+        description =
+            snapshot.Description
+            ?? string.Empty;
+
+        ReconcileProperties(
+            snapshot.Properties);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string InstrumentId
+    {
+        get;
+    }
+
+    public string Name
+    {
+        get =>
+            name;
+        private set =>
+            SetProperty(
+                ref name,
+                value);
+    }
+
+    public string Kind
+    {
+        get =>
+            kind;
+        private set =>
+            SetProperty(
+                ref kind,
+                value);
+    }
+
+    public string Manufacturer
+    {
+        get =>
+            manufacturer;
+        private set =>
+            SetProperty(
+                ref manufacturer,
+                value);
+    }
+
+    public string Model
+    {
+        get =>
+            model;
+        private set =>
+            SetProperty(
+                ref model,
+                value);
+    }
+
+    public string SerialNumber
+    {
+        get =>
+            serialNumber;
+        private set =>
+            SetProperty(
+                ref serialNumber,
+                value);
+    }
+
+    public string FirmwareVersion
+    {
+        get =>
+            firmwareVersion;
+        private set =>
+            SetProperty(
+                ref firmwareVersion,
+                value);
+    }
+
+    public string HardwareRevision
+    {
+        get =>
+            hardwareRevision;
+        private set =>
+            SetProperty(
+                ref hardwareRevision,
+                value);
+    }
+
+    public string Description
+    {
+        get =>
+            description;
+        private set =>
+            SetProperty(
+                ref description,
+                value);
+    }
+
+    public ObservableCollection<DesktopRuntimePropertyViewModel> Properties
+    {
+        get;
+    } =
+        [];
+
+    public int PropertyCount =>
+        Properties.Count;
+
+    public void Update(
+        DesktopRuntimeInstrumentSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(
+            snapshot);
+
+        if (!string.Equals(
+                InstrumentId,
+                snapshot.InstrumentId,
+                StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                "An instrument view model cannot be updated from a different "
+                + "instrument identity.",
+                nameof(snapshot));
+        }
+
         Name =
             snapshot.Name;
         Kind =
@@ -32,65 +186,129 @@ public sealed class DesktopRuntimeInstrumentViewModel
         Description =
             snapshot.Description
             ?? string.Empty;
-        Properties =
-            snapshot.Properties
+
+        ReconcileProperties(
+            snapshot.Properties);
+    }
+
+    private void ReconcileProperties(
+        IReadOnlyList<DesktopRuntimePropertySnapshot> snapshots)
+    {
+        var existingById =
+            Properties.ToDictionary(
+                property =>
+                    property.PropertyId,
+                StringComparer.Ordinal);
+        var desiredIds =
+            snapshots
                 .Select(
                     property =>
-                        new DesktopRuntimePropertyViewModel(
-                            property))
-                .ToArray();
+                        property.PropertyId)
+                .ToHashSet(
+                    StringComparer.Ordinal);
+
+        for (
+            int index = Properties.Count - 1;
+            index >= 0;
+            index--)
+        {
+            if (!desiredIds.Contains(
+                    Properties[index].PropertyId))
+            {
+                Properties.RemoveAt(
+                    index);
+            }
+        }
+
+        foreach (
+            DesktopRuntimePropertySnapshot snapshot
+            in snapshots)
+        {
+            if (existingById.TryGetValue(
+                    snapshot.PropertyId,
+                    out DesktopRuntimePropertyViewModel? existing))
+            {
+                existing.Update(
+                    snapshot);
+            }
+            else
+            {
+                Properties.Add(
+                    new DesktopRuntimePropertyViewModel(
+                        snapshot));
+            }
+        }
+
+        for (
+            int desiredIndex = 0;
+            desiredIndex < snapshots.Count;
+            desiredIndex++)
+        {
+            string desiredPropertyId =
+                snapshots[desiredIndex].PropertyId;
+            int currentIndex =
+                FindPropertyIndex(
+                    desiredPropertyId);
+
+            if (currentIndex >= 0
+                && currentIndex != desiredIndex)
+            {
+                Properties.Move(
+                    currentIndex,
+                    desiredIndex);
+            }
+        }
+
+        OnPropertyChanged(
+            nameof(PropertyCount));
     }
 
-    public string InstrumentId
+    private int FindPropertyIndex(
+        string propertyId)
     {
-        get;
+        for (
+            int index = 0;
+            index < Properties.Count;
+            index++)
+        {
+            if (string.Equals(
+                    Properties[index].PropertyId,
+                    propertyId,
+                    StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
-    public string Name
+    private bool SetProperty(
+        ref string field,
+        string value,
+        [CallerMemberName] string? propertyName = null)
     {
-        get;
+        if (string.Equals(
+                field,
+                value,
+                StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        field =
+            value;
+        OnPropertyChanged(
+            propertyName);
+        return true;
     }
 
-    public string Kind
+    private void OnPropertyChanged(
+        [CallerMemberName] string? propertyName = null)
     {
-        get;
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(
+                propertyName));
     }
-
-    public string Manufacturer
-    {
-        get;
-    }
-
-    public string Model
-    {
-        get;
-    }
-
-    public string SerialNumber
-    {
-        get;
-    }
-
-    public string FirmwareVersion
-    {
-        get;
-    }
-
-    public string HardwareRevision
-    {
-        get;
-    }
-
-    public string Description
-    {
-        get;
-    }
-
-    public IReadOnlyList<DesktopRuntimePropertyViewModel> Properties
-    {
-        get;
-    }
-
-    public int PropertyCount =>
-        Properties.Count;
 }

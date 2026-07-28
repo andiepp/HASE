@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace Hase.DesktopHost.App.ViewModels;
@@ -11,7 +12,8 @@ public sealed class DesktopRuntimeEndpointViewModel
     private string attachmentGeneration;
     private string description =
         string.Empty;
-    private IReadOnlyList<DesktopRuntimeInstrumentViewModel> instruments =
+    private readonly ObservableCollection<DesktopRuntimeInstrumentViewModel>
+        instruments =
         [];
 
     public DesktopRuntimeEndpointViewModel(
@@ -89,19 +91,8 @@ public sealed class DesktopRuntimeEndpointViewModel
                 value);
     }
 
-    public IReadOnlyList<DesktopRuntimeInstrumentViewModel> Instruments
-    {
-        get =>
-            instruments;
-        private set
-        {
-            instruments =
-                value;
-            OnPropertyChanged();
-            OnPropertyChanged(
-                nameof(InstrumentCount));
-        }
-    }
+    public ObservableCollection<DesktopRuntimeInstrumentViewModel> Instruments =>
+        instruments;
 
     public int InstrumentCount =>
         Instruments.Count;
@@ -163,13 +154,8 @@ public sealed class DesktopRuntimeEndpointViewModel
         Description =
             snapshot.Description
             ?? string.Empty;
-        Instruments =
-            snapshot.Instruments
-                .Select(
-                    instrument =>
-                        new DesktopRuntimeInstrumentViewModel(
-                            instrument))
-                .ToArray();
+        ReconcileInstruments(
+            snapshot.Instruments);
 
         if (!string.Equals(
                 ConnectionState,
@@ -180,6 +166,98 @@ public sealed class DesktopRuntimeEndpointViewModel
                 snapshot.ConnectionState;
             RaiseStatePropertiesChanged();
         }
+    }
+
+    private void ReconcileInstruments(
+        IReadOnlyList<DesktopRuntimeInstrumentSnapshot> snapshots)
+    {
+        var existingById =
+            Instruments.ToDictionary(
+                instrument =>
+                    instrument.InstrumentId,
+                StringComparer.Ordinal);
+        var desiredIds =
+            snapshots
+                .Select(
+                    instrument =>
+                        instrument.InstrumentId)
+                .ToHashSet(
+                    StringComparer.Ordinal);
+
+        for (
+            int index = Instruments.Count - 1;
+            index >= 0;
+            index--)
+        {
+            if (!desiredIds.Contains(
+                    Instruments[index].InstrumentId))
+            {
+                Instruments.RemoveAt(
+                    index);
+            }
+        }
+
+        foreach (
+            DesktopRuntimeInstrumentSnapshot snapshot
+            in snapshots)
+        {
+            if (existingById.TryGetValue(
+                    snapshot.InstrumentId,
+                    out DesktopRuntimeInstrumentViewModel? existing))
+            {
+                existing.Update(
+                    snapshot);
+            }
+            else
+            {
+                Instruments.Add(
+                    new DesktopRuntimeInstrumentViewModel(
+                        snapshot));
+            }
+        }
+
+        for (
+            int desiredIndex = 0;
+            desiredIndex < snapshots.Count;
+            desiredIndex++)
+        {
+            string desiredInstrumentId =
+                snapshots[desiredIndex].InstrumentId;
+            int currentIndex =
+                FindInstrumentIndex(
+                    desiredInstrumentId);
+
+            if (currentIndex >= 0
+                && currentIndex != desiredIndex)
+            {
+                Instruments.Move(
+                    currentIndex,
+                    desiredIndex);
+            }
+        }
+
+        OnPropertyChanged(
+            nameof(InstrumentCount));
+    }
+
+    private int FindInstrumentIndex(
+        string instrumentId)
+    {
+        for (
+            int index = 0;
+            index < Instruments.Count;
+            index++)
+        {
+            if (string.Equals(
+                    Instruments[index].InstrumentId,
+                    instrumentId,
+                    StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private bool IsState(
