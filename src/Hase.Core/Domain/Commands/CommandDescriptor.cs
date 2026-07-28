@@ -1,4 +1,4 @@
-﻿using Hase.Core.Domain.Properties;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.Core.Domain.Commands;
 
@@ -24,6 +24,19 @@ public sealed record CommandDescriptor
         DisplayName = displayName.Trim();
     }
 
+    public CommandDescriptor(
+        DescriptorPath path,
+        string displayName,
+        CommandArgumentDescriptor argument)
+        : this(
+            path,
+            displayName)
+    {
+        Argument =
+            argument
+            ?? throw new ArgumentNullException(nameof(argument));
+    }
+
     /// <summary>
     /// Hierarchical path of the command within the instrument.
     /// Example: DDS.Sweep.Start
@@ -40,4 +53,9 @@ public sealed record CommandDescriptor
     /// Optional description shown to users.
     /// </summary>
     public string? Description { get; init; }
+
+    /// <summary>
+    /// Describes the one required argument, or null for a parameterless command.
+    /// </summary>
+    public CommandArgumentDescriptor? Argument { get; }
 }
