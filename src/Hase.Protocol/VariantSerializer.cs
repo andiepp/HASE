@@ -1,4 +1,5 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
+using Hase.Core.Domain.Data;
 
 namespace Hase.Protocol;
 
@@ -62,6 +63,14 @@ internal sealed class VariantSerializer
                     stringValue);
                 return;
 
+            case ByteArrayValue byteArrayValue:
+                writer.WriteByte(
+                    (byte)VariantType.ByteArray);
+
+                writer.WriteByteArray(
+                    byteArrayValue.AsSpan());
+                return;
+
             default:
                 throw new NotSupportedException(
                     $"CLR type '{value.GetType().FullName}' is not " +
@@ -99,6 +108,10 @@ internal sealed class VariantSerializer
 
             VariantType.String =>
                 reader.ReadString(),
+
+            VariantType.ByteArray =>
+                new ByteArrayValue(
+                    reader.ReadByteArray()),
 
             _ => throw new InvalidDataException(
                 $"Unknown protocol variant type '{encodedType}'.")

@@ -1,4 +1,4 @@
-﻿using System.Buffers.Binary;
+using System.Buffers.Binary;
 using System.Text;
 
 namespace Hase.Protocol;
@@ -114,6 +114,26 @@ internal sealed class BinaryProtocolReader
                 "The protocol payload contains an invalid UTF-8 string.",
                 exception);
         }
+    }
+
+    /// <summary>
+    /// Reads bytes prefixed by their unsigned 16-bit length.
+    /// </summary>
+    public byte[] ReadByteArray()
+    {
+        int byteCount =
+            ReadUInt16();
+
+        EnsureAvailable(byteCount);
+
+        byte[] value =
+            _buffer.Span.Slice(
+                _position,
+                byteCount).ToArray();
+
+        _position += byteCount;
+
+        return value;
     }
 
     /// <summary>

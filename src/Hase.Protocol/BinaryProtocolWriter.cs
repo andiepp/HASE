@@ -1,4 +1,4 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -102,6 +102,36 @@ internal sealed class BinaryProtocolWriter
                 destination);
 
         _buffer.Advance(bytesWritten);
+    }
+
+    /// <summary>
+    /// Writes bytes prefixed by their unsigned 16-bit length.
+    /// </summary>
+    public void WriteByteArray(
+        ReadOnlySpan<byte> value)
+    {
+        if (value.Length > ushort.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(value),
+                $"A protocol ByteArray must not exceed " +
+                $"{ushort.MaxValue} bytes.");
+        }
+
+        WriteUInt16(
+            (ushort)value.Length);
+
+        if (value.IsEmpty)
+        {
+            return;
+        }
+
+        Span<byte> destination =
+            _buffer.GetSpan(value.Length);
+
+        value.CopyTo(destination);
+
+        _buffer.Advance(value.Length);
     }
 
     /// <summary>
