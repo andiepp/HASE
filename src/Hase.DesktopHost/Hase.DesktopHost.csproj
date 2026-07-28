@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
+  </ItemGroup>
+
 </Project>
