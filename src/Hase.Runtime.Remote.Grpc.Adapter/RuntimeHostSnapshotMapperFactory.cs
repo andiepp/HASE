@@ -33,7 +33,8 @@ public static class RuntimeHostSnapshotMapperFactory
         var instrumentDescriptorMapper =
             new InstrumentDescriptorMapper(
                 propertyDescriptorMapper,
-                new CommandDescriptorMapper(),
+                new CommandDescriptorMapper(
+                    dataDescriptorMapper),
                 new EventDescriptorMapper());
 
         var endpointDescriptorMapper =

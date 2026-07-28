@@ -55,7 +55,14 @@ public sealed class RuntimeHostSnapshotMapperFactoryTests
                 new DescriptorPath(
                     "Acquisition",
                     "Start"),
-                "Start acquisition")
+                "Start acquisition",
+                new CommandArgumentDescriptor(
+                    "Configuration",
+                    new ByteArrayDataDescriptor())
+                {
+                    Description =
+                        "Opaque acquisition configuration."
+                })
             {
                 Description =
                     "Starts acquisition."
@@ -254,6 +261,15 @@ public sealed class RuntimeHostSnapshotMapperFactoryTests
         Assert.Equal(
             "Starts acquisition.",
             mappedCommand.Description);
+        Assert.Equal(
+            "Configuration",
+            mappedCommand.Argument.DisplayName);
+        Assert.Equal(
+            "Opaque acquisition configuration.",
+            mappedCommand.Argument.Description);
+        Assert.Equal(
+            GrpcV1.DataDescriptor.KindOneofCase.ByteArrayDescriptor,
+            mappedCommand.Argument.Data.KindCase);
 
         GrpcV1.EventDescriptor mappedEvent =
             Assert.Single(

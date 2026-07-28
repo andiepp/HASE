@@ -298,6 +298,13 @@ message CommandDescriptor {
   repeated string path_segments = 1;
   string display_name = 2;
   optional string description = 3;
+  CommandArgumentDescriptor argument = 4;
+}
+
+message CommandArgumentDescriptor {
+  string display_name = 1;
+  optional string description = 2;
+  DataDescriptor data = 3;
 }
 
 message EventDescriptor {

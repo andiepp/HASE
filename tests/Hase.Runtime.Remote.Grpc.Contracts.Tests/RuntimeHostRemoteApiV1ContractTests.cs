@@ -1168,8 +1168,59 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     [Fact]
     public void CommandAndEventDescriptors_DefinePathAndMetadata()
     {
-        AssertPathDescriptor(
-            CommandDescriptor.Descriptor);
+        Assert.Collection(
+            CommandDescriptor.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "path_segments",
+                1,
+                FieldType.String,
+                false,
+                true),
+            field => AssertField(
+                field,
+                "display_name",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                3,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "argument",
+                4,
+                CommandArgumentDescriptor.Descriptor,
+                false));
+
+        Assert.Collection(
+            CommandArgumentDescriptor.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "display_name",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                2,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "data",
+                3,
+                DataDescriptor.Descriptor,
+                false));
+
         AssertPathDescriptor(
             EventDescriptor.Descriptor);
     }
@@ -1183,7 +1234,21 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 DisplayName =
                     "Start Sweep",
                 Description =
-                    "Starts the configured sweep"
+                    "Starts the configured sweep",
+                Argument =
+                    new CommandArgumentDescriptor
+                    {
+                        DisplayName =
+                            "Configuration",
+                        Description =
+                            "Opaque sweep configuration",
+                        Data =
+                            new DataDescriptor
+                            {
+                                ByteArrayDescriptor =
+                                    new ByteArrayDataDescriptor()
+                            }
+                    }
             };
 
         command.PathSegments.Add(
@@ -1208,6 +1273,17 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             command.Description,
             commandRoundTrip.Description);
+        Assert.Equal(
+            "Configuration",
+            commandRoundTrip.Argument.DisplayName);
+        Assert.True(
+            commandRoundTrip.Argument.HasDescription);
+        Assert.Equal(
+            "Opaque sweep configuration",
+            commandRoundTrip.Argument.Description);
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.ByteArrayDescriptor,
+            commandRoundTrip.Argument.Data.KindCase);
 
         var eventDescriptor =
             new EventDescriptor
