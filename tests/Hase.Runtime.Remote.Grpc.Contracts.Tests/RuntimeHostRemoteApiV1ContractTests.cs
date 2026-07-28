@@ -245,6 +245,12 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 Assert.Equal("numeric_value", field.Name);
                 Assert.Equal(3, field.FieldNumber);
                 Assert.Equal(FieldType.Double, field.FieldType);
+            },
+            field =>
+            {
+                Assert.Equal("byte_array_value", field.Name);
+                Assert.Equal(4, field.FieldNumber);
+                Assert.Equal(FieldType.Bytes, field.FieldType);
             });
     }
 
@@ -269,6 +275,18 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 NumericValue =
                     23.75
             };
+        var byteArrayValue =
+            new RemoteValue
+            {
+                ByteArrayValue =
+                    ByteString.CopyFrom(
+                        new byte[]
+                        {
+                            0x00,
+                            0x7F,
+                            0xFF
+                        })
+            };
 
         RemoteValue booleanRoundTrip =
             RemoteValue.Parser.ParseFrom(
@@ -279,6 +297,9 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         RemoteValue numericRoundTrip =
             RemoteValue.Parser.ParseFrom(
                 numericValue.ToByteArray());
+        RemoteValue byteArrayRoundTrip =
+            RemoteValue.Parser.ParseFrom(
+                byteArrayValue.ToByteArray());
 
         Assert.Equal(
             RemoteValue.KindOneofCase.BooleanValue,
@@ -297,6 +318,12 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             23.75,
             numericRoundTrip.NumericValue);
+        Assert.Equal(
+            RemoteValue.KindOneofCase.ByteArrayValue,
+            byteArrayRoundTrip.KindCase);
+        Assert.Equal(
+            byteArrayValue.ByteArrayValue,
+            byteArrayRoundTrip.ByteArrayValue);
     }
 
     [Fact]
@@ -1334,6 +1361,12 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 "string_descriptor",
                 3,
                 StringDataDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "byte_array_descriptor",
+                4,
+                ByteArrayDataDescriptor.Descriptor,
                 false));
     }
 
@@ -1458,12 +1491,14 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
     }
 
     [Fact]
-    public void BooleanAndStringDataDescriptors_HaveNoAdditionalMembers()
+    public void ScalarDataDescriptors_HaveNoAdditionalMembers()
     {
         Assert.Empty(
             BooleanDataDescriptor.Descriptor.Fields.InDeclarationOrder());
         Assert.Empty(
             StringDataDescriptor.Descriptor.Fields.InDeclarationOrder());
+        Assert.Empty(
+            ByteArrayDataDescriptor.Descriptor.Fields.InDeclarationOrder());
     }
 
     [Fact]
@@ -1564,6 +1599,21 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             DataDescriptor.KindOneofCase.StringDescriptor,
             stringRoundTrip.KindCase);
+
+        var byteArrayData =
+            new DataDescriptor
+            {
+                ByteArrayDescriptor =
+                    new ByteArrayDataDescriptor()
+            };
+
+        DataDescriptor byteArrayRoundTrip =
+            DataDescriptor.Parser.ParseFrom(
+                byteArrayData.ToByteArray());
+
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.ByteArrayDescriptor,
+            byteArrayRoundTrip.KindCase);
     }
 
     [Fact]

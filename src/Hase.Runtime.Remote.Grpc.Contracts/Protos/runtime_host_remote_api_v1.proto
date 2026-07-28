@@ -53,6 +53,7 @@ message RemoteValue {
     bool boolean_value = 1;
     string string_value = 2;
     double numeric_value = 3;
+    bytes byte_array_value = 4;
   }
 }
 
@@ -252,6 +253,7 @@ message DataDescriptor {
     NumericDataDescriptor numeric = 1;
     BooleanDataDescriptor boolean_descriptor = 2;
     StringDataDescriptor string_descriptor = 3;
+    ByteArrayDataDescriptor byte_array_descriptor = 4;
   }
 }
 
@@ -266,6 +268,9 @@ message BooleanDataDescriptor {
 }
 
 message StringDataDescriptor {
+}
+
+message ByteArrayDataDescriptor {
 }
 
 message Quantity {

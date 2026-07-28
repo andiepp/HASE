@@ -45,6 +45,12 @@ public sealed class DataDescriptorMapper
                     StringDescriptor =
                         new GrpcV1.StringDataDescriptor()
                 },
+            DomainData.ByteArrayDataDescriptor =>
+                new GrpcV1.DataDescriptor
+                {
+                    ByteArrayDescriptor =
+                        new GrpcV1.ByteArrayDataDescriptor()
+                },
             DomainData.NumericDataDescriptor numericDescriptor =>
                 new GrpcV1.DataDescriptor
                 {

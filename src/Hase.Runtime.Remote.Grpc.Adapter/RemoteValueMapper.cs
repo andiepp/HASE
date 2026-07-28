@@ -1,3 +1,4 @@
+using DomainData = global::Hase.Core.Domain.Data;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Adapter;
@@ -29,6 +30,13 @@ public sealed class RemoteValueMapper
                 {
                     StringValue =
                         stringValue
+                },
+            DomainData.ByteArrayValue byteArrayValue =>
+                new GrpcV1.RemoteValue
+                {
+                    ByteArrayValue =
+                        Google.Protobuf.ByteString.CopyFrom(
+                            byteArrayValue.ToArray())
                 },
             byte numericValue =>
                 CreateNumeric(
@@ -89,6 +97,9 @@ public sealed class RemoteValueMapper
                 value.StringValue,
             GrpcV1.RemoteValue.KindOneofCase.NumericValue =>
                 value.NumericValue,
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue =>
+                new DomainData.ByteArrayValue(
+                    value.ByteArrayValue.ToByteArray()),
             _ =>
                 throw new ArgumentOutOfRangeException(
                     nameof(value),

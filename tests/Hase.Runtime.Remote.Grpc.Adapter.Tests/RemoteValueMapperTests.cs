@@ -1,3 +1,4 @@
+using Hase.Core.Domain.Data;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Adapter.Tests;
@@ -50,6 +51,33 @@ public sealed class RemoteValueMapperTests
         Assert.Equal(
             "Ready",
             result.StringValue);
+    }
+
+    [Fact]
+    public void Map_ByteArrayValue_ShouldSelectByteArrayVariant()
+    {
+        var source =
+            new ByteArrayValue(
+                new byte[]
+                {
+                    0x00,
+                    0x7F,
+                    0xFF
+                });
+
+        var mapper =
+            new RemoteValueMapper();
+
+        GrpcV1.RemoteValue result =
+            mapper.Map(
+                source);
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue,
+            result.KindCase);
+        Assert.Equal(
+            source.ToArray(),
+            result.ByteArrayValue.ToByteArray());
     }
 
     [Theory]
@@ -151,6 +179,35 @@ public sealed class RemoteValueMapperTests
                     NumericValue =
                         23.75
                 }));
+    }
+
+    [Fact]
+    public void MapToClr_ByteArrayVariant_ShouldReturnByteArrayValue()
+    {
+        var source =
+            new GrpcV1.RemoteValue
+            {
+                ByteArrayValue =
+                    Google.Protobuf.ByteString.CopyFrom(
+                        new byte[]
+                        {
+                            0x00,
+                            0x7F,
+                            0xFF
+                        })
+            };
+
+        var mapper =
+            new RemoteValueMapper();
+
+        var result =
+            Assert.IsType<ByteArrayValue>(
+                mapper.MapToClr(
+                    source));
+
+        Assert.Equal(
+            source.ByteArrayValue.ToByteArray(),
+            result.ToArray());
     }
 
     public static TheoryData<object, double> NumericValues

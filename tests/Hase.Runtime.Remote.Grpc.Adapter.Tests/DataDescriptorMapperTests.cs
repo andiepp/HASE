@@ -79,6 +79,30 @@ public sealed class DataDescriptorMapperTests
     }
 
     [Fact]
+    public void Map_ByteArrayDescriptor_ShouldSelectByteArrayVariant()
+    {
+        var numericMapper =
+            new TestNumericMapper(
+                new GrpcV1.NumericDataDescriptor());
+
+        var mapper =
+            new DataDescriptorMapper(
+                numericMapper);
+
+        GrpcV1.DataDescriptor result =
+            mapper.Map(
+                new ByteArrayDataDescriptor());
+
+        Assert.Equal(
+            GrpcV1.DataDescriptor.KindOneofCase.ByteArrayDescriptor,
+            result.KindCase);
+        Assert.NotNull(
+            result.ByteArrayDescriptor);
+        Assert.Null(
+            numericMapper.Input);
+    }
+
+    [Fact]
     public void Map_NumericDescriptor_ShouldDelegateAndSelectNumericVariant()
     {
         NumericDataDescriptor source =
