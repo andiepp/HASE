@@ -80,6 +80,8 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<
             DesktopRuntimeHostViewModel>();
         containerRegistry.RegisterSingleton<
+            RuntimeInventoryViewModel>();
+        containerRegistry.RegisterSingleton<
             MainWindowViewModel>();
         containerRegistry.RegisterSingleton<
             MainWindow>();

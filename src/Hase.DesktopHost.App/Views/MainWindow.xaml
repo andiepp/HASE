@@ -124,9 +124,9 @@
                 <StackPanel Margin="16">
                     <TextBlock
                         Margin="0,0,0,12"
-                        Text="{Binding PublishedEndpointCount, StringFormat=Published endpoints: {0}}" />
+                        Text="{Binding Inventory.PublishedEndpointCount, StringFormat=Published endpoints: {0}}" />
 
-                    <ItemsControl ItemsSource="{Binding Endpoints}">
+                    <ItemsControl ItemsSource="{Binding Inventory.Endpoints}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border

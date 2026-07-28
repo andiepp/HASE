@@ -21,10 +21,13 @@ public sealed class MainWindowViewModelTests
                     "Not available",
                     "Not configured",
                     "Not configured"));
+        var inventoryViewModel =
+            new RuntimeInventoryViewModel(
+                EmptyInventorySource.Instance);
         using var viewModel =
             new MainWindowViewModel(
                 runtimeViewModel,
-                EmptyInventorySource.Instance);
+                inventoryViewModel);
 
         await viewModel.StartAsync();
         await viewModel.StopAsync();
@@ -35,6 +38,9 @@ public sealed class MainWindowViewModelTests
         Assert.Same(
             runtimeViewModel,
             viewModel.RuntimeHost);
+        Assert.Same(
+            inventoryViewModel,
+            viewModel.Inventory);
         Assert.Equal(
             1,
             backend.StartCount);
@@ -45,10 +51,7 @@ public sealed class MainWindowViewModelTests
             DesktopRuntimeHostStatus.Stopped,
             viewModel.RuntimeHost.Status);
         Assert.Empty(
-            viewModel.Endpoints);
-        Assert.Equal(
-            0,
-            viewModel.PublishedEndpointCount);
+            viewModel.Inventory.Endpoints);
     }
 
     private sealed class RecordingBackend
