@@ -5,6 +5,28 @@ namespace Hase.DesktopHost.Tests;
 public sealed class DesktopRuntimePropertyViewModelTests
 {
     [Fact]
+    public void Constructor_WithWritableBoolean_ShouldInitializeIndependentRequestedValue()
+    {
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                CreateBooleanProperty(
+                    value: false,
+                    "2026-07-28T10:00:00.0000000+00:00"));
+
+        Assert.Equal(
+            DesktopRuntimePropertyDataKind.Boolean,
+            viewModel.DataKind);
+        Assert.True(
+            viewModel.CanWrite);
+        Assert.True(
+            viewModel.HasBooleanEditor);
+        Assert.False(
+            viewModel.CurrentBooleanValue);
+        Assert.False(
+            viewModel.RequestedBooleanValue);
+    }
+
+    [Fact]
     public void Update_ShouldApplyNewValueAndBeginHighlight()
     {
         var viewModel =
@@ -53,6 +75,117 @@ public sealed class DesktopRuntimePropertyViewModelTests
             original.IsRecentlyChanged);
     }
 
+    [Fact]
+    public void Update_AfterOperatorEdit_ShouldNotOverwriteRequestedBooleanValue()
+    {
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                CreateBooleanProperty(
+                    value: false,
+                    "2026-07-28T10:00:00.0000000+00:00"));
+
+        viewModel.RequestedBooleanValue =
+            true;
+
+        viewModel.Update(
+            CreateBooleanProperty(
+                value: false,
+                "2026-07-28T10:00:01.0000000+00:00"));
+
+        Assert.False(
+            viewModel.CurrentBooleanValue);
+        Assert.True(
+            viewModel.RequestedBooleanValue);
+    }
+
+    [Fact]
+    public void Update_WhenAuthoritativeBooleanChanges_ShouldNotChangeRequestedValue()
+    {
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                CreateBooleanProperty(
+                    value: false,
+                    "2026-07-28T10:00:00.0000000+00:00"));
+
+        viewModel.Update(
+            CreateBooleanProperty(
+                value: true,
+                "2026-07-28T10:00:01.0000000+00:00"));
+
+        Assert.True(
+            viewModel.CurrentBooleanValue);
+        Assert.False(
+            viewModel.RequestedBooleanValue);
+    }
+
+    [Fact]
+    public void ResetRequestedValueCommand_ShouldCopyCurrentAuthoritativeValue()
+    {
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                CreateBooleanProperty(
+                    value: false,
+                    "2026-07-28T10:00:00.0000000+00:00"));
+
+        viewModel.RequestedBooleanValue =
+            true;
+
+        viewModel.ResetRequestedValueCommand.Execute();
+
+        Assert.False(
+            viewModel.RequestedBooleanValue);
+    }
+
+    [Fact]
+    public void ReadOnlyBoolean_ShouldNotExposeBooleanEditor()
+    {
+        DesktopRuntimePropertySnapshot snapshot =
+            CreateBooleanProperty(
+                value: true,
+                "2026-07-28T10:00:00.0000000+00:00")
+            with
+            {
+                Access =
+                    "Read",
+                CanWrite =
+                    false
+            };
+
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                snapshot);
+
+        Assert.False(
+            viewModel.HasBooleanEditor);
+        Assert.Null(
+            viewModel.RequestedBooleanValue);
+        Assert.False(
+            viewModel.ResetRequestedValueCommand.CanExecute());
+    }
+
+    [Fact]
+    public void Update_WithIncompatibleDataKind_ShouldClearRequestedBooleanValue()
+    {
+        var viewModel =
+            new DesktopRuntimePropertyViewModel(
+                CreateBooleanProperty(
+                    value: false,
+                    "2026-07-28T10:00:00.0000000+00:00"));
+
+        viewModel.RequestedBooleanValue =
+            true;
+
+        viewModel.Update(
+            CreateProperty(
+                "42",
+                "2026-07-28T10:00:01.0000000+00:00"));
+
+        Assert.False(
+            viewModel.HasBooleanEditor);
+        Assert.Null(
+            viewModel.RequestedBooleanValue);
+    }
+
     private static DesktopRuntimePropertySnapshot CreateProperty(
         string value,
         string timestampUtc) =>
@@ -64,7 +197,26 @@ public sealed class DesktopRuntimePropertyViewModelTests
             value,
             "Good",
             timestampUtc,
-            IsKnown: true);
+            IsKnown: true,
+            DesktopRuntimePropertyDataKind.Numeric,
+            CanWrite: true,
+            BooleanValue: null);
+
+    private static DesktopRuntimePropertySnapshot CreateBooleanProperty(
+        bool value,
+        string timestampUtc) =>
+        new(
+            "property-1",
+            "Built-in LED state",
+            "Led.State",
+            "ReadWrite",
+            value.ToString(),
+            "Good",
+            timestampUtc,
+            IsKnown: true,
+            DesktopRuntimePropertyDataKind.Boolean,
+            CanWrite: true,
+            BooleanValue: value);
 
     private static DesktopRuntimeInstrumentSnapshot CreateInstrument(
         DesktopRuntimePropertySnapshot property) =>

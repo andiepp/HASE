@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using Hase.CompactProtocol;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Physical;
 using Hase.Protocol;
@@ -136,7 +137,12 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 "Unknown",
                 "Unknown",
                 string.Empty,
-                IsKnown: false);
+                IsKnown: false,
+                GetDataKind(
+                    property.Data),
+                CanWrite(
+                    property.AccessMode),
+                BooleanValue: null);
         }
 
         Hase.Core.Domain.Properties.PropertyValue currentValue =
@@ -153,8 +159,34 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             currentValue.TimestampUtc.ToString(
                 "O",
                 System.Globalization.CultureInfo.InvariantCulture),
-            IsKnown: true);
+            IsKnown: true,
+            GetDataKind(
+                property.Data),
+            CanWrite(
+                property.AccessMode),
+            currentValue.Value is bool booleanValue
+                ? booleanValue
+                : null);
     }
+
+    private static DesktopRuntimePropertyDataKind GetDataKind(
+        DataDescriptor descriptor) =>
+        descriptor switch
+        {
+            BooleanDataDescriptor =>
+                DesktopRuntimePropertyDataKind.Boolean,
+            NumericDataDescriptor =>
+                DesktopRuntimePropertyDataKind.Numeric,
+            StringDataDescriptor =>
+                DesktopRuntimePropertyDataKind.String,
+            _ =>
+                DesktopRuntimePropertyDataKind.Unknown
+        };
+
+    private static bool CanWrite(
+        Hase.Core.Domain.Properties.PropertyAccessMode accessMode) =>
+        accessMode.HasFlag(
+            Hase.Core.Domain.Properties.PropertyAccessMode.Write);
 
     private static string FormatPropertyValue(
         object? value)

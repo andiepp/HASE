@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
+using Prism.Commands;
 
 namespace Hase.DesktopHost.App.ViewModels;
 
@@ -20,6 +21,10 @@ public sealed class DesktopRuntimePropertyViewModel
     private string timestampUtc;
     private bool isKnown;
     private bool isRecentlyChanged;
+    private DesktopRuntimePropertyDataKind dataKind;
+    private bool canWrite;
+    private bool? currentBooleanValue;
+    private bool? requestedBooleanValue;
 
     public DesktopRuntimePropertyViewModel(
         DesktopRuntimePropertySnapshot snapshot)
@@ -47,6 +52,18 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.TimestampUtc;
         isKnown =
             snapshot.IsKnown;
+        dataKind =
+            snapshot.DataKind;
+        canWrite =
+            snapshot.CanWrite;
+        currentBooleanValue =
+            snapshot.BooleanValue;
+        requestedBooleanValue =
+            IsWritableBoolean(
+                snapshot.DataKind,
+                snapshot.CanWrite)
+                ? snapshot.BooleanValue
+                : null;
 
         highlightTimer =
             new DispatcherTimer(
@@ -57,6 +74,11 @@ public sealed class DesktopRuntimePropertyViewModel
             };
         highlightTimer.Tick +=
             OnHighlightTimerTick;
+
+        ResetRequestedValueCommand =
+            new DelegateCommand(
+                ResetRequestedValue,
+                CanResetRequestedValue);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -146,6 +168,56 @@ public sealed class DesktopRuntimePropertyViewModel
                 value);
     }
 
+    public DesktopRuntimePropertyDataKind DataKind
+    {
+        get =>
+            dataKind;
+        private set =>
+            SetProperty(
+                ref dataKind,
+                value);
+    }
+
+    public bool CanWrite
+    {
+        get =>
+            canWrite;
+        private set =>
+            SetProperty(
+                ref canWrite,
+                value);
+    }
+
+    public bool HasBooleanEditor =>
+        IsWritableBoolean(
+            DataKind,
+            CanWrite);
+
+    public bool? CurrentBooleanValue
+    {
+        get =>
+            currentBooleanValue;
+        private set =>
+            SetProperty(
+                ref currentBooleanValue,
+                value);
+    }
+
+    public bool? RequestedBooleanValue
+    {
+        get =>
+            requestedBooleanValue;
+        set =>
+            SetProperty(
+                ref requestedBooleanValue,
+                value);
+    }
+
+    public DelegateCommand ResetRequestedValueCommand
+    {
+        get;
+    }
+
     public void Update(
         DesktopRuntimePropertySnapshot snapshot)
     {
@@ -173,6 +245,9 @@ public sealed class DesktopRuntimePropertyViewModel
                 snapshot.Quality,
                 StringComparison.Ordinal)
             || IsKnown != snapshot.IsKnown;
+        bool requestedValueMetadataChanged =
+            DataKind != snapshot.DataKind
+            || CanWrite != snapshot.CanWrite;
 
         DisplayName =
             snapshot.DisplayName;
@@ -188,12 +263,48 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.TimestampUtc;
         IsKnown =
             snapshot.IsKnown;
+        DataKind =
+            snapshot.DataKind;
+        CanWrite =
+            snapshot.CanWrite;
+        CurrentBooleanValue =
+            snapshot.BooleanValue;
+
+        if (requestedValueMetadataChanged)
+        {
+            RequestedBooleanValue =
+                IsWritableBoolean(
+                    snapshot.DataKind,
+                    snapshot.CanWrite)
+                    ? snapshot.BooleanValue
+                    : null;
+            OnPropertyChanged(
+                nameof(HasBooleanEditor));
+        }
+
+        ResetRequestedValueCommand.RaiseCanExecuteChanged();
 
         if (valueStateChanged)
         {
             RestartChangeHighlight();
         }
     }
+
+    private void ResetRequestedValue()
+    {
+        RequestedBooleanValue =
+            CurrentBooleanValue;
+    }
+
+    private bool CanResetRequestedValue() =>
+        HasBooleanEditor
+        && CurrentBooleanValue.HasValue;
+
+    private static bool IsWritableBoolean(
+        DesktopRuntimePropertyDataKind dataKind,
+        bool canWrite) =>
+        dataKind == DesktopRuntimePropertyDataKind.Boolean
+        && canWrite;
 
     private void RestartChangeHighlight()
     {

@@ -440,6 +440,10 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
@@ -474,6 +478,64 @@
                                                                                         FontFamily="Consolas"
                                                                                         Text="{Binding TimestampUtc}"
                                                                                         TextWrapping="Wrap" />
+
+                                                                                    <TextBlock
+                                                                                        Grid.Row="10"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Text="Requested value">
+                                                                                        <TextBlock.Style>
+                                                                                            <Style TargetType="TextBlock">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger
+                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Value="True">
+                                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </TextBlock.Style>
+                                                                                    </TextBlock>
+
+                                                                                    <CheckBox
+                                                                                        Grid.Row="10"
+                                                                                        Grid.Column="1"
+                                                                                        IsChecked="{Binding RequestedBooleanValue, Mode=TwoWay}"
+                                                                                        IsThreeState="True">
+                                                                                        <CheckBox.Style>
+                                                                                            <Style TargetType="CheckBox">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger
+                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Value="True">
+                                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </CheckBox.Style>
+                                                                                    </CheckBox>
+
+                                                                                    <Button
+                                                                                        Grid.Row="12"
+                                                                                        Grid.Column="1"
+                                                                                        Width="130"
+                                                                                        HorizontalAlignment="Left"
+                                                                                        Command="{Binding ResetRequestedValueCommand}"
+                                                                                        Content="Reset to current">
+                                                                                        <Button.Style>
+                                                                                            <Style TargetType="Button">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger
+                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Value="True">
+                                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </Button.Style>
+                                                                                    </Button>
                                                                                 </Grid>
                                                                             </Border>
                                                                         </DataTemplate>

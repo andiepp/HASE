@@ -8,4 +8,7 @@ public sealed record DesktopRuntimePropertySnapshot(
     string Value,
     string Quality,
     string TimestampUtc,
-    bool IsKnown);
+    bool IsKnown,
+    DesktopRuntimePropertyDataKind DataKind,
+    bool CanWrite,
+    bool? BooleanValue);
