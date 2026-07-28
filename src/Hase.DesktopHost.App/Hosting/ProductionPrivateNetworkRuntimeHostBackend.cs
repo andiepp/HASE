@@ -15,7 +15,8 @@ using Hase.Transport.Tcp;
 namespace Hase.DesktopHost.App.Hosting;
 
 public sealed class ProductionPrivateNetworkRuntimeHostBackend
-    : IDesktopRuntimeHostBackend
+    : IDesktopRuntimeHostBackend,
+      IDesktopRuntimeHostInventorySource
 {
     private const int NativeTcpPort = 5000;
     private const int MaximumPayloadLength = 4096;
@@ -41,6 +42,31 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         this.configuration =
             configuration
             ?? throw new ArgumentNullException(nameof(configuration));
+    }
+
+    public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture()
+    {
+        RuntimeHostNorthboundSnapshotComposition? currentComposition =
+            composition;
+
+        if (currentComposition is null)
+        {
+            return [];
+        }
+
+        PublishedRuntimeHostSnapshot snapshot =
+            currentComposition.SnapshotProvider.Capture();
+
+        return snapshot.Endpoints
+            .Select(
+                endpoint =>
+                    new DesktopRuntimeEndpointSnapshot(
+                        endpoint.EndpointId.Value,
+                        endpoint.Descriptor.Metadata?.DisplayName
+                            ?? endpoint.EndpointId.Value,
+                        endpoint.ConnectionStatus.State.ToString(),
+                        endpoint.Generation.ToString()))
+            .ToArray();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

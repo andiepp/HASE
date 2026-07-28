@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Threading;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.ViewModels;
 using Hase.DesktopHost.App.Views;
@@ -10,6 +11,13 @@ namespace Hase.DesktopHost.App;
 
 public partial class App : PrismApplication
 {
+    private readonly DispatcherTimer inventoryRefreshTimer =
+        new()
+        {
+            Interval =
+                TimeSpan.FromSeconds(1)
+        };
+
     private MainWindowViewModel? mainWindowViewModel;
 
     protected override Window CreateShell()
@@ -25,6 +33,9 @@ public partial class App : PrismApplication
         window.Loaded +=
             OnMainWindowLoaded;
 
+        inventoryRefreshTimer.Tick +=
+            OnInventoryRefreshTimerTick;
+
         return window;
     }
 
@@ -37,9 +48,17 @@ public partial class App : PrismApplication
 
         containerRegistry.RegisterInstance(
             startupConfiguration);
-        containerRegistry.RegisterSingleton<
-            IDesktopRuntimeHostBackend,
-            ProductionPrivateNetworkRuntimeHostBackend>();
+
+        var productionBackend =
+            new ProductionPrivateNetworkRuntimeHostBackend(
+                startupConfiguration);
+
+        containerRegistry.RegisterInstance<
+            IDesktopRuntimeHostBackend>(
+                productionBackend);
+        containerRegistry.RegisterInstance<
+            IDesktopRuntimeHostInventorySource>(
+                productionBackend);
         containerRegistry.RegisterSingleton<
             IDesktopRuntimeHost,
             DesktopRuntimeHost>();
@@ -69,6 +88,10 @@ public partial class App : PrismApplication
     protected override void OnExit(
         ExitEventArgs eventArgs)
     {
+        inventoryRefreshTimer.Stop();
+        inventoryRefreshTimer.Tick -=
+            OnInventoryRefreshTimerTick;
+
         try
         {
             mainWindowViewModel?.StopAsync(
@@ -103,12 +126,29 @@ public partial class App : PrismApplication
         {
             await mainWindowViewModel.StartAsync(
                 CancellationToken.None);
+
+            inventoryRefreshTimer.Start();
         }
         catch
         {
             // The lifecycle coordinator projects startup failures through
             // Faulted status and LastError. Keeping the window open allows
             // the operator to inspect that information.
+        }
+    }
+
+    private void OnInventoryRefreshTimerTick(
+        object? sender,
+        EventArgs eventArgs)
+    {
+        try
+        {
+            mainWindowViewModel?.RefreshInventory();
+        }
+        catch
+        {
+            // Inventory projection is observational. A refresh failure must
+            // not terminate the runtime-host process or the WPF dispatcher.
         }
     }
 }
