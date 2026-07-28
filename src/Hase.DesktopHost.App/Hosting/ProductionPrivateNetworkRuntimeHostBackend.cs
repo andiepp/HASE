@@ -93,6 +93,15 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                                                 endpoint,
                                                                 instrument,
                                                                 property))
+                                                    .ToArray(),
+                                            Commands =
+                                                instrument.Interface.Commands
+                                                    .Select(
+                                                        command =>
+                                                            new DesktopRuntimeCommandSnapshot(
+                                                                command.Path.ToString(),
+                                                                command.DisplayName,
+                                                                command.Description))
                                                     .ToArray()
                                         })
                                 .ToArray()

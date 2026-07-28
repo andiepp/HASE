@@ -49,6 +49,8 @@ public sealed class DesktopRuntimeInstrumentViewModel
 
         ReconcileProperties(
             snapshot.Properties);
+        ReconcileCommands(
+            snapshot.Commands);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -147,6 +149,15 @@ public sealed class DesktopRuntimeInstrumentViewModel
     public int PropertyCount =>
         Properties.Count;
 
+    public ObservableCollection<DesktopRuntimeCommandViewModel> Commands
+    {
+        get;
+    } =
+        [];
+
+    public int CommandCount =>
+        Commands.Count;
+
     public void Update(
         DesktopRuntimeInstrumentSnapshot snapshot)
     {
@@ -189,6 +200,8 @@ public sealed class DesktopRuntimeInstrumentViewModel
 
         ReconcileProperties(
             snapshot.Properties);
+        ReconcileCommands(
+            snapshot.Commands);
     }
 
     private void ReconcileProperties(
@@ -274,6 +287,97 @@ public sealed class DesktopRuntimeInstrumentViewModel
             if (string.Equals(
                     Properties[index].PropertyId,
                     propertyId,
+                    StringComparison.Ordinal))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void ReconcileCommands(
+        IReadOnlyList<DesktopRuntimeCommandSnapshot> snapshots)
+    {
+        var desiredPaths =
+            snapshots
+                .Select(
+                    command =>
+                        command.Path)
+                .ToHashSet(
+                    StringComparer.Ordinal);
+
+        for (
+            int index = Commands.Count - 1;
+            index >= 0;
+            index--)
+        {
+            if (!desiredPaths.Contains(
+                    Commands[index].Path))
+            {
+                Commands.RemoveAt(
+                    index);
+            }
+        }
+
+        for (
+            int desiredIndex = 0;
+            desiredIndex < snapshots.Count;
+            desiredIndex++)
+        {
+            DesktopRuntimeCommandSnapshot snapshot =
+                snapshots[desiredIndex];
+            int currentIndex =
+                FindCommandIndex(
+                    snapshot.Path);
+
+            if (currentIndex < 0)
+            {
+                Commands.Insert(
+                    desiredIndex,
+                    new DesktopRuntimeCommandViewModel(
+                        snapshot));
+                continue;
+            }
+
+            DesktopRuntimeCommandViewModel existing =
+                Commands[currentIndex];
+
+            if (!existing.HasSameDescriptor(
+                    snapshot))
+            {
+                Commands[currentIndex] =
+                    new DesktopRuntimeCommandViewModel(
+                        snapshot);
+            }
+
+            currentIndex =
+                FindCommandIndex(
+                    snapshot.Path);
+
+            if (currentIndex != desiredIndex)
+            {
+                Commands.Move(
+                    currentIndex,
+                    desiredIndex);
+            }
+        }
+
+        OnPropertyChanged(
+            nameof(CommandCount));
+    }
+
+    private int FindCommandIndex(
+        string path)
+    {
+        for (
+            int index = 0;
+            index < Commands.Count;
+            index++)
+        {
+            if (string.Equals(
+                    Commands[index].Path,
+                    path,
                     StringComparison.Ordinal))
             {
                 return index;

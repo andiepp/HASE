@@ -17,4 +17,11 @@ public sealed record DesktopRuntimeInstrumentSnapshot(
         init;
     } =
         [];
+
+    public IReadOnlyList<DesktopRuntimeCommandSnapshot> Commands
+    {
+        get;
+        init;
+    } =
+        [];
 }
