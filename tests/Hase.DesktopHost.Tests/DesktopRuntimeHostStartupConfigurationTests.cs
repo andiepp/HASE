@@ -13,6 +13,19 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
     }
 
     [Fact]
+    public void Parse_WithUnsupportedOptionalArgument_ShouldRejectBeforeFileLoad()
+    {
+        Assert.Throws<ArgumentException>(
+            () => DesktopRuntimeHostStartupConfiguration.Parse(
+                [
+                    "Hase.DesktopHost.App.exe",
+                    "desktop-private-network.json",
+                    "esp32.local",
+                    "--unsupported"
+                ]));
+    }
+
+    [Fact]
     public void Parse_WithEmptyConfigurationPath_ShouldReject()
     {
         Assert.Throws<ArgumentException>(
@@ -36,3 +49,4 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
                 ]));
     }
 }
+

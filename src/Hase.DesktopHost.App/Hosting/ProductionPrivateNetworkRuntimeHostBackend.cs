@@ -2,6 +2,7 @@
 using System.Runtime.CompilerServices;
 using Hase.CompactProtocol;
 using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Physical;
 using Hase.Protocol;
@@ -11,6 +12,7 @@ using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Runtime.Transport.Discovery;
+using Hase.Simulation.Runtime.ByteBuffer;
 using Hase.Transport.Discovery;
 using Hase.Transport.Tcp;
 
@@ -261,15 +263,25 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     [compactDefinition]);
 
             attachmentHost =
-                RuntimeEndpointAttachmentHost
-                    .CreateNativeNetworkAndCompactSerial(
-                        new ProtocolNativeEndpointBootstrapper(),
-                        new ProtocolRuntimeEndpointSynchronizer(
-                            new EndpointDescriptorCompatibilityValidator()),
-                        definitionRepository,
-                        new DefaultRuntimeEndpointReconnectPolicy(),
-                        MaximumPayloadLength,
-                        CompactEndpointHealthProbeOptions.Default);
+                configuration.IncludeByteBufferSimulation
+                    ? RuntimeEndpointAttachmentHost
+                        .CreateNativeNetworkCompactSerialAndInProcess(
+                            new ProtocolNativeEndpointBootstrapper(),
+                            new ProtocolRuntimeEndpointSynchronizer(
+                                new EndpointDescriptorCompatibilityValidator()),
+                            definitionRepository,
+                            new DefaultRuntimeEndpointReconnectPolicy(),
+                            MaximumPayloadLength,
+                            CompactEndpointHealthProbeOptions.Default)
+                    : RuntimeEndpointAttachmentHost
+                        .CreateNativeNetworkAndCompactSerial(
+                            new ProtocolNativeEndpointBootstrapper(),
+                            new ProtocolRuntimeEndpointSynchronizer(
+                                new EndpointDescriptorCompatibilityValidator()),
+                            definitionRepository,
+                            new DefaultRuntimeEndpointReconnectPolicy(),
+                            MaximumPayloadLength,
+                            CompactEndpointHealthProbeOptions.Default);
 
             composition =
                 await RuntimeHostNorthboundSnapshotComposition
@@ -290,14 +302,26 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 attachmentHost,
                 definitionRepository);
 
+            if (configuration.IncludeByteBufferSimulation)
+            {
+                await AttachByteBufferSimulationAsync(
+                    attachmentHost);
+            }
+
             PublishedRuntimeHostSnapshot snapshot =
                 composition.SnapshotProvider.Capture();
 
-            if (snapshot.Endpoints.Count != 2)
+            int expectedEndpointCount =
+                configuration.IncludeByteBufferSimulation
+                    ? 3
+                    : 2;
+
+            if (snapshot.Endpoints.Count != expectedEndpointCount)
             {
                 throw new InvalidDataException(
-                    "The desktop runtime host requires exactly two published "
-                    + "physical endpoints.");
+                    $"The desktop runtime host requires exactly "
+                    + $"{expectedEndpointCount} published endpoints for the "
+                    + "selected startup mode.");
             }
 
             deployment =
@@ -469,6 +493,31 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             request);
     }
 
+    private static async Task AttachByteBufferSimulationAsync(
+        RuntimeEndpointAttachmentHost host)
+    {
+        var simulation =
+            new ByteBufferSimulation();
+
+        var request =
+            new EndpointAttachmentRequest(
+                new InProcessEndpointConnectionDefinition(
+                    new EndpointDescriptor(
+                        new EndpointId(
+                            "simulation-byte-buffer-validation"),
+                        [
+                            ByteBufferDescriptorFactory.CreateDescriptor()
+                        ]),
+                    runtimeInstrument =>
+                        new ByteBufferInstrumentExecutor(
+                            simulation,
+                            runtimeInstrument)),
+                InProcessEndpointDescriptorSource.Instance);
+
+        await host.AttachmentInventory.AttachAsync(
+            request);
+    }
+
     private static string GetRuntimeIdentityFilePath()
     {
         string directory =
@@ -515,3 +564,4 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
     }
 }
+

@@ -17,12 +17,16 @@ public sealed class EndpointAttachmentServiceRouter
     private readonly IEndpointAttachmentService
         _compactSerialService;
 
+    private readonly IEndpointAttachmentService?
+        _inProcessService;
+
     /// <summary>
     /// Initializes the transport-specific attachment routes.
     /// </summary>
     public EndpointAttachmentServiceRouter(
         IEndpointAttachmentService nativeNetworkService,
-        IEndpointAttachmentService compactSerialService)
+        IEndpointAttachmentService compactSerialService,
+        IEndpointAttachmentService? inProcessService = null)
     {
         _nativeNetworkService =
             nativeNetworkService
@@ -33,6 +37,9 @@ public sealed class EndpointAttachmentServiceRouter
             compactSerialService
             ?? throw new ArgumentNullException(
                 nameof(compactSerialService));
+
+        _inProcessService =
+            inProcessService;
     }
 
     /// <inheritdoc />
@@ -57,6 +64,12 @@ public sealed class EndpointAttachmentServiceRouter
                     request,
                     cancellationToken),
 
+            InProcessEndpointConnectionDefinition
+                when _inProcessService is not null =>
+                _inProcessService.AttachAsync(
+                    request,
+                    cancellationToken),
+
             _ =>
                 throw new NotSupportedException(
                     "No endpoint attachment service is registered for "
@@ -64,3 +77,4 @@ public sealed class EndpointAttachmentServiceRouter
         };
     }
 }
+

@@ -1,3 +1,5 @@
+using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
@@ -57,6 +59,63 @@ public sealed class EndpointAttachmentServiceRouterTests
         Assert.Same(
             request,
             compactService.LastRequest);
+    }
+
+    [Fact]
+    public async Task AttachAsync_InProcessRequest_ShouldUseInProcessRoute()
+    {
+        var nativeService =
+            new RecordingAttachmentService();
+        var compactService =
+            new RecordingAttachmentService();
+        var inProcessService =
+            new RecordingAttachmentService();
+        var router =
+            new EndpointAttachmentServiceRouter(
+                nativeService,
+                compactService,
+                inProcessService);
+        var request =
+            new EndpointAttachmentRequest(
+                new InProcessEndpointConnectionDefinition(
+                    new EndpointDescriptor(
+                        new EndpointId(
+                            "simulation-endpoint")),
+                    _ => throw new InvalidOperationException()),
+                InProcessEndpointDescriptorSource.Instance);
+
+        await Assert.ThrowsAsync<ExpectedRouteException>(
+            () => router.AttachAsync(
+                request));
+
+        Assert.Null(
+            nativeService.LastRequest);
+        Assert.Null(
+            compactService.LastRequest);
+        Assert.Same(
+            request,
+            inProcessService.LastRequest);
+    }
+
+    [Fact]
+    public async Task AttachAsync_InProcessRequestWithoutRoute_ShouldThrow()
+    {
+        var router =
+            new EndpointAttachmentServiceRouter(
+                new RecordingAttachmentService(),
+                new RecordingAttachmentService());
+        var request =
+            new EndpointAttachmentRequest(
+                new InProcessEndpointConnectionDefinition(
+                    new EndpointDescriptor(
+                        new EndpointId(
+                            "simulation-endpoint")),
+                    _ => throw new InvalidOperationException()),
+                InProcessEndpointDescriptorSource.Instance);
+
+        await Assert.ThrowsAsync<NotSupportedException>(
+            () => router.AttachAsync(
+                request));
     }
 
     [Fact]

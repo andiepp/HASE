@@ -6,7 +6,8 @@ namespace Hase.DesktopHost.App.Hosting;
 public sealed record DesktopRuntimeHostStartupConfiguration(
     string DeploymentConfigurationFilePath,
     string Esp32Host,
-    RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions)
+    RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions,
+    bool IncludeByteBufferSimulation = false)
 {
     public string PrivateNetworkBindingDisplay =>
         $"https://{DeploymentOptions.Binding.Address}:{DeploymentOptions.Binding.Port}";
@@ -16,12 +17,32 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
     {
         ArgumentNullException.ThrowIfNull(commandLineArguments);
 
-        if (commandLineArguments.Count != 3)
+        const string includeSimulationSwitch =
+            "--include-byte-buffer-simulation";
+
+        if (commandLineArguments.Count is < 3 or > 4)
         {
             throw new ArgumentException(
-                "Hase.DesktopHost.App requires exactly two arguments: "
-                + "the external desktop private-network configuration file "
-                + "and the ESP32 host name or IP address.",
+                "Hase.DesktopHost.App requires the external desktop "
+                + "private-network configuration file and ESP32 host name "
+                + "or IP address, followed optionally by "
+                + $"'{includeSimulationSwitch}'.",
+                nameof(commandLineArguments));
+        }
+
+        bool includeByteBufferSimulation =
+            commandLineArguments.Count == 4
+            && string.Equals(
+                commandLineArguments[3],
+                includeSimulationSwitch,
+                StringComparison.Ordinal);
+
+        if (commandLineArguments.Count == 4
+            && !includeByteBufferSimulation)
+        {
+            throw new ArgumentException(
+                $"The only supported optional argument is "
+                + $"'{includeSimulationSwitch}'.",
                 nameof(commandLineArguments));
         }
 
@@ -57,6 +78,8 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
         return new DesktopRuntimeHostStartupConfiguration(
             fullConfigurationFilePath,
             esp32Host.Trim(),
-            deploymentOptions);
+            deploymentOptions,
+            includeByteBufferSimulation);
     }
 }
+

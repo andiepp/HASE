@@ -78,6 +78,64 @@ public sealed class RuntimeEndpointAttachmentHost
     }
 
     /// <summary>
+    /// Creates a host configured for native network, compact serial, and
+    /// explicitly selected in-process endpoints.
+    /// </summary>
+    public static RuntimeEndpointAttachmentHost
+        CreateNativeNetworkCompactSerialAndInProcess(
+            INativeEndpointBootstrapper bootstrapper,
+            IRuntimeEndpointSynchronizer synchronizer,
+            ICompactEndpointDefinitionRepository definitionRepository,
+            IRuntimeEndpointReconnectPolicy reconnectPolicy,
+            int maximumPayloadLength =
+                TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
+            CompactEndpointHealthProbeOptions? compactProbeOptions = null)
+    {
+        ArgumentNullException.ThrowIfNull(
+            bootstrapper);
+        ArgumentNullException.ThrowIfNull(
+            synchronizer);
+        ArgumentNullException.ThrowIfNull(
+            definitionRepository);
+        ArgumentNullException.ThrowIfNull(
+            reconnectPolicy);
+
+        var runtimeContext =
+            new RuntimeContext();
+
+        var nativeNetworkService =
+            new NativeNetworkEndpointAttachmentService(
+                runtimeContext,
+                bootstrapper,
+                synchronizer,
+                reconnectPolicy,
+                maximumPayloadLength);
+
+        var compactSerialService =
+            new CompactSerialEndpointAttachmentService(
+                runtimeContext,
+                new SystemIoPortsSerialByteStreamFactory(),
+                definitionRepository,
+                reconnectPolicy,
+                compactProbeOptions
+                ?? CompactEndpointHealthProbeOptions.Default);
+
+        var inProcessService =
+            new InProcessEndpointAttachmentService(
+                runtimeContext);
+
+        var attachmentService =
+            new EndpointAttachmentServiceRouter(
+                nativeNetworkService,
+                compactSerialService,
+                inProcessService);
+
+        return new RuntimeEndpointAttachmentHost(
+            runtimeContext,
+            attachmentService);
+    }
+
+    /// <summary>
     /// Creates a host configured for native HASE endpoints reached through
     /// framed TCP.
     /// </summary>
@@ -199,3 +257,4 @@ public sealed class RuntimeEndpointAttachmentHost
         return AttachmentInventory.DisposeAsync();
     }
 }
+
