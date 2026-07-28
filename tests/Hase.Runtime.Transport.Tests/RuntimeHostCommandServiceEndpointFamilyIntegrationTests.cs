@@ -37,7 +37,8 @@ public sealed class RuntimeHostCommandServiceEndpointFamilyIntegrationTests
         bool useCompactEndpoint)
     {
         EndpointDescriptorDefinition descriptorDefinition =
-            CreateDescriptorDefinition();
+            CreateDescriptorDefinition(
+                useCompactEndpoint);
 
         var endpointId =
             new EndpointId(
@@ -225,7 +226,8 @@ public sealed class RuntimeHostCommandServiceEndpointFamilyIntegrationTests
     }
 
     private static EndpointDescriptorDefinition
-        CreateDescriptorDefinition()
+        CreateDescriptorDefinition(
+            bool useCompactEndpoint)
     {
         var propertyDescriptor =
             new PropertyDescriptor(
@@ -240,10 +242,17 @@ public sealed class RuntimeHostCommandServiceEndpointFamilyIntegrationTests
                     PropertyAccessMode.ReadWrite
             };
 
-        var commandDescriptor =
-            new CommandDescriptor(
-                CommandPath,
-                "Toggle LED");
+        CommandDescriptor commandDescriptor =
+            useCompactEndpoint
+                ? new CommandDescriptor(
+                    CommandPath,
+                    "Toggle LED")
+                : new CommandDescriptor(
+                    CommandPath,
+                    "Toggle LED",
+                    new CommandArgumentDescriptor(
+                        "Native Argument",
+                        new StringDataDescriptor()));
 
         var instrumentDescriptor =
             new InstrumentDescriptor(

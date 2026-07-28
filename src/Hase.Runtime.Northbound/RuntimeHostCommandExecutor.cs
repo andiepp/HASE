@@ -66,6 +66,14 @@ internal sealed class RuntimeHostCommandExecutor
                 RuntimeHostCommandOperationStatus.CommandNotFound);
         }
 
+        if (!RuntimeHostCommandArgumentValidator.IsValid(
+                runtimeCommand.Descriptor,
+                argument))
+        {
+            return RuntimeHostCommandOperationResult.Failed(
+                RuntimeHostCommandOperationStatus.ArgumentNotSupported);
+        }
+
         IEndpointAttachmentCommandOperations commandOperations =
             attachment
                 .Entry

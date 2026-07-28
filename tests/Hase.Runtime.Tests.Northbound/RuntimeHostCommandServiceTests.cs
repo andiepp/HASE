@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
@@ -38,7 +39,10 @@ public sealed class RuntimeHostCommandServiceTests
 
         TestContext context =
             CreateContext(
-                commandOperations);
+                commandOperations,
+                new CommandArgumentDescriptor(
+                    "Value",
+                    CreateNumericDataDescriptor()));
 
         object argument =
             42;
@@ -54,6 +58,129 @@ public sealed class RuntimeHostCommandServiceTests
         Assert.Equal(
             "confirmed",
             result.ReturnValue);
+
+        Assert.Equal(
+            1,
+            commandOperations.ExecuteCallCount);
+
+        Assert.Same(
+            argument,
+            commandOperations.LastArgument);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ParameterlessCommandWithArgument_DoesNotReachAttachment()
+    {
+        var commandOperations =
+            new TestCommandOperations(
+                EndpointAttachmentCommandOperationResult.Successful());
+
+        TestContext context =
+            CreateContext(
+                commandOperations);
+
+        RuntimeHostCommandOperationResult result =
+            await context.Service.ExecuteAsync(
+                context.Target,
+                argument: 42);
+
+        Assert.Equal(
+            RuntimeHostCommandOperationStatus.ArgumentNotSupported,
+            result.Status);
+
+        Assert.Equal(
+            0,
+            commandOperations.ExecuteCallCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TypedCommandWithoutArgument_DoesNotReachAttachment()
+    {
+        var commandOperations =
+            new TestCommandOperations(
+                EndpointAttachmentCommandOperationResult.Successful());
+
+        TestContext context =
+            CreateContext(
+                commandOperations,
+                new CommandArgumentDescriptor(
+                    "Value",
+                    CreateNumericDataDescriptor()));
+
+        RuntimeHostCommandOperationResult result =
+            await context.Service.ExecuteAsync(
+                context.Target,
+                argument: null);
+
+        Assert.Equal(
+            RuntimeHostCommandOperationStatus.ArgumentNotSupported,
+            result.Status);
+
+        Assert.Equal(
+            0,
+            commandOperations.ExecuteCallCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_TypedCommandWithWrongType_DoesNotReachAttachment()
+    {
+        var commandOperations =
+            new TestCommandOperations(
+                EndpointAttachmentCommandOperationResult.Successful());
+
+        TestContext context =
+            CreateContext(
+                commandOperations,
+                new CommandArgumentDescriptor(
+                    "Payload",
+                    new ByteArrayDataDescriptor()));
+
+        RuntimeHostCommandOperationResult result =
+            await context.Service.ExecuteAsync(
+                context.Target,
+                argument: new byte[]
+                {
+                    0x01
+                });
+
+        Assert.Equal(
+            RuntimeHostCommandOperationStatus.ArgumentNotSupported,
+            result.Status);
+
+        Assert.Equal(
+            0,
+            commandOperations.ExecuteCallCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ByteArrayValue_ReachesAttachmentUnchanged()
+    {
+        var commandOperations =
+            new TestCommandOperations(
+                EndpointAttachmentCommandOperationResult.Successful());
+
+        TestContext context =
+            CreateContext(
+                commandOperations,
+                new CommandArgumentDescriptor(
+                    "Payload",
+                    new ByteArrayDataDescriptor()));
+
+        ByteArrayValue argument =
+            new(
+                new byte[]
+                {
+                    0x00,
+                    0xFF
+                });
+
+        RuntimeHostCommandOperationResult result =
+            await context.Service.ExecuteAsync(
+                context.Target,
+                argument);
+
+        Assert.True(
+            result.IsSuccess);
 
         Assert.Equal(
             1,
@@ -238,11 +365,13 @@ public sealed class RuntimeHostCommandServiceTests
     }
 
     private static TestContext CreateContext(
-        TestCommandOperations commandOperations)
+        TestCommandOperations commandOperations,
+        CommandArgumentDescriptor? argument = null)
     {
         RuntimeEndpointAttachmentInventoryEntry entry =
             CreateEntry(
-                commandOperations);
+                commandOperations,
+                argument);
 
         var projection =
             new RuntimeHostAttachmentProjection(
@@ -270,12 +399,18 @@ public sealed class RuntimeHostCommandServiceTests
     }
 
     private static RuntimeEndpointAttachmentInventoryEntry CreateEntry(
-        TestCommandOperations commandOperations)
+        TestCommandOperations commandOperations,
+        CommandArgumentDescriptor? argument)
     {
-        var commandDescriptor =
-            new CommandDescriptor(
-                CommandPath,
-                "Toggle LED");
+        CommandDescriptor commandDescriptor =
+            argument is null
+                ? new CommandDescriptor(
+                    CommandPath,
+                    "Toggle LED")
+                : new CommandDescriptor(
+                    CommandPath,
+                    "Toggle LED",
+                    argument);
 
         var instrumentDescriptor =
             new InstrumentDescriptor(
@@ -306,6 +441,25 @@ public sealed class RuntimeHostCommandServiceTests
             new TestEndpointAttachmentSession(
                 runtimeEndpoint,
                 commandOperations));
+    }
+
+    private static NumericDataDescriptor CreateNumericDataDescriptor()
+    {
+        Quantity quantity =
+            new(
+                "number",
+                "Number");
+
+        Unit unit =
+            new(
+                "one",
+                "One",
+                "1",
+                quantity);
+
+        return new NumericDataDescriptor(
+            quantity,
+            unit);
     }
 
     private sealed record TestContext(
