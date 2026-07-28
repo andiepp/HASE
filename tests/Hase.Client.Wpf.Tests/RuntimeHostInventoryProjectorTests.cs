@@ -1,5 +1,6 @@
-﻿using Hase.Client.Wpf.Services;
+using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
+using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
@@ -57,6 +58,24 @@ public sealed class RuntimeHostInventoryProjectorTests
                                 AccessMode =
                                     PropertyAccessMode.Read
                             }
+                        ],
+                        commands:
+                        [
+                            new CommandDescriptor(
+                                DescriptorPath.Parse(
+                                    "Controller.Reset"),
+                                "Reset"),
+                            new CommandDescriptor(
+                                DescriptorPath.Parse(
+                                    "Controller.Send"),
+                                "Send",
+                                new CommandArgumentDescriptor(
+                                    "Payload",
+                                    new ByteArrayDataDescriptor())
+                                {
+                                    Description =
+                                        "Opaque payload"
+                                })
                         ])
             };
         var descriptor =
@@ -122,8 +141,41 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.Equal(
             "Environment Sensor",
             projectedInstrument.Name);
-        Assert.Empty(
-            projectedInstrument.Commands);
+        Assert.Collection(
+            projectedInstrument.Commands,
+            command =>
+            {
+                Assert.Equal(
+                    "Reset",
+                    command.DisplayName);
+                Assert.False(
+                    command.RequiresArgument);
+                Assert.Null(
+                    command.ArgumentDisplayName);
+                Assert.Null(
+                    command.ArgumentDataType);
+                Assert.True(
+                    command.CanExecute);
+            },
+            command =>
+            {
+                Assert.Equal(
+                    "Send",
+                    command.DisplayName);
+                Assert.True(
+                    command.RequiresArgument);
+                Assert.Equal(
+                    "Payload",
+                    command.ArgumentDisplayName);
+                Assert.Equal(
+                    "Opaque payload",
+                    command.ArgumentDescription);
+                Assert.Equal(
+                    "ByteArray",
+                    command.ArgumentDataType);
+                Assert.False(
+                    command.CanExecute);
+            });
         PropertyInventoryItemViewModel property =
             Assert.Single(
                 projectedInstrument.Properties);

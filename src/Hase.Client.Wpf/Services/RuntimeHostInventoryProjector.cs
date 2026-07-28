@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Data;
 
@@ -62,7 +62,26 @@ public static class RuntimeHostInventoryProjector
                                                         command.DisplayName,
                                                         command.Description,
                                                         attachment.ConnectionStatus.State
-                                                            == RemoteEndpointConnectionState.Ready))
+                                                            == RemoteEndpointConnectionState.Ready
+                                                        && command.Argument
+                                                            is null)
+                                                    {
+                                                        RequiresArgument =
+                                                            command.Argument
+                                                            is not null,
+                                                        ArgumentDisplayName =
+                                                            command.Argument
+                                                                ?.DisplayName,
+                                                        ArgumentDescription =
+                                                            command.Argument
+                                                                ?.Description,
+                                                        ArgumentDataType =
+                                                            command.Argument
+                                                            is null
+                                                                ? null
+                                                                : GetDataType(
+                                                                    command.Argument.Data)
+                                                    })
                                             .ToArray()))
                             .ToArray()))
             .ToArray()
@@ -176,5 +195,21 @@ public static class RuntimeHostInventoryProjector
                     CultureInfo.InvariantCulture),
             _ =>
                 "No cached value"
+        };
+
+    private static string GetDataType(
+        DataDescriptor descriptor) =>
+        descriptor switch
+        {
+            NumericDataDescriptor =>
+                "Numeric",
+            BooleanDataDescriptor =>
+                "Boolean",
+            StringDataDescriptor =>
+                "String",
+            ByteArrayDataDescriptor =>
+                "ByteArray",
+            _ =>
+                descriptor.GetType().Name
         };
 }

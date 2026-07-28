@@ -5,4 +5,29 @@ public sealed record CommandInventoryItemViewModel(
     string Path,
     string DisplayName,
     string? Description,
-    bool CanExecute);
+    bool CanExecute)
+{
+    public bool RequiresArgument
+    {
+        get;
+        init;
+    }
+
+    public string? ArgumentDisplayName
+    {
+        get;
+        init;
+    }
+
+    public string? ArgumentDescription
+    {
+        get;
+        init;
+    }
+
+    public string? ArgumentDataType
+    {
+        get;
+        init;
+    }
+}

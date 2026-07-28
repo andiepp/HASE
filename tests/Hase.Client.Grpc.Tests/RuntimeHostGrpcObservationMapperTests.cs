@@ -1,4 +1,4 @@
-﻿using Google.Protobuf.WellKnownTypes;
+using Google.Protobuf.WellKnownTypes;
 using Hase.Client;
 using Hase.Client.Grpc;
 using Hase.Core.Domain.Data;
@@ -58,6 +58,20 @@ public sealed class RuntimeHostGrpcObservationMapperTests
             {
                 DisplayName =
                     "Toggle",
+                Argument =
+                    new GrpcV1.CommandArgumentDescriptor
+                    {
+                        DisplayName =
+                            "Payload",
+                        Description =
+                            "Opaque payload",
+                        Data =
+                            new GrpcV1.DataDescriptor
+                            {
+                                ByteArrayDescriptor =
+                                    new GrpcV1.ByteArrayDataDescriptor()
+                            }
+                    },
                 PathSegments =
                 {
                     "Controller",
@@ -109,8 +123,19 @@ public sealed class RuntimeHostGrpcObservationMapperTests
         Assert.IsType<BooleanDataDescriptor>(
             Assert.Single(
                 mappedInstrument.Interface.Properties).Data);
-        Assert.Single(
-            mappedInstrument.Interface.Commands);
+        var mappedCommand =
+            Assert.Single(
+                mappedInstrument.Interface.Commands);
+        Assert.NotNull(
+            mappedCommand.Argument);
+        Assert.Equal(
+            "Payload",
+            mappedCommand.Argument.DisplayName);
+        Assert.Equal(
+            "Opaque payload",
+            mappedCommand.Argument.Description);
+        Assert.IsType<ByteArrayDataDescriptor>(
+            mappedCommand.Argument.Data);
         Assert.Single(
             mappedInstrument.Interface.Events);
     }

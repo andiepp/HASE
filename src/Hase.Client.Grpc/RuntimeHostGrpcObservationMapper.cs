@@ -1,4 +1,4 @@
-﻿using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
@@ -407,6 +407,9 @@ public sealed class RuntimeHostGrpcObservationMapper
             GrpcV1.DataDescriptor.KindOneofCase.StringDescriptor =>
                 new StringDataDescriptor(),
 
+            GrpcV1.DataDescriptor.KindOneofCase.ByteArrayDescriptor =>
+                new ByteArrayDataDescriptor(),
+
             _ =>
                 throw Invalid(
                     "The Property data descriptor has no supported kind.")
@@ -488,18 +491,48 @@ public sealed class RuntimeHostGrpcObservationMapper
     private static CommandDescriptor MapCommandDescriptor(
         GrpcV1.CommandDescriptor descriptor)
     {
-        return new CommandDescriptor(
+        DescriptorPath path =
             MapPath(
                 descriptor.PathSegments,
-                "Command path"),
+                "Command path");
+        string displayName =
             RequireText(
                 descriptor.DisplayName,
-                "Command display name"))
+                "Command display name");
+        string? description =
+            OptionalText(
+                descriptor.HasDescription,
+                descriptor.Description);
+
+        if (descriptor.Argument is null)
+        {
+            return new CommandDescriptor(
+                path,
+                displayName)
+            {
+                Description =
+                    description
+            };
+        }
+
+        return new CommandDescriptor(
+            path,
+            displayName,
+            new CommandArgumentDescriptor(
+                RequireText(
+                    descriptor.Argument.DisplayName,
+                    "Command argument display name"),
+                MapDataDescriptor(
+                    descriptor.Argument.Data))
+            {
+                Description =
+                    OptionalText(
+                        descriptor.Argument.HasDescription,
+                        descriptor.Argument.Description)
+            })
         {
             Description =
-                OptionalText(
-                    descriptor.HasDescription,
-                    descriptor.Description)
+                description
         };
     }
 
