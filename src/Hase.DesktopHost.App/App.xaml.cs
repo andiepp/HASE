@@ -82,6 +82,8 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<
             RuntimeInventoryViewModel>();
         containerRegistry.RegisterSingleton<
+            EndpointDetailsViewModel>();
+        containerRegistry.RegisterSingleton<
             MainWindowViewModel>();
         containerRegistry.RegisterSingleton<
             MainWindow>();

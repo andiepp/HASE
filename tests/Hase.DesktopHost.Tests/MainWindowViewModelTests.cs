@@ -24,10 +24,14 @@ public sealed class MainWindowViewModelTests
         var inventoryViewModel =
             new RuntimeInventoryViewModel(
                 EmptyInventorySource.Instance);
+        using var endpointDetailsViewModel =
+            new EndpointDetailsViewModel(
+                inventoryViewModel);
         using var viewModel =
             new MainWindowViewModel(
                 runtimeViewModel,
-                inventoryViewModel);
+                inventoryViewModel,
+                endpointDetailsViewModel);
 
         await viewModel.StartAsync();
         await viewModel.StopAsync();
@@ -41,6 +45,9 @@ public sealed class MainWindowViewModelTests
         Assert.Same(
             inventoryViewModel,
             viewModel.Inventory);
+        Assert.Same(
+            endpointDetailsViewModel,
+            viewModel.EndpointDetails);
         Assert.Equal(
             1,
             backend.StartCount);
@@ -52,6 +59,8 @@ public sealed class MainWindowViewModelTests
             viewModel.RuntimeHost.Status);
         Assert.Empty(
             viewModel.Inventory.Endpoints);
+        Assert.False(
+            viewModel.EndpointDetails.HasSelection);
     }
 
     private sealed class RecordingBackend

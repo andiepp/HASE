@@ -1,13 +1,66 @@
-<Window
+﻿<Window
     x:Class="Hase.DesktopHost.App.Views.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="{Binding ApplicationTitle}"
-    Width="820"
+    Width="980"
     Height="760"
-    MinWidth="680"
-    MinHeight="560"
+    MinWidth="780"
+    MinHeight="580"
     WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="EndpointStateTextStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="DimGray" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsReady}" Value="True">
+                    <Setter Property="Foreground" Value="ForestGreen" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsRecovering}" Value="True">
+                    <Setter Property="Foreground" Value="DarkOrange" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFaulted}" Value="True">
+                    <Setter Property="Foreground" Value="Firebrick" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsDisconnected}" Value="True">
+                    <Setter Property="Foreground" Value="Gray" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EndpointListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
+        <Style x:Key="EndpointCardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="BorderBrush" Value="LightGray" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="White" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsReady}" Value="True">
+                    <Setter Property="BorderBrush" Value="DarkSeaGreen" />
+                    <Setter Property="Background" Value="Honeydew" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsRecovering}" Value="True">
+                    <Setter Property="BorderBrush" Value="Goldenrod" />
+                    <Setter Property="Background" Value="LightYellow" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFaulted}" Value="True">
+                    <Setter Property="BorderBrush" Value="IndianRed" />
+                    <Setter Property="Background" Value="MistyRose" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsDisconnected}" Value="True">
+                    <Setter Property="BorderBrush" Value="DarkGray" />
+                    <Setter Property="Background" Value="WhiteSmoke" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="32">
             <Grid.RowDefinitions>
@@ -121,68 +174,149 @@
             </GroupBox>
 
             <GroupBox Grid.Row="8" Header="Published Endpoints">
-                <StackPanel Margin="16">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" MinHeight="250" />
+                    </Grid.RowDefinitions>
+
                     <TextBlock
-                        Margin="0,0,0,12"
                         Text="{Binding Inventory.PublishedEndpointCount, StringFormat=Published endpoints: {0}}" />
 
-                    <ItemsControl ItemsSource="{Binding Inventory.Endpoints}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border
-                                    Margin="0,0,0,12"
-                                    Padding="14"
-                                    BorderBrush="LightGray"
-                                    BorderThickness="1"
-                                    CornerRadius="4">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="180" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" MinWidth="280" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="3*" MinWidth="340" />
+                        </Grid.ColumnDefinitions>
 
-                                        <TextBlock FontWeight="SemiBold" Text="Display name" />
-                                        <TextBlock
-                                            Grid.Column="1"
-                                            FontWeight="SemiBold"
-                                            Text="{Binding DisplayName}"
-                                            TextWrapping="Wrap" />
+                        <ListBox
+                            Grid.Column="0"
+                            ItemsSource="{Binding Inventory.Endpoints}"
+                            ItemContainerStyle="{StaticResource EndpointListItemStyle}"
+                            SelectedItem="{Binding Inventory.SelectedEndpoint, Mode=TwoWay}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource EndpointCardStyle}">
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="15"
+                                                FontWeight="SemiBold"
+                                                Text="{Binding DisplayName}"
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                Margin="0,6,0,0"
+                                                Style="{StaticResource EndpointStateTextStyle}"
+                                                Text="{Binding StateIndicatorText}" />
+                                            <TextBlock
+                                                Margin="0,4,0,0"
+                                                Foreground="DimGray"
+                                                Text="{Binding EndpointId}"
+                                                TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
-                                        <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Endpoint ID" />
-                                        <TextBlock
-                                            Grid.Row="2"
-                                            Grid.Column="1"
-                                            Text="{Binding EndpointId}"
-                                            TextWrapping="Wrap" />
+                        <Border
+                            Grid.Column="2"
+                            Padding="18"
+                            BorderBrush="LightGray"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                            <Grid>
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="DimGray"
+                                    Text="Select a published endpoint to inspect its details."
+                                    TextAlignment="Center"
+                                    TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger
+                                                    Binding="{Binding EndpointDetails.HasSelection}"
+                                                    Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
 
-                                        <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Connection state" />
-                                        <TextBlock
-                                            Grid.Row="4"
-                                            Grid.Column="1"
-                                            Text="{Binding ConnectionState}" />
+                                <Grid>
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger
+                                                    Binding="{Binding EndpointDetails.HasSelection}"
+                                                    Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
 
-                                        <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Generation" />
-                                        <TextBlock
-                                            Grid.Row="6"
-                                            Grid.Column="1"
-                                            FontFamily="Consolas"
-                                            Text="{Binding AttachmentGeneration}"
-                                            TextWrapping="Wrap" />
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="16" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock
+                                        Grid.ColumnSpan="2"
+                                        FontSize="18"
+                                        FontWeight="SemiBold"
+                                        Text="Endpoint Details" />
+
+                                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Display name" />
+                                    <TextBlock
+                                        Grid.Row="2"
+                                        Grid.Column="1"
+                                        Text="{Binding EndpointDetails.DisplayName}"
+                                        TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Endpoint ID" />
+                                    <TextBlock
+                                        Grid.Row="4"
+                                        Grid.Column="1"
+                                        Text="{Binding EndpointDetails.EndpointId}"
+                                        TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Connection state" />
+                                    <TextBlock
+                                        Grid.Row="6"
+                                        Grid.Column="1"
+                                        Style="{StaticResource EndpointStateTextStyle}"
+                                        Text="{Binding EndpointDetails.StateIndicatorText}" />
+
+                                    <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Generation" />
+                                    <TextBlock
+                                        Grid.Row="8"
+                                        Grid.Column="1"
+                                        FontFamily="Consolas"
+                                        Text="{Binding EndpointDetails.AttachmentGeneration}"
+                                        TextWrapping="Wrap" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
             </GroupBox>
         </Grid>
     </ScrollViewer>

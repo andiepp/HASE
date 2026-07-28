@@ -76,24 +76,35 @@ public sealed class DesktopRuntimeEndpointViewModel
     }
 
     public bool IsReady =>
-        string.Equals(
-            ConnectionState,
-            "Ready",
-            StringComparison.Ordinal);
+        IsState(
+            "Ready");
 
     public bool IsRecovering =>
-        string.Equals(
-            ConnectionState,
-            "Reconnecting",
-            StringComparison.Ordinal)
-        || string.Equals(
-            ConnectionState,
-            "Connecting",
-            StringComparison.Ordinal)
-        || string.Equals(
-            ConnectionState,
-            "Synchronizing",
-            StringComparison.Ordinal);
+        IsState(
+            "Connecting")
+        || IsState(
+            "Synchronizing")
+        || IsState(
+            "Reconnecting");
+
+    public bool IsFaulted =>
+        IsState(
+            "Faulted");
+
+    public bool IsDisconnected =>
+        IsState(
+            "Disconnected");
+
+    public string StateIndicatorText =>
+        IsReady
+            ? "● Ready"
+            : IsRecovering
+                ? "◐ " + ConnectionState
+                : IsFaulted
+                    ? "⚠ Faulted"
+                    : IsDisconnected
+                        ? "○ Disconnected"
+                        : "• " + ConnectionState;
 
     public void Update(
         DesktopRuntimeEndpointSnapshot snapshot)
@@ -126,11 +137,29 @@ public sealed class DesktopRuntimeEndpointViewModel
         {
             ConnectionState =
                 snapshot.ConnectionState;
-            OnPropertyChanged(
-                nameof(IsReady));
-            OnPropertyChanged(
-                nameof(IsRecovering));
+            RaiseStatePropertiesChanged();
         }
+    }
+
+    private bool IsState(
+        string state) =>
+        string.Equals(
+            ConnectionState,
+            state,
+            StringComparison.Ordinal);
+
+    private void RaiseStatePropertiesChanged()
+    {
+        OnPropertyChanged(
+            nameof(IsReady));
+        OnPropertyChanged(
+            nameof(IsRecovering));
+        OnPropertyChanged(
+            nameof(IsFaulted));
+        OnPropertyChanged(
+            nameof(IsDisconnected));
+        OnPropertyChanged(
+            nameof(StateIndicatorText));
     }
 
     private bool SetProperty(

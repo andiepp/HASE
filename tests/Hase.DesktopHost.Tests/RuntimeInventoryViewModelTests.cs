@@ -94,8 +94,47 @@ public sealed class RuntimeInventoryViewModelTests
             viewModel.Endpoints[0].ConnectionState);
     }
 
+    [Theory]
+    [InlineData("Ready", true, false, false, false, "● Ready")]
+    [InlineData("Connecting", false, true, false, false, "◐ Connecting")]
+    [InlineData("Synchronizing", false, true, false, false, "◐ Synchronizing")]
+    [InlineData("Reconnecting", false, true, false, false, "◐ Reconnecting")]
+    [InlineData("Faulted", false, false, true, false, "⚠ Faulted")]
+    [InlineData("Disconnected", false, false, false, true, "○ Disconnected")]
+    public void EndpointState_ShouldExposePresentationFlags(
+        string state,
+        bool isReady,
+        bool isRecovering,
+        bool isFaulted,
+        bool isDisconnected,
+        string indicatorText)
+    {
+        var viewModel =
+            new DesktopRuntimeEndpointViewModel(
+                "endpoint-1",
+                "Endpoint",
+                state,
+                Guid.NewGuid().ToString());
+
+        Assert.Equal(
+            isReady,
+            viewModel.IsReady);
+        Assert.Equal(
+            isRecovering,
+            viewModel.IsRecovering);
+        Assert.Equal(
+            isFaulted,
+            viewModel.IsFaulted);
+        Assert.Equal(
+            isDisconnected,
+            viewModel.IsDisconnected);
+        Assert.Equal(
+            indicatorText,
+            viewModel.StateIndicatorText);
+    }
+
     [Fact]
-    public void Update_ShouldNotifyConnectionStateFlags()
+    public void Update_ShouldNotifyAllConnectionStatePresentationProperties()
     {
         DesktopRuntimeEndpointSnapshot initial =
             CreateSnapshot(
@@ -120,7 +159,7 @@ public sealed class RuntimeInventoryViewModelTests
             initial with
             {
                 ConnectionState =
-                    "Reconnecting"
+                    "Faulted"
             });
 
         Assert.Contains(
@@ -132,10 +171,15 @@ public sealed class RuntimeInventoryViewModelTests
         Assert.Contains(
             nameof(DesktopRuntimeEndpointViewModel.IsRecovering),
             changedProperties);
-        Assert.False(
-            viewModel.IsReady);
-        Assert.True(
-            viewModel.IsRecovering);
+        Assert.Contains(
+            nameof(DesktopRuntimeEndpointViewModel.IsFaulted),
+            changedProperties);
+        Assert.Contains(
+            nameof(DesktopRuntimeEndpointViewModel.IsDisconnected),
+            changedProperties);
+        Assert.Contains(
+            nameof(DesktopRuntimeEndpointViewModel.StateIndicatorText),
+            changedProperties);
     }
 
     private static DesktopRuntimeEndpointSnapshot CreateSnapshot(

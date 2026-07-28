@@ -8,6 +8,7 @@ public sealed class RuntimeInventoryViewModel
     : INotifyPropertyChanged
 {
     private readonly IDesktopRuntimeHostInventorySource inventorySource;
+    private DesktopRuntimeEndpointViewModel? selectedEndpoint;
 
     public RuntimeInventoryViewModel(
         IDesktopRuntimeHostInventorySource inventorySource)
@@ -29,8 +30,40 @@ public sealed class RuntimeInventoryViewModel
     public int PublishedEndpointCount =>
         Endpoints.Count;
 
+    public DesktopRuntimeEndpointViewModel? SelectedEndpoint
+    {
+        get =>
+            selectedEndpoint;
+        set
+        {
+            if (ReferenceEquals(
+                    selectedEndpoint,
+                    value))
+            {
+                return;
+            }
+
+            if (value is not null
+                && !Endpoints.Contains(
+                    value))
+            {
+                throw new ArgumentException(
+                    "The selected endpoint must belong to the published "
+                    + "endpoint collection.",
+                    nameof(value));
+            }
+
+            selectedEndpoint =
+                value;
+            OnPropertyChanged();
+        }
+    }
+
     public void Refresh()
     {
+        string? selectedEndpointId =
+            SelectedEndpoint?.EndpointId;
+
         IReadOnlyList<DesktopRuntimeEndpointSnapshot> snapshots =
             inventorySource.Capture();
 
@@ -96,9 +129,29 @@ public sealed class RuntimeInventoryViewModel
 
         ReorderToMatch(
             orderedSnapshots);
+        RestoreSelection(
+            selectedEndpointId);
 
         OnPropertyChanged(
             nameof(PublishedEndpointCount));
+    }
+
+    private void RestoreSelection(
+        string? selectedEndpointId)
+    {
+        DesktopRuntimeEndpointViewModel? desiredSelection =
+            selectedEndpointId is null
+                ? Endpoints.FirstOrDefault()
+                : Endpoints.FirstOrDefault(
+                    endpoint =>
+                        string.Equals(
+                            endpoint.EndpointId,
+                            selectedEndpointId,
+                            StringComparison.Ordinal))
+                    ?? Endpoints.FirstOrDefault();
+
+        SelectedEndpoint =
+            desiredSelection;
     }
 
     private void ReorderToMatch(

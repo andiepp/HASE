@@ -3,10 +3,12 @@
 public sealed class MainWindowViewModel : IDisposable
 {
     private readonly DesktopRuntimeHostViewModel runtimeHostViewModel;
+    private bool disposed;
 
     public MainWindowViewModel(
         DesktopRuntimeHostViewModel runtimeHostViewModel,
-        RuntimeInventoryViewModel inventoryViewModel)
+        RuntimeInventoryViewModel inventoryViewModel,
+        EndpointDetailsViewModel endpointDetailsViewModel)
     {
         this.runtimeHostViewModel =
             runtimeHostViewModel
@@ -16,6 +18,10 @@ public sealed class MainWindowViewModel : IDisposable
             inventoryViewModel
             ?? throw new ArgumentNullException(
                 nameof(inventoryViewModel));
+        EndpointDetails =
+            endpointDetailsViewModel
+            ?? throw new ArgumentNullException(
+                nameof(endpointDetailsViewModel));
     }
 
     public string ApplicationTitle =>
@@ -25,6 +31,11 @@ public sealed class MainWindowViewModel : IDisposable
         runtimeHostViewModel;
 
     public RuntimeInventoryViewModel Inventory
+    {
+        get;
+    }
+
+    public EndpointDetailsViewModel EndpointDetails
     {
         get;
     }
@@ -46,6 +57,17 @@ public sealed class MainWindowViewModel : IDisposable
     public void RefreshInventory() =>
         Inventory.Refresh();
 
-    public void Dispose() =>
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed =
+            true;
+
+        EndpointDetails.Dispose();
         runtimeHostViewModel.Dispose();
+    }
 }

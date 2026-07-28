@@ -5,7 +5,7 @@ namespace Hase.DesktopHost.Tests;
 public sealed class MainWindowInventoryProjectionTests
 {
     [Fact]
-    public void RefreshInventory_ShouldDelegateToInventoryViewModel()
+    public void RefreshInventory_ShouldDelegateToInventoryAndDetailsViewModels()
     {
         var runtimeHost =
             new DesktopRuntimeHost(
@@ -31,10 +31,14 @@ public sealed class MainWindowInventoryProjectionTests
         var inventoryViewModel =
             new RuntimeInventoryViewModel(
                 inventorySource);
+        using var endpointDetailsViewModel =
+            new EndpointDetailsViewModel(
+                inventoryViewModel);
         using var viewModel =
             new MainWindowViewModel(
                 runtimeViewModel,
-                inventoryViewModel);
+                inventoryViewModel,
+                endpointDetailsViewModel);
 
         viewModel.RefreshInventory();
 
@@ -46,6 +50,20 @@ public sealed class MainWindowInventoryProjectionTests
         Assert.Equal(
             "endpoint-1",
             viewModel.Inventory.Endpoints[0].EndpointId);
+        Assert.Same(
+            viewModel.Inventory.Endpoints[0],
+            viewModel.Inventory.SelectedEndpoint);
+        Assert.True(
+            viewModel.EndpointDetails.HasSelection);
+        Assert.Equal(
+            "endpoint-1",
+            viewModel.EndpointDetails.EndpointId);
+        Assert.Equal(
+            "Endpoint",
+            viewModel.EndpointDetails.DisplayName);
+        Assert.Equal(
+            "Ready",
+            viewModel.EndpointDetails.ConnectionState);
     }
 
     private sealed class StubBackend
