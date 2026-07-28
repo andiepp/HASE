@@ -75,6 +75,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="24" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
@@ -835,6 +837,59 @@
                                 Width="260"
                                 Binding="{Binding Reconciliation}"
                                 Header="Reconciliation" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Row="12" Header="Endpoint Events">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Foreground="DimGray"
+                        Text="Latest 100 endpoint-originated Event occurrences, newest first." />
+
+                    <DataGrid
+                        Grid.Row="2"
+                        Height="220"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        HeadersVisibility="Column"
+                        HorizontalScrollBarVisibility="Auto"
+                        IsReadOnly="True"
+                        ItemsSource="{Binding EndpointEvents.Occurrences}"
+                        VerticalScrollBarVisibility="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="190"
+                                Binding="{Binding OccurredAtUtcText}"
+                                Header="Occurred UTC" />
+                            <DataGridTextColumn
+                                Width="170"
+                                Binding="{Binding EndpointId}"
+                                Header="Endpoint" />
+                            <DataGridTextColumn
+                                Width="240"
+                                Binding="{Binding AttachmentGeneration}"
+                                Header="Attachment generation" />
+                            <DataGridTextColumn
+                                Width="170"
+                                Binding="{Binding InstrumentId}"
+                                Header="Instrument" />
+                            <DataGridTextColumn
+                                Width="210"
+                                Binding="{Binding EventPath}"
+                                Header="Event" />
+                            <DataGridTextColumn
+                                Width="180"
+                                Binding="{Binding Value}"
+                                Header="Value" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

@@ -1,4 +1,5 @@
 ﻿using Prism.Commands;
+using System.Windows.Threading;
 
 namespace Hase.DesktopHost.App.ViewModels;
 
@@ -6,13 +7,18 @@ public sealed class MainWindowViewModel : IDisposable
 {
     private readonly DesktopRuntimeHostViewModel runtimeHostViewModel;
     private readonly IDesktopRuntimeHostOperator runtimeHostOperator;
+    private readonly IDesktopRuntimeHostEventSource? eventSource;
+    private readonly Dispatcher dispatcher;
+    private CancellationTokenSource? eventObservationCancellation;
+    private Task? eventObservationTask;
     private bool disposed;
 
     public MainWindowViewModel(
         DesktopRuntimeHostViewModel runtimeHostViewModel,
         RuntimeInventoryViewModel inventoryViewModel,
         EndpointDetailsViewModel endpointDetailsViewModel,
-        IDesktopRuntimeHostOperator runtimeHostOperator)
+        IDesktopRuntimeHostOperator runtimeHostOperator,
+        IDesktopRuntimeHostEventSource? eventSource = null)
     {
         this.runtimeHostViewModel =
             runtimeHostViewModel
@@ -32,6 +38,12 @@ public sealed class MainWindowViewModel : IDisposable
                 nameof(runtimeHostOperator));
         Activity =
             new OperatorActivityViewModel();
+        EndpointEvents =
+            new EndpointEventHistoryViewModel();
+        this.eventSource =
+            eventSource;
+        dispatcher =
+            Dispatcher.CurrentDispatcher;
 
         WriteBooleanPropertyCommand =
             new DelegateCommand<DesktopRuntimePropertyViewModel>(
@@ -72,6 +84,11 @@ public sealed class MainWindowViewModel : IDisposable
         get;
     }
 
+    public EndpointEventHistoryViewModel EndpointEvents
+    {
+        get;
+    }
+
     public DelegateCommand<DesktopRuntimePropertyViewModel>
         WriteBooleanPropertyCommand
     {
@@ -91,12 +108,47 @@ public sealed class MainWindowViewModel : IDisposable
             cancellationToken);
 
         Inventory.Refresh();
+
+        if (eventSource is not null)
+        {
+            eventObservationCancellation =
+                new CancellationTokenSource();
+            eventObservationTask =
+                ObserveEventsAsync(
+                    eventObservationCancellation.Token);
+        }
     }
 
-    public Task StopAsync(
-        CancellationToken cancellationToken = default) =>
-        runtimeHostViewModel.StopAsync(
-            cancellationToken);
+    public async Task StopAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (eventObservationCancellation is not null)
+            {
+                await eventObservationCancellation.CancelAsync()
+                    .ConfigureAwait(false);
+
+                if (eventObservationTask is not null)
+                {
+                    await eventObservationTask
+                        .ConfigureAwait(false);
+                }
+
+                eventObservationCancellation.Dispose();
+                eventObservationCancellation =
+                    null;
+                eventObservationTask =
+                    null;
+            }
+        }
+        finally
+        {
+            await runtimeHostViewModel.StopAsync(
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
 
     public void RefreshInventory()
     {
@@ -262,6 +314,38 @@ public sealed class MainWindowViewModel : IDisposable
         await WriteBooleanPropertyAsync(
             property,
             CancellationToken.None);
+    }
+
+    private async Task ObserveEventsAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (
+                DesktopRuntimeEventOccurrence occurrence
+                in eventSource!.ObserveEventsAsync(
+                    cancellationToken)
+                    .ConfigureAwait(false))
+            {
+                await dispatcher.InvokeAsync(
+                    () =>
+                        EndpointEvents.Record(
+                            occurrence),
+                    DispatcherPriority.DataBind,
+                    cancellationToken)
+                    .Task
+                    .ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            // Observation is read-only. A terminated subscription must not
+            // terminate the WPF dispatcher or prevent orderly host shutdown.
+        }
     }
 
     private async void ExecuteCommand(

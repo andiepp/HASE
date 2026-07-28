@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Runtime.CompilerServices;
 using Hase.CompactProtocol;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
@@ -18,7 +19,8 @@ namespace Hase.DesktopHost.App.Hosting;
 public sealed class ProductionPrivateNetworkRuntimeHostBackend
     : IDesktopRuntimeHostBackend,
       IDesktopRuntimeHostInventorySource,
-      IDesktopRuntimeHostOperator
+      IDesktopRuntimeHostOperator,
+      IDesktopRuntimeHostEventSource
 {
     private const int NativeTcpPort = 5000;
     private const int MaximumPayloadLength = 4096;
@@ -369,6 +371,37 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             target,
             argument,
             cancellationToken);
+    }
+
+    public async IAsyncEnumerable<DesktopRuntimeEventOccurrence>
+        ObserveEventsAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken =
+                default)
+    {
+        RuntimeHostNorthboundSnapshotComposition currentComposition =
+            composition
+            ?? throw new InvalidOperationException(
+                "The desktop runtime host is not running.");
+
+        await using RuntimeHostObservationSubscription subscription =
+            await currentComposition.ObservationService.OpenSubscriptionAsync(
+                new RuntimeHostObservationSubscriptionOptions(),
+                cancellationToken);
+
+        await foreach (
+            RuntimeHostObservation observation
+            in subscription.ReadAllAsync(
+                cancellationToken))
+        {
+            if (observation.Payload
+                is not RuntimeHostEventOccurredObservationPayload)
+            {
+                continue;
+            }
+
+            yield return DesktopRuntimeEventOccurrenceProjector.Project(
+                observation);
+        }
     }
 
     private static async Task AttachNativeEndpointAsync(
