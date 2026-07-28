@@ -78,6 +78,13 @@ UInt16 Length
 UTF-8 Bytes
 ```
 
+Byte arrays are encoded as:
+
+```
+UInt16 Length
+Bytes
+```
+
 Optional strings are encoded using:
 
 ```
@@ -95,18 +102,28 @@ The protocol intentionally avoids CLR object serialization.
 
 Protocol Version 1 currently supports:
 
-| Variant Type | Description |
-|--------------|-------------|
-| Null | No value |
-| Boolean | Boolean value |
-| Int32 | 32-bit signed integer |
-| Int64 | 64-bit signed integer |
-| Double | IEEE-754 double precision |
-| String | UTF-8 string |
+| Value | Variant Type | Description |
+|------:|--------------|-------------|
+| `0x00` | Null | No value |
+| `0x01` | Boolean | Boolean value |
+| `0x02` | Int32 | 32-bit signed integer |
+| `0x03` | Int64 | 64-bit signed integer |
+| `0x04` | Double | IEEE-754 double precision |
+| `0x05` | String | UTF-8 string |
+| `0x06` | ByteArray | Opaque ordered bytes |
 
-Unsupported CLR types cause serialization to fail with a `NotSupportedException`.
+ByteArray is encoded as its Variant discriminator followed by a UInt16
+little-endian length and the exact payload bytes. An empty ByteArray has a zero
+length and remains distinct from Null.
 
-Future protocol versions may extend the Variant type system while remaining backward compatible.
+Only the immutable `ByteArrayValue` is accepted. Mutable CLR `byte[]` values are
+not converted implicitly.
+
+Unsupported CLR types cause serialization to fail with a
+`NotSupportedException`.
+
+Future protocol versions may extend the Variant type system while remaining
+backward compatible.
 
 ---
 
@@ -125,7 +142,7 @@ The timestamp is represented as a signed 64-bit Unix timestamp in UTC.
 Property quality is encoded as:
 
 | Value | Quality |
-|-------:|---------|
+|------:|---------|
 | 0 | Good |
 | 1 | Uncertain |
 | 2 | Bad |
@@ -150,7 +167,21 @@ InstrumentDescriptor
             └── EventDescriptor
 ```
 
-Each serializer is responsible only for its own object and delegates nested objects to the appropriate serializer.
+Each serializer is responsible only for its own object and delegates nested
+objects to the appropriate serializer.
+
+Property data descriptors use stable one-byte discriminators:
+
+| Value | Data descriptor |
+|------:|-----------------|
+| `0x01` | String |
+| `0x02` | Numeric |
+| `0x03` | Boolean |
+| `0x04` | ByteArray |
+
+`ByteArrayDataDescriptor` contains no additional serialized fields. Its
+presence declares that the corresponding Property value is an opaque
+ByteArray.
 
 ---
 
@@ -158,7 +189,8 @@ Each serializer is responsible only for its own object and delegates nested obje
 
 Protocol messages are serialized by the `BinaryProtocolPayloadCodec`.
 
-Message serialization is intentionally separated from domain object serialization.
+Message serialization is intentionally separated from domain object
+serialization.
 
 ```
 BinaryProtocolPayloadCodec
@@ -178,7 +210,11 @@ Malformed payloads result in `InvalidDataException`.
 
 Unsupported runtime types result in `NotSupportedException`.
 
-Unknown protocol enumeration values are treated as protocol errors and rejected during deserialization.
+Unknown protocol enumeration and descriptor values are treated as protocol
+errors and rejected during deserialization.
+
+ByteArray values longer than 65,535 bytes cannot be represented by Protocol
+Version 1 and are rejected rather than truncated.
 
 ---
 
@@ -192,9 +228,11 @@ The test suite includes:
 - round-trip serialization;
 - malformed payload detection;
 - unsupported value handling;
+- nested descriptor propagation; and
 - boundary conditions.
 
-This ensures that the binary protocol remains stable as the implementation evolves.
+This ensures that the binary protocol remains stable as the implementation
+evolves.
 
 ---
 
@@ -202,4 +240,8 @@ This ensures that the binary protocol remains stable as the implementation evolv
 
 Protocol Version 1 defines the binary format described in this document.
 
-Future protocol versions may extend the protocol by introducing additional Variant types, message types or descriptor information while preserving backward compatibility whenever practical.
+Existing discriminator values must never be changed or reused.
+
+Future protocol versions may extend the protocol by introducing additional
+Variant types, message types, or descriptor information while preserving
+backward compatibility whenever practical.

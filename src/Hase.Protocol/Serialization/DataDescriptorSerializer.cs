@@ -14,6 +14,7 @@ internal sealed class DataDescriptorSerializer
     private const byte StringDescriptorType = 1;
     private const byte NumericDescriptorType = 2;
     private const byte BooleanDescriptorType = 3;
+    private const byte ByteArrayDescriptorType = 4;
 
     /// <summary>
     /// Writes a data descriptor to the supplied protocol writer.
@@ -46,6 +47,12 @@ internal sealed class DataDescriptorSerializer
 
                 break;
 
+            case ByteArrayDataDescriptor:
+                writer.WriteByte(
+                    ByteArrayDescriptorType);
+
+                break;
+
             default:
                 throw new NotSupportedException(
                     $"Data descriptor type "
@@ -75,6 +82,9 @@ internal sealed class DataDescriptorSerializer
 
             BooleanDescriptorType =>
                 new BooleanDataDescriptor(),
+
+            ByteArrayDescriptorType =>
+                new ByteArrayDataDescriptor(),
 
             _ => throw new InvalidDataException(
                 $"Unknown data descriptor type "
