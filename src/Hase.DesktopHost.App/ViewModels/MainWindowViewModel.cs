@@ -30,6 +30,8 @@ public sealed class MainWindowViewModel : IDisposable
             runtimeHostOperator
             ?? throw new ArgumentNullException(
                 nameof(runtimeHostOperator));
+        Activity =
+            new OperatorActivityViewModel();
 
         WriteBooleanPropertyCommand =
             new DelegateCommand<DesktopRuntimePropertyViewModel>(
@@ -61,6 +63,11 @@ public sealed class MainWindowViewModel : IDisposable
     }
 
     public EndpointDetailsViewModel EndpointDetails
+    {
+        get;
+    }
+
+    public OperatorActivityViewModel Activity
     {
         get;
     }
@@ -118,6 +125,11 @@ public sealed class MainWindowViewModel : IDisposable
             return;
         }
 
+        string operationPath =
+            command.Path;
+        string reconciliation =
+            string.Empty;
+
         try
         {
             Hase.Runtime.Northbound.RuntimeHostCommandOperationResult result =
@@ -131,10 +143,11 @@ public sealed class MainWindowViewModel : IDisposable
 
             if (result.IsSuccess)
             {
-                await ReconcileReadablePropertiesAsync(
-                    command,
-                    target,
-                    cancellationToken);
+                reconciliation =
+                    await ReconcileReadablePropertiesAsync(
+                        command,
+                        target,
+                        cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -148,6 +161,21 @@ public sealed class MainWindowViewModel : IDisposable
         }
         finally
         {
+            Activity.Record(
+                DesktopRuntimeOperatorActivityKind
+                    .ParameterlessCommandExecution,
+                target.EndpointId.Value,
+                target.AttachmentGeneration.ToString(),
+                target.InstrumentId.Value,
+                operationPath,
+                "None",
+                GetActivityOutcome(
+                    command.ExecutionState),
+                command.ExecutionState
+                    == DesktopRuntimeCommandExecutionState.Succeeded
+                        ? string.Empty
+                        : command.ExecutionMessage,
+                reconciliation);
             ExecuteParameterlessCommand.RaiseCanExecuteChanged();
         }
     }
@@ -172,6 +200,9 @@ public sealed class MainWindowViewModel : IDisposable
             return;
         }
 
+        string operationPath =
+            property.Path;
+
         try
         {
             Hase.Runtime.Northbound.RuntimeHostPropertyOperationResult result =
@@ -194,6 +225,19 @@ public sealed class MainWindowViewModel : IDisposable
         }
         finally
         {
+            Activity.Record(
+                DesktopRuntimeOperatorActivityKind.BooleanPropertyWrite,
+                request.Target.EndpointId.Value,
+                request.Target.AttachmentGeneration.ToString(),
+                request.Target.InstrumentId.Value,
+                operationPath,
+                request.RequestedValue.ToString(),
+                GetActivityOutcome(
+                    property.WriteState),
+                property.WriteState
+                    == DesktopRuntimePropertyWriteState.Succeeded
+                        ? string.Empty
+                        : property.WriteMessage);
             WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
         }
     }
@@ -228,7 +272,7 @@ public sealed class MainWindowViewModel : IDisposable
             CancellationToken.None);
     }
 
-    private async Task ReconcileReadablePropertiesAsync(
+    private async Task<string> ReconcileReadablePropertiesAsync(
         DesktopRuntimeCommandViewModel command,
         Hase.Runtime.Northbound.RuntimeHostCommandTarget commandTarget,
         CancellationToken cancellationToken)
@@ -318,13 +362,47 @@ public sealed class MainWindowViewModel : IDisposable
         {
             command.CompletePropertyReconciliation(
                 refreshedPropertyCount);
+            return refreshedPropertyCount == 0
+                ? "No readable Properties required refresh."
+                : $"Authoritatively refreshed {refreshedPropertyCount} "
+                    + $"{(refreshedPropertyCount == 1 ? "Property" : "Properties")}.";
         }
-        else
-        {
-            command.ReportPropertyReconciliationWarning(
-                string.Join(
-                    "; ",
-                    warnings));
-        }
+
+        string warning =
+            string.Join(
+                "; ",
+                warnings);
+        command.ReportPropertyReconciliationWarning(
+            warning);
+        return "Warning: "
+            + warning;
     }
+
+    private static DesktopRuntimeOperatorActivityOutcome GetActivityOutcome(
+        DesktopRuntimeCommandExecutionState state) =>
+        state switch
+        {
+            DesktopRuntimeCommandExecutionState.Succeeded =>
+                DesktopRuntimeOperatorActivityOutcome.Succeeded,
+            DesktopRuntimeCommandExecutionState.Rejected =>
+                DesktopRuntimeOperatorActivityOutcome.Rejected,
+            DesktopRuntimeCommandExecutionState.Cancelled =>
+                DesktopRuntimeOperatorActivityOutcome.Cancelled,
+            _ =>
+                DesktopRuntimeOperatorActivityOutcome.Failed
+        };
+
+    private static DesktopRuntimeOperatorActivityOutcome GetActivityOutcome(
+        DesktopRuntimePropertyWriteState state) =>
+        state switch
+        {
+            DesktopRuntimePropertyWriteState.Succeeded =>
+                DesktopRuntimeOperatorActivityOutcome.Succeeded,
+            DesktopRuntimePropertyWriteState.Rejected =>
+                DesktopRuntimeOperatorActivityOutcome.Rejected,
+            DesktopRuntimePropertyWriteState.Cancelled =>
+                DesktopRuntimeOperatorActivityOutcome.Cancelled,
+            _ =>
+                DesktopRuntimeOperatorActivityOutcome.Failed
+        };
 }

@@ -73,6 +73,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="24" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
@@ -710,6 +712,75 @@
                             </Grid>
                         </Border>
                     </Grid>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Row="10" Header="Operator Activity">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" MinHeight="160" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Foreground="DimGray"
+                        Text="Latest 100 completed local operator actions, newest first." />
+
+                    <DataGrid
+                        Grid.Row="2"
+                        Height="220"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        CanUserDeleteRows="False"
+                        HeadersVisibility="Column"
+                        HorizontalScrollBarVisibility="Auto"
+                        IsReadOnly="True"
+                        ItemsSource="{Binding Activity.Entries}"
+                        VerticalScrollBarVisibility="Auto">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Width="190"
+                                Binding="{Binding TimestampUtcText}"
+                                Header="Timestamp UTC" />
+                            <DataGridTextColumn
+                                Width="175"
+                                Binding="{Binding Kind}"
+                                Header="Kind" />
+                            <DataGridTextColumn
+                                Width="150"
+                                Binding="{Binding EndpointId}"
+                                Header="Endpoint" />
+                            <DataGridTextColumn
+                                Width="240"
+                                Binding="{Binding AttachmentGeneration}"
+                                Header="Attachment generation" />
+                            <DataGridTextColumn
+                                Width="150"
+                                Binding="{Binding InstrumentId}"
+                                Header="Instrument" />
+                            <DataGridTextColumn
+                                Width="190"
+                                Binding="{Binding OperationPath}"
+                                Header="Property / Command" />
+                            <DataGridTextColumn
+                                Width="90"
+                                Binding="{Binding InputSummary}"
+                                Header="Requested / argument" />
+                            <DataGridTextColumn
+                                Width="95"
+                                Binding="{Binding Outcome}"
+                                Header="Outcome" />
+                            <DataGridTextColumn
+                                Width="220"
+                                Binding="{Binding Diagnostic}"
+                                Header="Diagnostic" />
+                            <DataGridTextColumn
+                                Width="260"
+                                Binding="{Binding Reconciliation}"
+                                Header="Reconciliation" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </Grid>
             </GroupBox>
         </Grid>

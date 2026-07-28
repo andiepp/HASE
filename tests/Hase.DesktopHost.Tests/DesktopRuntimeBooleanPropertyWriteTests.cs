@@ -57,6 +57,30 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
             property.CurrentBooleanValue);
         Assert.True(
             property.RequestedBooleanValue);
+        DesktopRuntimeOperatorActivityEntry activity =
+            Assert.Single(
+                viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityKind.BooleanPropertyWrite,
+            activity.Kind);
+        Assert.Equal(
+            target.EndpointId.Value,
+            activity.EndpointId);
+        Assert.Equal(
+            target.AttachmentGeneration.ToString(),
+            activity.AttachmentGeneration);
+        Assert.Equal(
+            target.InstrumentId.Value,
+            activity.InstrumentId);
+        Assert.Equal(
+            property.Path,
+            activity.OperationPath);
+        Assert.Equal(
+            "True",
+            activity.InputSummary);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityOutcome.Succeeded,
+            activity.Outcome);
     }
 
     [Fact]
@@ -93,6 +117,15 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
             property.WriteMessage);
         Assert.False(
             property.RequestedBooleanValue);
+        DesktopRuntimeOperatorActivityEntry activity =
+            Assert.Single(
+                viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityOutcome.Rejected,
+            activity.Outcome);
+        Assert.Equal(
+            "Attachment generation is stale.",
+            activity.Diagnostic);
     }
 
     [Fact]
@@ -299,6 +332,8 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
         Assert.Equal(
             DesktopRuntimePropertyWriteState.Ready,
             property.WriteState);
+        Assert.Empty(
+            viewModel.Activity.Entries);
     }
 
     private static DesktopRuntimePropertyViewModel CreatePropertyViewModel(

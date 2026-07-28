@@ -48,6 +48,34 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
         Assert.Equal(
             "True",
             command.ReturnValue);
+        DesktopRuntimeOperatorActivityEntry activity =
+            Assert.Single(
+                viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityKind
+                .ParameterlessCommandExecution,
+            activity.Kind);
+        Assert.Equal(
+            target.EndpointId.Value,
+            activity.EndpointId);
+        Assert.Equal(
+            target.AttachmentGeneration.ToString(),
+            activity.AttachmentGeneration);
+        Assert.Equal(
+            target.InstrumentId.Value,
+            activity.InstrumentId);
+        Assert.Equal(
+            command.Path,
+            activity.OperationPath);
+        Assert.Equal(
+            "None",
+            activity.InputSummary);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityOutcome.Succeeded,
+            activity.Outcome);
+        Assert.Equal(
+            "No readable Properties required refresh.",
+            activity.Reconciliation);
     }
 
     [Fact]
@@ -81,6 +109,15 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
         Assert.Equal(
             "Attachment generation is stale.",
             command.ExecutionMessage);
+        DesktopRuntimeOperatorActivityEntry activity =
+            Assert.Single(
+                viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeOperatorActivityOutcome.Rejected,
+            activity.Outcome);
+        Assert.Equal(
+            "Attachment generation is stale.",
+            activity.Diagnostic);
     }
 
     [Fact]
@@ -274,6 +311,8 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
         Assert.Equal(
             DesktopRuntimeCommandExecutionState.Ready,
             command.ExecutionState);
+        Assert.Empty(
+            viewModel.Activity.Entries);
     }
 
     [Fact]
