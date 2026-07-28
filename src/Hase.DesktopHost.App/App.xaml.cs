@@ -1,7 +1,8 @@
-using System.Windows;
+﻿using System.Windows;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.ViewModels;
 using Hase.DesktopHost.App.Views;
+using Hase.Runtime.Northbound;
 using Prism.DryIoc;
 using Prism.Ioc;
 
@@ -13,46 +14,101 @@ public partial class App : PrismApplication
 
     protected override Window CreateShell()
     {
-        mainWindowViewModel = Container.Resolve<MainWindowViewModel>();
+        mainWindowViewModel =
+            Container.Resolve<MainWindowViewModel>();
 
-        var window = Container.Resolve<MainWindow>();
-        window.DataContext = mainWindowViewModel;
+        var window =
+            Container.Resolve<MainWindow>();
+        window.DataContext =
+            mainWindowViewModel;
 
-        mainWindowViewModel.StartAsync(CancellationToken.None)
-            .GetAwaiter()
-            .GetResult();
+        window.Loaded +=
+            OnMainWindowLoaded;
 
         return window;
     }
 
-    protected override void RegisterTypes(IContainerRegistry containerRegistry)
+    protected override void RegisterTypes(
+        IContainerRegistry containerRegistry)
     {
-        containerRegistry.RegisterSingleton<IDesktopRuntimeHostBackend, ShellValidationRuntimeHostBackend>();
-        containerRegistry.RegisterSingleton<IDesktopRuntimeHost, DesktopRuntimeHost>();
+        DesktopRuntimeHostStartupConfiguration startupConfiguration =
+            DesktopRuntimeHostStartupConfiguration.Parse(
+                Environment.GetCommandLineArgs());
+
+        containerRegistry.RegisterInstance(
+            startupConfiguration);
+        containerRegistry.RegisterSingleton<
+            IDesktopRuntimeHostBackend,
+            ProductionPrivateNetworkRuntimeHostBackend>();
+        containerRegistry.RegisterSingleton<
+            IDesktopRuntimeHost,
+            DesktopRuntimeHost>();
         containerRegistry.RegisterInstance(
             new DesktopRuntimeHostShellInformation(
-                Composition: "Shell validation backend",
-                HostIdentity: "Not available until production runtime integration",
-                ApiVersion: "Not available until northbound host integration",
-                LoopbackBinding: "Not configured in this increment",
-                PrivateNetworkBinding: "Not configured in this increment"));
-        containerRegistry.RegisterSingleton<DesktopRuntimeHostViewModel>();
-        containerRegistry.RegisterSingleton<MainWindowViewModel>();
-        containerRegistry.RegisterSingleton<MainWindow>();
+                Composition:
+                    "Production private-network runtime host",
+                HostIdentity:
+                    ProductionPrivateNetworkRuntimeHostBackend
+                        .RuntimeHostId
+                        .Value,
+                ApiVersion:
+                    RuntimeHostApiVersion.Current.ToString(),
+                LoopbackBinding:
+                    "Deferred - private-network binding is active "
+                    + "in this increment",
+                PrivateNetworkBinding:
+                    startupConfiguration.PrivateNetworkBindingDisplay));
+        containerRegistry.RegisterSingleton<
+            DesktopRuntimeHostViewModel>();
+        containerRegistry.RegisterSingleton<
+            MainWindowViewModel>();
+        containerRegistry.RegisterSingleton<
+            MainWindow>();
     }
 
-    protected override void OnExit(ExitEventArgs eventArgs)
+    protected override void OnExit(
+        ExitEventArgs eventArgs)
     {
         try
         {
-            mainWindowViewModel?.StopAsync(CancellationToken.None)
+            mainWindowViewModel?.StopAsync(
+                    CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
         }
         finally
         {
             mainWindowViewModel?.Dispose();
-            base.OnExit(eventArgs);
+            base.OnExit(
+                eventArgs);
+        }
+    }
+
+    private async void OnMainWindowLoaded(
+        object sender,
+        RoutedEventArgs eventArgs)
+    {
+        if (sender is Window window)
+        {
+            window.Loaded -=
+                OnMainWindowLoaded;
+        }
+
+        if (mainWindowViewModel is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await mainWindowViewModel.StartAsync(
+                CancellationToken.None);
+        }
+        catch
+        {
+            // The lifecycle coordinator projects startup failures through
+            // Faulted status and LastError. Keeping the window open allows
+            // the operator to inspect that information.
         }
     }
 }
