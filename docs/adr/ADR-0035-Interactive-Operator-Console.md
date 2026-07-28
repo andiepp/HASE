@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Implemented and physically validated
 
 ## Context
 
@@ -127,6 +127,37 @@ inside the Desktop Runtime Host.
 - Disconnects can leave an operation outcome uncertain and must be communicated
   clearly.
 
+## Implementation outcome
+
+ADR-0035 is complete at the 3,442-test baseline.
+
+The production Desktop Runtime Host now provides:
+
+- persistent descriptor-driven Property, Command, and Event projection;
+- independent requested state for writable Boolean Properties;
+- explicit endpoint-confirmed Boolean Property writes;
+- explicit parameterless Command execution;
+- authoritative readable-Property reconciliation after successful Commands;
+- normalized operation lifecycle and outcome presentation;
+- attachment-generation-aware targeting and single-flight protection;
+- a bounded, newest-first in-memory operator activity log;
+- a bounded, newest-first live endpoint Event history;
+- exact Event source attribution from endpoint, generation, and instrument;
+- simultaneous authenticated Laptop Client interoperability; and
+- orderly Event-subscription and application shutdown.
+
+Physical validation used the ESP32 and Arduino Uno through the production
+Desktop Runtime Host. Property writes, Commands, authoritative reconciliation,
+and `Controller.ButtonPressed` Events were verified for both endpoint families.
+Arduino and ESP32 Event occurrences retained their own source identities when
+generated consecutively in either order.
+
+Descriptor-driven Command argument entry remains deferred. The current
+`CommandDescriptor` does not describe an argument shape and both physical
+Commands are parameterless. Introducing typed arguments requires a separate
+descriptor, serialization, remote-contract, endpoint, and compatibility
+decision.
+
 ## Excluded work
 
 ADR-0035 does not introduce:
@@ -144,12 +175,15 @@ ADR-0035 does not introduce:
 
 ## Implementation sequence
 
-1. UI-independent operator-operation foundation.
-2. Persistent Command projection.
-3. Independent writable Property input state.
-4. Property write execution and presentation.
-5. Command execution and presentation.
-6. Descriptor-driven Command arguments.
-7. Bounded operator activity projection.
-8. Physical validation and documentation.
+1. UI-independent operator-operation foundation — completed.
+2. Persistent Command projection — completed.
+3. Independent writable Boolean Property input state — completed.
+4. Boolean Property write execution and presentation — completed.
+5. Parameterless Command execution and authoritative reconciliation —
+   completed.
+6. Bounded operator activity projection — completed.
+7. Persistent Event descriptor projection — completed.
+8. Live bounded Event occurrence projection — completed.
+9. Physical validation and documentation — completed.
 
+Typed Command arguments are deferred as described above.

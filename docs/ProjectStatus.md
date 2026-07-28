@@ -77,10 +77,17 @@ ADR-0032 validates authenticated snapshot, Property, Command, and observation
 access from a separate laptop to one desktop runtime host owning both the
 physical ESP32 and Arduino endpoints.
 
+ADR-0033 provides the production WPF Laptop Client, API documentation, and
+tutorial. ADR-0034 provides the production Windows Desktop Runtime Host
+application and persistent live inventory. ADR-0035 completes the interactive
+operator console with Boolean Property writes, parameterless Commands,
+authoritative post-Command Property reconciliation, bounded operator activity,
+persistent Event descriptors, and bounded live Event occurrences.
+
 The current verified baseline is:
 
 ```text
-3,029 automated tests passing
+3,442 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -113,6 +120,14 @@ Private-network authoritative Property access verified for both endpoint familie
 Private-network Arduino Command confirmation and state restoration verified
 Private-network Property and physical Event observation verified
 Orderly client, stream, host, and physical endpoint shutdown verified
+Desktop Runtime Host operator console verified
+Physical ESP32 and Arduino Boolean Property writes verified
+Physical ESP32 and Arduino parameterless Commands verified
+Post-Command authoritative Property reconciliation verified
+Bounded operator activity projection verified
+Physical ESP32 and Arduino Event descriptors verified
+Live Event occurrence source attribution verified in both endpoint orders
+Desktop Runtime Host window and process shutdown verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -894,6 +909,9 @@ Explorer tracing.
   provisioning, one desktop-owned heterogeneous inventory, and authenticated
   laptop snapshot, Property, Command, observation, restoration, and shutdown
   validation.
+- ADR-0033 - Laptop Client application, API documentation, and tutorial.
+- ADR-0034 - Production Desktop Runtime Host application.
+- ADR-0035 - Interactive Desktop Runtime Host operator console.
 
 ---
 
@@ -901,7 +919,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-3,029 automated tests pass
+3,442 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -994,13 +1012,21 @@ C-033 rejects missing and unenrolled credentials before Command execution
 C-033 toggles the physical Arduino LED through gRPC
 C-033 confirms and restores Led.State through authoritative Property RPCs
 C-033 detaches the physical endpoint orderly to Disconnected
+ADR-0035 projects persistent Properties, Commands, and Events
+ADR-0035 writes Boolean Properties through normalized operator services
+ADR-0035 executes parameterless Commands without automatic retry
+ADR-0035 authoritatively reconciles readable Properties after Commands
+ADR-0035 retains the latest 100 completed local operator actions
+ADR-0035 retains the latest 100 live endpoint Event occurrences
+ADR-0035 attributes consecutive Arduino and ESP32 Events to their exact sources
+ADR-0035 closes the WPF application and runtime process orderly
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0032 are accepted.
+ADR-0001 through ADR-0035 are accepted.
 
 Relevant recent decisions:
 
@@ -1022,6 +1048,9 @@ Relevant recent decisions:
 - ADR-0031 - Northbound Security Boundary.
 - ADR-0032 - Private-Network Runtime-Host Deployment and Credential
   Provisioning.
+- ADR-0033 - Laptop Client Application, API Documentation, and Tutorial.
+- ADR-0034 - Desktop Runtime Host Application.
+- ADR-0035 - Interactive Operator Console.
 
 ---
 
@@ -1042,6 +1071,11 @@ The current implementation intentionally excludes:
 - BLE;
 - formal compact-profile negotiation;
 - persistent event history and replay;
+- typed Command argument descriptors and editors;
+- numeric and string Desktop operator Property editors;
+- persistent operator audit history;
+- operator activity and Event filtering or export;
+- automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery.
 

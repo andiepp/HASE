@@ -826,7 +826,7 @@ Implemented:
 Verified baseline:
 
 ```text
-3,029 automated tests pass
+3,442 automated tests pass
 Controlled two-computer physical validation succeeds
 ```
 
@@ -848,16 +848,33 @@ surfaces.
 
 ## 7.11 Application and Tooling Expansion
 
-**Status:** [Backlog] Planned after the operational service boundary
+**Status:** [Completed] Completed for ADR-0033 through ADR-0035
 
-Possible scope:
+Implemented:
 
-- endpoint browser UI and explicit selection;
-- topology and descriptor views;
-- live properties and Property editing;
-- Command execution and Event monitoring;
-- connection and transport diagnostics;
-- configuration persistence.
+- production WPF Laptop Client with authenticated private-network access;
+- production Windows Desktop Runtime Host application;
+- persistent endpoint, instrument, Property, Command, and Event projection;
+- live Property updates and change visualization;
+- explicit Boolean Property writes;
+- explicit parameterless Command execution;
+- authoritative Property reconciliation after Commands;
+- bounded local operator activity;
+- bounded live endpoint Event occurrences with exact source attribution;
+- API documentation and Laptop Client tutorial; and
+- orderly client, Event subscription, runtime host, and process shutdown.
+
+Validated baseline:
+
+```text
+3,442 automated tests pass
+ESP32 and Arduino operator-console validation succeeds
+Laptop Client interoperability succeeds
+```
+
+Deferred application work includes typed Command arguments, numeric and string
+Property editors, filtering, export, persistent histories, discovery controls,
+configuration editing, and lifecycle administration.
 
 Architecture constraints:
 
@@ -939,7 +956,7 @@ Current documentation includes:
 - `C-032-Authenticated-Physical-Northbound-gRPC-Validation.md`;
 - `C-033-Authenticated-Physical-Northbound-Command-Validation.md`;
 - `C-034-Authenticated-Physical-Northbound-Observation-Validation.md`;
-- ADR-0001 through ADR-0032.
+- ADR-0001 through ADR-0035.
 
 Next:
 
@@ -948,7 +965,7 @@ Next:
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
    services, gRPC mapping, security boundary, and controlled private-network
-   deployment aligned with ADR-0023 through ADR-0032.
+   deployment and applications aligned with ADR-0023 through ADR-0035.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -1016,4 +1033,3 @@ Phase 6 is complete. Optional extensions remain backlog:
 - formal compact-profile compatibility.
 
 The northbound runtime-host API begins in Phase 7 under ADR-0023.
-
