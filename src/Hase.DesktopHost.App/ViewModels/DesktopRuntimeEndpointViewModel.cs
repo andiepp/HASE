@@ -9,6 +9,10 @@ public sealed class DesktopRuntimeEndpointViewModel
     private string displayName;
     private string connectionState;
     private string attachmentGeneration;
+    private string description =
+        string.Empty;
+    private IReadOnlyList<DesktopRuntimeInstrumentViewModel> instruments =
+        [];
 
     public DesktopRuntimeEndpointViewModel(
         string endpointId,
@@ -75,6 +79,33 @@ public sealed class DesktopRuntimeEndpointViewModel
                 value);
     }
 
+    public string Description
+    {
+        get =>
+            description;
+        private set =>
+            SetProperty(
+                ref description,
+                value);
+    }
+
+    public IReadOnlyList<DesktopRuntimeInstrumentViewModel> Instruments
+    {
+        get =>
+            instruments;
+        private set
+        {
+            instruments =
+                value;
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(InstrumentCount));
+        }
+    }
+
+    public int InstrumentCount =>
+        Instruments.Count;
+
     public bool IsReady =>
         IsState(
             "Ready");
@@ -129,6 +160,16 @@ public sealed class DesktopRuntimeEndpointViewModel
                 : snapshot.DisplayName;
         AttachmentGeneration =
             snapshot.AttachmentGeneration;
+        Description =
+            snapshot.Description
+            ?? string.Empty;
+        Instruments =
+            snapshot.Instruments
+                .Select(
+                    instrument =>
+                        new DesktopRuntimeInstrumentViewModel(
+                            instrument))
+                .ToArray();
 
         if (!string.Equals(
                 ConnectionState,

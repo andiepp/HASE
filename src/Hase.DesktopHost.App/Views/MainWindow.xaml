@@ -276,6 +276,12 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="12" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="16" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="16" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
                                     <TextBlock
@@ -312,6 +318,162 @@
                                         FontFamily="Consolas"
                                         Text="{Binding EndpointDetails.AttachmentGeneration}"
                                         TextWrapping="Wrap" />
+
+                                    <TextBlock
+                                        Grid.Row="10"
+                                        Grid.ColumnSpan="2"
+                                        FontSize="16"
+                                        FontWeight="SemiBold"
+                                        Text="Descriptor" />
+
+                                    <TextBlock Grid.Row="12" FontWeight="SemiBold" Text="Description" />
+                                    <TextBlock
+                                        Grid.Row="12"
+                                        Grid.Column="1"
+                                        Text="{Binding EndpointDetails.Description}"
+                                        TextWrapping="Wrap" />
+
+                                    <StackPanel
+                                        Grid.Row="14"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,4,0,0">
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding EndpointDetails.InstrumentCount, StringFormat=Instruments ({0})}" />
+
+                                        <ItemsControl
+                                            Margin="0,10,0,0"
+                                            ItemsSource="{Binding EndpointDetails.Instruments}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border
+                                                        Margin="0,0,0,10"
+                                                        Padding="12"
+                                                        BorderBrush="LightGray"
+                                                        BorderThickness="1"
+                                                        CornerRadius="4"
+                                                        Background="WhiteSmoke">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="120" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="6" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="6" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="6" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="6" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="6" />
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="12" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+
+                                                            <TextBlock FontWeight="SemiBold" Text="Name" />
+                                                            <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="Wrap" />
+
+                                                            <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Instrument ID" />
+                                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding InstrumentId}" TextWrapping="Wrap" />
+
+                                                            <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Kind" />
+                                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Kind}" />
+
+                                                            <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Manufacturer" />
+                                                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Manufacturer}" />
+
+                                                            <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Model" />
+                                                            <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Model}" />
+
+                                                            <TextBlock Grid.Row="10" FontWeight="SemiBold" Text="Description" />
+                                                            <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Description}" TextWrapping="Wrap" />
+
+                                                            <StackPanel
+                                                                Grid.Row="12"
+                                                                Grid.ColumnSpan="2"
+                                                                Margin="0,12,0,0">
+                                                                <TextBlock
+                                                                    FontWeight="SemiBold"
+                                                                    Text="{Binding PropertyCount, StringFormat=Properties ({0})}" />
+
+                                                                <ItemsControl
+                                                                    Margin="0,8,0,0"
+                                                                    ItemsSource="{Binding Properties}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate>
+                                                                            <Border
+                                                                                Margin="0,0,0,8"
+                                                                                Padding="10"
+                                                                                BorderBrush="Gainsboro"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="3"
+                                                                                Background="White">
+                                                                                <Grid>
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="110" />
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Grid.RowDefinitions>
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                    </Grid.RowDefinitions>
+
+                                                                                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                                                                                    <TextBlock
+                                                                                        Grid.Column="1"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Text="{Binding Value}" />
+
+                                                                                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Path" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="2"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding Path}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Access" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="4"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding Access}" />
+
+                                                                                    <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Quality" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="6"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding Quality}" />
+
+                                                                                    <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Timestamp UTC" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="8"
+                                                                                        Grid.Column="1"
+                                                                                        FontFamily="Consolas"
+                                                                                        Text="{Binding TimestampUtc}"
+                                                                                        TextWrapping="Wrap" />
+                                                                                </Grid>
+                                                                            </Border>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
                                 </Grid>
                             </Grid>
                         </Border>

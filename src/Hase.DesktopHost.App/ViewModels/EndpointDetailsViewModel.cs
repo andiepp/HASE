@@ -51,6 +51,18 @@ public sealed class EndpointDetailsViewModel
         observedEndpoint?.AttachmentGeneration
         ?? string.Empty;
 
+    public string Description =>
+        observedEndpoint?.Description
+        ?? string.Empty;
+
+    public IReadOnlyList<DesktopRuntimeInstrumentViewModel> Instruments =>
+        observedEndpoint?.Instruments
+        ?? [];
+
+    public int InstrumentCount =>
+        observedEndpoint?.InstrumentCount
+        ?? 0;
+
     public bool IsReady =>
         observedEndpoint?.IsReady
         ?? false;
@@ -156,6 +168,12 @@ public sealed class EndpointDetailsViewModel
             nameof(StateIndicatorText));
         OnPropertyChanged(
             nameof(AttachmentGeneration));
+        OnPropertyChanged(
+            nameof(Description));
+        OnPropertyChanged(
+            nameof(Instruments));
+        OnPropertyChanged(
+            nameof(InstrumentCount));
         OnPropertyChanged(
             nameof(IsReady));
         OnPropertyChanged(

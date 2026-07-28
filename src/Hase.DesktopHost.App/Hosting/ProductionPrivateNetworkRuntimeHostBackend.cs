@@ -62,11 +62,106 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 endpoint =>
                     new DesktopRuntimeEndpointSnapshot(
                         endpoint.EndpointId.Value,
-                        endpoint.Descriptor.Metadata?.DisplayName
+                        endpoint.Descriptor.Metadata.DisplayName
                             ?? endpoint.EndpointId.Value,
                         endpoint.ConnectionStatus.State.ToString(),
-                        endpoint.Generation.ToString()))
+                        endpoint.Generation.ToString())
+                    {
+                        Description =
+                            endpoint.Descriptor.Metadata.Description,
+                        Instruments =
+                            endpoint.Descriptor.Instruments
+                                .Select(
+                                    instrument =>
+                                        new DesktopRuntimeInstrumentSnapshot(
+                                            instrument.Id.Value,
+                                            instrument.Name,
+                                            instrument.Kind.Name,
+                                            instrument.Metadata.Manufacturer,
+                                            instrument.Metadata.Model,
+                                            instrument.Metadata.SerialNumber,
+                                            instrument.Metadata.FirmwareVersion,
+                                            instrument.Metadata.HardwareRevision,
+                                            instrument.Metadata.Description)
+                                        {
+                                            Properties =
+                                                instrument.Interface.Properties
+                                                    .Select(
+                                                        property =>
+                                                            CaptureProperty(
+                                                                currentComposition,
+                                                                endpoint,
+                                                                instrument,
+                                                                property))
+                                                    .ToArray()
+                                        })
+                                .ToArray()
+                    })
             .ToArray();
+    }
+
+    private static DesktopRuntimePropertySnapshot CaptureProperty(
+        RuntimeHostNorthboundSnapshotComposition currentComposition,
+        PublishedRuntimeEndpointSnapshot endpoint,
+        Hase.Core.Domain.Instruments.InstrumentDescriptor instrument,
+        Hase.Core.Domain.Properties.PropertyDescriptor property)
+    {
+        var target =
+            new RuntimeHostPropertyTarget(
+                endpoint.EndpointId,
+                endpoint.Generation,
+                instrument.Id,
+                property.Id);
+        RuntimeHostCachedPropertyResult result =
+            currentComposition.PropertyService.GetCached(
+                target);
+
+        if (!result.IsSuccess
+            || result.Snapshot?.CurrentValue is null)
+        {
+            return new DesktopRuntimePropertySnapshot(
+                property.Id.Value,
+                property.DisplayName,
+                property.Path.ToString(),
+                property.AccessMode.ToString(),
+                "Unknown",
+                "Unknown",
+                string.Empty,
+                IsKnown: false);
+        }
+
+        Hase.Core.Domain.Properties.PropertyValue currentValue =
+            result.Snapshot.CurrentValue;
+
+        return new DesktopRuntimePropertySnapshot(
+            property.Id.Value,
+            property.DisplayName,
+            property.Path.ToString(),
+            property.AccessMode.ToString(),
+            FormatPropertyValue(
+                currentValue.Value),
+            currentValue.Quality.ToString(),
+            currentValue.TimestampUtc.ToString(
+                "O",
+                System.Globalization.CultureInfo.InvariantCulture),
+            IsKnown: true);
+    }
+
+    private static string FormatPropertyValue(
+        object? value)
+    {
+        if (value is null)
+        {
+            return "null";
+        }
+
+        return value is IFormattable formattable
+            ? formattable.ToString(
+                format: null,
+                System.Globalization.CultureInfo.InvariantCulture)
+                ?? string.Empty
+            : value.ToString()
+                ?? string.Empty;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
