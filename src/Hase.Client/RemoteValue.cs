@@ -1,4 +1,6 @@
-﻿namespace Hase.Client;
+using Hase.Core.Domain.Data;
+
+namespace Hase.Client;
 
 /// <summary>
 /// Represents the closed set of normalized values supported by remote API
@@ -10,7 +12,8 @@ public sealed record RemoteValue
         RemoteValueKind kind,
         bool? booleanValue = null,
         string? stringValue = null,
-        double? numericValue = null)
+        double? numericValue = null,
+        ByteArrayValue? byteArrayValue = null)
     {
         Kind =
             kind;
@@ -20,6 +23,8 @@ public sealed record RemoteValue
             stringValue;
         NumericValue =
             numericValue;
+        ByteArrayValue =
+            byteArrayValue;
     }
 
     /// <summary>
@@ -53,6 +58,15 @@ public sealed record RemoteValue
     /// <see cref="RemoteValueKind.Numeric"/>.
     /// </summary>
     public double? NumericValue
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the opaque byte sequence when <see cref="Kind"/> is
+    /// <see cref="RemoteValueKind.ByteArray"/>.
+    /// </summary>
+    public ByteArrayValue? ByteArrayValue
     {
         get;
     }
@@ -93,6 +107,21 @@ public sealed record RemoteValue
         return new RemoteValue(
             RemoteValueKind.Numeric,
             numericValue:
+                value);
+    }
+
+    /// <summary>
+    /// Creates one normalized opaque byte sequence.
+    /// </summary>
+    public static RemoteValue FromByteArray(
+        ByteArrayValue value)
+    {
+        ArgumentNullException.ThrowIfNull(
+            value);
+
+        return new RemoteValue(
+            RemoteValueKind.ByteArray,
+            byteArrayValue:
                 value);
     }
 }

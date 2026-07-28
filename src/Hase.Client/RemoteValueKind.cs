@@ -1,4 +1,4 @@
-﻿namespace Hase.Client;
+namespace Hase.Client;
 
 /// <summary>
 /// Identifies one supported normalized remote value kind.
@@ -23,5 +23,10 @@ public enum RemoteValueKind
     /// <summary>
     /// A numeric value represented as a double.
     /// </summary>
-    Numeric = 3
+    Numeric = 3,
+
+    /// <summary>
+    /// An opaque ordered sequence of bytes.
+    /// </summary>
+    ByteArray = 4
 }

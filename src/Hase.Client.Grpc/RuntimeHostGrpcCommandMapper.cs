@@ -32,8 +32,9 @@ public sealed class RuntimeHostGrpcCommandMapper
 
         if (request.Argument is not null)
         {
-            throw new NotSupportedException(
-                "This client increment supports only parameterless Commands.");
+            result.Argument =
+                MapValue(
+                    request.Argument);
         }
 
         return result;
@@ -100,8 +101,46 @@ public sealed class RuntimeHostGrpcCommandMapper
             GrpcV1.RemoteValue.KindOneofCase.NumericValue =>
                 RemoteValue.FromNumeric(
                     value.NumericValue),
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue =>
+                RemoteValue.FromByteArray(
+                    new Hase.Core.Domain.Data.ByteArrayValue(
+                        value.ByteArrayValue.ToByteArray())),
             _ =>
                 throw new InvalidDataException(
                     "The Command return value has no supported kind.")
+        };
+
+    private static GrpcV1.RemoteValue MapValue(
+        RemoteValue value) =>
+        value.Kind switch
+        {
+            RemoteValueKind.Boolean =>
+                new GrpcV1.RemoteValue
+                {
+                    BooleanValue =
+                        value.BooleanValue!.Value
+                },
+            RemoteValueKind.String =>
+                new GrpcV1.RemoteValue
+                {
+                    StringValue =
+                        value.StringValue!
+                },
+            RemoteValueKind.Numeric =>
+                new GrpcV1.RemoteValue
+                {
+                    NumericValue =
+                        value.NumericValue!.Value
+                },
+            RemoteValueKind.ByteArray =>
+                new GrpcV1.RemoteValue
+                {
+                    ByteArrayValue =
+                        Google.Protobuf.ByteString.CopyFrom(
+                            value.ByteArrayValue!.ToArray())
+                },
+            _ =>
+                throw new InvalidDataException(
+                    "The Command argument has no supported kind.")
         };
 }

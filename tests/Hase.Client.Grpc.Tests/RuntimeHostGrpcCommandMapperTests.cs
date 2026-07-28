@@ -1,5 +1,6 @@
 using Hase.Client;
 using Hase.Client.Grpc;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
@@ -43,6 +44,38 @@ public sealed class RuntimeHostGrpcCommandMapperTests
     }
 
     [Fact]
+    public void MapRequest_ByteArrayArgument_ShouldPreserveOpaqueBytes()
+    {
+        var request =
+            new RemoteCommandExecutionRequest(
+                CreateTarget(),
+                RemoteValue.FromByteArray(
+                    new ByteArrayValue(
+                        new byte[]
+                        {
+                            0x00,
+                            0x7F,
+                            0xFF
+                        })));
+
+        GrpcV1.ExecuteCommandRequest result =
+            new RuntimeHostGrpcCommandMapper().MapRequest(
+                request);
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue,
+            result.Argument.KindCase);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x7F,
+                0xFF
+            },
+            result.Argument.ByteArrayValue.ToByteArray());
+    }
+
+    [Fact]
     public void MapResult_Failure_ShouldPreserveStatusAndDiagnostic()
     {
         var source =
@@ -66,5 +99,61 @@ public sealed class RuntimeHostGrpcCommandMapperTests
         Assert.Equal(
             "Rejected.",
             result.Diagnostic);
+    }
+
+    [Fact]
+    public void MapResult_ByteArrayReturnValue_ShouldPreserveOpaqueBytes()
+    {
+        var source =
+            new GrpcV1.CommandOperationResult
+            {
+                Status =
+                    GrpcV1.CommandOperationStatus.Success,
+                ReturnValue =
+                    new GrpcV1.RemoteValue
+                    {
+                        ByteArrayValue =
+                            Google.Protobuf.ByteString.CopyFrom(
+                                new byte[]
+                                {
+                                    0x00,
+                                    0x7F,
+                                    0xFF
+                                })
+                    }
+            };
+
+        RemoteCommandOperationResult result =
+            new RuntimeHostGrpcCommandMapper().MapResult(
+                source);
+
+        Assert.True(
+            result.IsSuccess);
+        Assert.Equal(
+            RemoteValueKind.ByteArray,
+            result.ReturnValue!.Kind);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x7F,
+                0xFF
+            },
+            result.ReturnValue.ByteArrayValue!.ToArray());
+    }
+
+    private static RemoteCommandTarget CreateTarget()
+    {
+        return new RemoteCommandTarget(
+            new RemoteEndpointAttachmentKey(
+                new EndpointId(
+                    "endpoint-01"),
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "9206a38d-d980-4495-bc11-f7cdf9f14ebd"))),
+            new InstrumentId(
+                "controller-01"),
+            DescriptorPath.Parse(
+                "Controller.Send"));
     }
 }
