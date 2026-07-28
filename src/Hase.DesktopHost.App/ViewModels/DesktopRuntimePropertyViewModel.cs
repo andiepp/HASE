@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
+using Hase.Runtime.Northbound;
 using Prism.Commands;
 
 namespace Hase.DesktopHost.App.ViewModels;
@@ -25,6 +26,12 @@ public sealed class DesktopRuntimePropertyViewModel
     private bool canWrite;
     private bool? currentBooleanValue;
     private bool? requestedBooleanValue;
+    private RuntimeHostPropertyTarget target;
+    private bool isEndpointReady;
+    private DesktopRuntimePropertyWriteState writeState =
+        DesktopRuntimePropertyWriteState.Ready;
+    private string writeMessage =
+        string.Empty;
 
     public DesktopRuntimePropertyViewModel(
         DesktopRuntimePropertySnapshot snapshot)
@@ -38,6 +45,11 @@ public sealed class DesktopRuntimePropertyViewModel
                     "The Property identity must not be empty.",
                     nameof(snapshot))
                 : snapshot.PropertyId;
+        target =
+            snapshot.Target
+            ?? throw new ArgumentException(
+                "The Property target must not be null.",
+                nameof(snapshot));
         displayName =
             snapshot.DisplayName;
         path =
@@ -64,6 +76,8 @@ public sealed class DesktopRuntimePropertyViewModel
                 snapshot.CanWrite)
                 ? snapshot.BooleanValue
                 : null;
+        isEndpointReady =
+            snapshot.IsEndpointReady;
 
         highlightTimer =
             new DispatcherTimer(
@@ -86,6 +100,16 @@ public sealed class DesktopRuntimePropertyViewModel
     public string PropertyId
     {
         get;
+    }
+
+    public RuntimeHostPropertyTarget Target
+    {
+        get =>
+            target;
+        private set =>
+            SetProperty(
+                ref target,
+                value);
     }
 
     public string DisplayName
@@ -208,10 +232,49 @@ public sealed class DesktopRuntimePropertyViewModel
         get =>
             requestedBooleanValue;
         set =>
-            SetProperty(
-                ref requestedBooleanValue,
+            SetRequestedBooleanValue(
                 value);
     }
+
+    public bool IsEndpointReady
+    {
+        get =>
+            isEndpointReady;
+        private set =>
+            SetProperty(
+                ref isEndpointReady,
+                value);
+    }
+
+    public DesktopRuntimePropertyWriteState WriteState
+    {
+        get =>
+            writeState;
+        private set =>
+            SetProperty(
+                ref writeState,
+                value);
+    }
+
+    public string WriteMessage
+    {
+        get =>
+            writeMessage;
+        private set =>
+            SetProperty(
+                ref writeMessage,
+                value);
+    }
+
+    public bool IsWriteExecuting =>
+        WriteState
+        == DesktopRuntimePropertyWriteState.Executing;
+
+    public bool CanWriteRequestedValue =>
+        HasBooleanEditor
+        && RequestedBooleanValue.HasValue
+        && IsEndpointReady
+        && !IsWriteExecuting;
 
     public DelegateCommand ResetRequestedValueCommand
     {
@@ -263,12 +326,16 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.TimestampUtc;
         IsKnown =
             snapshot.IsKnown;
+        Target =
+            snapshot.Target;
         DataKind =
             snapshot.DataKind;
         CanWrite =
             snapshot.CanWrite;
         CurrentBooleanValue =
             snapshot.BooleanValue;
+        IsEndpointReady =
+            snapshot.IsEndpointReady;
 
         if (requestedValueMetadataChanged)
         {
@@ -283,6 +350,8 @@ public sealed class DesktopRuntimePropertyViewModel
         }
 
         ResetRequestedValueCommand.RaiseCanExecuteChanged();
+        OnPropertyChanged(
+            nameof(CanWriteRequestedValue));
 
         if (valueStateChanged)
         {
@@ -290,11 +359,124 @@ public sealed class DesktopRuntimePropertyViewModel
         }
     }
 
+    public DesktopRuntimeBooleanPropertyWriteRequest? TryBeginBooleanWrite()
+    {
+        if (!CanWriteRequestedValue)
+        {
+            return null;
+        }
+
+        RuntimeHostPropertyTarget capturedTarget =
+            Target;
+        bool capturedValue =
+            RequestedBooleanValue!.Value;
+
+        WriteMessage =
+            "Writing requested value...";
+        SetWriteState(
+            DesktopRuntimePropertyWriteState.Executing);
+
+        return new DesktopRuntimeBooleanPropertyWriteRequest(
+            capturedTarget,
+            capturedValue);
+    }
+
+    public void CompleteWrite(
+        RuntimeHostPropertyOperationResult result)
+    {
+        ArgumentNullException.ThrowIfNull(
+            result);
+
+        if (result.IsSuccess)
+        {
+            WriteMessage =
+                "Write succeeded; awaiting authoritative inventory refresh.";
+            SetWriteState(
+                DesktopRuntimePropertyWriteState.Succeeded);
+            return;
+        }
+
+        WriteMessage =
+            result.Diagnostic
+            ?? GetDefaultFailureMessage(
+                result.Status);
+        SetWriteState(
+            IsRejected(
+                result.Status)
+                ? DesktopRuntimePropertyWriteState.Rejected
+                : DesktopRuntimePropertyWriteState.Failed);
+    }
+
+    public void CancelWrite()
+    {
+        WriteMessage =
+            "Write cancelled.";
+        SetWriteState(
+            DesktopRuntimePropertyWriteState.Cancelled);
+    }
+
+    public void FailWrite(
+        Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(
+            exception);
+
+        WriteMessage =
+            string.IsNullOrWhiteSpace(exception.Message)
+                ? "Write failed."
+                : exception.Message;
+        SetWriteState(
+            DesktopRuntimePropertyWriteState.Failed);
+    }
+
     private void ResetRequestedValue()
     {
         RequestedBooleanValue =
             CurrentBooleanValue;
     }
+
+    private void SetRequestedBooleanValue(
+        bool? value)
+    {
+        if (SetProperty(
+                ref requestedBooleanValue,
+                value,
+                nameof(RequestedBooleanValue)))
+        {
+            OnPropertyChanged(
+                nameof(CanWriteRequestedValue));
+        }
+    }
+
+    private void SetWriteState(
+        DesktopRuntimePropertyWriteState state)
+    {
+        if (WriteState == state)
+        {
+            return;
+        }
+
+        WriteState =
+            state;
+        OnPropertyChanged(
+            nameof(IsWriteExecuting));
+        OnPropertyChanged(
+            nameof(CanWriteRequestedValue));
+    }
+
+    private static bool IsRejected(
+        RuntimeHostPropertyOperationStatus status) =>
+        status
+        is RuntimeHostPropertyOperationStatus.AttachmentNotCurrent
+            or RuntimeHostPropertyOperationStatus.InstrumentNotFound
+            or RuntimeHostPropertyOperationStatus.PropertyNotFound
+            or RuntimeHostPropertyOperationStatus.WriteNotSupported
+            or RuntimeHostPropertyOperationStatus.InvalidValue
+            or RuntimeHostPropertyOperationStatus.EndpointRejected;
+
+    private static string GetDefaultFailureMessage(
+        RuntimeHostPropertyOperationStatus status) =>
+        $"Write failed: {status}.";
 
     private bool CanResetRequestedValue() =>
         HasBooleanEditor

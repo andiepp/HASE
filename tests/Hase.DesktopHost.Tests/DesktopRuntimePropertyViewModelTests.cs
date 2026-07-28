@@ -1,4 +1,6 @@
 ﻿using Hase.DesktopHost.App.ViewModels;
+using Hase.Core.Domain.Identity;
+using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost.Tests;
 
@@ -190,6 +192,7 @@ public sealed class DesktopRuntimePropertyViewModelTests
         string value,
         string timestampUtc) =>
         new(
+            CreateTarget(),
             "property-1",
             "Built-in LED state",
             "Led.State",
@@ -200,12 +203,14 @@ public sealed class DesktopRuntimePropertyViewModelTests
             IsKnown: true,
             DesktopRuntimePropertyDataKind.Numeric,
             CanWrite: true,
-            BooleanValue: null);
+            BooleanValue: null,
+            IsEndpointReady: true);
 
     private static DesktopRuntimePropertySnapshot CreateBooleanProperty(
         bool value,
         string timestampUtc) =>
         new(
+            CreateTarget(),
             "property-1",
             "Built-in LED state",
             "Led.State",
@@ -216,7 +221,16 @@ public sealed class DesktopRuntimePropertyViewModelTests
             IsKnown: true,
             DesktopRuntimePropertyDataKind.Boolean,
             CanWrite: true,
-            BooleanValue: value);
+            BooleanValue: value,
+            IsEndpointReady: true);
+
+    private static RuntimeHostPropertyTarget CreateTarget() =>
+        new(
+            new EndpointId("endpoint-1"),
+            new RuntimeEndpointAttachmentGeneration(
+                Guid.Parse("18716b64-519c-42c4-af5f-8238f5c24015")),
+            new InstrumentId("instrument-1"),
+            new PropertyId("property-1"));
 
     private static DesktopRuntimeInstrumentSnapshot CreateInstrument(
         DesktopRuntimePropertySnapshot property) =>

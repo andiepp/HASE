@@ -38,7 +38,8 @@ public sealed class MainWindowInventoryProjectionTests
             new MainWindowViewModel(
                 runtimeViewModel,
                 inventoryViewModel,
-                endpointDetailsViewModel);
+                endpointDetailsViewModel,
+                new StubOperator());
 
         viewModel.RefreshInventory();
 
@@ -93,5 +94,23 @@ public sealed class MainWindowInventoryProjectionTests
 
         public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture() =>
             snapshots;
+    }
+
+    private sealed class StubOperator
+        : IDesktopRuntimeHostOperator
+    {
+        public Task<Hase.Runtime.Northbound.RuntimeHostPropertyOperationResult>
+            WritePropertyAsync(
+                Hase.Runtime.Northbound.RuntimeHostPropertyTarget target,
+                object? requestedValue,
+                CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Hase.Runtime.Northbound.RuntimeHostCommandOperationResult>
+            ExecuteCommandAsync(
+                Hase.Runtime.Northbound.RuntimeHostCommandTarget target,
+                object? argument,
+                CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

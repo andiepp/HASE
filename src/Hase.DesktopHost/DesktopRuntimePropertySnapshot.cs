@@ -1,6 +1,9 @@
-﻿namespace Hase.DesktopHost;
+﻿using Hase.Runtime.Northbound;
+
+namespace Hase.DesktopHost;
 
 public sealed record DesktopRuntimePropertySnapshot(
+    RuntimeHostPropertyTarget Target,
     string PropertyId,
     string DisplayName,
     string Path,
@@ -11,4 +14,5 @@ public sealed record DesktopRuntimePropertySnapshot(
     bool IsKnown,
     DesktopRuntimePropertyDataKind DataKind,
     bool CanWrite,
-    bool? BooleanValue);
+    bool? BooleanValue,
+    bool IsEndpointReady);

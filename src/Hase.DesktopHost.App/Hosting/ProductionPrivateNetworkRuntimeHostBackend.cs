@@ -17,7 +17,8 @@ namespace Hase.DesktopHost.App.Hosting;
 
 public sealed class ProductionPrivateNetworkRuntimeHostBackend
     : IDesktopRuntimeHostBackend,
-      IDesktopRuntimeHostInventorySource
+      IDesktopRuntimeHostInventorySource,
+      IDesktopRuntimeHostOperator
 {
     private const int NativeTcpPort = 5000;
     private const int MaximumPayloadLength = 4096;
@@ -36,6 +37,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private RuntimeEndpointAttachmentHost? attachmentHost;
     private RuntimeHostNorthboundSnapshotComposition? composition;
     private RuntimeHostPrivateNetworkDeployment? deployment;
+    private DesktopRuntimeHostOperator? runtimeOperator;
 
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration)
@@ -130,6 +132,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             || result.Snapshot?.CurrentValue is null)
         {
             return new DesktopRuntimePropertySnapshot(
+                target,
                 property.Id.Value,
                 property.DisplayName,
                 property.Path.ToString(),
@@ -142,13 +145,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     property.Data),
                 CanWrite(
                     property.AccessMode),
-                BooleanValue: null);
+                BooleanValue: null,
+                endpoint.ConnectionStatus.State
+                    == EndpointConnectionState.Ready);
         }
 
         Hase.Core.Domain.Properties.PropertyValue currentValue =
             result.Snapshot.CurrentValue;
 
         return new DesktopRuntimePropertySnapshot(
+            target,
             property.Id.Value,
             property.DisplayName,
             property.Path.ToString(),
@@ -166,7 +172,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 property.AccessMode),
             currentValue.Value is bool booleanValue
                 ? booleanValue
-                : null);
+                : null,
+            endpoint.ConnectionStatus.State
+                == EndpointConnectionState.Ready);
     }
 
     private static DesktopRuntimePropertyDataKind GetDataKind(
@@ -243,6 +251,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                         GetRuntimeIdentityFilePath(),
                         RuntimeHostId);
 
+            runtimeOperator =
+                new DesktopRuntimeHostOperator(
+                    composition.PropertyService,
+                    composition.CommandService);
+
             await AttachNativeEndpointAsync(
                 attachmentHost,
                 configuration.Esp32Host);
@@ -285,6 +298,38 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
 
         await DisposeStartedResourcesAsync();
+    }
+
+    public Task<RuntimeHostPropertyOperationResult> WritePropertyAsync(
+        RuntimeHostPropertyTarget target,
+        object? requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        DesktopRuntimeHostOperator currentOperator =
+            runtimeOperator
+            ?? throw new InvalidOperationException(
+                "The desktop runtime host is not running.");
+
+        return currentOperator.WritePropertyAsync(
+            target,
+            requestedValue,
+            cancellationToken);
+    }
+
+    public Task<RuntimeHostCommandOperationResult> ExecuteCommandAsync(
+        RuntimeHostCommandTarget target,
+        object? argument,
+        CancellationToken cancellationToken = default)
+    {
+        DesktopRuntimeHostOperator currentOperator =
+            runtimeOperator
+            ?? throw new InvalidOperationException(
+                "The desktop runtime host is not running.");
+
+        return currentOperator.ExecuteCommandAsync(
+            target,
+            argument,
+            cancellationToken);
     }
 
     private static async Task AttachNativeEndpointAsync(
@@ -380,6 +425,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         deployment = null;
         composition = null;
         attachmentHost = null;
+        runtimeOperator = null;
 
         if (deploymentToDispose is not null)
         {

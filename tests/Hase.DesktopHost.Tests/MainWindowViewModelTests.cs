@@ -31,7 +31,8 @@ public sealed class MainWindowViewModelTests
             new MainWindowViewModel(
                 runtimeViewModel,
                 inventoryViewModel,
-                endpointDetailsViewModel);
+                endpointDetailsViewModel,
+                new StubOperator());
 
         await viewModel.StartAsync();
         await viewModel.StopAsync();
@@ -106,5 +107,23 @@ public sealed class MainWindowViewModelTests
 
         public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture() =>
             [];
+    }
+
+    private sealed class StubOperator
+        : IDesktopRuntimeHostOperator
+    {
+        public Task<Hase.Runtime.Northbound.RuntimeHostPropertyOperationResult>
+            WritePropertyAsync(
+                Hase.Runtime.Northbound.RuntimeHostPropertyTarget target,
+                object? requestedValue,
+                CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Hase.Runtime.Northbound.RuntimeHostCommandOperationResult>
+            ExecuteCommandAsync(
+                Hase.Runtime.Northbound.RuntimeHostCommandTarget target,
+                object? argument,
+                CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }
