@@ -252,6 +252,20 @@ public sealed class BinaryProtocolPayloadCodec
             serializer.Write(
                 writer,
                 response.Descriptor);
+
+            CommandArgumentEndpointDescriptorExtensionMapper extensionMapper =
+                new();
+
+            IReadOnlyList<EndpointDescriptorExtension> extensions =
+                extensionMapper.CreateExtensions(
+                    response.Descriptor);
+
+            if (extensions.Count > 0)
+            {
+                new EndpointDescriptorExtensionSectionSerializer().Write(
+                    writer,
+                    extensions);
+            }
         }
 
         return new ProtocolEnvelope(
@@ -291,6 +305,19 @@ public sealed class BinaryProtocolPayloadCodec
                     $"Invalid endpoint descriptor marker " +
                     $"'{descriptorMarker}'.")
             };
+
+        if (descriptor is not null && reader.Remaining > 0)
+        {
+            IReadOnlyList<EndpointDescriptorExtension> extensions =
+                new EndpointDescriptorExtensionSectionSerializer()
+                    .Read(reader);
+
+            descriptor =
+                new CommandArgumentEndpointDescriptorExtensionMapper()
+                    .ApplyExtensions(
+                        descriptor,
+                        extensions);
+        }
 
         reader.EnsureFullyConsumed();
 
