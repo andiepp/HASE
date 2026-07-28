@@ -21,6 +21,17 @@ public sealed class DesktopRuntimeHostOperator : IDesktopRuntimeHostOperator
             ?? throw new ArgumentNullException(nameof(commandService));
     }
 
+    public Task<RuntimeHostPropertyOperationResult> ReadPropertyAsync(
+        RuntimeHostPropertyTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        return propertyService.ReadAsync(
+            target,
+            cancellationToken);
+    }
+
     public Task<RuntimeHostPropertyOperationResult> WritePropertyAsync(
         RuntimeHostPropertyTarget target,
         object? requestedValue,

@@ -623,6 +623,14 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="8" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <TextBlock FontWeight="SemiBold" Text="Command" />
@@ -645,6 +653,47 @@
                                                                                         Grid.Column="1"
                                                                                         Text="{Binding Description}"
                                                                                         TextWrapping="Wrap" />
+
+                                                                                    <Button
+                                                                                        Grid.Row="6"
+                                                                                        Grid.Column="1"
+                                                                                        Width="130"
+                                                                                        HorizontalAlignment="Left"
+                                                                                        Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                        CommandParameter="{Binding}"
+                                                                                        Content="Execute Command" />
+
+                                                                                    <TextBlock
+                                                                                        Grid.Row="8"
+                                                                                        Grid.ColumnSpan="2"
+                                                                                        FontWeight="SemiBold"
+                                                                                        Text="{Binding ExecutionState, StringFormat=Execution: {0}}" />
+
+                                                                                    <TextBlock
+                                                                                        Grid.Row="10"
+                                                                                        Grid.ColumnSpan="2"
+                                                                                        Foreground="DimGray"
+                                                                                        Text="{Binding ExecutionMessage}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock
+                                                                                        Grid.Row="12"
+                                                                                        Grid.ColumnSpan="2"
+                                                                                        Text="{Binding ReturnValue, StringFormat=Return value: {0}}"
+                                                                                        TextWrapping="Wrap">
+                                                                                        <TextBlock.Style>
+                                                                                            <Style TargetType="TextBlock">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger
+                                                                                                        Binding="{Binding HasReturnValue}"
+                                                                                                        Value="True">
+                                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </TextBlock.Style>
+                                                                                    </TextBlock>
                                                                                 </Grid>
                                                                             </Border>
                                                                         </DataTemplate>

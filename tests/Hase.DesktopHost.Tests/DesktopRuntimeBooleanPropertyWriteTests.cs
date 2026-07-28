@@ -323,6 +323,7 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
             "2026-07-28T11:00:00.0000000+00:00",
             IsKnown: true,
             DesktopRuntimePropertyDataKind.Boolean,
+            CanRead: true,
             CanWrite: true,
             BooleanValue: currentValue,
             IsEndpointReady: true);
@@ -372,6 +373,11 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
     private sealed class RecordingOperator
         : IDesktopRuntimeHostOperator
     {
+        public Task<RuntimeHostPropertyOperationResult> ReadPropertyAsync(
+            RuntimeHostPropertyTarget target,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Func<
             RuntimeHostPropertyTarget,
             object?,

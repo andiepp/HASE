@@ -113,6 +113,12 @@ public sealed class MainWindowViewModelTests
         : IDesktopRuntimeHostOperator
     {
         public Task<Hase.Runtime.Northbound.RuntimeHostPropertyOperationResult>
+            ReadPropertyAsync(
+                Hase.Runtime.Northbound.RuntimeHostPropertyTarget target,
+                CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Hase.Runtime.Northbound.RuntimeHostPropertyOperationResult>
             WritePropertyAsync(
                 Hase.Runtime.Northbound.RuntimeHostPropertyTarget target,
                 object? requestedValue,

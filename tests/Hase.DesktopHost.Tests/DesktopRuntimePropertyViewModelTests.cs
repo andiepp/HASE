@@ -202,6 +202,7 @@ public sealed class DesktopRuntimePropertyViewModelTests
             timestampUtc,
             IsKnown: true,
             DesktopRuntimePropertyDataKind.Numeric,
+            CanRead: true,
             CanWrite: true,
             BooleanValue: null,
             IsEndpointReady: true);
@@ -220,6 +221,7 @@ public sealed class DesktopRuntimePropertyViewModelTests
             timestampUtc,
             IsKnown: true,
             DesktopRuntimePropertyDataKind.Boolean,
+            CanRead: true,
             CanWrite: true,
             BooleanValue: value,
             IsEndpointReady: true);

@@ -27,6 +27,96 @@ public sealed class DesktopRuntimeHostOperatorTests
     }
 
     [Fact]
+    public async Task ReadPropertyAsync_ShouldDelegateExactlyOnceAndReturnSameResult()
+    {
+        RuntimeHostPropertyOperationResult expected =
+            RuntimeHostPropertyOperationResult.Failed(
+                RuntimeHostPropertyOperationStatus.EndpointUnavailable);
+        var propertyService =
+            new RecordingPropertyService
+            {
+                Result =
+                    expected
+            };
+        var service =
+            new DesktopRuntimeHostOperator(
+                propertyService,
+                new RecordingCommandService());
+        RuntimeHostPropertyTarget target =
+            CreatePropertyTarget();
+        using var cancellationSource =
+            new CancellationTokenSource();
+
+        RuntimeHostPropertyOperationResult actual =
+            await service.ReadPropertyAsync(
+                target,
+                cancellationSource.Token);
+
+        Assert.Same(
+            expected,
+            actual);
+        Assert.Equal(
+            1,
+            propertyService.ReadCount);
+        Assert.Same(
+            target,
+            propertyService.ReadTarget);
+        Assert.Equal(
+            cancellationSource.Token,
+            propertyService.ReadCancellationToken);
+    }
+
+    [Fact]
+    public async Task ReadPropertyAsync_WhenServiceThrows_ShouldPropagateWithoutRetry()
+    {
+        var expected =
+            new InvalidOperationException(
+                "Read failed.");
+        var propertyService =
+            new RecordingPropertyService
+            {
+                Exception =
+                    expected
+            };
+        var service =
+            new DesktopRuntimeHostOperator(
+                propertyService,
+                new RecordingCommandService());
+
+        InvalidOperationException actual =
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => service.ReadPropertyAsync(
+                    CreatePropertyTarget()));
+
+        Assert.Same(
+            expected,
+            actual);
+        Assert.Equal(
+            1,
+            propertyService.ReadCount);
+    }
+
+    [Fact]
+    public async Task ReadPropertyAsync_WithNullTarget_ShouldThrowBeforeDelegation()
+    {
+        var propertyService =
+            new RecordingPropertyService();
+        var service =
+            new DesktopRuntimeHostOperator(
+                propertyService,
+                new RecordingCommandService());
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            "target",
+            () => service.ReadPropertyAsync(
+                null!));
+
+        Assert.Equal(
+            0,
+            propertyService.ReadCount);
+    }
+
+    [Fact]
     public async Task WritePropertyAsync_ShouldDelegateExactlyOnceAndReturnSameResult()
     {
         RuntimeHostPropertyOperationResult expected =
@@ -208,6 +298,12 @@ public sealed class DesktopRuntimeHostOperatorTests
 
         public int WriteCount { get; private set; }
 
+        public int ReadCount { get; private set; }
+
+        public RuntimeHostPropertyTarget? ReadTarget { get; private set; }
+
+        public CancellationToken ReadCancellationToken { get; private set; }
+
         public RuntimeHostPropertyTarget? Target { get; private set; }
 
         public object? RequestedValue { get; private set; }
@@ -224,7 +320,17 @@ public sealed class DesktopRuntimeHostOperatorTests
             RuntimeHostPropertyTarget target,
             CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException();
+            ReadCount++;
+            ReadTarget =
+                target;
+            ReadCancellationToken =
+                cancellationToken;
+
+            return Exception is null
+                ? Task.FromResult(
+                    Result)
+                : Task.FromException<RuntimeHostPropertyOperationResult>(
+                    Exception);
         }
 
         public Task<RuntimeHostPropertyOperationResult> WriteAsync(

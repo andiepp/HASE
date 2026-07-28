@@ -102,9 +102,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                                     .Select(
                                                         command =>
                                                             new DesktopRuntimeCommandSnapshot(
+                                                                new RuntimeHostCommandTarget(
+                                                                    endpoint.EndpointId,
+                                                                    endpoint.Generation,
+                                                                    instrument.Id,
+                                                                    command.Path),
                                                                 command.Path.ToString(),
                                                                 command.DisplayName,
-                                                                command.Description))
+                                                                command.Description,
+                                                                endpoint.ConnectionStatus.State
+                                                                    == EndpointConnectionState.Ready))
                                                     .ToArray()
                                         })
                                 .ToArray()
@@ -143,6 +150,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 IsKnown: false,
                 GetDataKind(
                     property.Data),
+                CanRead(
+                    property.AccessMode),
                 CanWrite(
                     property.AccessMode),
                 BooleanValue: null,
@@ -168,6 +177,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             IsKnown: true,
             GetDataKind(
                 property.Data),
+            CanRead(
+                property.AccessMode),
             CanWrite(
                 property.AccessMode),
             currentValue.Value is bool booleanValue
@@ -195,6 +206,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         Hase.Core.Domain.Properties.PropertyAccessMode accessMode) =>
         accessMode.HasFlag(
             Hase.Core.Domain.Properties.PropertyAccessMode.Write);
+
+    private static bool CanRead(
+        Hase.Core.Domain.Properties.PropertyAccessMode accessMode) =>
+        accessMode.HasFlag(
+            Hase.Core.Domain.Properties.PropertyAccessMode.Read);
 
     private static string FormatPropertyValue(
         object? value)
@@ -313,6 +329,20 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         return currentOperator.WritePropertyAsync(
             target,
             requestedValue,
+            cancellationToken);
+    }
+
+    public Task<RuntimeHostPropertyOperationResult> ReadPropertyAsync(
+        RuntimeHostPropertyTarget target,
+        CancellationToken cancellationToken = default)
+    {
+        DesktopRuntimeHostOperator currentOperator =
+            runtimeOperator
+            ?? throw new InvalidOperationException(
+                "The desktop runtime host is not running.");
+
+        return currentOperator.ReadPropertyAsync(
+            target,
             cancellationToken);
     }
 

@@ -13,6 +13,7 @@ public sealed record DesktopRuntimePropertySnapshot(
     string TimestampUtc,
     bool IsKnown,
     DesktopRuntimePropertyDataKind DataKind,
+    bool CanRead,
     bool CanWrite,
     bool? BooleanValue,
     bool IsEndpointReady);

@@ -350,6 +350,11 @@ public sealed class DesktopRuntimeInstrumentViewModel
                     new DesktopRuntimeCommandViewModel(
                         snapshot);
             }
+            else
+            {
+                existing.Update(
+                    snapshot);
+            }
 
             currentIndex =
                 FindCommandIndex(

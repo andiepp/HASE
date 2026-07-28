@@ -9,6 +9,14 @@ namespace Hase.DesktopHost;
 public interface IDesktopRuntimeHostOperator
 {
     /// <summary>
+    /// Reads one Property exactly once and returns its normalized
+    /// endpoint-confirmed result.
+    /// </summary>
+    Task<RuntimeHostPropertyOperationResult> ReadPropertyAsync(
+        RuntimeHostPropertyTarget target,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Writes one Property exactly once and returns its normalized
     /// endpoint-confirmed result.
     /// </summary>

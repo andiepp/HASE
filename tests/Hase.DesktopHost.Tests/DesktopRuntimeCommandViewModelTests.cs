@@ -1,4 +1,7 @@
 using Hase.DesktopHost.App.ViewModels;
+using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
+using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost.Tests;
 
@@ -160,9 +163,24 @@ public sealed class DesktopRuntimeCommandViewModelTests
         string displayName,
         string? description) =>
         new(
+            CreateTarget(
+                path),
             path,
             displayName,
-            description);
+            description,
+            IsEndpointReady: true);
+
+    private static RuntimeHostCommandTarget CreateTarget(
+        string path) =>
+        new(
+            new EndpointId("endpoint-1"),
+            new RuntimeEndpointAttachmentGeneration(
+                Guid.Parse("55e39774-cc7f-4473-8a2e-4bc5bbb79f55")),
+            new InstrumentId("instrument-1"),
+            new DescriptorPath(
+                string.IsNullOrWhiteSpace(path)
+                    ? ["Command"]
+                    : path.Split('.')));
 
     private static DesktopRuntimeInstrumentSnapshot CreateInstrument(
         IReadOnlyList<DesktopRuntimeCommandSnapshot> commands) =>

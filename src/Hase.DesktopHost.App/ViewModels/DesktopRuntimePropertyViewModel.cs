@@ -23,6 +23,7 @@ public sealed class DesktopRuntimePropertyViewModel
     private bool isKnown;
     private bool isRecentlyChanged;
     private DesktopRuntimePropertyDataKind dataKind;
+    private bool canRead;
     private bool canWrite;
     private bool? currentBooleanValue;
     private bool? requestedBooleanValue;
@@ -66,6 +67,8 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.IsKnown;
         dataKind =
             snapshot.DataKind;
+        canRead =
+            snapshot.CanRead;
         canWrite =
             snapshot.CanWrite;
         currentBooleanValue =
@@ -212,6 +215,16 @@ public sealed class DesktopRuntimePropertyViewModel
                 value);
     }
 
+    public bool CanRead
+    {
+        get =>
+            canRead;
+        private set =>
+            SetProperty(
+                ref canRead,
+                value);
+    }
+
     public bool HasBooleanEditor =>
         IsWritableBoolean(
             DataKind,
@@ -330,6 +343,8 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.Target;
         DataKind =
             snapshot.DataKind;
+        CanRead =
+            snapshot.CanRead;
         CanWrite =
             snapshot.CanWrite;
         CurrentBooleanValue =
