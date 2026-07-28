@@ -283,11 +283,28 @@
                                                                             Text="{Binding ArgumentDisplayName, StringFormat='Argument: {0}'}" />
                                                                         <TextBlock Text="{Binding ArgumentDataType, StringFormat='Type: {0}'}" />
                                                                         <TextBlock Text="{Binding ArgumentDescription}" TextWrapping="Wrap" />
+                                                                        <TextBox
+                                                                            MinWidth="240"
+                                                                            Margin="0,6,0,0"
+                                                                            HorizontalAlignment="Left"
+                                                                            ToolTip="Enter hexadecimal byte pairs separated by optional whitespace."
+                                                                            Text="{Binding RequestedArgumentText, UpdateSourceTrigger=PropertyChanged}" />
                                                                         <TextBlock
                                                                             Margin="0,4,0,0"
-                                                                            Foreground="#FF666666"
-                                                                            Text="Argument input is not available in this client increment."
-                                                                            TextWrapping="Wrap" />
+                                                                            Foreground="#FFB00020"
+                                                                            Text="Enter complete hexadecimal byte pairs, for example: 00 7F FF"
+                                                                            TextWrapping="Wrap">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding HasValidArgument}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
                                                                     </StackPanel>
                                                                 </Border>
                                                                 <Button

@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Hase.Client.Wpf.Services;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -33,6 +33,10 @@ public sealed class MainWindowViewModel
     private readonly Dictionary<
         RemotePropertyTarget,
         bool> requestedBooleanValues =
+        [];
+    private readonly Dictionary<
+        RemoteCommandTarget,
+        string> requestedCommandArgumentTexts =
         [];
     private string? propertyReadMessage;
     private IReadOnlyList<EventOccurrenceItemViewModel> eventOccurrences =
@@ -80,7 +84,7 @@ public sealed class MainWindowViewModel
                     && sessionController is not null
                     && IsOperational
                     && !IsBusy
-                    && command.CanExecute);
+                    && command.EndpointReady);
     }
 
     public string Title =>
@@ -336,6 +340,7 @@ public sealed class MainWindowViewModel
             value);
 
         PreserveRequestedBooleanValues();
+        PreserveRequestedCommandArgumentTexts();
         SetProperty(
             ref currentState,
             value,
@@ -346,7 +351,8 @@ public sealed class MainWindowViewModel
             RuntimeHostInventoryProjector.Project(
                 value,
                 confirmedReads,
-                requestedBooleanValues),
+                requestedBooleanValues,
+                requestedCommandArgumentTexts),
             nameof(Endpoints));
         RaisePropertyChanged(
             nameof(EndpointCount));
@@ -472,7 +478,8 @@ public sealed class MainWindowViewModel
                     RuntimeHostInventoryProjector.Project(
                         currentState,
                         confirmedReads,
-                        requestedBooleanValues),
+                        requestedBooleanValues,
+                        requestedCommandArgumentTexts),
                     nameof(Endpoints));
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed value "
@@ -552,7 +559,8 @@ public sealed class MainWindowViewModel
                     RuntimeHostInventoryProjector.Project(
                         currentState,
                         confirmedReads,
-                        requestedBooleanValues),
+                        requestedBooleanValues,
+                        requestedCommandArgumentTexts),
                     nameof(Endpoints));
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed write "
@@ -662,6 +670,27 @@ public sealed class MainWindowViewModel
         {
             requestedBooleanValues[property.Target] =
                 property.RequestedBooleanValue;
+        }
+    }
+
+    private void PreserveRequestedCommandArgumentTexts()
+    {
+        requestedCommandArgumentTexts.Clear();
+
+        foreach (CommandInventoryItemViewModel command
+            in endpoints
+                .SelectMany(
+                    endpoint =>
+                        endpoint.Instruments)
+                .SelectMany(
+                    instrument =>
+                        instrument.Commands)
+                .Where(
+                    command =>
+                        command.RequiresArgument))
+        {
+            requestedCommandArgumentTexts[command.Target] =
+                command.RequestedArgumentText;
         }
     }
 

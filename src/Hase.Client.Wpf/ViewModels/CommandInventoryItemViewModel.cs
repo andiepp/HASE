@@ -1,3 +1,7 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using Hase.Client.Wpf.Services;
+
 namespace Hase.Client.Wpf.ViewModels;
 
 public sealed record CommandInventoryItemViewModel(
@@ -5,8 +9,12 @@ public sealed record CommandInventoryItemViewModel(
     string Path,
     string DisplayName,
     string? Description,
-    bool CanExecute)
+    bool EndpointReady)
+    : INotifyPropertyChanged
 {
+    private string requestedArgumentText =
+        string.Empty;
+
     public bool RequiresArgument
     {
         get;
@@ -29,5 +37,51 @@ public sealed record CommandInventoryItemViewModel(
     {
         get;
         init;
+    }
+
+    public string RequestedArgumentText
+    {
+        get =>
+            requestedArgumentText;
+        set
+        {
+            value ??=
+                string.Empty;
+
+            if (requestedArgumentText == value)
+            {
+                return;
+            }
+
+            requestedArgumentText =
+                value;
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(HasValidArgument));
+            OnPropertyChanged(
+                nameof(CanExecute));
+        }
+    }
+
+    public bool HasValidArgument =>
+        !RequiresArgument
+        || (ArgumentDataType == "ByteArray"
+            && ByteArrayHexadecimalParser.TryParse(
+                RequestedArgumentText,
+                out _));
+
+    public bool CanExecute =>
+        EndpointReady
+        && HasValidArgument;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged(
+        [CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(
+            this,
+            new PropertyChangedEventArgs(
+                propertyName));
     }
 }

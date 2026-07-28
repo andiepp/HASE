@@ -13,7 +13,10 @@ public static class RuntimeHostInventoryProjector
             RemotePropertyValue>? confirmedReads = null,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            bool>? requestedBooleanValues = null)
+            bool>? requestedBooleanValues = null,
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? requestedCommandArgumentTexts = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -62,9 +65,7 @@ public static class RuntimeHostInventoryProjector
                                                         command.DisplayName,
                                                         command.Description,
                                                         attachment.ConnectionStatus.State
-                                                            == RemoteEndpointConnectionState.Ready
-                                                        && command.Argument
-                                                            is null)
+                                                            == RemoteEndpointConnectionState.Ready)
                                                     {
                                                         RequiresArgument =
                                                             command.Argument
@@ -80,7 +81,19 @@ public static class RuntimeHostInventoryProjector
                                                             is null
                                                                 ? null
                                                                 : GetDataType(
-                                                                    command.Argument.Data)
+                                                                    command.Argument.Data),
+                                                        RequestedArgumentText =
+                                                            requestedCommandArgumentTexts
+                                                            is not null
+                                                            && requestedCommandArgumentTexts
+                                                                .TryGetValue(
+                                                                    new RemoteCommandTarget(
+                                                                        attachment.Key,
+                                                                        instrument.Id,
+                                                                        command.Path),
+                                                                    out string? requestedText)
+                                                                ? requestedText
+                                                                : string.Empty
                                                     })
                                             .ToArray()))
                             .ToArray()))
