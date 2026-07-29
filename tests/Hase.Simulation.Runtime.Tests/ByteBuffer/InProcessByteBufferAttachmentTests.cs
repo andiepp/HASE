@@ -128,6 +128,55 @@ public sealed class InProcessByteBufferAttachmentTests
     }
 
     [Fact]
+    public async Task PropertyOperations_WriteAllTypes_ShouldReturnConfirmedValues()
+    {
+        var service =
+            new InProcessEndpointAttachmentService(
+                new RuntimeContext());
+
+        await using IEndpointAttachmentSession session =
+            await service.AttachAsync(
+                CreateRequest());
+
+        (PropertyId PropertyId, object Value)[] writes =
+        [
+            (
+                ByteBufferDescriptorFactory.EnabledPropertyId,
+                true),
+            (
+                ByteBufferDescriptorFactory.SetpointPropertyId,
+                23.5),
+            (
+                ByteBufferDescriptorFactory.LabelPropertyId,
+                "  HASE  "),
+            (
+                ByteBufferDescriptorFactory.ValuePropertyId,
+                new ByteArrayValue(
+                    new byte[]
+                    {
+                        0x00,
+                        0x53,
+                        0xFF
+                    }))
+        ];
+
+        foreach ((PropertyId propertyId, object value) in writes)
+        {
+            EndpointAttachmentPropertyOperationResult result =
+                await session.PropertyOperations.WriteAsync(
+                    ByteBufferDescriptorFactory.InstrumentId,
+                    propertyId,
+                    value);
+
+            Assert.True(
+                result.IsSuccess);
+            Assert.Equal(
+                value,
+                result.ConfirmedValue?.Value);
+        }
+    }
+
+    [Fact]
     public async Task ShutdownAsync_RemovesEndpointAndMarksItDisconnected()
     {
         RuntimeContext context =

@@ -7,8 +7,8 @@ using Hase.Runtime.Runtime;
 namespace Hase.Simulation.Runtime.ByteBuffer;
 
 /// <summary>
-/// Executes deterministic operations against one authoritative simulated
-/// byte buffer and its runtime Property cache.
+/// Executes deterministic multi-type Property operations and ByteArray
+/// Command operations against one authoritative simulation.
 /// </summary>
 public sealed class ByteBufferInstrumentExecutor
     : IInstrumentExecutor
@@ -36,13 +36,23 @@ public sealed class ByteBufferInstrumentExecutor
             timeProvider
             ?? TimeProvider.System;
 
-        if (runtimeInstrument.FindProperty(
-                ByteBufferDescriptorFactory.ValuePropertyId)
-            is null)
+        PropertyId[] requiredProperties =
+        [
+            ByteBufferDescriptorFactory.EnabledPropertyId,
+            ByteBufferDescriptorFactory.SetpointPropertyId,
+            ByteBufferDescriptorFactory.LabelPropertyId,
+            ByteBufferDescriptorFactory.ValuePropertyId
+        ];
+
+        if (requiredProperties.Any(
+                propertyId =>
+                    runtimeInstrument.FindProperty(
+                        propertyId)
+                    is null))
         {
             throw new ArgumentException(
-                "The runtime instrument does not contain the required "
-                + "ByteArray buffer Property.",
+                "The runtime instrument does not contain all required "
+                + "Property-editor validation Properties.",
                 nameof(runtimeInstrument));
         }
     }
@@ -55,23 +65,21 @@ public sealed class ByteBufferInstrumentExecutor
             propertyId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (propertyId
-            != ByteBufferDescriptorFactory.ValuePropertyId)
-        {
-            return Task.FromResult(
-                new ExecutionResult<PropertyValue?>(
-                    success: false,
-                    value: null));
-        }
-
         lock (gate)
         {
+            object? value =
+                GetCurrentValue(
+                    propertyId);
+
             return Task.FromResult(
                 new ExecutionResult<PropertyValue?>(
-                    success: true,
+                    success:
+                        value is not null,
                     value:
-                        CreatePropertyValue(
-                            simulation.Value)));
+                        value is null
+                            ? null
+                            : CreatePropertyValue(
+                                value)));
         }
     }
 
@@ -84,8 +92,61 @@ public sealed class ByteBufferInstrumentExecutor
             propertyId);
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult(
-            ExecutionResult.Failed);
+        lock (gate)
+        {
+            DescriptorPath? path =
+                null;
+
+            if (propertyId
+                    == ByteBufferDescriptorFactory.EnabledPropertyId
+                && value is bool enabled)
+            {
+                simulation.SetEnabled(
+                    enabled);
+                path =
+                    ByteBufferDescriptorFactory.EnabledPropertyPath;
+            }
+            else if (propertyId
+                        == ByteBufferDescriptorFactory.SetpointPropertyId
+                    && value is double setpoint
+                    && simulation.TrySetSetpoint(
+                        setpoint))
+            {
+                path =
+                    ByteBufferDescriptorFactory.SetpointPropertyPath;
+            }
+            else if (propertyId
+                        == ByteBufferDescriptorFactory.LabelPropertyId
+                    && value is string label)
+            {
+                simulation.SetLabel(
+                    label);
+                path =
+                    ByteBufferDescriptorFactory.LabelPropertyPath;
+            }
+            else if (propertyId
+                        == ByteBufferDescriptorFactory.ValuePropertyId
+                    && value is ByteArrayValue bytes)
+            {
+                simulation.Replace(
+                    bytes);
+                path =
+                    ByteBufferDescriptorFactory.ValuePropertyPath;
+            }
+
+            if (path is null)
+            {
+                return Task.FromResult(
+                    ExecutionResult.Failed);
+            }
+
+            UpdateRuntimeProperty(
+                path,
+                value!);
+
+            return Task.FromResult(
+                ExecutionResult.Successful);
+        }
     }
 
     public Task<ExecutionResult<object?>> ExecuteCommandAsync(
@@ -109,21 +170,11 @@ public sealed class ByteBufferInstrumentExecutor
 
         lock (gate)
         {
-            PropertyValue propertyValue =
-                CreatePropertyValue(
-                    replacement);
-
             simulation.Replace(
                 replacement);
-
-            if (!runtimeInstrument.UpdatePropertyValue(
-                    ByteBufferDescriptorFactory.ValuePropertyPath,
-                    propertyValue))
-            {
-                throw new InvalidOperationException(
-                    "The required ByteArray buffer Property could not be "
-                    + "updated.");
-            }
+            UpdateRuntimeProperty(
+                ByteBufferDescriptorFactory.ValuePropertyPath,
+                replacement);
 
             return Task.FromResult(
                 new ExecutionResult<object?>(
@@ -133,8 +184,50 @@ public sealed class ByteBufferInstrumentExecutor
         }
     }
 
+    private object? GetCurrentValue(
+        PropertyId propertyId)
+    {
+        if (propertyId
+            == ByteBufferDescriptorFactory.EnabledPropertyId)
+        {
+            return simulation.Enabled;
+        }
+
+        if (propertyId
+            == ByteBufferDescriptorFactory.SetpointPropertyId)
+        {
+            return simulation.Setpoint;
+        }
+
+        if (propertyId
+            == ByteBufferDescriptorFactory.LabelPropertyId)
+        {
+            return simulation.Label;
+        }
+
+        return propertyId
+                == ByteBufferDescriptorFactory.ValuePropertyId
+            ? simulation.Value
+            : null;
+    }
+
+    private void UpdateRuntimeProperty(
+        DescriptorPath path,
+        object value)
+    {
+        if (!runtimeInstrument.UpdatePropertyValue(
+                path,
+                CreatePropertyValue(
+                    value)))
+        {
+            throw new InvalidOperationException(
+                "A required Property-editor validation Property could "
+                + "not be updated.");
+        }
+    }
+
     private PropertyValue CreatePropertyValue(
-        ByteArrayValue value)
+        object value)
     {
         return new PropertyValue(
             value,
