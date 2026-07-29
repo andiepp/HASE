@@ -826,7 +826,7 @@ Implemented:
 Verified baseline:
 
 ```text
-3,573 automated tests pass
+3,643 automated tests pass
 Controlled two-computer physical validation succeeds
 ```
 
@@ -875,7 +875,7 @@ surfaces.
 
 ## 7.12 Application and Tooling Expansion
 
-**Status:** [Completed] Completed for ADR-0033 through ADR-0035
+**Status:** [Completed] Completed through ADR-0037
 
 Implemented:
 
@@ -883,7 +883,7 @@ Implemented:
 - production Windows Desktop Runtime Host application;
 - persistent endpoint, instrument, Property, Command, and Event projection;
 - live Property updates and change visualization;
-- explicit Boolean Property writes;
+- descriptor-driven Boolean, Numeric, String, and ByteArray Property writes;
 - explicit parameterless Command execution;
 - authoritative Property reconciliation after Commands;
 - bounded local operator activity;
@@ -894,7 +894,7 @@ Implemented:
 Validated baseline:
 
 ```text
-3,573 automated tests pass
+3,643 automated tests pass
 ESP32 and Arduino operator-console validation succeeds
 Laptop Client interoperability succeeds
 ```
@@ -904,9 +904,14 @@ Command arguments, hexadecimal WPF argument editing, explicit protobuf/gRPC
 mapping, ByteArray Property observation, and an opt-in in-process validation
 endpoint using the normal attachment inventory.
 
-Deferred application work includes numeric and string Property editors,
-filtering, export, persistent histories, discovery controls, configuration
-editing, and lifecycle administration.
+ADR-0037 additionally completes shared descriptor-driven Boolean, Numeric,
+String, and ByteArray Property editors in the Laptop Client and Desktop Runtime
+Host, including local and remote validation against the writable multi-type
+simulation.
+
+Deferred application work includes richer editor controls, filtering, export,
+persistent histories, discovery controls, configuration editing, and lifecycle
+administration.
 
 Architecture constraints:
 
@@ -1065,4 +1070,3 @@ Phase 6 is complete. Optional extensions remain backlog:
 - formal compact-profile compatibility.
 
 The northbound runtime-host API begins in Phase 7 under ADR-0023.
-

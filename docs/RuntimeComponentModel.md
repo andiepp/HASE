@@ -1116,5 +1116,16 @@ Higher layers remain independent of lower-layer implementation details.
 
 No layer bypasses the responsibilities of the layers beneath it.
 
+## Operator input components
+
+`PropertyInputParser` and `PropertyInputParseResult` are application-facing,
+UI-independent components. They do not read caches, write Properties, own
+connections, or map transports. WPF view models select editors from the
+descriptor, preserve requested state, and pass successful typed values to
+either the remote client adapter or local Desktop operator.
+
+Authoritative reads and observations update displayed current state. Confirmed
+Laptop reads are retained only while the matching attachment generation
+remains published.
 
 

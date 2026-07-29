@@ -870,3 +870,19 @@ Validated client behavior includes:
 - explicit stream cancellation;
 - orderly client, runtime-host, and endpoint shutdown.
 
+---
+
+# 17. Descriptor-driven Property values
+
+Remote API version 1 supports Boolean, Numeric, String, and ByteArray Property
+values for authoritative reads and writes. ByteArray mapping is exact in both
+directions and preserves leading zero and `FF` bytes.
+
+The WPF client validates input from the authoritative descriptor before
+creating an RPC. Invalid input therefore remains local. Client validation does
+not replace runtime or endpoint validation. Writes remain explicit,
+generation-qualified, and never automatically retried.
+
+Confirmed reads remain available during subsequent observation reprojection
+for the current attachment. They are removed when that attachment generation
+is no longer published.
