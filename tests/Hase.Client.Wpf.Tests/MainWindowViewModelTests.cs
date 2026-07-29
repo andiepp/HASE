@@ -218,6 +218,114 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ApplyObservationState_AfterAuthoritativeRead_ShouldRetainConfirmedValue()
+    {
+        var propertyDescriptor =
+            new PropertyDescriptor(
+                new PropertyId(
+                    "label"),
+                DescriptorPath.Parse(
+                    "Editor.Label"),
+                "Label",
+                new StringDataDescriptor())
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "editor-01"),
+                "Editor",
+                new InstrumentKind(
+                    "Validation"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            propertyDescriptor
+                        ])
+            };
+        var endpoint =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "f1259181-b8ad-4985-9803-2e65d76d4390")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "simulation-01"),
+                    [
+                        instrument
+                    ]),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Ready));
+        RemoteObservationState state =
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [
+                            endpoint
+                        ]),
+                    new RemoteObservationSequence(
+                        0)));
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromString(
+                                "confirmed"),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                29,
+                                18,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        viewModel.ApplyObservationState(
+            state);
+        PropertyInventoryItemViewModel property =
+            Assert.Single(
+                Assert.Single(
+                    Assert.Single(
+                        viewModel.Endpoints)
+                    .Instruments)
+                .Properties);
+
+        await viewModel.ReadPropertyAsync(
+            property);
+        viewModel.ApplyObservationState(
+            state);
+
+        PropertyInventoryItemViewModel refreshed =
+            Assert.Single(
+                Assert.Single(
+                    Assert.Single(
+                        viewModel.Endpoints)
+                    .Instruments)
+                .Properties);
+        Assert.Equal(
+            "confirmed",
+            refreshed.Value);
+    }
+
+    [Fact]
     public void ApplyEventOccurred_ShouldAddTransientOccurrence()
     {
         var instrument =

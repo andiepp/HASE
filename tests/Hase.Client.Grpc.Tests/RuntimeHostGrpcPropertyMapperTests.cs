@@ -2,6 +2,7 @@ using Google.Protobuf.WellKnownTypes;
 using Hase.Client;
 using Hase.Client.Grpc;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Data;
 using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Client.Grpc.Tests;
@@ -132,6 +133,104 @@ public sealed class RuntimeHostGrpcPropertyMapperTests
             result.RequestedValue.KindCase);
         Assert.True(
             result.RequestedValue.BooleanValue);
+    }
+
+    [Fact]
+    public void MapWriteRequest_ByteArray_ShouldPreserveExactBytes()
+    {
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-02"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "9206a38d-d980-4495-bc11-f7cdf9f14ebd"))),
+                new InstrumentId(
+                    "buffer-01"),
+                new PropertyId(
+                    "buffer-value"));
+
+        GrpcV1.WritePropertyRequest result =
+            new RuntimeHostGrpcPropertyMapper().MapWriteRequest(
+                target,
+                RemoteValue.FromByteArray(
+                    new ByteArrayValue(
+                        new byte[]
+                        {
+                            0x00,
+                            0x53,
+                            0xFF
+                        })));
+
+        Assert.Equal(
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue,
+            result.RequestedValue.KindCase);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x53,
+                0xFF
+            },
+            result.RequestedValue.ByteArrayValue.ToByteArray());
+    }
+
+    [Fact]
+    public void MapResult_ByteArray_ShouldPreserveExactConfirmedBytes()
+    {
+        var source =
+            new GrpcV1.PropertyOperationResult
+            {
+                Status =
+                    GrpcV1.PropertyOperationStatus.Success,
+                ConfirmedValue =
+                    new GrpcV1.PropertyValue
+                    {
+                        Value =
+                            new GrpcV1.RemoteValue
+                            {
+                                ByteArrayValue =
+                                    Google.Protobuf.ByteString.CopyFrom(
+                                        new byte[]
+                                        {
+                                            0xDE,
+                                            0xAD,
+                                            0xBE,
+                                            0xEF
+                                        })
+                            },
+                        TimestampUtc =
+                            Timestamp.FromDateTimeOffset(
+                                new DateTimeOffset(
+                                    2026,
+                                    7,
+                                    29,
+                                    19,
+                                    0,
+                                    0,
+                                    TimeSpan.Zero)),
+                        Quality =
+                            GrpcV1.PropertyQuality.Good
+                    }
+            };
+
+        RemotePropertyOperationResult result =
+            new RuntimeHostGrpcPropertyMapper().MapResult(
+                source);
+
+        Assert.Equal(
+            RemoteValueKind.ByteArray,
+            result.ConfirmedValue!.Value!.Kind);
+        Assert.Equal(
+            new byte[]
+            {
+                0xDE,
+                0xAD,
+                0xBE,
+                0xEF
+            },
+            result.ConfirmedValue.Value.ByteArrayValue!.ToArray());
     }
 
     [Fact]

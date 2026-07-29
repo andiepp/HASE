@@ -355,6 +355,8 @@ public sealed class MainWindowViewModel
             ref currentState,
             value,
             nameof(CurrentState));
+        RemoveConfirmedReadsForMissingAttachments(
+            value);
 
         if (HasActiveCommandArgumentEditor()
             || HasActivePropertyValueEditor())
@@ -362,7 +364,6 @@ public sealed class MainWindowViewModel
             return;
         }
 
-        confirmedReads.Clear();
         SetProperty(
             ref endpoints,
             RuntimeHostInventoryProjector.Project(
@@ -376,6 +377,30 @@ public sealed class MainWindowViewModel
             nameof(EndpointCount));
         RaisePropertyChanged(
             nameof(HasEndpoints));
+    }
+
+    private void RemoveConfirmedReadsForMissingAttachments(
+        RemoteObservationState state)
+    {
+        HashSet<RemoteEndpointAttachmentKey> currentAttachments =
+            state.Snapshot?.Attachments
+                .Select(
+                    attachment =>
+                        attachment.Key)
+                .ToHashSet()
+            ?? [];
+
+        foreach (RemotePropertyTarget target
+            in confirmedReads.Keys
+                .Where(
+                    target =>
+                        !currentAttachments.Contains(
+                            target.Attachment))
+                .ToArray())
+        {
+            confirmedReads.Remove(
+                target);
+        }
     }
 
     public async Task ConnectAsync()
