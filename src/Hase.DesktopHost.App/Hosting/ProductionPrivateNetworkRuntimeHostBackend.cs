@@ -211,6 +211,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 DesktopRuntimePropertyDataKind.Numeric,
             StringDataDescriptor =>
                 DesktopRuntimePropertyDataKind.String,
+            ByteArrayDataDescriptor =>
+                DesktopRuntimePropertyDataKind.ByteArray,
             _ =>
                 DesktopRuntimePropertyDataKind.Unknown
         };
@@ -231,6 +233,12 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         if (value is null)
         {
             return "null";
+        }
+
+        if (value is ByteArrayValue byteArrayValue)
+        {
+            return Convert.ToHexString(
+                byteArrayValue.AsSpan());
         }
 
         return value is IFormattable formattable
@@ -564,4 +572,5 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
     }
 }
+
 

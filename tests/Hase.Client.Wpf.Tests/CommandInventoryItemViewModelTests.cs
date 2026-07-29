@@ -24,6 +24,22 @@ public sealed class CommandInventoryItemViewModelTests
     }
 
     [Fact]
+    public void ByteArrayCommand_EditingState_ShouldBeMutable()
+    {
+        var command =
+            CreateByteArrayCommand();
+
+        Assert.False(
+            command.IsEditingArgument);
+
+        command.IsEditingArgument =
+            true;
+
+        Assert.True(
+            command.IsEditingArgument);
+    }
+
+    [Fact]
     public void ByteArrayCommand_InvalidInput_ShouldNotBeExecutable()
     {
         var command =
@@ -101,3 +117,4 @@ public sealed class CommandInventoryItemViewModelTests
                 "Controller.Send"));
     }
 }
+

@@ -641,6 +641,10 @@ public sealed class RuntimeHostGrpcObservationMapper
             GrpcV1.RemoteValue.KindOneofCase.NumericValue =>
                 RemoteValue.FromNumeric(
                     value.NumericValue),
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue =>
+                RemoteValue.FromByteArray(
+                    new ByteArrayValue(
+                        value.ByteArrayValue.ToByteArray())),
             _ =>
                 throw Invalid(
                     "The remote value has no supported kind.")
@@ -754,3 +758,4 @@ public sealed class RuntimeHostGrpcObservationMapper
             message);
     }
 }
+

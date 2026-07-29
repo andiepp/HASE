@@ -360,6 +360,39 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ConnectAsync_ExplicitPath_ShouldBypassFilePicker()
+    {
+        var controller =
+            new StubController();
+        var viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+
+        await viewModel.ConnectAsync(
+            @"C:\Configuration\laptop-private-network.json");
+
+        Assert.Equal(
+            @"C:\Configuration\laptop-private-network.json",
+            controller.ConfigurationFilePath);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_EmptyExplicitPath_ShouldReject()
+    {
+        var viewModel =
+            CreateConfiguredViewModel(
+                new StubController(),
+                null);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => viewModel.ConnectAsync(
+                " "));
+    }
+
+    [Fact]
     public async Task DisconnectAsync_ShouldUseController()
     {
         var controller =
@@ -939,3 +972,4 @@ public sealed class MainWindowViewModelTests
             ValueTask.CompletedTask;
     }
 }
+

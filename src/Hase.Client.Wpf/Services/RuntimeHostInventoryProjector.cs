@@ -206,6 +206,9 @@ public static class RuntimeHostInventoryProjector
                 value.NumericValue!.Value.ToString(
                     "G17",
                     CultureInfo.InvariantCulture),
+            RemoteValueKind.ByteArray =>
+                Convert.ToHexString(
+                    value.ByteArrayValue!.AsSpan()),
             _ =>
                 "No cached value"
         };
@@ -226,3 +229,4 @@ public static class RuntimeHostInventoryProjector
                 descriptor.GetType().Name
         };
 }
+

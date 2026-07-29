@@ -288,6 +288,8 @@
                                                                             Margin="0,6,0,0"
                                                                             HorizontalAlignment="Left"
                                                                             ToolTip="Enter hexadecimal byte pairs separated by optional whitespace."
+                                                                            GotKeyboardFocus="OnCommandArgumentGotKeyboardFocus"
+                                                                            LostKeyboardFocus="OnCommandArgumentLostKeyboardFocus"
                                                                             Text="{Binding RequestedArgumentText, UpdateSourceTrigger=PropertyChanged}" />
                                                                         <TextBlock
                                                                             Margin="0,4,0,0"
@@ -374,3 +376,4 @@
         </ScrollViewer>
     </Grid>
 </Window>
+

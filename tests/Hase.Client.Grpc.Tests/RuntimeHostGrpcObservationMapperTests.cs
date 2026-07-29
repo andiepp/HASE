@@ -287,6 +287,63 @@ public sealed class RuntimeHostGrpcObservationMapperTests
     }
 
     [Fact]
+    public void MapObservation_ByteArrayPropertyValueChanged_ShouldMapPayload()
+    {
+        GrpcV1.RuntimeHostObservation source =
+            CreateObservation(
+                GrpcV1.RuntimeHostObservationKind.PropertyValueChanged);
+        source.PropertyValueChanged =
+            new GrpcV1.PropertyValueChangedObservation
+            {
+                InstrumentId =
+                    "byte-buffer-01",
+                PropertyId =
+                    "byte-buffer-01.buffer-value",
+                CurrentValue =
+                    new GrpcV1.PropertyValue
+                    {
+                        Value =
+                            new GrpcV1.RemoteValue
+                            {
+                                ByteArrayValue =
+                                    Google.Protobuf.ByteString.CopyFrom(
+                                        new byte[]
+                                        {
+                                            0x00,
+                                            0x53,
+                                            0xff
+                                        })
+                            },
+                        TimestampUtc =
+                            Timestamp.FromDateTimeOffset(
+                                DateTimeOffset.UnixEpoch),
+                        Quality =
+                            GrpcV1.PropertyQuality.Good
+                    }
+            };
+
+        RemoteRuntimeHostObservation result =
+            new RuntimeHostGrpcObservationMapper().MapObservation(
+                source);
+
+        var payload =
+            Assert.IsType<RemotePropertyValueChangedObservationPayload>(
+                result.Payload);
+
+        Assert.Equal(
+            RemoteValueKind.ByteArray,
+            payload.CurrentValue.Value!.Kind);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x53,
+                0xff
+            },
+            payload.CurrentValue.Value.ByteArrayValue!.ToArray());
+    }
+
+    [Fact]
     public void MapObservation_EventOccurred_ShouldMapPayload()
     {
         GrpcV1.RuntimeHostObservation source =
@@ -466,3 +523,4 @@ public sealed class RuntimeHostGrpcObservationMapperTests
         };
     }
 }
+

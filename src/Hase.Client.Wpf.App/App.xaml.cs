@@ -16,26 +16,46 @@ public partial class App
     {
         sessionController =
             Container.Resolve<RuntimeHostClientSessionController>();
-        Container.Resolve<MainWindowViewModel>()
-            .Configure(
-                sessionController,
-                Container.Resolve<IClientConfigurationFilePicker>());
 
-        return Container.Resolve<MainWindow>();
+        MainWindowViewModel viewModel =
+            Container.Resolve<MainWindowViewModel>();
+
+        viewModel.Configure(
+            sessionController,
+            Container.Resolve<IClientConfigurationFilePicker>());
+
+        Window window =
+            Container.Resolve<MainWindow>();
+
+        window.Loaded +=
+            async (_, _) =>
+                await viewModel.ConnectAsync(
+                    Container.Resolve<
+                        LaptopClientStartupConfiguration>()
+                        .ConfigurationFilePath);
+
+        return window;
     }
 
     protected override void RegisterTypes(
         IContainerRegistry containerRegistry)
     {
+        LaptopClientStartupConfiguration startupConfiguration =
+            LaptopClientStartupConfiguration.Parse(
+                Environment.GetCommandLineArgs());
+
+        containerRegistry.RegisterInstance(
+            startupConfiguration);
         containerRegistry.RegisterSingleton<MainWindowViewModel>();
         containerRegistry.RegisterInstance<IRuntimeHostClientSessionFactory>(
             RuntimeHostClientComposition.CreateSessionFactory());
         containerRegistry.RegisterInstance<IClientUiDispatcher>(
             RuntimeHostClientComposition.CreateDispatcher(
                 Dispatcher));
-        containerRegistry.RegisterSingleton<
-            IClientConfigurationFilePicker,
-            WpfClientConfigurationFilePicker>();
+        containerRegistry.RegisterInstance<
+            IClientConfigurationFilePicker>(
+                new StartupClientConfigurationFilePicker(
+                    startupConfiguration));
         containerRegistry.RegisterSingleton<
             RuntimeHostClientSessionController>();
     }
@@ -57,3 +77,5 @@ public partial class App
         }
     }
 }
+
+

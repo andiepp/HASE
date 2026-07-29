@@ -63,6 +63,12 @@ public sealed record CommandInventoryItemViewModel(
         }
     }
 
+    public bool IsEditingArgument
+    {
+        get;
+        set;
+    }
+
     public bool HasValidArgument =>
         !RequiresArgument
         || (ArgumentDataType == "ByteArray"
@@ -85,3 +91,4 @@ public sealed record CommandInventoryItemViewModel(
                 propertyName));
     }
 }
+

@@ -345,6 +345,12 @@ public sealed class MainWindowViewModel
             ref currentState,
             value,
             nameof(CurrentState));
+
+        if (HasActiveCommandArgumentEditor())
+        {
+            return;
+        }
+
         confirmedReads.Clear();
         SetProperty(
             ref endpoints,
@@ -362,8 +368,7 @@ public sealed class MainWindowViewModel
 
     public async Task ConnectAsync()
     {
-        if (sessionController is null
-            || configurationFilePicker is null)
+        if (configurationFilePicker is null)
         {
             throw new InvalidOperationException(
                 "The main window client services are not configured.");
@@ -375,6 +380,27 @@ public sealed class MainWindowViewModel
         if (configurationFilePath is null)
         {
             return;
+        }
+
+        await ConnectAsync(
+            configurationFilePath);
+    }
+
+    public async Task ConnectAsync(
+        string configurationFilePath)
+    {
+        if (sessionController is null)
+        {
+            throw new InvalidOperationException(
+                "The main window client services are not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                configurationFilePath))
+        {
+            throw new ArgumentException(
+                "The client configuration file path must not be empty.",
+                nameof(configurationFilePath));
         }
 
         IsBusy =
@@ -716,6 +742,20 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private bool HasActiveCommandArgumentEditor()
+    {
+        return endpoints
+            .SelectMany(
+                endpoint =>
+                    endpoint.Instruments)
+            .SelectMany(
+                instrument =>
+                    instrument.Commands)
+            .Any(
+                command =>
+                    command.IsEditingArgument);
+    }
+
     private void ClearEventOccurrences()
     {
         SetProperty(
@@ -817,3 +857,5 @@ public sealed class MainWindowViewModel
         ExecuteCommand.RaiseCanExecuteChanged();
     }
 }
+
+
