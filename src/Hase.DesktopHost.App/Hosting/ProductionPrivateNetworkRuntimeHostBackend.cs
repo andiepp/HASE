@@ -169,7 +169,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     property.AccessMode),
                 BooleanValue: null,
                 endpoint.ConnectionStatus.State
-                    == EndpointConnectionState.Ready);
+                    == EndpointConnectionState.Ready,
+                property,
+                CurrentValue: null);
         }
 
         Hase.Core.Domain.Properties.PropertyValue currentValue =
@@ -198,7 +200,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 ? booleanValue
                 : null,
             endpoint.ConnectionStatus.State
-                == EndpointConnectionState.Ready);
+                == EndpointConnectionState.Ready,
+            property,
+            currentValue.Value);
     }
 
     private static DesktopRuntimePropertyDataKind GetDataKind(
@@ -572,5 +576,4 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
     }
 }
-
 

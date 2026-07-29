@@ -1,8 +1,15 @@
 ﻿using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
+using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
+using Hase.Operator.Input;
 using Hase.Runtime.Northbound;
 using Prism.Commands;
+using CorePropertyDescriptor =
+    Hase.Core.Domain.Properties.PropertyDescriptor;
 
 namespace Hase.DesktopHost.App.ViewModels;
 
@@ -27,6 +34,10 @@ public sealed class DesktopRuntimePropertyViewModel
     private bool canWrite;
     private bool? currentBooleanValue;
     private bool? requestedBooleanValue;
+    private object? currentTypedValue;
+    private string requestedValueText = string.Empty;
+    private CorePropertyDescriptor descriptor;
+    private DesktopRuntimePropertyEditorKind editorKind;
     private RuntimeHostPropertyTarget target;
     private bool isEndpointReady;
     private DesktopRuntimePropertyWriteState writeState =
@@ -73,12 +84,27 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.CanWrite;
         currentBooleanValue =
             snapshot.BooleanValue;
+        currentTypedValue =
+            snapshot.CurrentValue
+            ?? snapshot.BooleanValue;
+        descriptor =
+            snapshot.Descriptor
+            ?? CreateCompatibilityDescriptor(
+                snapshot);
+        editorKind =
+            GetEditorKind(
+                descriptor);
         requestedBooleanValue =
             IsWritableBoolean(
                 snapshot.DataKind,
                 snapshot.CanWrite)
                 ? snapshot.BooleanValue
                 : null;
+        requestedValueText =
+            editorKind == DesktopRuntimePropertyEditorKind.Text
+                ? FormatEditableValue(
+                    currentTypedValue)
+                : string.Empty;
         isEndpointReady =
             snapshot.IsEndpointReady;
 
@@ -226,9 +252,43 @@ public sealed class DesktopRuntimePropertyViewModel
     }
 
     public bool HasBooleanEditor =>
-        IsWritableBoolean(
-            DataKind,
-            CanWrite);
+        EditorKind == DesktopRuntimePropertyEditorKind.Boolean;
+
+    public bool HasTextEditor =>
+        EditorKind == DesktopRuntimePropertyEditorKind.Text;
+
+    public bool HasEditor =>
+        EditorKind != DesktopRuntimePropertyEditorKind.None;
+
+    public DesktopRuntimePropertyEditorKind EditorKind
+    {
+        get =>
+            editorKind;
+        private set =>
+            SetProperty(
+                ref editorKind,
+                value);
+    }
+
+    public CorePropertyDescriptor Descriptor
+    {
+        get =>
+            descriptor;
+        private set =>
+            SetProperty(
+                ref descriptor,
+                value);
+    }
+
+    public object? CurrentTypedValue
+    {
+        get =>
+            currentTypedValue;
+        private set =>
+            SetProperty(
+                ref currentTypedValue,
+                value);
+    }
 
     public bool? CurrentBooleanValue
     {
@@ -248,6 +308,41 @@ public sealed class DesktopRuntimePropertyViewModel
             SetRequestedBooleanValue(
                 value);
     }
+
+    public string RequestedValueText
+    {
+        get =>
+            requestedValueText;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(
+                value);
+
+            if (SetProperty(
+                    ref requestedValueText,
+                    value))
+            {
+                RaiseInputStateChanged();
+            }
+        }
+    }
+
+    public PropertyInputParseResult InputResult =>
+        PropertyInputParser.Parse(
+            Descriptor,
+            HasBooleanEditor
+                ? RequestedBooleanValue?.ToString()
+                : RequestedValueText);
+
+    public bool HasValidRequestedValue =>
+        HasEditor
+        && InputResult.IsSuccess;
+
+    public string ValidationMessage =>
+        HasEditor
+        && !InputResult.IsSuccess
+            ? InputResult.Message
+            : string.Empty;
 
     public bool IsEndpointReady
     {
@@ -284,8 +379,7 @@ public sealed class DesktopRuntimePropertyViewModel
         == DesktopRuntimePropertyWriteState.Executing;
 
     public bool CanWriteRequestedValue =>
-        HasBooleanEditor
-        && RequestedBooleanValue.HasValue
+        HasValidRequestedValue
         && IsEndpointReady
         && !IsWriteExecuting;
 
@@ -323,7 +417,9 @@ public sealed class DesktopRuntimePropertyViewModel
             || IsKnown != snapshot.IsKnown;
         bool requestedValueMetadataChanged =
             DataKind != snapshot.DataKind
-            || CanWrite != snapshot.CanWrite;
+            || CanWrite != snapshot.CanWrite
+            || snapshot.Descriptor is not null
+                && Descriptor != snapshot.Descriptor;
 
         DisplayName =
             snapshot.DisplayName;
@@ -349,6 +445,16 @@ public sealed class DesktopRuntimePropertyViewModel
             snapshot.CanWrite;
         CurrentBooleanValue =
             snapshot.BooleanValue;
+        CurrentTypedValue =
+            snapshot.CurrentValue
+            ?? snapshot.BooleanValue;
+        Descriptor =
+            snapshot.Descriptor
+            ?? CreateCompatibilityDescriptor(
+                snapshot);
+        EditorKind =
+            GetEditorKind(
+                Descriptor);
         IsEndpointReady =
             snapshot.IsEndpointReady;
 
@@ -360,8 +466,17 @@ public sealed class DesktopRuntimePropertyViewModel
                     snapshot.CanWrite)
                     ? snapshot.BooleanValue
                     : null;
+            RequestedValueText =
+                HasTextEditor
+                    ? FormatEditableValue(
+                        CurrentTypedValue)
+                    : string.Empty;
             OnPropertyChanged(
                 nameof(HasBooleanEditor));
+            OnPropertyChanged(
+                nameof(HasTextEditor));
+            OnPropertyChanged(
+                nameof(HasEditor));
         }
 
         ResetRequestedValueCommand.RaiseCanExecuteChanged();
@@ -394,6 +509,32 @@ public sealed class DesktopRuntimePropertyViewModel
         return new DesktopRuntimeBooleanPropertyWriteRequest(
             capturedTarget,
             capturedValue);
+    }
+
+    public DesktopRuntimePropertyWriteRequest? TryBeginWrite()
+    {
+        if (!CanWriteRequestedValue)
+        {
+            return null;
+        }
+
+        PropertyInputParseResult result =
+            InputResult;
+        if (!result.IsSuccess)
+        {
+            return null;
+        }
+
+        WriteMessage =
+            "Writing requested value...";
+        SetWriteState(
+            DesktopRuntimePropertyWriteState.Executing);
+
+        return new DesktopRuntimePropertyWriteRequest(
+            Target,
+            result.Value!,
+            FormatInputSummary(
+                result.Value!));
     }
 
     public void CompleteWrite(
@@ -446,8 +587,17 @@ public sealed class DesktopRuntimePropertyViewModel
 
     private void ResetRequestedValue()
     {
-        RequestedBooleanValue =
-            CurrentBooleanValue;
+        if (HasBooleanEditor)
+        {
+            RequestedBooleanValue =
+                CurrentBooleanValue;
+        }
+        else if (HasTextEditor)
+        {
+            RequestedValueText =
+                FormatEditableValue(
+                    CurrentTypedValue);
+        }
     }
 
     private void SetRequestedBooleanValue(
@@ -460,6 +610,7 @@ public sealed class DesktopRuntimePropertyViewModel
         {
             OnPropertyChanged(
                 nameof(CanWriteRequestedValue));
+            RaiseInputStateChanged();
         }
     }
 
@@ -495,13 +646,124 @@ public sealed class DesktopRuntimePropertyViewModel
 
     private bool CanResetRequestedValue() =>
         HasBooleanEditor
-        && CurrentBooleanValue.HasValue;
+            ? CurrentBooleanValue.HasValue
+            : HasTextEditor
+                && CurrentTypedValue is not null;
 
     private static bool IsWritableBoolean(
         DesktopRuntimePropertyDataKind dataKind,
         bool canWrite) =>
         dataKind == DesktopRuntimePropertyDataKind.Boolean
         && canWrite;
+
+    private void RaiseInputStateChanged()
+    {
+        OnPropertyChanged(
+            nameof(InputResult));
+        OnPropertyChanged(
+            nameof(HasValidRequestedValue));
+        OnPropertyChanged(
+            nameof(ValidationMessage));
+        OnPropertyChanged(
+            nameof(CanWriteRequestedValue));
+        ResetRequestedValueCommand.RaiseCanExecuteChanged();
+    }
+
+    private static DesktopRuntimePropertyEditorKind GetEditorKind(
+        CorePropertyDescriptor value)
+    {
+        if (!value.AccessMode.HasFlag(
+                PropertyAccessMode.Write))
+        {
+            return DesktopRuntimePropertyEditorKind.None;
+        }
+
+        return value.Data switch
+        {
+            BooleanDataDescriptor =>
+                DesktopRuntimePropertyEditorKind.Boolean,
+            NumericDataDescriptor
+                or StringDataDescriptor
+                or ByteArrayDataDescriptor =>
+                    DesktopRuntimePropertyEditorKind.Text,
+            _ =>
+                DesktopRuntimePropertyEditorKind.None
+        };
+    }
+
+    private static string FormatEditableValue(
+        object? value)
+    {
+        return value switch
+        {
+            null =>
+                string.Empty,
+            double numeric =>
+                numeric.ToString(
+                    "G17",
+                    CultureInfo.InvariantCulture),
+            string text =>
+                text,
+            ByteArrayValue bytes =>
+                string.Join(
+                    " ",
+                    bytes.ToArray()
+                        .Select(
+                            item =>
+                                item.ToString(
+                                    "X2",
+                                    CultureInfo.InvariantCulture))),
+            bool boolean =>
+                boolean.ToString(),
+            _ =>
+                Convert.ToString(
+                    value,
+                    CultureInfo.InvariantCulture)
+                ?? string.Empty
+        };
+    }
+
+    private static string FormatInputSummary(
+        object value)
+    {
+        return FormatEditableValue(
+            value);
+    }
+
+    private static CorePropertyDescriptor CreateCompatibilityDescriptor(
+        DesktopRuntimePropertySnapshot snapshot)
+    {
+        DataDescriptor data =
+            snapshot.DataKind switch
+            {
+                DesktopRuntimePropertyDataKind.Boolean =>
+                    new BooleanDataDescriptor(),
+                DesktopRuntimePropertyDataKind.Numeric =>
+                    new NumericDataDescriptor(
+                        Quantities.Temperature,
+                        Units.Celsius),
+                DesktopRuntimePropertyDataKind.String =>
+                    new StringDataDescriptor(),
+                DesktopRuntimePropertyDataKind.ByteArray =>
+                    new ByteArrayDataDescriptor(),
+                _ =>
+                    new StringDataDescriptor()
+            };
+
+        return new CorePropertyDescriptor(
+            new PropertyId(
+                snapshot.PropertyId),
+            DescriptorPath.Parse(
+                snapshot.Path),
+            snapshot.DisplayName,
+            data)
+        {
+            AccessMode =
+                snapshot.CanWrite
+                    ? PropertyAccessMode.ReadWrite
+                    : PropertyAccessMode.Read
+        };
+    }
 
     private void RestartChangeHighlight()
     {

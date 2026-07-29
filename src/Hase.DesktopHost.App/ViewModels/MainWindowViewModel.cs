@@ -45,9 +45,9 @@ public sealed class MainWindowViewModel : IDisposable
         dispatcher =
             Dispatcher.CurrentDispatcher;
 
-        WriteBooleanPropertyCommand =
+        WritePropertyCommand =
             new DelegateCommand<DesktopRuntimePropertyViewModel>(
-                ExecuteWriteBooleanProperty,
+                ExecuteWriteProperty,
                 property =>
                     property?.CanWriteRequestedValue
                     == true
@@ -90,10 +90,14 @@ public sealed class MainWindowViewModel : IDisposable
     }
 
     public DelegateCommand<DesktopRuntimePropertyViewModel>
-        WriteBooleanPropertyCommand
+        WritePropertyCommand
     {
         get;
     }
+
+    public DelegateCommand<DesktopRuntimePropertyViewModel>
+        WriteBooleanPropertyCommand =>
+            WritePropertyCommand;
 
     public DelegateCommand<DesktopRuntimeCommandViewModel>
         ExecuteParameterlessCommand
@@ -153,7 +157,7 @@ public sealed class MainWindowViewModel : IDisposable
     public void RefreshInventory()
     {
         Inventory.Refresh();
-        WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
+        WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteParameterlessCommand.RaiseCanExecuteChanged();
     }
 
@@ -232,20 +236,20 @@ public sealed class MainWindowViewModel : IDisposable
         }
     }
 
-    public async Task WriteBooleanPropertyAsync(
+    public async Task WritePropertyAsync(
         DesktopRuntimePropertyViewModel property,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(
             property);
 
-        DesktopRuntimeBooleanPropertyWriteRequest? request =
+        DesktopRuntimePropertyWriteRequest? request =
             RuntimeHost.Status
                 == DesktopRuntimeHostStatus.Running
-                ? property.TryBeginBooleanWrite()
+                ? property.TryBeginWrite()
                 : null;
 
-        WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
+        WritePropertyCommand.RaiseCanExecuteChanged();
 
         if (request is null)
         {
@@ -278,20 +282,29 @@ public sealed class MainWindowViewModel : IDisposable
         finally
         {
             Activity.Record(
-                DesktopRuntimeOperatorActivityKind.BooleanPropertyWrite,
+                DesktopRuntimeOperatorActivityKind.PropertyWrite,
                 request.Target.EndpointId.Value,
                 request.Target.AttachmentGeneration.ToString(),
                 request.Target.InstrumentId.Value,
                 operationPath,
-                request.RequestedValue.ToString(),
+                request.InputSummary,
                 GetActivityOutcome(
                     property.WriteState),
                 property.WriteState
                     == DesktopRuntimePropertyWriteState.Succeeded
                         ? string.Empty
                         : property.WriteMessage);
-            WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
+            WritePropertyCommand.RaiseCanExecuteChanged();
         }
+    }
+
+    public Task WriteBooleanPropertyAsync(
+        DesktopRuntimePropertyViewModel property,
+        CancellationToken cancellationToken = default)
+    {
+        return WritePropertyAsync(
+            property,
+            cancellationToken);
     }
 
     public void Dispose()
@@ -308,10 +321,10 @@ public sealed class MainWindowViewModel : IDisposable
         runtimeHostViewModel.Dispose();
     }
 
-    private async void ExecuteWriteBooleanProperty(
+    private async void ExecuteWriteProperty(
         DesktopRuntimePropertyViewModel property)
     {
-        await WriteBooleanPropertyAsync(
+        await WritePropertyAsync(
             property,
             CancellationToken.None);
     }
