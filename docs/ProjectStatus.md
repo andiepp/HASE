@@ -82,12 +82,15 @@ tutorial. ADR-0034 provides the production Windows Desktop Runtime Host
 application and persistent live inventory. ADR-0035 completes the interactive
 operator console with Boolean Property writes, parameterless Commands,
 authoritative post-Command Property reconciliation, bounded operator activity,
-persistent Event descriptors, and bounded live Event occurrences.
+persistent Event descriptors, and bounded live Event occurrences. ADR-0036
+adds immutable opaque ByteArray values, typed Command arguments, compatible
+Protocol Version 1 extensions, complete gRPC/client mapping, and an opt-in
+in-process ByteArray validation endpoint exercised from the remote WPF client.
 
 The current verified baseline is:
 
 ```text
-3,442 automated tests passing
+3,573 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -919,7 +922,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-3,442 automated tests pass
+3,573 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -1020,13 +1023,17 @@ ADR-0035 retains the latest 100 completed local operator actions
 ADR-0035 retains the latest 100 live endpoint Event occurrences
 ADR-0035 attributes consecutive Arduino and ESP32 Events to their exact sources
 ADR-0035 closes the WPF application and runtime process orderly
+ADR-0036 transports opaque ByteArray Property and Command values end to end
+ADR-0036 validates typed ByteArray Command arguments through the remote WPF client
+ADR-0036 publishes the opt-in simulation through the normal attachment inventory
+ADR-0036 preserves ByteArray Property observations without client disconnection
 ```
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0035 are accepted.
+ADR-0001 through ADR-0036 are accepted.
 
 Relevant recent decisions:
 
@@ -1051,6 +1058,7 @@ Relevant recent decisions:
 - ADR-0033 - Laptop Client Application, API Documentation, and Tutorial.
 - ADR-0034 - Desktop Runtime Host Application.
 - ADR-0035 - Interactive Operator Console.
+- ADR-0036 - ByteArray Values and Typed Command Arguments.
 
 ---
 
@@ -1071,7 +1079,6 @@ The current implementation intentionally excludes:
 - BLE;
 - formal compact-profile negotiation;
 - persistent event history and replay;
-- typed Command argument descriptors and editors;
 - numeric and string Desktop operator Property editors;
 - persistent operator audit history;
 - operator activity and Event filtering or export;
@@ -1113,3 +1120,4 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
+

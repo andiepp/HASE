@@ -185,6 +185,10 @@ Supported Protocol Version 1 types:
 - Int64
 - Double
 - String
+- ByteArray
+
+ByteArray values are immutable opaque byte sequences. The runtime validates
+their declared data kind but never interprets their structure.
 
 The protocol intentionally avoids CLR-specific binary serialization to remain platform independent and suitable for embedded systems.
 
@@ -247,4 +251,11 @@ Implemented:
 - Command protocol
 - Event notification protocol
 
-The next development phase connects these components into a complete runtime capable of communicating with physical hardware.
+The runtime also supports host-owned in-process endpoint attachments. They use
+the same inventory, attachment generation, Property and Command ports,
+northbound projection, observation, and shutdown lifecycle as physical
+endpoints. ADR-0036 validates this boundary with the opt-in ByteArray buffer
+simulation.
+
+The current runtime communicates with physical native and compact endpoints,
+simulated in-process endpoints, and authenticated local or remote clients.

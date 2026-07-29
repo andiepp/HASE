@@ -122,6 +122,13 @@ not converted implicitly.
 Unsupported CLR types cause serialization to fail with a
 `NotSupportedException`.
 
+Typed Command arguments reuse the same Variant encoding. Command descriptor
+argument metadata is carried in a length-delimited extension section so the
+original parameterless Command encoding remains unchanged. Readers skip unknown
+extension fields, reject duplicate known fields, and reject malformed lengths.
+A ByteArray Command argument is therefore described and transported without
+assigning meaning to its bytes.
+
 Future protocol versions may extend the Variant type system while remaining
 backward compatible.
 
@@ -245,3 +252,4 @@ Existing discriminator values must never be changed or reused.
 Future protocol versions may extend the protocol by introducing additional
 Variant types, message types, or descriptor information while preserving
 backward compatibility whenever practical.
+

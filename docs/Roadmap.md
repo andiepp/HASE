@@ -826,7 +826,7 @@ Implemented:
 Verified baseline:
 
 ```text
-3,442 automated tests pass
+3,573 automated tests pass
 Controlled two-computer physical validation succeeds
 ```
 
@@ -835,7 +835,34 @@ Production promotion remains blocked by the outstanding ADR-0031 audit,
 resource-governance, authorization-deployment, revocation, rotation, and
 operational-hardening requirements.
 
-## 7.10 Future Management API
+## 7.10 ByteArray Values and Typed Command Arguments
+
+**Status:** [Completed] Implemented, automated, and remotely validated under
+ADR-0036
+
+Implemented:
+
+- immutable content-equal `ByteArrayValue`;
+- `ByteArrayDataDescriptor`;
+- Protocol Version 1 Variant discriminator `0x06`;
+- Property descriptor discriminator `0x04`;
+- backward-compatible typed Command argument descriptor extensions;
+- runtime argument validation;
+- Property, Command, protobuf, gRPC, observation, and client mappings;
+- hexadecimal WPF argument entry and ByteArray value display;
+- command-line WPF client configuration;
+- generic in-process endpoint attachment through the normal inventory;
+- opt-in `simulation-byte-buffer-validation` Desktop Host endpoint;
+- exact replacement, return-value, cache-update, and observation validation.
+
+Verified baseline:
+
+```text
+3,573 automated tests pass
+Controlled desktop-to-laptop ByteArray validation succeeds
+```
+
+## 7.11 Future Management API
 
 **Status:** [Backlog] Not part of the first northbound capability
 
@@ -846,7 +873,7 @@ administration, persistent host configuration, and host shutdown.
 Operational access and lifecycle administration remain separate authorization
 surfaces.
 
-## 7.11 Application and Tooling Expansion
+## 7.12 Application and Tooling Expansion
 
 **Status:** [Completed] Completed for ADR-0033 through ADR-0035
 
@@ -867,14 +894,19 @@ Implemented:
 Validated baseline:
 
 ```text
-3,442 automated tests pass
+3,573 automated tests pass
 ESP32 and Arduino operator-console validation succeeds
 Laptop Client interoperability succeeds
 ```
 
-Deferred application work includes typed Command arguments, numeric and string
-Property editors, filtering, export, persistent histories, discovery controls,
-configuration editing, and lifecycle administration.
+ADR-0036 additionally completes immutable opaque ByteArray values, typed
+Command arguments, hexadecimal WPF argument editing, explicit protobuf/gRPC
+mapping, ByteArray Property observation, and an opt-in in-process validation
+endpoint using the normal attachment inventory.
+
+Deferred application work includes numeric and string Property editors,
+filtering, export, persistent histories, discovery controls, configuration
+editing, and lifecycle administration.
 
 Architecture constraints:
 
@@ -956,7 +988,7 @@ Current documentation includes:
 - `C-032-Authenticated-Physical-Northbound-gRPC-Validation.md`;
 - `C-033-Authenticated-Physical-Northbound-Command-Validation.md`;
 - `C-034-Authenticated-Physical-Northbound-Observation-Validation.md`;
-- ADR-0001 through ADR-0035.
+- ADR-0001 through ADR-0036.
 
 Next:
 
@@ -965,7 +997,7 @@ Next:
 2. Keep Phase 6 closure and its deferred optional extensions explicit.
 3. Keep the Phase 7 northbound API boundary, identity foundation, normalized
    services, gRPC mapping, security boundary, and controlled private-network
-   deployment and applications aligned with ADR-0023 through ADR-0035.
+   deployment and applications aligned with ADR-0023 through ADR-0036.
 4. Keep attachment generation separate from authoritative endpoint identity.
 5. Keep operational access separate from lifecycle administration.
 6. Keep compact current-connection Event authority, no-queue, and no-replay
@@ -1033,3 +1065,4 @@ Phase 6 is complete. Optional extensions remain backlog:
 - formal compact-profile compatibility.
 
 The northbound runtime-host API begins in Phase 7 under ADR-0023.
+
