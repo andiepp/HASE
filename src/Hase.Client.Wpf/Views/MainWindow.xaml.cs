@@ -41,4 +41,34 @@ public partial class MainWindow
                 false;
         }
     }
+
+    private void OnPropertyValueGotKeyboardFocus(
+        object sender,
+        KeyboardFocusChangedEventArgs eventArgs)
+    {
+        if (sender is FrameworkElement
+            {
+                DataContext:
+                    PropertyInventoryItemViewModel property
+            })
+        {
+            property.IsEditingRequestedValue =
+                true;
+        }
+    }
+
+    private void OnPropertyValueLostKeyboardFocus(
+        object sender,
+        KeyboardFocusChangedEventArgs eventArgs)
+    {
+        if (sender is FrameworkElement
+            {
+                DataContext:
+                    PropertyInventoryItemViewModel property
+            })
+        {
+            property.IsEditingRequestedValue =
+                false;
+        }
+    }
 }

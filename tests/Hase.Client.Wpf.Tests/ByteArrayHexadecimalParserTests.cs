@@ -1,4 +1,4 @@
-using Hase.Client.Wpf.Services;
+using Hase.Operator.Input;
 using Hase.Core.Domain.Data;
 
 namespace Hase.Client.Wpf.Tests;

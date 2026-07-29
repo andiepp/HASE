@@ -1,5 +1,6 @@
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
@@ -566,6 +567,175 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task WritePropertyAsync_ValidNumericInput_ShouldSendTypedValueOnce()
+    {
+        var propertyId =
+            new PropertyId(
+                "setpoint");
+        var descriptor =
+            new PropertyDescriptor(
+                propertyId,
+                DescriptorPath.Parse(
+                    "Environment.Setpoint"),
+                "Setpoint",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius,
+                    new ValueRange(
+                        -10,
+                        50)))
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "7fb61219-8040-4a57-ae5d-592a6c08d03b"))),
+                new InstrumentId(
+                    "controller-01"),
+                propertyId);
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromNumeric(
+                                23.5),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                29,
+                                12,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                propertyId.Value,
+                descriptor.Path.ToString(),
+                descriptor.DisplayName,
+                descriptor.AccessMode.ToString(),
+                "Numeric",
+                "°C",
+                "20",
+                null,
+                null,
+                false,
+                true,
+                true,
+                false,
+                true,
+                descriptor,
+                PropertyInputEditorKind.Text,
+                "23.5");
+
+        await viewModel.WritePropertyAsync(
+            property);
+
+        Assert.Equal(
+            1,
+            controller.WriteCount);
+        Assert.Equal(
+            RemoteValueKind.Numeric,
+            controller.RequestedValue!.Kind);
+        Assert.Equal(
+            23.5,
+            controller.RequestedValue.NumericValue);
+        Assert.Equal(
+            "Setpoint: endpoint-confirmed write completed.",
+            viewModel.PropertyReadMessage);
+    }
+
+    [Fact]
+    public async Task WritePropertyAsync_InvalidNumericInput_ShouldRemainLocal()
+    {
+        var propertyId =
+            new PropertyId(
+                "setpoint");
+        var descriptor =
+            new PropertyDescriptor(
+                propertyId,
+                DescriptorPath.Parse(
+                    "Environment.Setpoint"),
+                "Setpoint",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius))
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "8fb61219-8040-4a57-ae5d-592a6c08d03b"))),
+                new InstrumentId(
+                    "controller-01"),
+                propertyId);
+        var controller =
+            new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                propertyId.Value,
+                descriptor.Path.ToString(),
+                descriptor.DisplayName,
+                descriptor.AccessMode.ToString(),
+                "Numeric",
+                "°C",
+                "20",
+                null,
+                null,
+                false,
+                true,
+                true,
+                false,
+                true,
+                descriptor,
+                PropertyInputEditorKind.Text,
+                "23,5");
+
+        await viewModel.WritePropertyAsync(
+            property);
+
+        Assert.Equal(
+            0,
+            controller.WriteCount);
+        Assert.Equal(
+            "Setpoint: Enter a finite number using '.' as the decimal separator.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
     public async Task ExecuteCommandAsync_ShouldSendParameterlessCommandOnce()
     {
         var target =
@@ -972,4 +1142,3 @@ public sealed class MainWindowViewModelTests
             ValueTask.CompletedTask;
     }
 }
-

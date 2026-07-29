@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using Hase.Client.Wpf.Services;
+using Hase.Operator.Input;
 
 namespace Hase.Client.Wpf.ViewModels;
 
@@ -91,4 +91,3 @@ public sealed record CommandInventoryItemViewModel(
                 propertyName));
     }
 }
-

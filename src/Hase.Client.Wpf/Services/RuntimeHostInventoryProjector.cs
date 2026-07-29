@@ -16,7 +16,10 @@ public static class RuntimeHostInventoryProjector
             bool>? requestedBooleanValues = null,
         IReadOnlyDictionary<
             RemoteCommandTarget,
-            string>? requestedCommandArgumentTexts = null)
+            string>? requestedCommandArgumentTexts = null,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            string>? requestedPropertyValueTexts = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -51,7 +54,8 @@ public static class RuntimeHostInventoryProjector
                                                         instrument.Id,
                                                         property,
                                                         confirmedReads,
-                                                        requestedBooleanValues))
+                                                        requestedBooleanValues,
+                                                        requestedPropertyValueTexts))
                                             .ToArray(),
                                         instrument.Interface.Commands
                                             .Select(
@@ -111,7 +115,10 @@ public static class RuntimeHostInventoryProjector
             RemotePropertyValue>? confirmedReads,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            bool>? requestedBooleanValues)
+            bool>? requestedBooleanValues,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            string>? requestedPropertyValueTexts)
     {
         var target =
             new RemotePropertyTarget(
@@ -137,12 +144,18 @@ public static class RuntimeHostInventoryProjector
             property.AccessMode is
                 Hase.Core.Domain.Properties.PropertyAccessMode.Read
                 or Hase.Core.Domain.Properties.PropertyAccessMode.ReadWrite;
+        bool writable =
+            property.AccessMode.HasFlag(
+                Hase.Core.Domain.Properties.PropertyAccessMode.Write);
+        bool supportedWritable =
+            writable
+            && (property.Data is BooleanDataDescriptor
+                || property.Data is NumericDataDescriptor
+                || property.Data is StringDataDescriptor
+                || property.Data is ByteArrayDataDescriptor);
         bool booleanWritable =
-            property.Data is BooleanDataDescriptor
-            && (property.AccessMode is
-                    Hase.Core.Domain.Properties.PropertyAccessMode.Write
-                    or Hase.Core.Domain.Properties.PropertyAccessMode
-                        .ReadWrite);
+            supportedWritable
+            && property.Data is BooleanDataDescriptor;
         bool requestedBooleanValue =
             booleanWritable
             && requestedBooleanValues is not null
@@ -152,6 +165,15 @@ public static class RuntimeHostInventoryProjector
                 ? requested
                 : cached?.Value?.BooleanValue
                     ?? false;
+        string requestedValueText =
+            requestedPropertyValueTexts is not null
+            && requestedPropertyValueTexts.TryGetValue(
+                target,
+                out string? requestedText)
+                ? requestedText
+                : FormatEditableValue(
+                    cached?.Value,
+                    property.Data);
 
         return new PropertyInventoryItemViewModel(
             target,
@@ -167,6 +189,8 @@ public static class RuntimeHostInventoryProjector
                     "Boolean",
                 StringDataDescriptor =>
                     "String",
+                ByteArrayDataDescriptor =>
+                    "ByteArray",
                 _ =>
                     property.Data.GetType().Name
             },
@@ -185,7 +209,14 @@ public static class RuntimeHostInventoryProjector
                 && readable,
             booleanWritable,
             endpointReady
-                && booleanWritable)
+                && supportedWritable,
+            property,
+            supportedWritable
+                ? property.Data is BooleanDataDescriptor
+                    ? PropertyInputEditorKind.Boolean
+                    : PropertyInputEditorKind.Text
+                : PropertyInputEditorKind.None,
+            requestedValueText)
         {
             RequestedBooleanValue =
                 requestedBooleanValue
@@ -213,6 +244,41 @@ public static class RuntimeHostInventoryProjector
                 "No cached value"
         };
 
+    private static string FormatEditableValue(
+        RemoteValue? value,
+        DataDescriptor descriptor)
+    {
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        return descriptor switch
+        {
+            NumericDataDescriptor
+                when value.Kind == RemoteValueKind.Numeric =>
+                    value.NumericValue!.Value.ToString(
+                        "G17",
+                        CultureInfo.InvariantCulture),
+            StringDataDescriptor
+                when value.Kind == RemoteValueKind.String =>
+                    value.StringValue!,
+            ByteArrayDataDescriptor
+                when value.Kind == RemoteValueKind.ByteArray =>
+                    string.Join(
+                        " ",
+                        value.ByteArrayValue!
+                            .ToArray()
+                            .Select(
+                                item =>
+                                    item.ToString(
+                                        "X2",
+                                        CultureInfo.InvariantCulture))),
+            _ =>
+                string.Empty
+        };
+    }
+
     private static string GetDataType(
         DataDescriptor descriptor) =>
         descriptor switch
@@ -229,4 +295,3 @@ public static class RuntimeHostInventoryProjector
                 descriptor.GetType().Name
         };
 }
-
