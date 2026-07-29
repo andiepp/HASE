@@ -1009,11 +1009,16 @@ Keep each increment buildable and testable.
 
 ## Increment 5 — Property write
 
-- descriptor-driven Boolean/string/numeric editors;
+- implemented descriptor-driven Boolean, Numeric, String, and ByteArray
+  editors;
 - range validation;
 - confirmed-value handling;
 - uncertain-outcome handling;
 - no automatic retry.
+
+For current syntax, reset behavior, multi-type simulation, local/remote
+comparison, and ByteArray Command compatibility, see
+[HASE Descriptor-Driven Property Editing Tutorial](HASE-Descriptor-Driven-Property-Editing-Tutorial.md).
 
 ## Increment 6 — Command execution
 
@@ -1048,4 +1053,3 @@ The first real laptop UI is complete when:
 - it disconnects and disposes all owned resources orderly;
 - automated tests cover the client state model;
 - the physical desktop-to-laptop scenario passes for ESP32 and Arduino.
-

@@ -259,3 +259,14 @@ simulation.
 
 The current runtime communicates with physical native and compact endpoints,
 simulated in-process endpoints, and authenticated local or remote clients.
+
+## Application input boundary
+
+`Hase.Operator.Input` consumes `PropertyDescriptor` metadata before an
+application invokes the runtime. It enforces writable access, invariant finite
+Numeric input and ranges, exact String semantics, and ADR-0036 ByteArray syntax.
+Runtime and endpoint validation remain authoritative.
+
+Local and remote applications share conversion semantics but retain separate
+execution adapters. Both continue targeting endpoint identity, attachment
+generation, instrument identity, and Property identity.

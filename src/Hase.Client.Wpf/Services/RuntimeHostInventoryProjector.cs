@@ -16,7 +16,10 @@ public static class RuntimeHostInventoryProjector
             bool>? requestedBooleanValues = null,
         IReadOnlyDictionary<
             RemoteCommandTarget,
-            string>? requestedCommandArgumentTexts = null)
+            string>? requestedCommandArgumentTexts = null,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            string>? requestedPropertyValueTexts = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -51,54 +54,101 @@ public static class RuntimeHostInventoryProjector
                                                         instrument.Id,
                                                         property,
                                                         confirmedReads,
-                                                        requestedBooleanValues))
+                                                        requestedBooleanValues,
+                                                        requestedPropertyValueTexts))
                                             .ToArray(),
                                         instrument.Interface.Commands
                                             .Select(
                                                 command =>
-                                                    new CommandInventoryItemViewModel(
-                                                        new RemoteCommandTarget(
-                                                            attachment.Key,
-                                                            instrument.Id,
-                                                            command.Path),
-                                                        command.Path.ToString(),
-                                                        command.DisplayName,
-                                                        command.Description,
-                                                        attachment.ConnectionStatus.State
-                                                            == RemoteEndpointConnectionState.Ready)
-                                                    {
-                                                        RequiresArgument =
-                                                            command.Argument
-                                                            is not null,
-                                                        ArgumentDisplayName =
-                                                            command.Argument
-                                                                ?.DisplayName,
-                                                        ArgumentDescription =
-                                                            command.Argument
-                                                                ?.Description,
-                                                        ArgumentDataType =
-                                                            command.Argument
-                                                            is null
-                                                                ? null
-                                                                : GetDataType(
-                                                                    command.Argument.Data),
-                                                        RequestedArgumentText =
-                                                            requestedCommandArgumentTexts
-                                                            is not null
-                                                            && requestedCommandArgumentTexts
-                                                                .TryGetValue(
-                                                                    new RemoteCommandTarget(
-                                                                        attachment.Key,
-                                                                        instrument.Id,
-                                                                        command.Path),
-                                                                    out string? requestedText)
-                                                                ? requestedText
-                                                                : string.Empty
-                                                    })
+                                                    ProjectCommand(
+                                                        attachment,
+                                                        instrument.Id,
+                                                        command,
+                                                        requestedCommandArgumentTexts))
                                             .ToArray()))
                             .ToArray()))
             .ToArray()
             ?? [];
+    }
+
+    private static CommandInventoryItemViewModel ProjectCommand(
+        RemoteEndpointAttachmentSnapshot attachment,
+        Hase.Core.Domain.Identity.InstrumentId instrumentId,
+        Hase.Core.Domain.Commands.CommandDescriptor command,
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? requestedCommandArgumentTexts)
+    {
+        var target =
+            new RemoteCommandTarget(
+                attachment.Key,
+                instrumentId,
+                command.Path);
+        string requestedText =
+            FindRequestedCommandArgumentText(
+                requestedCommandArgumentTexts,
+                target)
+            ?? string.Empty;
+
+        return new CommandInventoryItemViewModel(
+            target,
+            command.Path.ToString(),
+            command.DisplayName,
+            command.Description,
+            attachment.ConnectionStatus.State
+                == RemoteEndpointConnectionState.Ready)
+        {
+            Descriptor =
+                command,
+            RequestedArgumentText =
+                requestedText,
+            RequestedBooleanArgument =
+                command.Argument?.Data
+                    is BooleanDataDescriptor
+                && bool.TryParse(
+                    requestedText,
+                    out bool requestedBoolean)
+                    ? requestedBoolean
+                    : null
+        };
+    }
+
+    private static string? FindRequestedCommandArgumentText(
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? values,
+        RemoteCommandTarget target)
+    {
+        if (values is null)
+        {
+            return null;
+        }
+
+        if (values.TryGetValue(
+                target,
+                out string? exact))
+        {
+            return exact;
+        }
+
+        foreach (KeyValuePair<
+            RemoteCommandTarget,
+            string> item in values)
+        {
+            if (string.Equals(
+                    item.Key.InstrumentId.Value,
+                    target.InstrumentId.Value,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    item.Key.CommandPath.ToString(),
+                    target.CommandPath.ToString(),
+                    StringComparison.Ordinal))
+            {
+                return item.Value;
+            }
+        }
+
+        return null;
     }
 
     private static PropertyInventoryItemViewModel ProjectProperty(
@@ -111,7 +161,10 @@ public static class RuntimeHostInventoryProjector
             RemotePropertyValue>? confirmedReads,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            bool>? requestedBooleanValues)
+            bool>? requestedBooleanValues,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            string>? requestedPropertyValueTexts)
     {
         var target =
             new RemotePropertyTarget(
@@ -137,12 +190,18 @@ public static class RuntimeHostInventoryProjector
             property.AccessMode is
                 Hase.Core.Domain.Properties.PropertyAccessMode.Read
                 or Hase.Core.Domain.Properties.PropertyAccessMode.ReadWrite;
+        bool writable =
+            property.AccessMode.HasFlag(
+                Hase.Core.Domain.Properties.PropertyAccessMode.Write);
+        bool supportedWritable =
+            writable
+            && (property.Data is BooleanDataDescriptor
+                || property.Data is NumericDataDescriptor
+                || property.Data is StringDataDescriptor
+                || property.Data is ByteArrayDataDescriptor);
         bool booleanWritable =
-            property.Data is BooleanDataDescriptor
-            && (property.AccessMode is
-                    Hase.Core.Domain.Properties.PropertyAccessMode.Write
-                    or Hase.Core.Domain.Properties.PropertyAccessMode
-                        .ReadWrite);
+            supportedWritable
+            && property.Data is BooleanDataDescriptor;
         bool requestedBooleanValue =
             booleanWritable
             && requestedBooleanValues is not null
@@ -152,6 +211,15 @@ public static class RuntimeHostInventoryProjector
                 ? requested
                 : cached?.Value?.BooleanValue
                     ?? false;
+        string requestedValueText =
+            requestedPropertyValueTexts is not null
+            && requestedPropertyValueTexts.TryGetValue(
+                target,
+                out string? requestedText)
+                ? requestedText
+                : FormatEditableValue(
+                    cached?.Value,
+                    property.Data);
 
         return new PropertyInventoryItemViewModel(
             target,
@@ -167,6 +235,8 @@ public static class RuntimeHostInventoryProjector
                     "Boolean",
                 StringDataDescriptor =>
                     "String",
+                ByteArrayDataDescriptor =>
+                    "ByteArray",
                 _ =>
                     property.Data.GetType().Name
             },
@@ -185,7 +255,14 @@ public static class RuntimeHostInventoryProjector
                 && readable,
             booleanWritable,
             endpointReady
-                && booleanWritable)
+                && supportedWritable,
+            property,
+            supportedWritable
+                ? property.Data is BooleanDataDescriptor
+                    ? PropertyInputEditorKind.Boolean
+                    : PropertyInputEditorKind.Text
+                : PropertyInputEditorKind.None,
+            requestedValueText)
         {
             RequestedBooleanValue =
                 requestedBooleanValue
@@ -213,20 +290,38 @@ public static class RuntimeHostInventoryProjector
                 "No cached value"
         };
 
-    private static string GetDataType(
-        DataDescriptor descriptor) =>
-        descriptor switch
+    private static string FormatEditableValue(
+        RemoteValue? value,
+        DataDescriptor descriptor)
+    {
+        if (value is null)
         {
-            NumericDataDescriptor =>
-                "Numeric",
-            BooleanDataDescriptor =>
-                "Boolean",
-            StringDataDescriptor =>
-                "String",
-            ByteArrayDataDescriptor =>
-                "ByteArray",
-            _ =>
-                descriptor.GetType().Name
-        };
-}
+            return string.Empty;
+        }
 
+        return descriptor switch
+        {
+            NumericDataDescriptor
+                when value.Kind == RemoteValueKind.Numeric =>
+                    value.NumericValue!.Value.ToString(
+                        "G17",
+                        CultureInfo.InvariantCulture),
+            StringDataDescriptor
+                when value.Kind == RemoteValueKind.String =>
+                    value.StringValue!,
+            ByteArrayDataDescriptor
+                when value.Kind == RemoteValueKind.ByteArray =>
+                    string.Join(
+                        " ",
+                        value.ByteArrayValue!
+                            .ToArray()
+                            .Select(
+                                item =>
+                                    item.ToString(
+                                        "X2",
+                                        CultureInfo.InvariantCulture))),
+            _ =>
+                string.Empty
+        };
+    }
+}

@@ -1,4 +1,5 @@
 using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
+using Hase.Core.Domain.Data;
 
 namespace Hase.Client.Grpc;
 
@@ -133,6 +134,10 @@ public sealed class RuntimeHostGrpcPropertyMapper
             GrpcV1.RemoteValue.KindOneofCase.NumericValue =>
                 RemoteValue.FromNumeric(
                     value.NumericValue),
+            GrpcV1.RemoteValue.KindOneofCase.ByteArrayValue =>
+                RemoteValue.FromByteArray(
+                    new ByteArrayValue(
+                        value.ByteArrayValue.ToByteArray())),
             _ =>
                 throw new InvalidDataException(
                     "The confirmed remote value has no supported kind.")
@@ -173,6 +178,13 @@ public sealed class RuntimeHostGrpcPropertyMapper
                 {
                     NumericValue =
                         value.NumericValue!.Value
+                },
+            RemoteValueKind.ByteArray =>
+                new GrpcV1.RemoteValue
+                {
+                    ByteArrayValue =
+                        Google.Protobuf.ByteString.CopyFrom(
+                            value.ByteArrayValue!.ToArray())
                 },
             _ =>
                 throw new InvalidDataException(

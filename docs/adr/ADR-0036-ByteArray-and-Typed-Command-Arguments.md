@@ -112,3 +112,10 @@ ByteArray Property observation reaches the remote client without disconnect
 Client and Desktop Runtime Host display the resulting hexadecimal value
 Orderly application and attachment shutdown remains intact
 ```
+
+## Evolution in ADR-0037
+
+ADR-0036 originally validated `Buffer.Value` as a read-only ByteArray Property.
+ADR-0037 later made it writable and expanded the same instrument with writable
+Boolean, Numeric, and String Properties. `Buffer.Replace` remains compatible
+and updates the same authoritative ByteArray Property.

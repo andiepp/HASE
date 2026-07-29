@@ -14,6 +14,14 @@ public sealed class ByteBufferSimulationTests
         Assert.Equal(
             0,
             simulation.Value.Length);
+        Assert.False(
+            simulation.Enabled);
+        Assert.Equal(
+            20.0,
+            simulation.Setpoint);
+        Assert.Equal(
+            "HASE",
+            simulation.Label);
     }
 
     [Fact]

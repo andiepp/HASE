@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hase.Client.Wpf.App\Hase.Client.Wpf.App.csproj" />
     <ProjectReference Include="..\..\src\Hase.Client.Wpf\Hase.Client.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Hase.Operator.Input\Hase.Operator.Input.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,6 +2,7 @@ namespace Hase.DesktopHost;
 
 public enum DesktopRuntimeOperatorActivityKind
 {
-    BooleanPropertyWrite,
-    ParameterlessCommandExecution
+    BooleanPropertyWrite = 0,
+    PropertyWrite = BooleanPropertyWrite,
+    ParameterlessCommandExecution = 1
 }

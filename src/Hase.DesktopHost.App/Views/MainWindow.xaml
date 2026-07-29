@@ -494,7 +494,7 @@
                                                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                                                                 <Style.Triggers>
                                                                                                     <DataTrigger
-                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Binding="{Binding HasEditor}"
                                                                                                         Value="True">
                                                                                                         <Setter Property="Visibility" Value="Visible" />
                                                                                                     </DataTrigger>
@@ -522,6 +522,32 @@
                                                                                         </CheckBox.Style>
                                                                                     </CheckBox>
 
+                                                                                    <TextBox
+                                                                                        Grid.Row="10"
+                                                                                        Grid.Column="1"
+                                                                                        MinWidth="240"
+                                                                                        HorizontalAlignment="Left"
+                                                                                        Text="{Binding RequestedValueText, UpdateSourceTrigger=PropertyChanged}">
+                                                                                        <TextBox.Style>
+                                                                                            <Style TargetType="TextBox">
+                                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger Binding="{Binding HasTextEditor}" Value="True">
+                                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </TextBox.Style>
+                                                                                    </TextBox>
+
+                                                                                    <TextBlock
+                                                                                        Grid.Row="11"
+                                                                                        Grid.Column="1"
+                                                                                        Margin="0,3,0,0"
+                                                                                        Foreground="#FFB00020"
+                                                                                        Text="{Binding ValidationMessage}"
+                                                                                        TextWrapping="Wrap" />
+
                                                                                     <Button
                                                                                         Grid.Row="12"
                                                                                         Grid.Column="1"
@@ -534,7 +560,7 @@
                                                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                                                                 <Style.Triggers>
                                                                                                     <DataTrigger
-                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Binding="{Binding HasEditor}"
                                                                                                         Value="True">
                                                                                                         <Setter Property="Visibility" Value="Visible" />
                                                                                                     </DataTrigger>
@@ -550,7 +576,7 @@
                                                                                         Orientation="Horizontal">
                                                                                         <Button
                                                                                             Width="150"
-                                                                                            Command="{Binding DataContext.WriteBooleanPropertyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                            Command="{Binding DataContext.WritePropertyCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                             CommandParameter="{Binding}"
                                                                                             Content="Write requested value">
                                                                                             <Button.Style>
@@ -558,7 +584,7 @@
                                                                                                     <Setter Property="Visibility" Value="Collapsed" />
                                                                                                     <Style.Triggers>
                                                                                                         <DataTrigger
-                                                                                                            Binding="{Binding HasBooleanEditor}"
+                                                                                                            Binding="{Binding HasEditor}"
                                                                                                             Value="True">
                                                                                                             <Setter Property="Visibility" Value="Visible" />
                                                                                                         </DataTrigger>
@@ -577,7 +603,7 @@
                                                                                                 <Setter Property="Visibility" Value="Collapsed" />
                                                                                                 <Style.Triggers>
                                                                                                     <DataTrigger
-                                                                                                        Binding="{Binding HasBooleanEditor}"
+                                                                                                        Binding="{Binding HasEditor}"
                                                                                                         Value="True">
                                                                                                         <Setter Property="Visibility" Value="Visible" />
                                                                                                     </DataTrigger>

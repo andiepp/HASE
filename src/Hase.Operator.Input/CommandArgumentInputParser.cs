@@ -1,61 +1,58 @@
-using Hase.Core.Domain.Properties;
+using Hase.Core.Domain.Commands;
 
 namespace Hase.Operator.Input;
 
 /// <summary>
-/// Converts descriptor-driven operator text into normalized typed Property
-/// values without performing a Property operation.
+/// Converts descriptor-driven operator text into a normalized typed Command
+/// argument without executing a Command.
 /// </summary>
-public static class PropertyInputParser
+public static class CommandArgumentInputParser
 {
-    public static PropertyInputParseResult Parse(
-        PropertyDescriptor descriptor,
+    public static CommandArgumentInputParseResult Parse(
+        CommandDescriptor descriptor,
         string? input)
     {
         ArgumentNullException.ThrowIfNull(
             descriptor);
 
-        if (!descriptor.AccessMode.HasFlag(
-                PropertyAccessMode.Write))
+        if (descriptor.Argument is null)
         {
-            return PropertyInputParseResult.Failed(
-                PropertyInputFailure.PropertyNotWritable,
-                "This Property is read-only.");
+            return CommandArgumentInputParseResult.Parameterless();
         }
 
         DescriptorInputParseResult result =
             DescriptorInputParser.Parse(
-                descriptor.Data,
+                descriptor.Argument.Data,
                 input);
 
         if (result.IsSuccess)
         {
-            return PropertyInputParseResult.Success(
+            return CommandArgumentInputParseResult.Success(
                 result.Value!);
         }
 
-        return PropertyInputParseResult.Failed(
+        return CommandArgumentInputParseResult.Failed(
             MapFailure(
                 result.Failure),
             result.Failure
                 == DescriptorInputFailure.UnsupportedDataDescriptor
-                    ? "This Property data type is not supported for editing."
+                    ? "This Command argument data type is not supported for editing."
                     : result.Message);
     }
 
-    private static PropertyInputFailure MapFailure(
+    private static CommandArgumentInputFailure MapFailure(
         DescriptorInputFailure failure)
     {
         return failure switch
         {
             DescriptorInputFailure.MissingInput =>
-                PropertyInputFailure.MissingInput,
+                CommandArgumentInputFailure.MissingInput,
             DescriptorInputFailure.InvalidFormat =>
-                PropertyInputFailure.InvalidFormat,
+                CommandArgumentInputFailure.InvalidFormat,
             DescriptorInputFailure.ValueOutsideRange =>
-                PropertyInputFailure.ValueOutsideRange,
+                CommandArgumentInputFailure.ValueOutsideRange,
             DescriptorInputFailure.UnsupportedDataDescriptor =>
-                PropertyInputFailure.UnsupportedDataDescriptor,
+                CommandArgumentInputFailure.UnsupportedDataDescriptor,
             _ =>
                 throw new ArgumentOutOfRangeException(
                     nameof(failure),

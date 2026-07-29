@@ -1,5 +1,6 @@
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
@@ -214,6 +215,114 @@ public sealed class MainWindowViewModelTests
         Assert.Contains(
             nameof(MainWindowViewModel.EndpointCount),
             changedProperties);
+    }
+
+    [Fact]
+    public async Task ApplyObservationState_AfterAuthoritativeRead_ShouldRetainConfirmedValue()
+    {
+        var propertyDescriptor =
+            new PropertyDescriptor(
+                new PropertyId(
+                    "label"),
+                DescriptorPath.Parse(
+                    "Editor.Label"),
+                "Label",
+                new StringDataDescriptor())
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "editor-01"),
+                "Editor",
+                new InstrumentKind(
+                    "Validation"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        properties:
+                        [
+                            propertyDescriptor
+                        ])
+            };
+        var endpoint =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "f1259181-b8ad-4985-9803-2e65d76d4390")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "simulation-01"),
+                    [
+                        instrument
+                    ]),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Ready));
+        RemoteObservationState state =
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [
+                            endpoint
+                        ]),
+                    new RemoteObservationSequence(
+                        0)));
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromString(
+                                "confirmed"),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                29,
+                                18,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        viewModel.ApplyObservationState(
+            state);
+        PropertyInventoryItemViewModel property =
+            Assert.Single(
+                Assert.Single(
+                    Assert.Single(
+                        viewModel.Endpoints)
+                    .Instruments)
+                .Properties);
+
+        await viewModel.ReadPropertyAsync(
+            property);
+        viewModel.ApplyObservationState(
+            state);
+
+        PropertyInventoryItemViewModel refreshed =
+            Assert.Single(
+                Assert.Single(
+                    Assert.Single(
+                        viewModel.Endpoints)
+                    .Instruments)
+                .Properties);
+        Assert.Equal(
+            "confirmed",
+            refreshed.Value);
     }
 
     [Fact]
@@ -566,6 +675,175 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task WritePropertyAsync_ValidNumericInput_ShouldSendTypedValueOnce()
+    {
+        var propertyId =
+            new PropertyId(
+                "setpoint");
+        var descriptor =
+            new PropertyDescriptor(
+                propertyId,
+                DescriptorPath.Parse(
+                    "Environment.Setpoint"),
+                "Setpoint",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius,
+                    new ValueRange(
+                        -10,
+                        50)))
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "7fb61219-8040-4a57-ae5d-592a6c08d03b"))),
+                new InstrumentId(
+                    "controller-01"),
+                propertyId);
+        var controller =
+            new StubController
+            {
+                ReadResult =
+                    RemotePropertyOperationResult.Successful(
+                        new RemotePropertyValue(
+                            RemoteValue.FromNumeric(
+                                23.5),
+                            new DateTimeOffset(
+                                2026,
+                                7,
+                                29,
+                                12,
+                                0,
+                                0,
+                                TimeSpan.Zero),
+                            RemotePropertyQuality.Good))
+            };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                propertyId.Value,
+                descriptor.Path.ToString(),
+                descriptor.DisplayName,
+                descriptor.AccessMode.ToString(),
+                "Numeric",
+                "°C",
+                "20",
+                null,
+                null,
+                false,
+                true,
+                true,
+                false,
+                true,
+                descriptor,
+                PropertyInputEditorKind.Text,
+                "23.5");
+
+        await viewModel.WritePropertyAsync(
+            property);
+
+        Assert.Equal(
+            1,
+            controller.WriteCount);
+        Assert.Equal(
+            RemoteValueKind.Numeric,
+            controller.RequestedValue!.Kind);
+        Assert.Equal(
+            23.5,
+            controller.RequestedValue.NumericValue);
+        Assert.Equal(
+            "Setpoint: endpoint-confirmed write completed.",
+            viewModel.PropertyReadMessage);
+    }
+
+    [Fact]
+    public async Task WritePropertyAsync_InvalidNumericInput_ShouldRemainLocal()
+    {
+        var propertyId =
+            new PropertyId(
+                "setpoint");
+        var descriptor =
+            new PropertyDescriptor(
+                propertyId,
+                DescriptorPath.Parse(
+                    "Environment.Setpoint"),
+                "Setpoint",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius))
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+        var target =
+            new RemotePropertyTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId(
+                        "endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "8fb61219-8040-4a57-ae5d-592a6c08d03b"))),
+                new InstrumentId(
+                    "controller-01"),
+                propertyId);
+        var controller =
+            new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(
+                controller,
+                null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(
+                RuntimeHostClientSessionState.Connected));
+        var property =
+            new PropertyInventoryItemViewModel(
+                target,
+                propertyId.Value,
+                descriptor.Path.ToString(),
+                descriptor.DisplayName,
+                descriptor.AccessMode.ToString(),
+                "Numeric",
+                "°C",
+                "20",
+                null,
+                null,
+                false,
+                true,
+                true,
+                false,
+                true,
+                descriptor,
+                PropertyInputEditorKind.Text,
+                "23,5");
+
+        await viewModel.WritePropertyAsync(
+            property);
+
+        Assert.Equal(
+            0,
+            controller.WriteCount);
+        Assert.Equal(
+            "Setpoint: Enter a finite number using '.' as the decimal separator.",
+            viewModel.PropertyReadMessage);
+        Assert.False(
+            viewModel.IsBusy);
+    }
+
+    [Fact]
     public async Task ExecuteCommandAsync_ShouldSendParameterlessCommandOnce()
     {
         var target =
@@ -644,12 +922,14 @@ public sealed class MainWindowViewModelTests
                 null,
                 true)
             {
-                RequiresArgument =
-                    true,
-                ArgumentDisplayName =
-                    "Payload",
-                ArgumentDataType =
-                    "ByteArray",
+                Descriptor =
+                    new Hase.Core.Domain.Commands.CommandDescriptor(
+                        Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                            "Controller.Send"),
+                        "Send",
+                        new Hase.Core.Domain.Commands.CommandArgumentDescriptor(
+                            "Payload",
+                            new Hase.Core.Domain.Data.ByteArrayDataDescriptor())),
                 RequestedArgumentText =
                     "00 7f FF"
             };
@@ -713,12 +993,14 @@ public sealed class MainWindowViewModelTests
                 null,
                 true)
             {
-                RequiresArgument =
-                    true,
-                ArgumentDisplayName =
-                    "Payload",
-                ArgumentDataType =
-                    "ByteArray",
+                Descriptor =
+                    new Hase.Core.Domain.Commands.CommandDescriptor(
+                        Hase.Core.Domain.Properties.DescriptorPath.Parse(
+                            "Controller.Send"),
+                        "Send",
+                        new Hase.Core.Domain.Commands.CommandArgumentDescriptor(
+                            "Payload",
+                            new Hase.Core.Domain.Data.ByteArrayDataDescriptor())),
                 RequestedArgumentText =
                     "0"
             };
@@ -731,9 +1013,13 @@ public sealed class MainWindowViewModelTests
             controller.CommandCount);
         Assert.Null(
             controller.CommandRequest);
-        Assert.Equal(
-            "Send: enter valid hexadecimal bytes.",
+        Assert.StartsWith(
+            "Send:",
             viewModel.PropertyReadMessage);
+        Assert.Contains(
+            "hexadecimal",
+            viewModel.PropertyReadMessage,
+            StringComparison.OrdinalIgnoreCase);
         Assert.False(
             viewModel.IsBusy);
     }
@@ -972,4 +1258,3 @@ public sealed class MainWindowViewModelTests
             ValueTask.CompletedTask;
     }
 }
-

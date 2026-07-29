@@ -1,4 +1,5 @@
-﻿using Hase.Runtime.Northbound;
+﻿using Hase.Core.Domain.Properties;
+using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost;
 
@@ -16,4 +17,6 @@ public sealed record DesktopRuntimePropertySnapshot(
     bool CanRead,
     bool CanWrite,
     bool? BooleanValue,
-    bool IsEndpointReady);
+    bool IsEndpointReady,
+    PropertyDescriptor? Descriptor = null,
+    object? CurrentValue = null);

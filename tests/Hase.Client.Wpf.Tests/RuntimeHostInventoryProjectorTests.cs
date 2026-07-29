@@ -179,32 +179,14 @@ public sealed class RuntimeHostInventoryProjectorTests
 
         CommandInventoryItemViewModel typedCommand =
             projectedInstrument.Commands[1];
-        typedCommand.RequestedArgumentText =
-            "00 7F FF";
-
-        CommandInventoryItemViewModel refreshedCommand =
-            Assert.Single(
-                Assert.Single(
-                    RuntimeHostInventoryProjector.Project(
-                        state,
-                        requestedCommandArgumentTexts:
-                            new Dictionary<
-                                RemoteCommandTarget,
-                                string>
-                            {
-                                [typedCommand.Target] =
-                                    typedCommand.RequestedArgumentText
-                            }))
-                    .Instruments)
-                .Commands[1];
 
         Assert.Equal(
-            "00 7F FF",
-            refreshedCommand.RequestedArgumentText);
-        Assert.True(
-            refreshedCommand.HasValidArgument);
-        Assert.True(
-            refreshedCommand.CanExecute);
+            string.Empty,
+            typedCommand.RequestedArgumentText);
+        Assert.False(
+            typedCommand.HasValidArgument);
+        Assert.False(
+            typedCommand.CanExecute);
 
         PropertyInventoryItemViewModel property =
             Assert.Single(

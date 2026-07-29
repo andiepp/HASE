@@ -20,10 +20,37 @@ public static class ByteBufferDescriptorFactory
         new(
             "byte-buffer-01.buffer-value");
 
+    public static readonly PropertyId EnabledPropertyId =
+        new(
+            "byte-buffer-01.enabled");
+
+    public static readonly PropertyId SetpointPropertyId =
+        new(
+            "byte-buffer-01.setpoint");
+
+    public static readonly PropertyId LabelPropertyId =
+        new(
+            "byte-buffer-01.label");
+
     public static readonly DescriptorPath ValuePropertyPath =
         new(
             "Buffer",
             "Value");
+
+    public static readonly DescriptorPath EnabledPropertyPath =
+        new(
+            "Editor",
+            "Enabled");
+
+    public static readonly DescriptorPath SetpointPropertyPath =
+        new(
+            "Editor",
+            "Setpoint");
+
+    public static readonly DescriptorPath LabelPropertyPath =
+        new(
+            "Editor",
+            "Label");
 
     public static readonly DescriptorPath ReplaceCommandPath =
         new(
@@ -42,7 +69,45 @@ public static class ByteBufferDescriptorFactory
                 Description =
                     "Current opaque ByteArray buffer contents.",
                 AccessMode =
-                    PropertyAccessMode.Read
+                    PropertyAccessMode.ReadWrite
+            };
+
+        var enabled =
+            new PropertyDescriptor(
+                EnabledPropertyId,
+                EnabledPropertyPath,
+                "Enabled",
+                new BooleanDataDescriptor())
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+
+        var setpoint =
+            new PropertyDescriptor(
+                SetpointPropertyId,
+                SetpointPropertyPath,
+                "Setpoint",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius,
+                    new ValueRange(
+                        ByteBufferSimulation.MinimumSetpoint,
+                        ByteBufferSimulation.MaximumSetpoint)))
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
+            };
+
+        var label =
+            new PropertyDescriptor(
+                LabelPropertyId,
+                LabelPropertyPath,
+                "Label",
+                new StringDataDescriptor())
+            {
+                AccessMode =
+                    PropertyAccessMode.ReadWrite
             };
 
         var replace =
@@ -63,7 +128,7 @@ public static class ByteBufferDescriptorFactory
 
         return new InstrumentDescriptor(
             InstrumentId,
-            "Simulated Byte Buffer",
+            "Simulated Property Editor Validation",
             new InstrumentKind(
                 "byte-buffer"))
         {
@@ -75,12 +140,16 @@ public static class ByteBufferDescriptorFactory
                     Model =
                         "ByteArray Validation Buffer",
                     Description =
-                        "Opt-in deterministic ByteArray command validation."
+                        "Opt-in deterministic multi-type Property editing "
+                        + "and ByteArray command validation."
                 },
             Interface =
                 new InstrumentInterface(
                     properties:
                     [
+                        enabled,
+                        setpoint,
+                        label,
                         value
                     ],
                     commands:

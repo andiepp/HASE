@@ -35,7 +35,7 @@ changes.
   - Runtime-host identity and API-version display
   - Endpoint and instrument inventory
   - Live Property values
-  - Boolean Property writes
+  - Descriptor-driven Boolean, Numeric, String, and ByteArray Property writes
   - Parameterless Command execution
   - Endpoint disconnect and reconnect state
   - Live Event feed with endpoint and instrument attribution
@@ -163,6 +163,7 @@ or environment-specific client configuration files.
 
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
+- [Descriptor-Driven Property Editing Tutorial](docs/Tutorial/HASE-Descriptor-Driven-Property-Editing-Tutorial.md)
 - [Architecture](docs/Architecture.md)
 - [Runtime Architecture](docs/RuntimeArchitecture.md)
 - [Runtime Component Model](docs/RuntimeComponentModel.md)

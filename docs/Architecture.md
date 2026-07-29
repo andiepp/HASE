@@ -531,5 +531,18 @@ Because the explorer communicates through a byte-oriented transport, the same
 execution path can later be reused unchanged for USB, TCP/IP, BLE and MQTT
 transports.
 
+## Descriptor-driven Property editing
+
+ADR-0037 introduces `Hase.Operator.Input` as a UI-neutral boundary between
+immutable Property descriptors and application operations. It converts
+Boolean, Numeric, String, and ByteArray input into normalized typed values and
+returns stable validation failures without depending on WPF, gRPC, or runtime
+services.
+
+The Laptop Client maps successful values to `RemoteValue` and authenticated
+gRPC. The Desktop Runtime Host sends them through local normalized operator
+services. Requested state remains independent of authoritative state; writes
+are endpoint-confirmed and never optimistically applied or automatically
+retried.
 
 

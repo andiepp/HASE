@@ -85,7 +85,7 @@ public sealed class ByteBufferInstrumentExecutorTests
     }
 
     [Fact]
-    public async Task WritePropertyAsync_Value_ShouldRemainUnsupported()
+    public async Task WritePropertyAsync_Value_ShouldUpdateAuthoritativeBuffer()
     {
         var executor =
             new ByteBufferInstrumentExecutor(
@@ -101,8 +101,113 @@ public sealed class ByteBufferInstrumentExecutorTests
                         0x01
                     }));
 
+        Assert.True(
+            result.Success);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task WritePropertyAsync_Enabled_ShouldAcceptBoolean(
+        bool requested)
+    {
+        var simulation =
+            new ByteBufferSimulation();
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                simulation,
+                CreateRuntimeInstrument());
+
+        var result =
+            await executor.WritePropertyAsync(
+                ByteBufferDescriptorFactory.EnabledPropertyId,
+                requested);
+
+        Assert.True(
+            result.Success);
+        Assert.Equal(
+            requested,
+            simulation.Enabled);
+    }
+
+    [Theory]
+    [InlineData(-40.0, true)]
+    [InlineData(125.0, true)]
+    [InlineData(-40.1, false)]
+    [InlineData(125.1, false)]
+    [InlineData(double.NaN, false)]
+    [InlineData(double.PositiveInfinity, false)]
+    public async Task WritePropertyAsync_Setpoint_ShouldEnforceFiniteRange(
+        double requested,
+        bool expectedSuccess)
+    {
+        var simulation =
+            new ByteBufferSimulation();
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                simulation,
+                CreateRuntimeInstrument());
+
+        var result =
+            await executor.WritePropertyAsync(
+                ByteBufferDescriptorFactory.SetpointPropertyId,
+                requested);
+
+        Assert.Equal(
+            expectedSuccess,
+            result.Success);
+        Assert.Equal(
+            expectedSuccess
+                ? requested
+                : 20.0,
+            simulation.Setpoint);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("HASE validation")]
+    public async Task WritePropertyAsync_Label_ShouldPreserveExactString(
+        string requested)
+    {
+        var simulation =
+            new ByteBufferSimulation();
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                simulation,
+                CreateRuntimeInstrument());
+
+        var result =
+            await executor.WritePropertyAsync(
+                ByteBufferDescriptorFactory.LabelPropertyId,
+                requested);
+
+        Assert.True(
+            result.Success);
+        Assert.Equal(
+            requested,
+            simulation.Label);
+    }
+
+    [Fact]
+    public async Task WritePropertyAsync_WrongType_ShouldLeaveStateUnchanged()
+    {
+        var simulation =
+            new ByteBufferSimulation();
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                simulation,
+                CreateRuntimeInstrument());
+
+        var result =
+            await executor.WritePropertyAsync(
+                ByteBufferDescriptorFactory.EnabledPropertyId,
+                "true");
+
         Assert.False(
             result.Success);
+        Assert.False(
+            simulation.Enabled);
     }
 
     [Theory]

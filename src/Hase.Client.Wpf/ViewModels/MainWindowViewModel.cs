@@ -1,5 +1,6 @@
 using System.IO;
 using Hase.Client.Wpf.Services;
+using Hase.Operator.Input;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -35,6 +36,10 @@ public sealed class MainWindowViewModel
         bool> requestedBooleanValues =
         [];
     private readonly Dictionary<
+        RemotePropertyTarget,
+        string> requestedPropertyValueTexts =
+        [];
+    private readonly Dictionary<
         RemoteCommandTarget,
         string> requestedCommandArgumentTexts =
         [];
@@ -67,15 +72,15 @@ public sealed class MainWindowViewModel
                     && IsOperational
                     && !IsBusy
                     && property.CanRead);
-        WriteBooleanPropertyCommand =
+        WritePropertyCommand =
             new DelegateCommand<PropertyInventoryItemViewModel>(
-                ExecuteWriteBooleanProperty,
+                ExecuteWriteProperty,
                 property =>
                     property is not null
                     && sessionController is not null
                     && IsOperational
                     && !IsBusy
-                    && property.CanWrite);
+                    && property.CanSubmitWrite);
         ExecuteCommand =
             new DelegateCommand<CommandInventoryItemViewModel>(
                 ExecuteParameterlessCommand,
@@ -204,10 +209,14 @@ public sealed class MainWindowViewModel
     }
 
     public DelegateCommand<PropertyInventoryItemViewModel>
-        WriteBooleanPropertyCommand
+        WritePropertyCommand
     {
         get;
     }
+
+    public DelegateCommand<PropertyInventoryItemViewModel>
+        WriteBooleanPropertyCommand =>
+            WritePropertyCommand;
 
     public DelegateCommand<CommandInventoryItemViewModel> ExecuteCommand
     {
@@ -340,30 +349,58 @@ public sealed class MainWindowViewModel
             value);
 
         PreserveRequestedBooleanValues();
+        PreserveRequestedPropertyValueTexts();
         PreserveRequestedCommandArgumentTexts();
         SetProperty(
             ref currentState,
             value,
             nameof(CurrentState));
+        RemoveConfirmedReadsForMissingAttachments(
+            value);
 
-        if (HasActiveCommandArgumentEditor())
+        if (HasActiveCommandArgumentEditor()
+            || HasActivePropertyValueEditor())
         {
             return;
         }
 
-        confirmedReads.Clear();
         SetProperty(
             ref endpoints,
             RuntimeHostInventoryProjector.Project(
                 value,
                 confirmedReads,
                 requestedBooleanValues,
-                requestedCommandArgumentTexts),
+                requestedCommandArgumentTexts,
+                requestedPropertyValueTexts),
             nameof(Endpoints));
         RaisePropertyChanged(
             nameof(EndpointCount));
         RaisePropertyChanged(
             nameof(HasEndpoints));
+    }
+
+    private void RemoveConfirmedReadsForMissingAttachments(
+        RemoteObservationState state)
+    {
+        HashSet<RemoteEndpointAttachmentKey> currentAttachments =
+            state.Snapshot?.Attachments
+                .Select(
+                    attachment =>
+                        attachment.Key)
+                .ToHashSet()
+            ?? [];
+
+        foreach (RemotePropertyTarget target
+            in confirmedReads.Keys
+                .Where(
+                    target =>
+                        !currentAttachments.Contains(
+                            target.Attachment))
+                .ToArray())
+        {
+            confirmedReads.Remove(
+                target);
+        }
     }
 
     public async Task ConnectAsync()
@@ -505,7 +542,8 @@ public sealed class MainWindowViewModel
                         currentState,
                         confirmedReads,
                         requestedBooleanValues,
-                        requestedCommandArgumentTexts),
+                        requestedCommandArgumentTexts,
+                        requestedPropertyValueTexts),
                     nameof(Endpoints));
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed value "
@@ -536,7 +574,7 @@ public sealed class MainWindowViewModel
         }
     }
 
-    public async Task WriteBooleanPropertyAsync(
+    public async Task WritePropertyAsync(
         PropertyInventoryItemViewModel property)
     {
         ArgumentNullException.ThrowIfNull(
@@ -549,16 +587,32 @@ public sealed class MainWindowViewModel
         }
 
         if (!IsOperational
-            || !property.CanWrite
-            || !property.SupportsBooleanWrite)
+            || !property.CanWrite)
         {
+            return;
+        }
+
+        PropertyInputParseResult inputResult =
+            property.InputResult;
+        if (!inputResult.IsSuccess)
+        {
+            PropertyReadMessage =
+                $"{property.DisplayName}: {inputResult.Message}";
             return;
         }
 
         IsBusy =
             true;
-        requestedBooleanValues[property.Target] =
-            property.RequestedBooleanValue;
+        if (property.HasBooleanEditor)
+        {
+            requestedBooleanValues[property.Target] =
+                property.RequestedBooleanValue;
+        }
+        else
+        {
+            requestedPropertyValueTexts[property.Target] =
+                property.RequestedValueText;
+        }
         PropertyReadMessage =
             $"Writing {property.DisplayName}...";
 
@@ -567,8 +621,8 @@ public sealed class MainWindowViewModel
             RemotePropertyOperationResult result =
                 await sessionController.WritePropertyAsync(
                         property.Target,
-                        RemoteValue.FromBoolean(
-                            property.RequestedBooleanValue))
+                        PropertyInputRemoteValueMapper.Map(
+                            inputResult.Value!))
                     .ConfigureAwait(
                         true);
 
@@ -586,7 +640,8 @@ public sealed class MainWindowViewModel
                         currentState,
                         confirmedReads,
                         requestedBooleanValues,
-                        requestedCommandArgumentTexts),
+                        requestedCommandArgumentTexts,
+                        requestedPropertyValueTexts),
                     nameof(Endpoints));
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed write "
@@ -617,6 +672,13 @@ public sealed class MainWindowViewModel
         }
     }
 
+    public Task WriteBooleanPropertyAsync(
+        PropertyInventoryItemViewModel property)
+    {
+        return WritePropertyAsync(
+            property);
+    }
+
     public async Task ExecuteCommandAsync(
         CommandInventoryItemViewModel command)
     {
@@ -641,7 +703,7 @@ public sealed class MainWindowViewModel
         if (command.RequiresArgument)
         {
             if (command.ArgumentDataType != "ByteArray"
-                || !ByteArrayHexadecimalParser.TryParse(
+                || !Hase.Operator.Input.ByteArrayHexadecimalParser.TryParse(
                     command.RequestedArgumentText,
                     out Hase.Core.Domain.Data.ByteArrayValue?
                         byteArrayArgument))
@@ -721,6 +783,27 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private void PreserveRequestedPropertyValueTexts()
+    {
+        requestedPropertyValueTexts.Clear();
+
+        foreach (PropertyInventoryItemViewModel property
+            in endpoints
+                .SelectMany(
+                    endpoint =>
+                        endpoint.Instruments)
+                .SelectMany(
+                    instrument =>
+                        instrument.Properties)
+                .Where(
+                    property =>
+                        property.HasTextEditor))
+        {
+            requestedPropertyValueTexts[property.Target] =
+                property.RequestedValueText;
+        }
+    }
+
     private void PreserveRequestedCommandArgumentTexts()
     {
         requestedCommandArgumentTexts.Clear();
@@ -754,6 +837,20 @@ public sealed class MainWindowViewModel
             .Any(
                 command =>
                     command.IsEditingArgument);
+    }
+
+    private bool HasActivePropertyValueEditor()
+    {
+        return endpoints
+            .SelectMany(
+                endpoint =>
+                    endpoint.Instruments)
+            .SelectMany(
+                instrument =>
+                    instrument.Properties)
+            .Any(
+                property =>
+                    property.IsEditingRequestedValue);
     }
 
     private void ClearEventOccurrences()
@@ -828,12 +925,12 @@ public sealed class MainWindowViewModel
         }
     }
 
-    private async void ExecuteWriteBooleanProperty(
+    private async void ExecuteWriteProperty(
         PropertyInventoryItemViewModel? property)
     {
         if (property is not null)
         {
-            await WriteBooleanPropertyAsync(
+            await WritePropertyAsync(
                 property);
         }
     }
@@ -853,9 +950,7 @@ public sealed class MainWindowViewModel
         ConnectCommand.RaiseCanExecuteChanged();
         DisconnectCommand.RaiseCanExecuteChanged();
         ReadPropertyCommand.RaiseCanExecuteChanged();
-        WriteBooleanPropertyCommand.RaiseCanExecuteChanged();
+        WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteCommand.RaiseCanExecuteChanged();
     }
 }
-
-

@@ -86,11 +86,14 @@ persistent Event descriptors, and bounded live Event occurrences. ADR-0036
 adds immutable opaque ByteArray values, typed Command arguments, compatible
 Protocol Version 1 extensions, complete gRPC/client mapping, and an opt-in
 in-process ByteArray validation endpoint exercised from the remote WPF client.
+ADR-0037 adds shared descriptor-driven Property input semantics, typed editors
+for both WPF applications, a writable four-type validation simulation, and
+validated local and remote authoritative writes.
 
 The current verified baseline is:
 
 ```text
-3,573 automated tests passing
+3,643 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -915,6 +918,8 @@ Explorer tracing.
 - ADR-0033 - Laptop Client application, API documentation, and tutorial.
 - ADR-0034 - Production Desktop Runtime Host application.
 - ADR-0035 - Interactive Desktop Runtime Host operator console.
+- ADR-0036 - ByteArray values and typed Command arguments.
+- ADR-0037 - Descriptor-driven Property editing.
 
 ---
 
@@ -922,7 +927,7 @@ Explorer tracing.
 
 ```text
 .NET solution builds
-3,573 automated tests pass
+3,643 automated tests pass
 ESP32 firmware builds
 Arduino Uno firmware builds
 BME280 initializes
@@ -1059,6 +1064,7 @@ Relevant recent decisions:
 - ADR-0034 - Desktop Runtime Host Application.
 - ADR-0035 - Interactive Operator Console.
 - ADR-0036 - ByteArray Values and Typed Command Arguments.
+- ADR-0037 - Descriptor-Driven Property Editing.
 
 ---
 
@@ -1079,7 +1085,6 @@ The current implementation intentionally excludes:
 - BLE;
 - formal compact-profile negotiation;
 - persistent event history and replay;
-- numeric and string Desktop operator Property editors;
 - persistent operator audit history;
 - operator activity and Event filtering or export;
 - automatic Desktop Event-subscription recovery;
@@ -1120,4 +1125,3 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
-
