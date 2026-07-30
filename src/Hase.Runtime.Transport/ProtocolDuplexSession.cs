@@ -697,7 +697,7 @@ public sealed class ProtocolDuplexSession
         }
     }
 
-    private bool HasByteTraceObservers()
+    internal bool HasByteTraceObservers()
     {
         lock (_syncRoot)
         {

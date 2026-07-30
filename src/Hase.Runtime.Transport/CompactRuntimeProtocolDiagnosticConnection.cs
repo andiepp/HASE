@@ -20,6 +20,9 @@ internal class CompactRuntimeProtocolDiagnosticConnection
     private readonly string endpointId;
     private readonly CompactProtocolNotificationDiagnosticObserver?
         notificationObserver;
+    private readonly ITransportByteTraceSource? byteTraceSource;
+    private readonly CompactTransportByteDiagnosticObserver?
+        byteTraceObserver;
 
     private int disposed;
 
@@ -48,6 +51,22 @@ internal class CompactRuntimeProtocolDiagnosticConnection
             inner.EventNotificationReceived +=
                 notificationObserver.OnEventNotification;
         }
+
+        byteTraceSource =
+            inner as ITransportByteTraceSource;
+
+        if (byteTraceSource is not null
+            && diagnostics.IsEnabled(
+                RuntimeDiagnosticLevel.Bytes))
+        {
+            byteTraceObserver =
+                new CompactTransportByteDiagnosticObserver(
+                    endpointId,
+                    diagnostics);
+
+            byteTraceSource.SubscribeByteTrace(
+                byteTraceObserver);
+        }
     }
 
     public static ICompactSerialProtocolConnection Create(
@@ -73,7 +92,25 @@ internal class CompactRuntimeProtocolDiagnosticConnection
         string normalizedEndpointId =
             endpointId.Trim();
 
-        if (inner is ITransportExchangeTraceSource traceSource)
+        ITransportExchangeTraceSource? traceSource =
+            inner as ITransportExchangeTraceSource;
+
+        ITransportByteTraceSource? byteTraceSource =
+            inner as ITransportByteTraceSource;
+
+        if (traceSource is not null
+            && byteTraceSource is not null)
+        {
+            return new TraceAndByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                observeNotifications,
+                traceSource,
+                byteTraceSource);
+        }
+
+        if (traceSource is not null)
         {
             return new TraceConnection(
                 inner,
@@ -81,6 +118,16 @@ internal class CompactRuntimeProtocolDiagnosticConnection
                 diagnostics,
                 observeNotifications,
                 traceSource);
+        }
+
+        if (byteTraceSource is not null)
+        {
+            return new ByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                observeNotifications,
+                byteTraceSource);
         }
 
         return new CompactRuntimeProtocolDiagnosticConnection(
@@ -192,6 +239,13 @@ internal class CompactRuntimeProtocolDiagnosticConnection
                 notificationObserver.OnEventNotification;
         }
 
+        if (byteTraceSource is not null
+            && byteTraceObserver is not null)
+        {
+            byteTraceSource.UnsubscribeByteTrace(
+                byteTraceObserver);
+        }
+
         await inner.DisposeAsync();
     }
 
@@ -271,6 +325,100 @@ internal class CompactRuntimeProtocolDiagnosticConnection
             ITransportExchangeTraceObserver observer)
         {
             source.UnsubscribeTrace(
+                observer);
+        }
+    }
+
+    private sealed class ByteConnection
+        : CompactRuntimeProtocolDiagnosticConnection,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportByteTraceSource source;
+
+        public ByteConnection(
+            ICompactSerialProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            bool observeNotifications,
+            ITransportByteTraceSource source)
+            : base(
+                inner,
+                endpointId,
+                diagnostics,
+                observeNotifications)
+        {
+            this.source =
+                source;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.UnsubscribeByteTrace(
+                observer);
+        }
+    }
+
+    private sealed class TraceAndByteConnection
+        : CompactRuntimeProtocolDiagnosticConnection,
+          ITransportExchangeTraceSource,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportExchangeTraceSource traceSource;
+        private readonly ITransportByteTraceSource byteTraceSource;
+
+        public TraceAndByteConnection(
+            ICompactSerialProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            bool observeNotifications,
+            ITransportExchangeTraceSource traceSource,
+            ITransportByteTraceSource byteTraceSource)
+            : base(
+                inner,
+                endpointId,
+                diagnostics,
+                observeNotifications)
+        {
+            this.traceSource =
+                traceSource;
+
+            this.byteTraceSource =
+                byteTraceSource;
+        }
+
+        public void SubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
+            traceSource.SubscribeTrace(
+                observer);
+        }
+
+        public void UnsubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
+            traceSource.UnsubscribeTrace(
+                observer);
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            byteTraceSource.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            byteTraceSource.UnsubscribeByteTrace(
                 observer);
         }
     }

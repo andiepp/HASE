@@ -10,7 +10,8 @@ namespace Hase.Runtime.Transport;
 public sealed class DuplexRuntimeProtocolConnection
     : IRuntimeProtocolConnection,
       IRuntimeProtocolNotificationSource,
-      ITransportExchangeTraceSource
+      ITransportExchangeTraceSource,
+      ITransportByteTraceSource
 {
     private readonly ProtocolDuplexSession _session;
 
@@ -71,6 +72,22 @@ public sealed class DuplexRuntimeProtocolConnection
         ITransportExchangeTraceObserver observer)
     {
         _session.UnsubscribeTrace(
+            observer);
+    }
+
+    /// <inheritdoc />
+    public void SubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        _session.SubscribeByteTrace(
+            observer);
+    }
+
+    /// <inheritdoc />
+    public void UnsubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        _session.UnsubscribeByteTrace(
             observer);
     }
 }

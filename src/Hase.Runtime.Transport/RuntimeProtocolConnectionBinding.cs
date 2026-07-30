@@ -22,6 +22,8 @@ internal sealed class RuntimeProtocolConnectionBinding
         _receivePumpCancellationSource;
 
     private readonly Task _receivePumpCompletion;
+    private readonly ITransportByteTraceSource? _byteTraceSource;
+    private readonly ITransportByteTraceObserver? _byteTraceObserver;
 
     private int _disposed;
 
@@ -30,7 +32,9 @@ internal sealed class RuntimeProtocolConnectionBinding
         IRuntimeProtocolConnection protocolConnection,
         ProtocolDuplexSession? duplexSession,
         CancellationTokenSource? receivePumpCancellationSource,
-        Task receivePumpCompletion)
+        Task receivePumpCompletion,
+        ITransportByteTraceSource? byteTraceSource = null,
+        ITransportByteTraceObserver? byteTraceObserver = null)
     {
         TransportConnection =
             transportConnection
@@ -52,6 +56,12 @@ internal sealed class RuntimeProtocolConnectionBinding
             receivePumpCompletion
             ?? throw new ArgumentNullException(
                 nameof(receivePumpCompletion));
+
+        _byteTraceSource =
+            byteTraceSource;
+
+        _byteTraceObserver =
+            byteTraceObserver;
     }
 
     /// <summary>
@@ -156,6 +166,21 @@ internal sealed class RuntimeProtocolConnectionBinding
         var cancellationSource =
             new CancellationTokenSource();
 
+        NativeTransportByteDiagnosticObserver? byteTraceObserver =
+            diagnostics is not null
+            && diagnostics.IsEnabled(
+                RuntimeDiagnosticLevel.Bytes)
+                ? new NativeTransportByteDiagnosticObserver(
+                    endpointId!,
+                    diagnostics)
+                : null;
+
+        if (byteTraceObserver is not null)
+        {
+            session.SubscribeByteTrace(
+                byteTraceObserver);
+        }
+
         Task receivePumpCompletion =
             session.RunAsync(
                 cancellationSource.Token);
@@ -169,7 +194,11 @@ internal sealed class RuntimeProtocolConnectionBinding
                 diagnostics),
             session,
             cancellationSource,
-            receivePumpCompletion);
+            receivePumpCompletion,
+            byteTraceObserver is null
+                ? null
+                : session,
+            byteTraceObserver);
     }
 
     private static IRuntimeProtocolConnection DecorateIfRequested(
@@ -200,6 +229,13 @@ internal sealed class RuntimeProtocolConnectionBinding
 
         CancellationTokenSource? cancellationSource =
             _receivePumpCancellationSource;
+
+        if (_byteTraceSource is not null
+            && _byteTraceObserver is not null)
+        {
+            _byteTraceSource.UnsubscribeByteTrace(
+                _byteTraceObserver);
+        }
 
         if (cancellationSource is null)
         {

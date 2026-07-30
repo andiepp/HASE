@@ -146,6 +146,61 @@ public sealed class RuntimeProtocolConnectionBindingTests
         await binding.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Create_BytesEnabled_OwnsNativeByteObserver()
+    {
+        var transportConnection =
+            new TestDuplexTransportConnection();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4,
+                RuntimeDiagnosticLevel.Bytes);
+
+        RuntimeProtocolConnectionBinding binding =
+            RuntimeProtocolConnectionBinding.Create(
+                transportConnection,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector));
+
+        await transportConnection.ReceiveStarted;
+
+        Assert.True(
+            binding.DuplexSession!.HasByteTraceObservers());
+
+        await binding.DisposeAsync();
+
+        Assert.False(
+            binding.DuplexSession.HasByteTraceObservers());
+    }
+
+    [Fact]
+    public async Task Create_ProtocolOnly_DoesNotOwnNativeByteObserver()
+    {
+        var transportConnection =
+            new TestDuplexTransportConnection();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4,
+                RuntimeDiagnosticLevel.Protocol);
+
+        RuntimeProtocolConnectionBinding binding =
+            RuntimeProtocolConnectionBinding.Create(
+                transportConnection,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector));
+
+        await transportConnection.ReceiveStarted;
+
+        Assert.False(
+            binding.DuplexSession!.HasByteTraceObservers());
+
+        await binding.DisposeAsync();
+    }
+
     private sealed class TestLegacyTransportConnection
         : ITransportConnection
     {

@@ -70,6 +70,53 @@ public class NativeRuntimeProtocolDiagnosticConnection
         ITransportExchangeTraceSource? traceSource =
             inner as ITransportExchangeTraceSource;
 
+        ITransportByteTraceSource? byteTraceSource =
+            inner as ITransportByteTraceSource;
+
+        if (notificationSource is not null
+            && traceSource is not null
+            && byteTraceSource is not null)
+        {
+            return new NotificationTraceAndByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                notificationSource,
+                traceSource,
+                byteTraceSource);
+        }
+
+        if (notificationSource is not null
+            && byteTraceSource is not null)
+        {
+            return new NotificationAndByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                notificationSource,
+                byteTraceSource);
+        }
+
+        if (traceSource is not null
+            && byteTraceSource is not null)
+        {
+            return new TraceAndByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                traceSource,
+                byteTraceSource);
+        }
+
+        if (byteTraceSource is not null)
+        {
+            return new ByteConnection(
+                inner,
+                normalizedEndpointId,
+                diagnostics,
+                byteTraceSource);
+        }
+
         if (notificationSource is not null &&
             traceSource is not null)
         {
@@ -223,7 +270,7 @@ public class NativeRuntimeProtocolDiagnosticConnection
             outcome);
     }
 
-    private sealed class NotificationConnection
+    private class NotificationConnection
         : NativeRuntimeProtocolDiagnosticConnection,
           IRuntimeProtocolNotificationSource
     {
@@ -258,7 +305,7 @@ public class NativeRuntimeProtocolDiagnosticConnection
         }
     }
 
-    private sealed class TraceConnection
+    private class TraceConnection
         : NativeRuntimeProtocolDiagnosticConnection,
           ITransportExchangeTraceSource
     {
@@ -293,7 +340,7 @@ public class NativeRuntimeProtocolDiagnosticConnection
         }
     }
 
-    private sealed class NotificationAndTraceConnection
+    private class NotificationAndTraceConnection
         : NativeRuntimeProtocolDiagnosticConnection,
           IRuntimeProtocolNotificationSource,
           ITransportExchangeTraceSource
@@ -347,6 +394,154 @@ public class NativeRuntimeProtocolDiagnosticConnection
             ITransportExchangeTraceObserver observer)
         {
             traceSource.UnsubscribeTrace(
+                observer);
+        }
+    }
+
+    private sealed class ByteConnection
+        : NativeRuntimeProtocolDiagnosticConnection,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportByteTraceSource source;
+
+        public ByteConnection(
+            IRuntimeProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            ITransportByteTraceSource source)
+            : base(
+                inner,
+                endpointId,
+                diagnostics)
+        {
+            this.source =
+                source;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.UnsubscribeByteTrace(
+                observer);
+        }
+    }
+
+    private sealed class NotificationAndByteConnection
+        : NotificationConnection,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportByteTraceSource source;
+
+        public NotificationAndByteConnection(
+            IRuntimeProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            IRuntimeProtocolNotificationSource notificationSource,
+            ITransportByteTraceSource source)
+            : base(
+                inner,
+                endpointId,
+                diagnostics,
+                notificationSource)
+        {
+            this.source =
+                source;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.UnsubscribeByteTrace(
+                observer);
+        }
+    }
+
+    private sealed class TraceAndByteConnection
+        : TraceConnection,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportByteTraceSource source;
+
+        public TraceAndByteConnection(
+            IRuntimeProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            ITransportExchangeTraceSource traceSource,
+            ITransportByteTraceSource source)
+            : base(
+                inner,
+                endpointId,
+                diagnostics,
+                traceSource)
+        {
+            this.source =
+                source;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.UnsubscribeByteTrace(
+                observer);
+        }
+    }
+
+    private sealed class NotificationTraceAndByteConnection
+        : NotificationAndTraceConnection,
+          ITransportByteTraceSource
+    {
+        private readonly ITransportByteTraceSource source;
+
+        public NotificationTraceAndByteConnection(
+            IRuntimeProtocolConnection inner,
+            string endpointId,
+            RuntimeDiagnosticPublisher diagnostics,
+            IRuntimeProtocolNotificationSource notificationSource,
+            ITransportExchangeTraceSource traceSource,
+            ITransportByteTraceSource source)
+            : base(
+                inner,
+                endpointId,
+                diagnostics,
+                notificationSource,
+                traceSource)
+        {
+            this.source =
+                source;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.SubscribeByteTrace(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            source.UnsubscribeByteTrace(
                 observer);
         }
     }

@@ -214,6 +214,130 @@ public sealed class CompactRuntimeProtocolDiagnosticConnectionTests
     }
 
     [Fact]
+    public void Create_PreservesOptionalByteCapabilityShape()
+    {
+        RuntimeDiagnosticPublisher diagnostics =
+            new();
+
+        ICompactSerialProtocolConnection plain =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                new StubConnection(),
+                "endpoint-one",
+                diagnostics);
+
+        ICompactSerialProtocolConnection bytes =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                new ByteTraceConnection(),
+                "endpoint-one",
+                diagnostics);
+
+        ICompactSerialProtocolConnection traceAndBytes =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                new TraceAndByteConnection(),
+                "endpoint-one",
+                diagnostics);
+
+        Assert.IsNotAssignableFrom<ITransportByteTraceSource>(
+            plain);
+        Assert.IsAssignableFrom<ITransportByteTraceSource>(
+            bytes);
+        Assert.IsAssignableFrom<ITransportExchangeTraceSource>(
+            traceAndBytes);
+        Assert.IsAssignableFrom<ITransportByteTraceSource>(
+            traceAndBytes);
+    }
+
+    [Fact]
+    public async Task BytesEnabled_OwnsOneCompactByteSubscription()
+    {
+        var inner =
+            new ByteTraceConnection();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4,
+                RuntimeDiagnosticLevel.Bytes);
+
+        ICompactSerialProtocolConnection decorated =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                inner,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector));
+
+        inner.PublishBytes(
+            new TransportByteTrace(
+                TransportByteDirection.Inbound,
+                new byte[]
+                {
+                    0xA5,
+                    0x01
+                },
+                "7"));
+
+        RuntimeDiagnosticRecord record =
+            Assert.Single(
+                collector.GetSnapshot());
+
+        Assert.Equal(
+            "endpoint-one",
+            record.EndpointId);
+        Assert.Equal(
+            "CompactSerialProtocolV1",
+            record.Details["protocolFamily"]);
+        Assert.Equal(
+            1,
+            inner.ByteSubscribeCount);
+
+        await decorated.DisposeAsync();
+
+        Assert.Equal(
+            1,
+            inner.ByteUnsubscribeCount);
+
+        inner.PublishBytes(
+            new TransportByteTrace(
+                TransportByteDirection.Outbound,
+                new byte[]
+                {
+                    0x5A
+                },
+                "8"));
+
+        Assert.Single(
+            collector.GetSnapshot());
+    }
+
+    [Fact]
+    public async Task ProtocolOnly_DoesNotOwnCompactByteSubscription()
+    {
+        var inner =
+            new ByteTraceConnection();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4,
+                RuntimeDiagnosticLevel.Protocol);
+
+        ICompactSerialProtocolConnection decorated =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                inner,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector));
+
+        Assert.Equal(
+            0,
+            inner.ByteSubscribeCount);
+
+        await decorated.DisposeAsync();
+
+        Assert.Equal(
+            0,
+            inner.ByteUnsubscribeCount);
+    }
+
+    [Fact]
     public void Decorator_ForwardsLifecycleNotificationAndTraceMembers()
     {
         var inner =
@@ -632,6 +756,68 @@ public sealed class CompactRuntimeProtocolDiagnosticConnectionTests
         {
             notificationReceived?.Invoke(
                 notification);
+        }
+    }
+
+    private class ByteTraceConnection
+        : StubConnection,
+          ITransportByteTraceSource
+    {
+        private readonly List<ITransportByteTraceObserver> observers =
+            [];
+
+        public int ByteSubscribeCount
+        {
+            get;
+            private set;
+        }
+
+        public int ByteUnsubscribeCount
+        {
+            get;
+            private set;
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            ByteSubscribeCount++;
+            observers.Add(
+                observer);
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+            ByteUnsubscribeCount++;
+            observers.Remove(
+                observer);
+        }
+
+        public void PublishBytes(
+            TransportByteTrace trace)
+        {
+            foreach (ITransportByteTraceObserver observer
+                in observers.ToArray())
+            {
+                observer.OnTransportBytes(
+                    trace);
+            }
+        }
+    }
+
+    private sealed class TraceAndByteConnection
+        : ByteTraceConnection,
+          ITransportExchangeTraceSource
+    {
+        public void SubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
+        }
+
+        public void UnsubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
         }
     }
 

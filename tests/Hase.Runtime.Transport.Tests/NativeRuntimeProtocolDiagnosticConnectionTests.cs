@@ -260,9 +260,17 @@ public sealed class NativeRuntimeProtocolDiagnosticConnectionTests
                 "endpoint-one",
                 diagnostics);
 
+        IRuntimeProtocolConnection all =
+            NativeRuntimeProtocolDiagnosticConnection.Create(
+                new NotificationTraceAndByteConnection(),
+                "endpoint-one",
+                diagnostics);
+
         Assert.IsNotAssignableFrom<IRuntimeProtocolNotificationSource>(
             plain);
         Assert.IsNotAssignableFrom<ITransportExchangeTraceSource>(
+            plain);
+        Assert.IsNotAssignableFrom<ITransportByteTraceSource>(
             plain);
 
         Assert.IsAssignableFrom<IRuntimeProtocolNotificationSource>(
@@ -279,6 +287,13 @@ public sealed class NativeRuntimeProtocolDiagnosticConnectionTests
             both);
         Assert.IsAssignableFrom<ITransportExchangeTraceSource>(
             both);
+
+        Assert.IsAssignableFrom<IRuntimeProtocolNotificationSource>(
+            all);
+        Assert.IsAssignableFrom<ITransportExchangeTraceSource>(
+            all);
+        Assert.IsAssignableFrom<ITransportByteTraceSource>(
+            all);
     }
 
     [Fact]
@@ -546,6 +561,43 @@ public sealed class NativeRuntimeProtocolDiagnosticConnectionTests
             ITransportExchangeTraceObserver observer)
         {
             TraceUnsubscribeCount++;
+        }
+    }
+
+    private sealed class NotificationTraceAndByteConnection :
+        StubConnection,
+        IRuntimeProtocolNotificationSource,
+        ITransportExchangeTraceSource,
+        ITransportByteTraceSource
+    {
+        public void SubscribeNotification(
+            IProtocolNotificationObserver observer)
+        {
+        }
+
+        public void UnsubscribeNotification(
+            IProtocolNotificationObserver observer)
+        {
+        }
+
+        public void SubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
+        }
+
+        public void UnsubscribeTrace(
+            ITransportExchangeTraceObserver observer)
+        {
+        }
+
+        public void SubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
+        }
+
+        public void UnsubscribeByteTrace(
+            ITransportByteTraceObserver observer)
+        {
         }
     }
 
