@@ -284,3 +284,27 @@ Runtime and endpoint validation remain authoritative.
 Local and remote applications share conversion semantics but retain separate
 execution adapters. Both continue targeting endpoint identity, attachment
 generation, instrument identity, and Property identity.
+
+## Structured runtime diagnostics
+
+`Hase.Runtime.Diagnostics` owns the UI-neutral structured diagnostic envelope,
+publisher, sink contract, null sink, and bounded in-memory collector.
+
+Diagnostic detail is cumulative:
+
+- `Operational` covers runtime lifecycle and interaction activity;
+- `Protocol` adds logical message exchanges; and
+- `Bytes` adds explicitly enabled exact transport bytes.
+
+Only `Operational` production records are implemented through ADR-0040
+Increment 40B. Protocol and byte tracing remain disabled and unimplemented.
+
+Every runtime context owns one diagnostic publisher. Endpoint inventory and
+connection-state changes therefore share one process-local sequence. Native
+and Compact Serial operational graphs use the same recovery-policy decorator,
+while the northbound attachment projection adds its authoritative generation
+only to attachment publication and ending records.
+
+Diagnostics are explanatory. They do not own endpoint state, retry decisions,
+attachment generation, runtime failure categories, or application behavior.
+Diagnostic sink failures never propagate into runtime execution.

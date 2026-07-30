@@ -1,16 +1,21 @@
 # Project Status
 
-## Latest completed ADR
-**ADR-0039 — Descriptor-Driven Event Presentation**
+## Current architectural work
+**ADR-0040 — Structured Runtime Diagnostics and Tracing**
 
 ### Current status
 - ADR-0037 Complete
 - ADR-0038 Complete
 - ADR-0039 Complete
-- 3,762 automated tests passing
-- Desktop and Laptop Event presentation synchronized
-- Parameterless, Boolean, Numeric, String, and ByteArray Events validated
-- Local and authenticated remote Event paths validated
+- ADR-0040 Increment 40A Complete
+- ADR-0040 Increment 40B Complete
+- 3,799 automated tests passing
+- Structured operational diagnostic foundation implemented
+- Native and Compact Serial lifecycle diagnostics implemented
+- Recovery scheduling diagnostics active for both physical endpoint families
+- Northbound attachment publication and ending diagnostics include
+  authoritative attachment generation
 
 ### Next
-Select the next Phase 7 architectural objective.
+Implement ADR-0040 Increment 40C — Property, Command, and Event interaction
+diagnostics.

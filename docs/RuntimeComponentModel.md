@@ -1141,3 +1141,40 @@ Authoritative reads and observations update displayed current state. Confirmed
 Laptop reads are retained only while the matching attachment generation
 remains published.
 
+## Structured diagnostic components
+
+`RuntimeDiagnosticEvent`
+: Validated immutable input describing one structured diagnostic fact.
+
+`RuntimeDiagnosticRecord`
+: UTC-stamped record with a positive process-local sequence number.
+
+`RuntimeDiagnosticPublisher`
+: Assigns timestamp and sequence, skips disabled levels lazily, and isolates
+  sink failures.
+
+`IRuntimeDiagnosticSink`
+: UI-neutral record-consumer contract.
+
+`NullRuntimeDiagnosticSink`
+: Default disabled diagnostic boundary.
+
+`BoundedRuntimeDiagnosticCollector`
+: Thread-safe process-local retention with bounded capacity and snapshot
+  filtering.
+
+`RuntimeEndpointLifecycleDiagnosticObserver`
+: Converts authoritative endpoint status transitions into operational
+  connection, synchronization, attachment, and recovery records.
+
+`RuntimeEndpointReconnectDiagnosticPolicy`
+: Decorates the existing native or Compact Serial reconnect policy without
+  changing its selected delay.
+
+`RuntimeHostAttachmentProjection`
+: Retains ownership of northbound attachment generation and publishes
+  generation-qualified attachment publication and ending records.
+
+These components do not replace `ILogger`, aggregate transport statistics,
+runtime observation, or endpoint supervision.
+

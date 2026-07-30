@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; implementation in progress.
+Accepted; Increments 40A and 40B implemented.
 
 ## Context
 
@@ -116,13 +116,47 @@ human correlation but do not establish distributed causal order.
 
 ## Implementation
 
-1. 40A — diagnostic domain model, publisher, sinks, bounded collector, and tests.
-2. 40B — runtime lifecycle diagnostics.
+1. 40A — diagnostic domain model, publisher, sinks, bounded collector, and
+   tests. **Completed.**
+2. 40B — runtime lifecycle diagnostics. **Completed.**
 3. 40C — Property, Command, and Event interaction diagnostics.
 4. 40D — native and compact protocol exchange tracing.
 5. 40E — bounded opt-in native and compact byte tracing.
 6. 40F — Desktop Runtime Host presentation.
 7. 40G — physical validation, documentation, and closure.
+
+## Implemented lifecycle diagnostics
+
+Increment 40B publishes operational records through the shared runtime and
+attachment ownership boundaries.
+
+The runtime context publishes endpoint inventory changes and installs one
+connection-status observer for every published endpoint. That observer records:
+
+- attachment start and ready transitions;
+- every authoritative connection-state transition;
+- synchronization start and successful completion; and
+- recovery start plus successful, failed, or cancelled completion.
+
+Both native Protocol V1 and Compact Serial operational graphs decorate their
+existing reconnect policy with `RuntimeEndpointReconnectDiagnosticPolicy`.
+Every selected retry delay produces one `RecoveryScheduled` record containing
+the authoritative endpoint identity, one-based attempt number, zero-based retry
+index, and invariant delay in milliseconds. The wrapped policy remains the
+source of the delay.
+
+`RuntimeHostAttachmentProjection` remains the authoritative owner of
+northbound attachment generation. Committed live projection changes publish
+`AttachmentPublished` and `AttachmentEnded` with endpoint identity and the
+matching generation. Transport-level recovery records do not import that later
+northbound identity.
+
+Observer failures are isolated. Free-form connection status detail, exception
+text, addresses, ports, COM names, discovery metadata, certificate data,
+credential data, and configuration paths are not copied into lifecycle
+records.
+
+Increment 40B is validated with 3,799 passing automated tests.
 
 ## Deferred
 
