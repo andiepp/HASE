@@ -297,13 +297,32 @@ Diagnostic detail is cumulative:
 - `Bytes` adds explicitly enabled exact transport bytes.
 
 Only `Operational` production records are implemented through ADR-0040
-Increment 40B. Protocol and byte tracing remain disabled and unimplemented.
+Increment 40C. Protocol and byte tracing remain disabled and unimplemented.
 
 Every runtime context owns one diagnostic publisher. Endpoint inventory and
 connection-state changes therefore share one process-local sequence. Native
 and Compact Serial operational graphs use the same recovery-policy decorator,
 while the northbound attachment projection adds its authoritative generation
 only to attachment publication and ending records.
+
+`RuntimeDiagnosticOperation` owns correlated interaction start and terminal
+records, stable operation identity, monotonic duration, terminal idempotence,
+and stable success, failure, cancellation, and timeout outcomes.
+`RuntimeHostPropertyService` uses it for authoritative reads and writes, while
+`RuntimeHostCommandService` uses it for normalized Command execution. Both
+services receive the runtime context's existing publisher through northbound
+composition.
+
+Cached Property queries, cache refresh, automatic observations, snapshot
+capture, formatting, and UI polling do not publish interaction diagnostics.
+Property values, Command arguments and return values, endpoint diagnostic text,
+and exception text are not copied into records.
+
+`RuntimeEvent.PublishOccurrence` publishes one payload-free `EventOccurred`
+record at the shared runtime boundary before observer fan-out. Multiple runtime
+observers or northbound subscriptions therefore do not duplicate diagnostics.
+Event records carry endpoint, instrument, and path identity, but no
+northbound-owned attachment generation or operation-only fields.
 
 Diagnostics are explanatory. They do not own endpoint state, retry decisions,
 attachment generation, runtime failure categories, or application behavior.

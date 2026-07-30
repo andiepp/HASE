@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; Increments 40A and 40B implemented.
+Accepted; Increments 40A, 40B, and 40C implemented.
 
 ## Context
 
@@ -119,7 +119,7 @@ human correlation but do not establish distributed causal order.
 1. 40A — diagnostic domain model, publisher, sinks, bounded collector, and
    tests. **Completed.**
 2. 40B — runtime lifecycle diagnostics. **Completed.**
-3. 40C — Property, Command, and Event interaction diagnostics.
+3. 40C — Property, Command, and Event interaction diagnostics. **Completed.**
 4. 40D — native and compact protocol exchange tracing.
 5. 40E — bounded opt-in native and compact byte tracing.
 6. 40F — Desktop Runtime Host presentation.
@@ -157,6 +157,50 @@ credential data, and configuration paths are not copied into lifecycle
 records.
 
 Increment 40B is validated with 3,799 passing automated tests.
+
+## Implemented interaction diagnostics
+
+Increment 40C extends operational diagnostics across authoritative Property
+reads and writes, normalized Command execution, and runtime Event occurrences.
+
+`RuntimeDiagnosticOperation` publishes one correlated start and terminal pair,
+uses one stable operation identifier, measures duration with a monotonic time
+source, and publishes at most one terminal record. Successful operations use
+`Succeeded`; normalized or exceptional timeouts use `TimedOut`; cancellation
+uses `Cancelled`; and other failures use `Failed`. Original results and thrown
+exceptions remain unchanged.
+
+`RuntimeHostPropertyService` publishes:
+
+- `PropertyReadStarted`, `PropertyReadCompleted`, and `PropertyReadFailed`; and
+- `PropertyWriteStarted`, `PropertyWriteCompleted`, and
+  `PropertyWriteFailed`.
+
+`RuntimeHostCommandService` publishes:
+
+- `CommandExecutionStarted`;
+- `CommandExecutionCompleted`; and
+- `CommandExecutionFailed`.
+
+These records carry endpoint identity, attachment generation, instrument
+identity, interaction path, operation identity, duration, and outcome.
+Northbound composition passes the runtime context's existing publisher to both
+services. Cached Property queries, cache refresh, automatic observation,
+snapshot capture, formatting, and UI polling remain silent.
+
+`RuntimeEvent.PublishOccurrence` publishes one `EventOccurred` record before
+observer fan-out. It carries endpoint identity, instrument identity, and Event
+path. An Event occurrence has no operation identifier, duration, or outcome.
+It does not import northbound attachment generation into the runtime Event
+model, and multiple runtime observers or northbound subscriptions do not
+duplicate the record.
+
+Property values, requested write values, confirmed values, Command arguments,
+Command return values, Event payloads, `ByteArray` contents, endpoint diagnostic
+text, exception messages, stack traces, protocol payloads, and transport bytes
+are excluded from interaction diagnostics.
+
+Increment 40C is validated with 3,823 passing automated tests.
 
 ## Deferred
 

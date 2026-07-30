@@ -1153,6 +1153,11 @@ remains published.
 : Assigns timestamp and sequence, skips disabled levels lazily, and isolates
   sink failures.
 
+`RuntimeDiagnosticOperation`
+: Publishes one correlated operational start and terminal pair with a stable
+  operation identifier, monotonic duration, terminal idempotence, stable
+  outcome classification, and unchanged runtime results or exceptions.
+
 `IRuntimeDiagnosticSink`
 : UI-neutral record-consumer contract.
 
@@ -1175,6 +1180,20 @@ remains published.
 : Retains ownership of northbound attachment generation and publishes
   generation-qualified attachment publication and ending records.
 
+`RuntimeHostPropertyService`
+: Publishes correlated authoritative Property read and write diagnostics.
+  Cached queries, values, cache refresh, observation, snapshots, formatting,
+  and UI polling are not diagnostic producers.
+
+`RuntimeHostCommandService`
+: Publishes correlated normalized Command execution diagnostics without
+  recording arguments, return values, endpoint diagnostic text, or exception
+  text.
+
+`RuntimeEvent`
+: Publishes one payload-free `EventOccurred` record before observer fan-out.
+  Event occurrences have no operation-only fields and do not import
+  northbound-owned attachment generation.
+
 These components do not replace `ILogger`, aggregate transport statistics,
 runtime observation, or endpoint supervision.
-
