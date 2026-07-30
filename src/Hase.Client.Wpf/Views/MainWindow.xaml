@@ -411,7 +411,34 @@
                                     <TextBlock Text="{Binding InstrumentId, StringFormat='Instrument: {0}'}" />
                                     <TextBlock Text="{Binding OccurredAtUtc, StringFormat='UTC: {0}'}" />
                                     <TextBlock Text="{Binding Sequence, StringFormat='Sequence: {0}'}" />
-                                    <TextBlock Text="{Binding Value, StringFormat='Value: {0}'}" />
+                                    <TextBlock Text="{Binding PayloadDisplayName, StringFormat='Payload: {0}'}" />
+                                    <TextBlock Text="{Binding PayloadText, StringFormat='Payload value: {0}'}" />
+                                    <TextBlock Text="{Binding PayloadDescription, StringFormat='Description: {0}'}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasPayloadDescription}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock
+                                        Foreground="#FFB04000"
+                                        Text="{Binding PayloadStatus, StringFormat='Payload status: {0}'}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasPayloadDiagnostic}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                             </Border>
                         </DataTemplate>

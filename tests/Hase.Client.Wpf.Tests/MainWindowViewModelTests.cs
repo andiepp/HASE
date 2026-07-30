@@ -6,6 +6,7 @@ using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
+using Hase.Operator.Presentation;
 
 namespace Hase.Client.Wpf.Tests;
 
@@ -400,11 +401,123 @@ public sealed class MainWindowViewModelTests
             "2026-07-27T16:00:00.0000000+00:00",
             occurrence.OccurredAtUtc);
         Assert.Equal(
-            "No value",
-            occurrence.Value);
+            "Payload",
+            occurrence.PayloadDisplayName);
+        Assert.Equal(
+            "No payload",
+            occurrence.PayloadText);
+        Assert.Equal(
+            EventPayloadFormatStatus.NoPayload,
+            occurrence.PayloadStatus);
+        Assert.False(
+            occurrence.HasPayloadDescription);
+        Assert.False(
+            occurrence.HasPayloadDiagnostic);
         Assert.True(
             viewModel.HasEventOccurrences);
     }
+
+    [Theory]
+    [MemberData(nameof(TypedEventPayloadCases))]
+    public void ApplyEventOccurred_TypedPayload_ShouldUseDescriptorDrivenPresentation(
+        EventPayloadDescriptor? descriptor,
+        RemoteValue? value,
+        string expectedText,
+        EventPayloadFormatStatus expectedStatus)
+    {
+        EventOccurrenceItemViewModel occurrence =
+            ApplyEvent(
+                descriptor,
+                value);
+
+        Assert.Equal(
+            descriptor?.DisplayName
+                ?? "Payload",
+            occurrence.PayloadDisplayName);
+        Assert.Equal(
+            descriptor?.Description
+                ?? string.Empty,
+            occurrence.PayloadDescription);
+        Assert.Equal(
+            expectedText,
+            occurrence.PayloadText);
+        Assert.Equal(
+            expectedStatus,
+            occurrence.PayloadStatus);
+        Assert.Equal(
+            expectedStatus is not EventPayloadFormatStatus.Formatted
+                and not EventPayloadFormatStatus.NoPayload,
+            occurrence.HasPayloadDiagnostic);
+    }
+
+    public static TheoryData<
+        EventPayloadDescriptor?,
+        RemoteValue?,
+        string,
+        EventPayloadFormatStatus> TypedEventPayloadCases =>
+        new()
+        {
+            {
+                CreateEventPayload(
+                    new BooleanDataDescriptor()),
+                RemoteValue.FromBoolean(
+                    true),
+                "True",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                CreateEventPayload(
+                    CreateNumericDescriptor()),
+                RemoteValue.FromNumeric(
+                    12.5),
+                "12.5",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                CreateEventPayload(
+                    new StringDataDescriptor()),
+                RemoteValue.FromString(
+                    "ready"),
+                "ready",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                CreateEventPayload(
+                    new ByteArrayDataDescriptor()),
+                RemoteValue.FromByteArray(
+                    new ByteArrayValue(
+                        new byte[]
+                        {
+                            0x00,
+                            0x53,
+                            0xFF
+                        })),
+                "0053FF",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                CreateEventPayload(
+                    new BooleanDataDescriptor()),
+                null,
+                "Missing payload",
+                EventPayloadFormatStatus.MissingPayload
+            },
+            {
+                null,
+                RemoteValue.FromBoolean(
+                    true),
+                "Unexpected payload",
+                EventPayloadFormatStatus.UnexpectedPayload
+            },
+            {
+                CreateEventPayload(
+                    new BooleanDataDescriptor()),
+                RemoteValue.FromString(
+                    "true"),
+                "Invalid payload",
+                EventPayloadFormatStatus.TypeMismatch
+            }
+        };
 
     [Fact]
     public async Task ConnectAsync_SelectedConfiguration_ShouldUseController()
@@ -1088,6 +1201,102 @@ public sealed class MainWindowViewModelTests
             viewModel.IsOperational);
         Assert.False(
             viewModel.IsStale);
+    }
+
+    private static EventOccurrenceItemViewModel ApplyEvent(
+        EventPayloadDescriptor? payloadDescriptor,
+        RemoteValue? value)
+    {
+        var eventDescriptor =
+            new EventDescriptor(
+                DescriptorPath.Parse(
+                    "Controller.ButtonPressed"),
+                "Button Pressed")
+            {
+                Payload =
+                    payloadDescriptor
+            };
+        var instrument =
+            new InstrumentDescriptor(
+                new InstrumentId(
+                    "controller-01"),
+                "Controller",
+                new InstrumentKind(
+                    "Controller"))
+            {
+                Interface =
+                    new InstrumentInterface(
+                        events:
+                        [
+                            eventDescriptor
+                        ])
+            };
+        var endpoint =
+            new RemoteEndpointAttachmentSnapshot(
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse(
+                        "7f88a60b-ff77-420f-bc7d-73ad82c718e9")),
+                new EndpointDescriptor(
+                    new EndpointId(
+                        "endpoint-01"),
+                    [instrument]),
+                new RemoteEndpointConnectionStatus(
+                    RemoteEndpointConnectionState.Ready));
+        var viewModel =
+            new MainWindowViewModel();
+        viewModel.ApplyObservationState(
+            new RemoteObservationReducer().Initialize(
+                RemoteObservationState.Empty,
+                new RemoteObservationInitialSnapshot(
+                    new RemoteRuntimeHostSnapshot(
+                        new RemoteRuntimeHostId(
+                            "runtime-01"),
+                        RuntimeHostClientApiVersion.Current,
+                        [endpoint]),
+                    new RemoteObservationSequence(
+                        0))));
+
+        viewModel.ApplyEventOccurred(
+            new RemoteRuntimeHostObservation(
+                new RemoteObservationSequence(
+                    1),
+                endpoint.Key,
+                new RemoteEventOccurredObservationPayload(
+                    instrument.Id,
+                    eventDescriptor.Path,
+                    DateTimeOffset.UnixEpoch,
+                    value)));
+
+        return Assert.Single(
+            viewModel.EventOccurrences);
+    }
+
+    private static EventPayloadDescriptor CreateEventPayload(
+        DataDescriptor descriptor) =>
+        new(
+            "Reported value",
+            descriptor)
+        {
+            Description =
+                "Value reported by the Event."
+        };
+
+    private static NumericDataDescriptor CreateNumericDescriptor()
+    {
+        Quantity quantity =
+            new(
+                "ratio",
+                "Ratio");
+        Unit unit =
+            new(
+                "ratio",
+                "Ratio",
+                "ratio",
+                quantity);
+
+        return new NumericDataDescriptor(
+            quantity,
+            unit);
     }
 
     private static RuntimeHostClientSessionStatus CreateStatus(

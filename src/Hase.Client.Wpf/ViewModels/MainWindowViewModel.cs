@@ -1,6 +1,7 @@
 using System.IO;
 using Hase.Client.Wpf.Services;
 using Hase.Operator.Input;
+using Hase.Operator.Presentation;
 using Prism.Commands;
 using Prism.Mvvm;
 
@@ -313,6 +314,11 @@ public sealed class MainWindowViewModel
                 candidate =>
                     candidate.Path
                     == payload.EventPath);
+        EventPayloadFormatResult payloadPresentation =
+            EventPayloadFormatter.Format(
+                descriptor.Payload,
+                RemoteEventPayloadValueNormalizer.Normalize(
+                    payload.Value));
         var occurrence =
             new EventOccurrenceItemViewModel(
                 observation.Sequence.Value,
@@ -324,8 +330,12 @@ public sealed class MainWindowViewModel
                 payload.OccurredAtUtc.ToString(
                     "O",
                     System.Globalization.CultureInfo.InvariantCulture),
-                FormatEventValue(
-                    payload.Value));
+                descriptor.Payload?.DisplayName
+                    ?? "Payload",
+                descriptor.Payload?.Description
+                    ?? string.Empty,
+                payloadPresentation.Text,
+                payloadPresentation.Status);
         SetProperty(
             ref eventOccurrences,
             new[]
@@ -862,24 +872,6 @@ public sealed class MainWindowViewModel
         RaisePropertyChanged(
             nameof(HasEventOccurrences));
     }
-
-    private static string FormatEventValue(
-        RemoteValue? value) =>
-        value?.Kind switch
-        {
-            RemoteValueKind.Boolean =>
-                value.BooleanValue!.Value
-                    ? "True"
-                    : "False",
-            RemoteValueKind.String =>
-                value.StringValue!,
-            RemoteValueKind.Numeric =>
-                value.NumericValue!.Value.ToString(
-                    "G17",
-                    System.Globalization.CultureInfo.InvariantCulture),
-            _ =>
-                "No value"
-        };
 
     public void ApplySessionFailure(
         RuntimeHostClientFailureCategory category)

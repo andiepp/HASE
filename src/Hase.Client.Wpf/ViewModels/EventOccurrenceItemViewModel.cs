@@ -1,3 +1,5 @@
+using Hase.Operator.Presentation;
+
 namespace Hase.Client.Wpf.ViewModels;
 
 public sealed record EventOccurrenceItemViewModel(
@@ -8,4 +10,16 @@ public sealed record EventOccurrenceItemViewModel(
     string EventPath,
     string DisplayName,
     string OccurredAtUtc,
-    string Value);
+    string PayloadDisplayName,
+    string PayloadDescription,
+    string PayloadText,
+    EventPayloadFormatStatus PayloadStatus)
+{
+    public bool HasPayloadDescription =>
+        !string.IsNullOrWhiteSpace(
+            PayloadDescription);
+
+    public bool HasPayloadDiagnostic =>
+        PayloadStatus is not EventPayloadFormatStatus.Formatted
+            and not EventPayloadFormatStatus.NoPayload;
+}
