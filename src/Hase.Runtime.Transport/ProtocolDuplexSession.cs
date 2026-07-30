@@ -8,7 +8,8 @@ namespace Hase.Runtime.Transport;
 /// and logical exchange tracing over one duplex transport connection.
 /// </summary>
 public sealed class ProtocolDuplexSession
-    : ITransportExchangeTraceSource
+    : ITransportExchangeTraceSource,
+      ITransportByteTraceSource
 {
     private const int CreatedState = 0;
     private const int RunningState = 1;
@@ -37,6 +38,9 @@ public sealed class ProtocolDuplexSession
         [];
 
     private readonly List<ITransportExchangeTraceObserver> _traceObservers =
+        [];
+
+    private readonly List<ITransportByteTraceObserver> _byteTraceObservers =
         [];
 
     private int _state =
@@ -158,6 +162,44 @@ public sealed class ProtocolDuplexSession
         }
     }
 
+    /// <inheritdoc />
+    public void SubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observer);
+
+        lock (_syncRoot)
+        {
+            if (!_byteTraceObservers.Any(
+                    current =>
+                        ReferenceEquals(
+                            current,
+                            observer)))
+            {
+                _byteTraceObservers.Add(
+                    observer);
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void UnsubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observer);
+
+        lock (_syncRoot)
+        {
+            _byteTraceObservers.RemoveAll(
+                current =>
+                    ReferenceEquals(
+                        current,
+                        observer));
+        }
+    }
+
     /// <summary>
     /// Runs the single receive pump for this session.
     /// </summary>
@@ -189,6 +231,15 @@ public sealed class ProtocolDuplexSession
                 byte[] frame =
                     await _connection.ReceiveAsync(
                         cancellationToken);
+
+                if (HasByteTraceObservers())
+                {
+                    PublishByteTrace(
+                        TransportByteDirection.Inbound,
+                        frame,
+                        TryGetCorrelationId(
+                            frame));
+                }
 
                 ProcessReceivedFrame(
                     frame);
@@ -291,6 +342,11 @@ public sealed class ProtocolDuplexSession
             await _connection.SendAsync(
                 requestFrame,
                 cancellationToken);
+
+            PublishByteTrace(
+                TransportByteDirection.Outbound,
+                requestFrame,
+                request.CorrelationId.ToString());
         }
         catch (OperationCanceledException exception)
             when (cancellationToken.IsCancellationRequested)
@@ -599,6 +655,72 @@ public sealed class ProtocolDuplexSession
             {
                 // Trace observers are observational.
             }
+        }
+    }
+
+    private void PublishByteTrace(
+        TransportByteDirection direction,
+        ReadOnlyMemory<byte> bytes,
+        string? correlationId)
+    {
+        ITransportByteTraceObserver[] observers;
+
+        lock (_syncRoot)
+        {
+            if (_byteTraceObservers.Count == 0)
+            {
+                return;
+            }
+
+            observers =
+                _byteTraceObservers.ToArray();
+        }
+
+        var trace =
+            new TransportByteTrace(
+                direction,
+                bytes,
+                correlationId);
+
+        foreach (ITransportByteTraceObserver observer
+                 in observers)
+        {
+            try
+            {
+                observer.OnTransportBytes(
+                    trace);
+            }
+            catch
+            {
+                // Raw-byte trace observers are observational.
+            }
+        }
+    }
+
+    private bool HasByteTraceObservers()
+    {
+        lock (_syncRoot)
+        {
+            return _byteTraceObservers.Count > 0;
+        }
+    }
+
+    private string? TryGetCorrelationId(
+        byte[] frame)
+    {
+        try
+        {
+            ProtocolEnvelope envelope =
+                _envelopeByteCodec.Decode(
+                    frame);
+
+            return envelope.CorrelationId.IsNone
+                ? null
+                : envelope.CorrelationId.ToString();
+        }
+        catch
+        {
+            return null;
         }
     }
 
