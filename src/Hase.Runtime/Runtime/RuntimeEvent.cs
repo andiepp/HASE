@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Events;
+using Hase.Runtime.Diagnostics;
 
 namespace Hase.Runtime.Runtime;
 
@@ -98,6 +99,37 @@ public sealed class RuntimeEvent : IRuntimeNode
                 this,
                 timestampUtc,
                 value);
+
+        Instrument
+            .Endpoint
+            .Context
+            .Diagnostics
+            .Publish(
+                RuntimeDiagnosticLevel.Operational,
+                () =>
+                    new RuntimeDiagnosticEvent(
+                        RuntimeDiagnosticLevel.Operational,
+                        RuntimeDiagnosticCategory.RuntimeEvent,
+                        "EventOccurred",
+                        endpointId:
+                            Instrument
+                                .Endpoint
+                                .Descriptor
+                                .Id
+                                .Value,
+                        details:
+                            new Dictionary<string, string>
+                            {
+                                ["instrument"] =
+                                    Instrument
+                                        .Descriptor
+                                        .Id
+                                        .Value,
+                                ["path"] =
+                                    Descriptor
+                                        .Path
+                                        .ToString()
+                            }));
 
         IRuntimeEventObserver[] observers;
 
