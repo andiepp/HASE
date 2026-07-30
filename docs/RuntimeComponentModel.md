@@ -1195,5 +1195,29 @@ remains published.
   Event occurrences have no operation-only fields and do not import
   northbound-owned attachment generation.
 
+`RuntimeProtocolDiagnosticExchange`
+: Publishes one payload-free logical Protocol request and one terminal response
+  or failure record, or one unsolicited notification record. It owns protocol
+  correlation metadata, monotonic duration, terminal idempotence, and stable
+  outcome classification.
+
+`NativeRuntimeProtocolDiagnosticConnection`
+: Transparently decorates each Native runtime protocol binding. It preserves
+  notification and transport-trace capability shape while returning original
+  responses and rethrowing original exceptions.
+
+`NativeProtocolNotificationDiagnosticObserver`
+: Publishes Native notification metadata through the coordinator's
+  replacement-aware subscription set.
+
+`CompactRuntimeProtocolDiagnosticConnection`
+: Transparently decorates each post-bootstrap Compact operational connection,
+  forwards lifecycle and optional trace capabilities, and owns notification
+  observer removal before connection disposal.
+
+`CompactProtocolNotificationDiagnosticObserver`
+: Publishes one payload-free Compact event-notification record with reserved
+  correlation identifier zero.
+
 These components do not replace `ILogger`, aggregate transport statistics,
 runtime observation, or endpoint supervision.

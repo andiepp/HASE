@@ -10,7 +10,8 @@
 - ADR-0040 Increment 40A Complete
 - ADR-0040 Increment 40B Complete
 - ADR-0040 Increment 40C Complete
-- 3,823 automated tests passing
+- ADR-0040 Increment 40D Complete
+- 3,855 automated tests passing
 - Structured operational diagnostic foundation implemented
 - Native and Compact Serial lifecycle diagnostics implemented
 - Recovery scheduling diagnostics active for both physical endpoint families
@@ -22,7 +23,13 @@
   without arguments or return values
 - Runtime Event occurrences publish one payload-free diagnostic before
   observer fan-out
+- Native and Compact operational connections publish payload-free Protocol
+  request, response, failure, and notification diagnostics
+- Protocol diagnostics preserve authoritative endpoint identity, correlation,
+  reconnect ownership, existing results, exceptions, and transport statistics
+- Compact discovery, verification, and bootstrap traffic remains outside
+  attached-runtime Protocol tracing
 
 ### Next
-Implement ADR-0040 Increment 40D — native and Compact Protocol exchange
+Implement ADR-0040 Increment 40E — bounded opt-in native and Compact byte
 tracing.

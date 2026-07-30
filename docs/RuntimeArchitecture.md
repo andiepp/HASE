@@ -296,8 +296,10 @@ Diagnostic detail is cumulative:
 - `Protocol` adds logical message exchanges; and
 - `Bytes` adds explicitly enabled exact transport bytes.
 
-Only `Operational` production records are implemented through ADR-0040
-Increment 40C. Protocol and byte tracing remain disabled and unimplemented.
+`Operational` production records are implemented through ADR-0040 Increment
+40C. Increment 40D implements payload-free logical Protocol records for Native
+Protocol Version 1 and Compact Serial Protocol Version 1. Exact byte tracing
+remains disabled and deferred.
 
 Every runtime context owns one diagnostic publisher. Endpoint inventory and
 connection-state changes therefore share one process-local sequence. Native
@@ -323,6 +325,25 @@ record at the shared runtime boundary before observer fan-out. Multiple runtime
 observers or northbound subscriptions therefore do not duplicate diagnostics.
 Event records carry endpoint, instrument, and path identity, but no
 northbound-owned attachment generation or operation-only fields.
+
+`RuntimeProtocolDiagnosticExchange` owns correlated logical request and
+terminal records. Native runtime protocol bindings and post-bootstrap Compact
+operational connections decorate their existing connection abstractions
+without changing responses, exceptions, notification delivery, transport
+statistics, or disposal ownership.
+
+Protocol records contain authoritative endpoint identity, protocol family,
+message kind, correlation identifier, direction, payload length, duration, and
+outcome as applicable. They never contain payload bytes, decoded values,
+exception text, addresses, ports, COM names, credentials, or configuration
+paths. Metadata construction is skipped while the cumulative diagnostic level
+does not enable `Protocol`.
+
+Native notification diagnostics use the coordinator's replacement-aware
+subscription set. Each Compact connection generation owns one notification
+diagnostic subscription and removes it before disposal. Reconnect therefore
+replaces rather than duplicates diagnostic observers. Compact discovery,
+verification, and bootstrap traffic is outside the attached runtime boundary.
 
 Diagnostics are explanatory. They do not own endpoint state, retry decisions,
 attachment generation, runtime failure categories, or application behavior.

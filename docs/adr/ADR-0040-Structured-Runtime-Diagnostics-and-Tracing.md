@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; Increments 40A, 40B, and 40C implemented.
+Accepted; Increments 40A, 40B, 40C, and 40D implemented.
 
 ## Context
 
@@ -120,7 +120,7 @@ human correlation but do not establish distributed causal order.
    tests. **Completed.**
 2. 40B — runtime lifecycle diagnostics. **Completed.**
 3. 40C — Property, Command, and Event interaction diagnostics. **Completed.**
-4. 40D — native and compact protocol exchange tracing.
+4. 40D — native and compact protocol exchange tracing. **Completed.**
 5. 40E — bounded opt-in native and compact byte tracing.
 6. 40F — Desktop Runtime Host presentation.
 7. 40G — physical validation, documentation, and closure.
@@ -201,6 +201,58 @@ text, exception messages, stack traces, protocol payloads, and transport bytes
 are excluded from interaction diagnostics.
 
 Increment 40C is validated with 3,823 passing automated tests.
+
+## Implemented Protocol diagnostics
+
+Increment 40D adds payload-free logical Protocol tracing for Native Protocol
+Version 1 and Compact Serial Protocol Version 1.
+
+`RuntimeProtocolDiagnosticExchange` publishes:
+
+- `ProtocolRequestSent`;
+- `ProtocolResponseReceived`;
+- `ProtocolExchangeFailed`; and
+- `ProtocolNotificationReceived`.
+
+Records use `RuntimeDiagnosticLevel.Protocol` and
+`RuntimeDiagnosticCategory.ProtocolExchange`. They carry the authoritative
+runtime endpoint identity, protocol family, logical message kind, protocol
+correlation identifier, direction, payload length, and—where applicable—
+monotonic duration and outcome.
+
+Native operational bindings are decorated with
+`NativeRuntimeProtocolDiagnosticConnection`. One
+`NativeProtocolNotificationDiagnosticObserver` follows the coordinator's
+replacement-aware notification subscription set. Compact operational
+connections are decorated in place with
+`CompactRuntimeProtocolDiagnosticConnection` after authoritative bootstrap.
+Each Compact physical connection generation owns exactly one
+`CompactProtocolNotificationDiagnosticObserver` subscription and removes it
+before disposal.
+
+Connection replacement therefore detaches the old diagnostic observer before
+attaching the new generation. Existing notification delivery, transport
+exchange statistics, connection identity, results, exceptions, and disposal
+ownership remain unchanged.
+
+Protocol payloads, decoded values, exception messages, stack traces, addresses,
+ports, COM names, configuration paths, credentials, and exact transport bytes
+are not Protocol diagnostic fields. Payload length is metadata and is evaluated
+only when Protocol diagnostics are enabled. Diagnostic sink failures never
+alter protocol behavior.
+
+Compact discovery, verification, and authoritative bootstrap traffic remains
+outside attached-runtime Protocol tracing. Exact byte capture remains disabled
+and deferred to Increment 40E.
+
+Increment 40D is validated with 3,855 passing automated tests.
+
+Implementation detail is recorded by:
+
+- [40D1 — Protocol Exchange Foundation](../ADR-0040-Increment-40D1-Protocol-Exchange-Foundation.md);
+- [40D2 — Native Protocol V1 Tracing](../ADR-0040-Increment-40D2-Native-Protocol-Tracing.md);
+- [40D3 — Compact Protocol Tracing](../ADR-0040-Increment-40D3-Compact-Protocol-Tracing.md); and
+- [40D4 — Production Protocol Activation](../ADR-0040-Increment-40D4-Production-Protocol-Activation.md).
 
 ## Deferred
 

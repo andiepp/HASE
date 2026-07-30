@@ -545,4 +545,33 @@ services. Requested state remains independent of authoritative state; writes
 are endpoint-confirmed and never optimistically applied or automatically
 retried.
 
+## Structured runtime diagnostics
+
+ADR-0040 defines one UI-neutral, cumulative diagnostic path:
+
+1. `Operational` records explain runtime lifecycle and authoritative
+   interactions.
+2. `Protocol` adds payload-free logical request, response, failure, and
+   notification records.
+3. `Bytes` is reserved for explicitly enabled, bounded exact-byte capture.
+
+The runtime context owns the publisher and process-local sequence. Diagnostics
+are explanatory only: endpoint state, attachment generation, retry policy,
+results, exceptions, and application decisions remain authoritative in their
+existing components.
+
+Native Protocol Version 1 tracing decorates each runtime protocol binding.
+Compact Serial Protocol Version 1 tracing decorates each operational connection
+after authoritative bootstrap. Native notification subscriptions follow the
+coordinator's replacement-aware owner; Compact notification subscriptions are
+owned and removed by the matching physical connection generation.
+
+Protocol records may contain authoritative endpoint identity, protocol family,
+message kind, correlation identifier, direction, payload length, duration, and
+outcome. They never contain payload bytes, decoded interaction values,
+exception text, addresses, ports, COM names, credentials, or configuration
+paths. Diagnostic sink failures cannot propagate into runtime execution.
+
+Exact transport bytes remain outside the implemented 40D boundary and require
+the separate explicit opt-in design of ADR-0040 Increment 40E.
 
