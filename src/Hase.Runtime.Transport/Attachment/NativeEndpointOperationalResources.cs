@@ -14,6 +14,7 @@ internal sealed class NativeEndpointOperationalResources
     private NativeEndpointOperationalResources(
         EndpointConnectionSupervisionLifetime supervisionLifetime,
         RuntimeEndpointConnectionCoordinator coordinator,
+        RuntimeEndpointConnectionSupervisor supervisor,
         TransportConnectionManager connectionManager)
     {
         SupervisionLifetime =
@@ -21,6 +22,9 @@ internal sealed class NativeEndpointOperationalResources
 
         Coordinator =
             coordinator;
+
+        Supervisor =
+            supervisor;
 
         PropertyOperations =
             new NativeEndpointAttachmentPropertyOperations(
@@ -56,6 +60,14 @@ internal sealed class NativeEndpointOperationalResources
     /// Gets the coordinator that owns runtime protocol bindings.
     /// </summary>
     internal RuntimeEndpointConnectionCoordinator Coordinator
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the supervisor that owns native connection recovery.
+    /// </summary>
+    internal RuntimeEndpointConnectionSupervisor Supervisor
     {
         get;
     }
@@ -137,10 +149,16 @@ internal sealed class NativeEndpointOperationalResources
                 runtimeEndpoint,
                 identityValidatingSynchronizer);
 
+        var diagnosticReconnectPolicy =
+            new RuntimeEndpointReconnectDiagnosticPolicy(
+                reconnectPolicy,
+                runtimeEndpoint.Context.Diagnostics,
+                runtimeEndpoint.Descriptor.Id.Value);
+
         var supervisor =
             new RuntimeEndpointConnectionSupervisor(
                 coordinator,
-                reconnectPolicy);
+                diagnosticReconnectPolicy);
 
         var supervisionLifetime =
             new EndpointConnectionSupervisionLifetime(
@@ -149,6 +167,7 @@ internal sealed class NativeEndpointOperationalResources
         return new NativeEndpointOperationalResources(
             supervisionLifetime,
             coordinator,
+            supervisor,
             connectionManager);
     }
 }

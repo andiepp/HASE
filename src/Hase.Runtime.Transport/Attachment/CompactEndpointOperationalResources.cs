@@ -226,11 +226,17 @@ internal sealed class CompactEndpointOperationalResources
                 eventSource,
                 TimeProvider.System);
 
+        var diagnosticReconnectPolicy =
+            new RuntimeEndpointReconnectDiagnosticPolicy(
+                reconnectPolicy,
+                runtimeEndpoint.Context.Diagnostics,
+                runtimeEndpoint.Descriptor.Id.Value);
+
         var supervisor =
             new CompactRuntimeEndpointConnectionSupervisor(
                 coordinator,
                 propertyMap,
-                reconnectPolicy,
+                diagnosticReconnectPolicy,
                 probeOptions);
 
         var supervisionLifetime =

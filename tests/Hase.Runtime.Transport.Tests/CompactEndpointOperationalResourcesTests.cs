@@ -44,6 +44,9 @@ public sealed class CompactEndpointOperationalResourcesTests
                     definition
                 ]);
 
+        var reconnectPolicy =
+            new DefaultRuntimeEndpointReconnectPolicy();
+
         // Act
         CompactEndpointOperationalResources resources =
             CompactEndpointOperationalResources.CreateSerial(
@@ -52,7 +55,7 @@ public sealed class CompactEndpointOperationalResourcesTests
                 runtimeEndpoint,
                 serialByteStreamFactory,
                 definitionRepository,
-                new DefaultRuntimeEndpointReconnectPolicy(),
+                reconnectPolicy,
                 new CompactEndpointHealthProbeOptions(
                     TimeSpan.FromSeconds(
                         1),
@@ -93,6 +96,21 @@ public sealed class CompactEndpointOperationalResourcesTests
         Assert.Same(
             resources.Coordinator,
             resources.Supervisor.Coordinator);
+
+        RuntimeEndpointReconnectDiagnosticPolicy diagnosticPolicy =
+            Assert.IsType<RuntimeEndpointReconnectDiagnosticPolicy>(
+                resources.Supervisor.ReconnectPolicy);
+
+        Assert.Same(
+            reconnectPolicy,
+            diagnosticPolicy.InnerPolicy);
+
+        Assert.Equal(
+            runtimeEndpoint.Descriptor.Id.Value,
+            diagnosticPolicy.EndpointId);
+
+        Assert.Null(
+            diagnosticPolicy.AttachmentGeneration);
 
         Assert.Collection(
             resources.ResourcesAfterSupervision,

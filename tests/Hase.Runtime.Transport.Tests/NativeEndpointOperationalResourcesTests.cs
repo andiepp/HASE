@@ -41,6 +41,21 @@ public sealed class NativeEndpointOperationalResourcesTests
             IdentityValidatingRuntimeEndpointSynchronizer>(
                 resources.Coordinator.Synchronizer);
 
+        RuntimeEndpointReconnectDiagnosticPolicy diagnosticPolicy =
+            Assert.IsType<RuntimeEndpointReconnectDiagnosticPolicy>(
+                resources.Supervisor.ReconnectPolicy);
+
+        Assert.Same(
+            reconnectPolicy,
+            diagnosticPolicy.InnerPolicy);
+
+        Assert.Equal(
+            runtimeEndpoint.Descriptor.Id.Value,
+            diagnosticPolicy.EndpointId);
+
+        Assert.Null(
+            diagnosticPolicy.AttachmentGeneration);
+
         Assert.Collection(
             resources.ResourcesAfterSupervision,
             resource =>
