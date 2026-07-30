@@ -655,6 +655,10 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="8" />
                                                                                         <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="8" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
@@ -684,30 +688,100 @@
                                                                                         Text="{Binding Description}"
                                                                                         TextWrapping="Wrap" />
 
-                                                                                    <Button
+                                                                                    <StackPanel
                                                                                         Grid.Row="6"
+                                                                                        Grid.ColumnSpan="2">
+                                                                                        <StackPanel.Style>
+                                                                                            <Style TargetType="StackPanel">
+                                                                                                <Setter Property="Visibility" Value="Visible" />
+                                                                                                <Style.Triggers>
+                                                                                                    <DataTrigger Binding="{Binding RequiresArgument}" Value="False">
+                                                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                    </DataTrigger>
+                                                                                                </Style.Triggers>
+                                                                                            </Style>
+                                                                                        </StackPanel.Style>
+
+                                                                                        <TextBlock
+                                                                                            FontWeight="SemiBold"
+                                                                                            Text="{Binding ArgumentDisplayName, TargetNullValue=Argument}" />
+
+                                                                                        <TextBlock
+                                                                                            Margin="0,3,0,0"
+                                                                                            Foreground="DimGray"
+                                                                                            Text="{Binding ArgumentDescription}"
+                                                                                            TextWrapping="Wrap" />
+
+                                                                                        <TextBlock
+                                                                                            Margin="0,3,0,0"
+                                                                                            Foreground="DimGray"
+                                                                                            Text="{Binding ArgumentDataType, StringFormat=Data type: {0}}" />
+
+                                                                                        <CheckBox
+                                                                                            Margin="0,8,0,0"
+                                                                                            Content="Requested value"
+                                                                                            IsChecked="{Binding RequestedBooleanArgument, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                            <CheckBox.Style>
+                                                                                                <Style TargetType="CheckBox">
+                                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                    <Style.Triggers>
+                                                                                                        <DataTrigger Binding="{Binding HasBooleanEditor}" Value="True">
+                                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                                        </DataTrigger>
+                                                                                                    </Style.Triggers>
+                                                                                                </Style>
+                                                                                            </CheckBox.Style>
+                                                                                        </CheckBox>
+
+                                                                                        <TextBox
+                                                                                            Margin="0,8,0,0"
+                                                                                            MinWidth="220"
+                                                                                            HorizontalAlignment="Left"
+                                                                                            Text="{Binding RequestedArgumentText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                            <TextBox.Style>
+                                                                                                <Style TargetType="TextBox">
+                                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                                    <Style.Triggers>
+                                                                                                        <DataTrigger Binding="{Binding HasTextEditor}" Value="True">
+                                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                                        </DataTrigger>
+                                                                                                    </Style.Triggers>
+                                                                                                </Style>
+                                                                                            </TextBox.Style>
+                                                                                        </TextBox>
+
+                                                                                        <TextBlock
+                                                                                            Margin="0,5,0,0"
+                                                                                            Foreground="Firebrick"
+                                                                                            Text="{Binding ValidationMessage}"
+                                                                                            TextWrapping="Wrap" />
+                                                                                    </StackPanel>
+
+                                                                                    <Button
+                                                                                        Grid.Row="8"
                                                                                         Grid.Column="1"
                                                                                         Width="130"
                                                                                         HorizontalAlignment="Left"
                                                                                         Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                                         CommandParameter="{Binding}"
-                                                                                        Content="Execute Command" />
+                                                                                        Content="Execute Command"
+                                                                                        IsEnabled="{Binding CanExecute}" />
 
                                                                                     <TextBlock
-                                                                                        Grid.Row="8"
+                                                                                        Grid.Row="10"
                                                                                         Grid.ColumnSpan="2"
                                                                                         FontWeight="SemiBold"
                                                                                         Text="{Binding ExecutionState, StringFormat=Execution: {0}}" />
 
                                                                                     <TextBlock
-                                                                                        Grid.Row="10"
+                                                                                        Grid.Row="12"
                                                                                         Grid.ColumnSpan="2"
                                                                                         Foreground="DimGray"
                                                                                         Text="{Binding ExecutionMessage}"
                                                                                         TextWrapping="Wrap" />
 
                                                                                     <TextBlock
-                                                                                        Grid.Row="12"
+                                                                                        Grid.Row="14"
                                                                                         Grid.ColumnSpan="2"
                                                                                         Text="{Binding ReturnValue, StringFormat=Return value: {0}}"
                                                                                         TextWrapping="Wrap">

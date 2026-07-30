@@ -1,5 +1,7 @@
 ﻿using Prism.Commands;
+using System.Globalization;
 using System.Windows.Threading;
+using Hase.Core.Domain.Data;
 
 namespace Hase.DesktopHost.App.ViewModels;
 
@@ -168,6 +170,10 @@ public sealed class MainWindowViewModel : IDisposable
         ArgumentNullException.ThrowIfNull(
             command);
 
+        object? argument =
+            command.InputResult.IsSuccess
+                ? command.InputResult.Value
+                : null;
         Hase.Runtime.Northbound.RuntimeHostCommandTarget? target =
             RuntimeHost.Status
                 == DesktopRuntimeHostStatus.Running
@@ -183,6 +189,9 @@ public sealed class MainWindowViewModel : IDisposable
 
         string operationPath =
             command.Path;
+        string inputSummary =
+            FormatCommandArgument(
+                argument);
         string reconciliation =
             string.Empty;
 
@@ -191,7 +200,7 @@ public sealed class MainWindowViewModel : IDisposable
             Hase.Runtime.Northbound.RuntimeHostCommandOperationResult result =
                 await runtimeHostOperator.ExecuteCommandAsync(
                     target,
-                    argument: null,
+                    argument,
                     cancellationToken);
 
             command.CompleteExecution(
@@ -224,7 +233,7 @@ public sealed class MainWindowViewModel : IDisposable
                 target.AttachmentGeneration.ToString(),
                 target.InstrumentId.Value,
                 operationPath,
-                "None",
+                inputSummary,
                 GetActivityOutcome(
                     command.ExecutionState),
                 command.ExecutionState
@@ -473,6 +482,36 @@ public sealed class MainWindowViewModel : IDisposable
             warning);
         return "Warning: "
             + warning;
+    }
+
+    private static string FormatCommandArgument(
+        object? argument)
+    {
+        if (argument is null)
+        {
+            return "None";
+        }
+
+        if (argument is ByteArrayValue byteArray)
+        {
+            return string.Join(
+                " ",
+                byteArray
+                    .ToArray()
+                    .Select(
+                        item =>
+                            item.ToString(
+                                "X2",
+                                CultureInfo.InvariantCulture)));
+        }
+
+        return argument is IFormattable formattable
+            ? formattable.ToString(
+                format: null,
+                CultureInfo.InvariantCulture)
+                ?? string.Empty
+            : argument.ToString()
+                ?? string.Empty;
     }
 
     private static DesktopRuntimeOperatorActivityOutcome GetActivityOutcome(

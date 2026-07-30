@@ -1,3 +1,5 @@
+﻿using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.ViewModels;
@@ -76,6 +78,87 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
         Assert.Equal(
             "No readable Properties required refresh.",
             activity.Reconciliation);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithTypedByteArray_ShouldPassParsedArgumentAndRecordInput()
+    {
+        RuntimeHostCommandTarget target =
+            CreateTarget(
+                "2f271a31-a2a8-421e-aaed-3c5520ae1c0c");
+        var command =
+            new DesktopRuntimeCommandViewModel(
+                CreateTypedCommandSnapshot(
+                    target,
+                    new ByteArrayDataDescriptor()));
+        command.RequestedArgumentText =
+            "00 7f FF";
+        var runtimeOperator =
+            new RecordingOperator
+            {
+                ExecuteHandler =
+                    (_, _, _) =>
+                        Task.FromResult(
+                            RuntimeHostCommandOperationResult.Successful())
+            };
+        using MainWindowViewModel viewModel =
+            CreateMainWindowViewModel(
+                runtimeOperator);
+
+        await viewModel.ExecuteParameterlessCommandAsync(
+            command);
+
+        Assert.Equal(
+            1,
+            runtimeOperator.ExecuteCount);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x7F,
+                0xFF
+            },
+            Assert.IsType<ByteArrayValue>(
+                    runtimeOperator.Argument)
+                .ToArray());
+        DesktopRuntimeOperatorActivityEntry activity =
+            Assert.Single(
+                viewModel.Activity.Entries);
+        Assert.Equal(
+            "00 7F FF",
+            activity.InputSummary);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithInvalidTypedArgument_ShouldNotCallOperator()
+    {
+        RuntimeHostCommandTarget target =
+            CreateTarget(
+                "a3f1f14d-5922-48e0-9836-e07d23463422");
+        var command =
+            new DesktopRuntimeCommandViewModel(
+                CreateTypedCommandSnapshot(
+                    target,
+                    new ByteArrayDataDescriptor()));
+        command.RequestedArgumentText =
+            "0";
+        var runtimeOperator =
+            new RecordingOperator();
+        using MainWindowViewModel viewModel =
+            CreateMainWindowViewModel(
+                runtimeOperator);
+
+        await viewModel.ExecuteParameterlessCommandAsync(
+            command);
+
+        Assert.Equal(
+            0,
+            runtimeOperator.ExecuteCount);
+        Assert.Empty(
+            viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Ready,
+            command.ExecutionState);
     }
 
     [Fact]
@@ -463,6 +546,26 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
             "Toggle status LED",
             "Toggles the endpoint status LED.",
             isEndpointReady);
+
+    private static DesktopRuntimeCommandSnapshot CreateTypedCommandSnapshot(
+        RuntimeHostCommandTarget target,
+        DataDescriptor data) =>
+        new(
+            target,
+            target.CommandPath.ToString(),
+            "Typed Command",
+            "Executes a typed Command.",
+            IsEndpointReady: true,
+            new CommandDescriptor(
+                target.CommandPath,
+                "Typed Command",
+                new CommandArgumentDescriptor(
+                    "Value",
+                    data))
+            {
+                Description =
+                    "Executes a typed Command."
+            });
 
     private static RuntimeHostCommandTarget CreateTarget(
         string generation) =>
