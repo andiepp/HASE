@@ -58,8 +58,11 @@ public sealed class
 
             initialProtocolConnection =
                 Assert.IsType<DuplexRuntimeProtocolConnection>(
-                    Assert.Single(
-                        synchronizer.ProtocolConnections));
+                    Assert.IsAssignableFrom<
+                        NativeRuntimeProtocolDiagnosticConnection>(
+                        Assert.Single(
+                            synchronizer.ProtocolConnections))
+                        .InnerConnection);
 
             Assert.True(
                 initialProtocolConnection.Session.IsRunning);
@@ -117,7 +120,10 @@ public sealed class
 
             replacementProtocolConnection =
                 Assert.IsType<DuplexRuntimeProtocolConnection>(
-                    synchronizer.ProtocolConnections[1]);
+                    Assert.IsAssignableFrom<
+                        NativeRuntimeProtocolDiagnosticConnection>(
+                        synchronizer.ProtocolConnections[1])
+                        .InnerConnection);
 
             Assert.NotSame(
                 initialProtocolConnection,

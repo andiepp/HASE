@@ -56,9 +56,14 @@ public sealed class
             1,
             synchronizer.ProtocolSynchronizationCount);
 
+        NativeRuntimeProtocolDiagnosticConnection decoratedConnection =
+            Assert.IsAssignableFrom<
+                NativeRuntimeProtocolDiagnosticConnection>(
+                synchronizer.ReceivedProtocolConnection);
+
         DuplexRuntimeProtocolConnection protocolConnection =
             Assert.IsType<DuplexRuntimeProtocolConnection>(
-                synchronizer.ReceivedProtocolConnection);
+                decoratedConnection.InnerConnection);
 
         Assert.True(
             protocolConnection.Session.IsRunning);

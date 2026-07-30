@@ -397,6 +397,9 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
                         _runtimeEndpoint.Descriptor.Id,
                         cancellationToken);
 
+                ActivateProtocolDiagnostics(
+                    candidate);
+
                 _compatibilityValidator.Validate(
                     _runtimeEndpoint.Descriptor,
                     candidate.Descriptor);
@@ -532,5 +535,17 @@ internal sealed class CompactRuntimeEndpointConnectionCoordinator
         return new CompactMappedEventNotificationSource(
             new CompactEventNotificationResolver(
                 eventMap));
+    }
+
+    private void ActivateProtocolDiagnostics(
+        CompactEndpointConnection connection)
+    {
+        connection.ApplyConnectionDecorator(
+            inner =>
+                CompactRuntimeProtocolDiagnosticConnection.Create(
+                    inner,
+                    _runtimeEndpoint.Descriptor.Id.Value,
+                    _runtimeEndpoint.Context.Diagnostics,
+                    observeNotifications: true));
     }
 }

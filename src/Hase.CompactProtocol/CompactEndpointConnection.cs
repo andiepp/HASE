@@ -9,7 +9,7 @@ namespace Hase.CompactProtocol;
 internal sealed class CompactEndpointConnection
     : IAsyncDisposable
 {
-    private readonly ICompactSerialProtocolConnection _connection;
+    private ICompactSerialProtocolConnection _connection;
     private bool _disposed;
 
     public CompactEndpointConnection(
@@ -67,6 +67,29 @@ internal sealed class CompactEndpointConnection
     /// </summary>
     public ICompactSerialProtocolConnection Connection =>
         _connection;
+
+    /// <summary>
+    /// Replaces the owned protocol connection with one transparent decorator
+    /// before this endpoint connection is published for operational use.
+    /// </summary>
+    internal void ApplyConnectionDecorator(
+        Func<
+            ICompactSerialProtocolConnection,
+            ICompactSerialProtocolConnection> decorator)
+    {
+        ArgumentNullException.ThrowIfNull(
+            decorator);
+
+        ObjectDisposedException.ThrowIf(
+            _disposed,
+            this);
+
+        _connection =
+            decorator(
+                _connection)
+            ?? throw new InvalidOperationException(
+                "The compact protocol connection decorator returned null.");
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

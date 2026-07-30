@@ -18,11 +18,16 @@ internal class CompactRuntimeProtocolDiagnosticConnection
     private readonly ICompactSerialProtocolConnection inner;
     private readonly RuntimeDiagnosticPublisher diagnostics;
     private readonly string endpointId;
+    private readonly CompactProtocolNotificationDiagnosticObserver?
+        notificationObserver;
+
+    private int disposed;
 
     private CompactRuntimeProtocolDiagnosticConnection(
         ICompactSerialProtocolConnection inner,
         string endpointId,
-        RuntimeDiagnosticPublisher diagnostics)
+        RuntimeDiagnosticPublisher diagnostics,
+        bool observeNotifications)
     {
         this.inner =
             inner;
@@ -32,12 +37,24 @@ internal class CompactRuntimeProtocolDiagnosticConnection
 
         this.diagnostics =
             diagnostics;
+
+        if (observeNotifications)
+        {
+            notificationObserver =
+                new CompactProtocolNotificationDiagnosticObserver(
+                    endpointId,
+                    diagnostics);
+
+            inner.EventNotificationReceived +=
+                notificationObserver.OnEventNotification;
+        }
     }
 
     public static ICompactSerialProtocolConnection Create(
         ICompactSerialProtocolConnection inner,
         string endpointId,
-        RuntimeDiagnosticPublisher diagnostics)
+        RuntimeDiagnosticPublisher diagnostics,
+        bool observeNotifications = false)
     {
         ArgumentNullException.ThrowIfNull(
             inner);
@@ -62,13 +79,15 @@ internal class CompactRuntimeProtocolDiagnosticConnection
                 inner,
                 normalizedEndpointId,
                 diagnostics,
+                observeNotifications,
                 traceSource);
         }
 
         return new CompactRuntimeProtocolDiagnosticConnection(
             inner,
             normalizedEndpointId,
-            diagnostics);
+            diagnostics,
+            observeNotifications);
     }
 
     public event EventHandler<TransportConnectionStateChangedEventArgs>?
@@ -158,9 +177,22 @@ internal class CompactRuntimeProtocolDiagnosticConnection
         inner.Invalidate();
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        return inner.DisposeAsync();
+        if (Interlocked.Exchange(
+                ref disposed,
+                1) != 0)
+        {
+            return;
+        }
+
+        if (notificationObserver is not null)
+        {
+            inner.EventNotificationReceived -=
+                notificationObserver.OnEventNotification;
+        }
+
+        await inner.DisposeAsync();
     }
 
     private RuntimeProtocolDiagnosticExchange? CreateExchange(
@@ -216,11 +248,13 @@ internal class CompactRuntimeProtocolDiagnosticConnection
             ICompactSerialProtocolConnection inner,
             string endpointId,
             RuntimeDiagnosticPublisher diagnostics,
+            bool observeNotifications,
             ITransportExchangeTraceSource source)
             : base(
                 inner,
                 endpointId,
-                diagnostics)
+                diagnostics,
+                observeNotifications)
         {
             this.source =
                 source;

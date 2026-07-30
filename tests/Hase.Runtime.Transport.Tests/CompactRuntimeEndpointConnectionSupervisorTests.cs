@@ -211,9 +211,12 @@ public sealed class CompactRuntimeEndpointConnectionSupervisorTests
                 1,
                 connectionFactory.TimedOutReconnectCallCount);
 
-            Assert.Same(
-                recoveredProtocolConnection,
+            Assert.IsType<
+                CompactRuntimeProtocolDiagnosticConnection>(
                 coordinator.ActiveConnection?.Connection);
+
+            Assert.True(
+                recoveredProtocolConnection.ExchangeCallCount >= 1);
         }
         finally
         {

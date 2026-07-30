@@ -31,6 +31,7 @@ public sealed class
         var synchronizer =
             new FailOnceProtocolSynchronizer();
 
+        IRuntimeProtocolConnection firstDecoratedConnection;
         DuplexRuntimeProtocolConnection firstProtocolConnection;
 
         await using (
@@ -59,9 +60,15 @@ public sealed class
                 1,
                 synchronizer.ProtocolConnections.Count);
 
+            firstDecoratedConnection =
+                synchronizer.ProtocolConnections[0];
+
             firstProtocolConnection =
                 Assert.IsType<DuplexRuntimeProtocolConnection>(
-                    synchronizer.ProtocolConnections[0]);
+                    Assert.IsAssignableFrom<
+                        NativeRuntimeProtocolDiagnosticConnection>(
+                        firstDecoratedConnection)
+                        .InnerConnection);
 
             Assert.True(
                 firstProtocolConnection.Session.IsRunning);
@@ -84,7 +91,7 @@ public sealed class
                 synchronizer.ProtocolConnections.Count);
 
             Assert.Same(
-                firstProtocolConnection,
+                firstDecoratedConnection,
                 synchronizer.ProtocolConnections[1]);
 
             Assert.True(

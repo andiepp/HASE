@@ -20,6 +20,13 @@ public class NativeRuntimeProtocolDiagnosticConnection
     private readonly BinaryProtocolPayloadCodec payloadCodec =
         new();
 
+    /// <summary>
+    /// Gets the transparently decorated connection for composition-level
+    /// verification.
+    /// </summary>
+    internal IRuntimeProtocolConnection InnerConnection =>
+        inner;
+
     private NativeRuntimeProtocolDiagnosticConnection(
         IRuntimeProtocolConnection inner,
         string endpointId,

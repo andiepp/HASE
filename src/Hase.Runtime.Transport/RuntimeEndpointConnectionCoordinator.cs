@@ -35,6 +35,9 @@ public sealed class RuntimeEndpointConnectionCoordinator
     private readonly ProtocolRuntimeEndpointEventRouter
         _eventRouter;
 
+    private readonly NativeProtocolNotificationDiagnosticObserver
+        _diagnosticNotificationObserver;
+
     private RuntimeProtocolConnectionBinding?
         _protocolConnectionBinding;
 
@@ -69,8 +72,16 @@ public sealed class RuntimeEndpointConnectionCoordinator
             new ProtocolRuntimeEndpointEventRouter(
                 _runtimeEndpoint);
 
+        _diagnosticNotificationObserver =
+            new NativeProtocolNotificationDiagnosticObserver(
+                _runtimeEndpoint.Descriptor.Id.Value,
+                _runtimeEndpoint.Context.Diagnostics);
+
         _notificationSubscriptions.Subscribe(
             _eventRouter);
+
+        _notificationSubscriptions.Subscribe(
+            _diagnosticNotificationObserver);
 
         _connectionManager.HealthChanged +=
             OnTransportHealthChanged;
@@ -367,6 +378,9 @@ public sealed class RuntimeEndpointConnectionCoordinator
             DetachProtocolConnectionServices(
                 binding);
         }
+
+        _notificationSubscriptions.Unsubscribe(
+            _diagnosticNotificationObserver);
     }
 
     private Task<ITransportConnection> GetRecoveryConnectionAsync(
@@ -493,7 +507,9 @@ public sealed class RuntimeEndpointConnectionCoordinator
 
         RuntimeProtocolConnectionBinding replacementBinding =
             RuntimeProtocolConnectionBinding.Create(
-                connection);
+                connection,
+                _runtimeEndpoint.Descriptor.Id.Value,
+                _runtimeEndpoint.Context.Diagnostics);
 
         AttachProtocolConnectionServices(
             replacementBinding);

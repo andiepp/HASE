@@ -1,4 +1,7 @@
-﻿using Hase.Transport;
+﻿using Hase.Core.Domain.Identity;
+using Hase.Protocol;
+using Hase.Runtime.Diagnostics;
+using Hase.Transport;
 using Xunit;
 
 namespace Hase.Runtime.Transport.Tests;
@@ -102,6 +105,47 @@ public sealed class RuntimeProtocolConnectionBindingTests
         await binding.DisposeAsync();
     }
 
+    [Fact]
+    public async Task Create_WithDiagnostics_ShouldDecorateNativeExchange()
+    {
+        var transportConnection =
+            new RespondingLegacyTransportConnection();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4,
+                RuntimeDiagnosticLevel.Protocol);
+
+        RuntimeProtocolConnectionBinding binding =
+            RuntimeProtocolConnectionBinding.Create(
+                transportConnection,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector));
+
+        ProtocolMessage response =
+            await binding.ProtocolConnection.SendAsync(
+                new DiscoverRequest(
+                    new CorrelationId(
+                        42)));
+
+        Assert.IsType<DiscoverResponse>(
+            response);
+        Assert.Equal(
+            [
+                "ProtocolRequestSent",
+                "ProtocolResponseReceived"
+            ],
+            collector
+                .GetSnapshot()
+                .Select(
+                    record =>
+                        record.EventName)
+                .ToArray());
+
+        await binding.DisposeAsync();
+    }
+
     private sealed class TestLegacyTransportConnection
         : ITransportConnection
     {
@@ -192,6 +236,54 @@ public sealed class RuntimeProtocolConnectionBindingTests
 
             throw new InvalidOperationException(
                 "The cancelled receive unexpectedly continued.");
+        }
+    }
+
+    private sealed class RespondingLegacyTransportConnection
+        : ITransportConnection
+    {
+        private readonly BinaryProtocolPayloadCodec payloadCodec =
+            new();
+
+        private readonly ProtocolEnvelopeByteCodec envelopeCodec =
+            new();
+
+        public event EventHandler<
+            TransportConnectionStateChangedEventArgs>?
+            StateChanged
+        {
+            add
+            {
+            }
+
+            remove
+            {
+            }
+        }
+
+        public TransportConnectionState State =>
+            TransportConnectionState.Connected;
+
+        public Task<byte[]> ExchangeAsync(
+            byte[] request,
+            CancellationToken cancellationToken = default)
+        {
+            ProtocolMessage decodedRequest =
+                payloadCodec.Decode(
+                    envelopeCodec.Decode(
+                        request));
+
+            var response =
+                new DiscoverResponse(
+                    decodedRequest.CorrelationId,
+                    new EndpointId(
+                        "sensitive-endpoint"),
+                    []);
+
+            return Task.FromResult(
+                envelopeCodec.Encode(
+                    payloadCodec.Encode(
+                        response)));
         }
     }
 }

@@ -350,6 +350,55 @@ public sealed class CompactRuntimeProtocolDiagnosticConnectionTests
     }
 
     [Fact]
+    public async Task ActivatedDecorator_OwnsOneNotificationSubscription()
+    {
+        var inner =
+            new TraceConnection();
+
+        BoundedRuntimeDiagnosticCollector collector =
+            CreateProtocolCollector();
+
+        ICompactSerialProtocolConnection decorated =
+            CompactRuntimeProtocolDiagnosticConnection.Create(
+                inner,
+                "endpoint-one",
+                new RuntimeDiagnosticPublisher(
+                    collector),
+                observeNotifications: true);
+
+        inner.PublishNotification(
+            new CompactEventNotification(
+                eventId: 3,
+                value: new byte[]
+                {
+                    0xA5
+                }));
+
+        Assert.Single(
+            collector.GetSnapshot());
+        Assert.Equal(
+            1,
+            inner.NotificationSubscribeCount);
+
+        await decorated.DisposeAsync();
+
+        Assert.Equal(
+            1,
+            inner.NotificationUnsubscribeCount);
+
+        inner.PublishNotification(
+            new CompactEventNotification(
+                eventId: 3,
+                value: new byte[]
+                {
+                    0x5A
+                }));
+
+        Assert.Single(
+            collector.GetSnapshot());
+    }
+
+    [Fact]
     public async Task ThrowingSink_DoesNotChangeExchangeResult()
     {
         CompactSerialFrame expected =
@@ -576,6 +625,13 @@ public sealed class CompactRuntimeProtocolDiagnosticConnectionTests
             ITransportExchangeTraceObserver observer)
         {
             TraceUnsubscribeCount++;
+        }
+
+        public void PublishNotification(
+            CompactEventNotification notification)
+        {
+            notificationReceived?.Invoke(
+                notification);
         }
     }
 

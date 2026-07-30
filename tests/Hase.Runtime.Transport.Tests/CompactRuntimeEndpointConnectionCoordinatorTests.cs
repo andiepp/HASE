@@ -6,6 +6,7 @@ using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
 using Hase.Transport;
 using Hase.Transport.Serial;
@@ -194,6 +195,66 @@ public sealed class CompactRuntimeEndpointConnectionCoordinatorTests
         Assert.Equal(
             1,
             protocolConnection.DisposeCallCount);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ProductionComposition_ShouldTraceSynchronization()
+    {
+        EndpointDescriptorDefinition definition =
+            CreateDefinition();
+
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                32,
+                RuntimeDiagnosticLevel.Protocol);
+
+        RuntimeEndpoint runtimeEndpoint =
+            new RuntimeContext(
+                new RuntimeDiagnosticPublisher(
+                    collector))
+                .AddEndpoint(
+                    definition.Materialize(
+                        EndpointId));
+
+        var protocolConnection =
+            new TestCompactSerialProtocolConnection();
+
+        CompactEndpointConnection candidate =
+            CreateConnection(
+                definition,
+                protocolConnection);
+
+        var coordinator =
+            CreateCoordinator(
+                new TestCompactEndpointConnectionFactory(
+                    candidate),
+                definition,
+                runtimeEndpoint);
+
+        await coordinator.ConnectAsync();
+
+        Assert.Same(
+            candidate,
+            coordinator.ActiveConnection);
+        Assert.IsType<CompactRuntimeProtocolDiagnosticConnection>(
+            candidate.Connection);
+        Assert.Equal(
+            [
+                "ProtocolRequestSent",
+                "ProtocolResponseReceived"
+            ],
+            collector
+                .GetSnapshot()
+                .Where(
+                    record =>
+                        record.Level
+                        == RuntimeDiagnosticLevel.Protocol)
+                .Select(
+                    record =>
+                        record.EventName)
+                .ToArray());
+
+        await coordinator.DisposeAsync();
     }
 
     private static CompactRuntimeEndpointConnectionCoordinator

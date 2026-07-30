@@ -3,6 +3,7 @@ using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Protocol;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
 using Hase.Transport;
 using Xunit;
@@ -33,8 +34,14 @@ public sealed class
             new TransportConnectionManager(
                 transportFactory);
 
+        var protocolCollector =
+            new BoundedRuntimeDiagnosticCollector(
+                64,
+                RuntimeDiagnosticLevel.Protocol);
+
         RuntimeEndpoint runtimeEndpoint =
-            CreateRuntimeEndpoint();
+            CreateRuntimeEndpoint(
+                protocolCollector);
 
         var synchronizer =
             new DiscoveringProtocolSynchronizer();
@@ -133,12 +140,31 @@ public sealed class
             Assert.Equal(
                 TransportExchangeStatistics.Empty,
                 connectionManager.GetExchangeStatistics());
+
+            Assert.Equal(
+                [
+                    "ProtocolRequestSent",
+                    "ProtocolResponseReceived",
+                    "ProtocolRequestSent",
+                    "ProtocolResponseReceived"
+                ],
+                protocolCollector
+                    .GetSnapshot()
+                    .Where(
+                        record =>
+                            record.Level
+                            == RuntimeDiagnosticLevel.Protocol)
+                    .Select(
+                        record =>
+                            record.EventName)
+                    .ToArray());
         }
 
         await replacementConnection.ReceiveStopped;
     }
 
-    private static RuntimeEndpoint CreateRuntimeEndpoint()
+    private static RuntimeEndpoint CreateRuntimeEndpoint(
+        IRuntimeDiagnosticSink diagnostics)
     {
         var descriptor =
             new EndpointDescriptor(
@@ -157,7 +183,9 @@ public sealed class
             };
 
         var context =
-            new RuntimeContext();
+            new RuntimeContext(
+                new RuntimeDiagnosticPublisher(
+                    diagnostics));
 
         return context.AddEndpoint(
             descriptor);

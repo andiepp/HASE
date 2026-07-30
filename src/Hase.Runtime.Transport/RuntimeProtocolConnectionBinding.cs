@@ -1,4 +1,5 @@
-﻿using Hase.Transport;
+﻿using Hase.Runtime.Diagnostics;
+using Hase.Transport;
 
 namespace Hase.Runtime.Transport;
 
@@ -90,6 +91,43 @@ internal sealed class RuntimeProtocolConnectionBinding
     public static RuntimeProtocolConnectionBinding Create(
         ITransportConnection transportConnection)
     {
+        return CreateCore(
+            transportConnection,
+            endpointId: null,
+            diagnostics: null);
+    }
+
+    /// <summary>
+    /// Creates and starts a diagnostically decorated protocol binding for one
+    /// production endpoint generation.
+    /// </summary>
+    internal static RuntimeProtocolConnectionBinding Create(
+        ITransportConnection transportConnection,
+        string endpointId,
+        RuntimeDiagnosticPublisher diagnostics)
+    {
+        ArgumentNullException.ThrowIfNull(
+            diagnostics);
+
+        if (string.IsNullOrWhiteSpace(
+                endpointId))
+        {
+            throw new ArgumentException(
+                "Endpoint identity must not be empty.",
+                nameof(endpointId));
+        }
+
+        return CreateCore(
+            transportConnection,
+            endpointId.Trim(),
+            diagnostics);
+    }
+
+    private static RuntimeProtocolConnectionBinding CreateCore(
+        ITransportConnection transportConnection,
+        string? endpointId,
+        RuntimeDiagnosticPublisher? diagnostics)
+    {
         ArgumentNullException.ThrowIfNull(
             transportConnection);
 
@@ -98,8 +136,11 @@ internal sealed class RuntimeProtocolConnectionBinding
         {
             return new RuntimeProtocolConnectionBinding(
                 transportConnection,
-                new LegacyRuntimeProtocolConnection(
-                    transportConnection),
+                DecorateIfRequested(
+                    new LegacyRuntimeProtocolConnection(
+                        transportConnection),
+                    endpointId,
+                    diagnostics),
                 duplexSession:
                     null,
                 receivePumpCancellationSource:
@@ -121,11 +162,27 @@ internal sealed class RuntimeProtocolConnectionBinding
 
         return new RuntimeProtocolConnectionBinding(
             transportConnection,
-            new DuplexRuntimeProtocolConnection(
-                session),
+            DecorateIfRequested(
+                new DuplexRuntimeProtocolConnection(
+                    session),
+                endpointId,
+                diagnostics),
             session,
             cancellationSource,
             receivePumpCompletion);
+    }
+
+    private static IRuntimeProtocolConnection DecorateIfRequested(
+        IRuntimeProtocolConnection connection,
+        string? endpointId,
+        RuntimeDiagnosticPublisher? diagnostics)
+    {
+        return diagnostics is null
+            ? connection
+            : NativeRuntimeProtocolDiagnosticConnection.Create(
+                connection,
+                endpointId!,
+                diagnostics);
     }
 
     /// <summary>
