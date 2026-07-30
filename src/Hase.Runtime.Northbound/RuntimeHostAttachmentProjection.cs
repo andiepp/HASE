@@ -1,4 +1,5 @@
 ﻿using Hase.Core.Domain.Identity;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Transport.Attachment;
 
 namespace Hase.Runtime.Northbound;
@@ -398,6 +399,9 @@ internal sealed class RuntimeHostAttachmentProjection
     private void PublishChange(
         RuntimeHostAttachmentProjectionChange change)
     {
+        PublishDiagnostic(
+            change);
+
         IRuntimeHostAttachmentProjectionObserver[] observers;
 
         lock (_syncRoot)
@@ -426,6 +430,28 @@ internal sealed class RuntimeHostAttachmentProjection
                 // not fail inventory routing or later observers.
             }
         }
+    }
+
+    private static void PublishDiagnostic(
+        RuntimeHostAttachmentProjectionChange change)
+    {
+        RuntimeHostPublishedAttachment attachment =
+            change.Attachment;
+
+        attachment.Entry.RuntimeEndpoint.Context.Diagnostics.Publish(
+            RuntimeDiagnosticLevel.Operational,
+            () =>
+                new RuntimeDiagnosticEvent(
+                    RuntimeDiagnosticLevel.Operational,
+                    RuntimeDiagnosticCategory.RuntimeAttachment,
+                    change.Kind
+                        == RuntimeHostAttachmentProjectionChangeKind.Published
+                            ? "AttachmentPublished"
+                            : "AttachmentEnded",
+                    endpointId:
+                        attachment.Entry.EndpointId.Value,
+                    attachmentGeneration:
+                        attachment.Generation.Value));
     }
 
     private void Unsubscribe(
