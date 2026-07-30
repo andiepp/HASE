@@ -144,7 +144,8 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
 
             var commandService =
                 new RuntimeHostCommandService(
-                    attachmentProjection);
+                    attachmentProjection,
+                    diagnostics);
 
             var observationService =
                 new RuntimeHostObservationService(

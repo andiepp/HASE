@@ -1,4 +1,6 @@
-﻿namespace Hase.Runtime.Northbound;
+﻿using Hase.Runtime.Diagnostics;
+
+namespace Hase.Runtime.Northbound;
 
 /// <summary>
 /// Composes normalized Command execution over one shared
@@ -10,8 +12,12 @@ internal sealed class RuntimeHostCommandService
     private readonly RuntimeHostCommandExecutor
         _commandExecutor;
 
+    private readonly RuntimeDiagnosticPublisher
+        _diagnostics;
+
     public RuntimeHostCommandService(
-        RuntimeHostAttachmentProjection attachmentProjection)
+        RuntimeHostAttachmentProjection attachmentProjection,
+        RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             attachmentProjection);
@@ -19,17 +25,65 @@ internal sealed class RuntimeHostCommandService
         _commandExecutor =
             new RuntimeHostCommandExecutor(
                 attachmentProjection);
+
+        _diagnostics =
+            diagnostics
+            ?? new RuntimeDiagnosticPublisher();
     }
 
     /// <inheritdoc />
-    public Task<RuntimeHostCommandOperationResult> ExecuteAsync(
+    public async Task<RuntimeHostCommandOperationResult> ExecuteAsync(
         RuntimeHostCommandTarget target,
         object? argument,
         CancellationToken cancellationToken = default)
     {
-        return _commandExecutor.ExecuteAsync(
-            target,
-            argument,
-            cancellationToken);
+        ArgumentNullException.ThrowIfNull(
+            target);
+
+        RuntimeDiagnosticOperation operation =
+            new(
+                _diagnostics,
+                RuntimeDiagnosticCategory.RuntimeCommand,
+                "CommandExecutionStarted",
+                "CommandExecutionCompleted",
+                "CommandExecutionFailed",
+                target.EndpointId.Value,
+                target.AttachmentGeneration.Value,
+                details:
+                    new Dictionary<string, string>
+                    {
+                        ["instrument"] =
+                            target.InstrumentId.Value,
+                        ["path"] =
+                            target.CommandPath.ToString()
+                    });
+
+        return await operation
+            .RunAsync(
+                token =>
+                    _commandExecutor.ExecuteAsync(
+                        target,
+                        argument,
+                        token),
+                SelectOutcome,
+                cancellationToken)
+            .ConfigureAwait(
+                false);
+    }
+
+    private static RuntimeDiagnosticOutcome SelectOutcome(
+        RuntimeHostCommandOperationResult result)
+    {
+        return result.Status switch
+        {
+            RuntimeHostCommandOperationStatus.Success =>
+                RuntimeDiagnosticOutcome.Succeeded,
+
+            RuntimeHostCommandOperationStatus.TimedOut =>
+                RuntimeDiagnosticOutcome.TimedOut,
+
+            _ =>
+                RuntimeDiagnosticOutcome.Failed
+        };
     }
 }
