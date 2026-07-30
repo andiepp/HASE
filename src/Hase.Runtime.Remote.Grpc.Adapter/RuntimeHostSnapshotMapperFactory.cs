@@ -35,7 +35,8 @@ public static class RuntimeHostSnapshotMapperFactory
                 propertyDescriptorMapper,
                 new CommandDescriptorMapper(
                     dataDescriptorMapper),
-                new EventDescriptorMapper());
+                new EventDescriptorMapper(
+                    dataDescriptorMapper));
 
         var endpointDescriptorMapper =
             new EndpointDescriptorMapper(

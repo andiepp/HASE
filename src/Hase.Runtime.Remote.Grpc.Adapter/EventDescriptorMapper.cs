@@ -9,6 +9,17 @@ namespace Hase.Runtime.Remote.Grpc.Adapter;
 public sealed class EventDescriptorMapper
     : IEventDescriptorMapper
 {
+    private readonly IDataDescriptorMapper dataDescriptorMapper;
+
+    public EventDescriptorMapper(
+        IDataDescriptorMapper dataDescriptorMapper)
+    {
+        this.dataDescriptorMapper =
+            dataDescriptorMapper
+            ?? throw new ArgumentNullException(
+                nameof(dataDescriptorMapper));
+    }
+
     /// <inheritdoc />
     public GrpcV1.EventDescriptor Map(
         DomainEvents.EventDescriptor descriptor)
@@ -30,6 +41,25 @@ public sealed class EventDescriptorMapper
         {
             result.Description =
                 descriptor.Description;
+        }
+
+        if (descriptor.Payload is not null)
+        {
+            result.Payload =
+                new GrpcV1.EventPayloadDescriptor
+                {
+                    DisplayName =
+                        descriptor.Payload.DisplayName,
+                    Data =
+                        dataDescriptorMapper.Map(
+                            descriptor.Payload.Data)
+                };
+
+            if (descriptor.Payload.Description is not null)
+            {
+                result.Payload.Description =
+                    descriptor.Payload.Description;
+            }
         }
 
         return result;

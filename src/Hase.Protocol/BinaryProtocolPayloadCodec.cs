@@ -258,7 +258,12 @@ public sealed class BinaryProtocolPayloadCodec
 
             IReadOnlyList<EndpointDescriptorExtension> extensions =
                 extensionMapper.CreateExtensions(
-                    response.Descriptor);
+                    response.Descriptor)
+                .Concat(
+                    new EventPayloadEndpointDescriptorExtensionMapper()
+                        .CreateExtensions(
+                            response.Descriptor))
+                .ToArray();
 
             if (extensions.Count > 0)
             {
@@ -314,6 +319,12 @@ public sealed class BinaryProtocolPayloadCodec
 
             descriptor =
                 new CommandArgumentEndpointDescriptorExtensionMapper()
+                    .ApplyExtensions(
+                        descriptor,
+                        extensions);
+
+            descriptor =
+                new EventPayloadEndpointDescriptorExtensionMapper()
                     .ApplyExtensions(
                         descriptor,
                         extensions);

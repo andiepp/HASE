@@ -40,4 +40,9 @@ public sealed record EventDescriptor
     /// Optional description shown to users.
     /// </summary>
     public string? Description { get; init; }
+
+    /// <summary>
+    /// Gets the optional typed value carried by each occurrence.
+    /// </summary>
+    public EventPayloadDescriptor? Payload { get; init; }
 }

@@ -1,4 +1,5 @@
 using Hase.Core.Domain.Events;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Properties;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
 
@@ -10,7 +11,7 @@ public sealed class EventDescriptorMapperTests
     public void Map_NullDescriptor_ShouldThrow()
     {
         var mapper =
-            new EventDescriptorMapper();
+            CreateMapper();
 
         Assert.Throws<ArgumentNullException>(
             "descriptor",
@@ -23,7 +24,7 @@ public sealed class EventDescriptorMapperTests
     public void Map_RequiredMembers_ShouldPreservePathOrderAndLeaveDescriptionAbsent()
     {
         var mapper =
-            new EventDescriptorMapper();
+            CreateMapper();
 
         GrpcV1.EventDescriptor result =
             mapper.Map(
@@ -51,7 +52,7 @@ public sealed class EventDescriptorMapperTests
     public void Map_Description_ShouldPreserveOptionalValue()
     {
         var mapper =
-            new EventDescriptorMapper();
+            CreateMapper();
 
         GrpcV1.EventDescriptor result =
             mapper.Map(
@@ -70,5 +71,56 @@ public sealed class EventDescriptorMapperTests
         Assert.Equal(
             "The endpoint connection was lost.",
             result.Description);
+    }
+
+    [Fact]
+    public void Map_TypedValue_ShouldPreserveMetadataAndDataDescriptor()
+    {
+        EventDescriptorMapper mapper =
+            CreateMapper();
+
+        GrpcV1.EventDescriptor result =
+            mapper.Map(
+                new EventDescriptor(
+                    new DescriptorPath(
+                        "Buffer",
+                        "Replaced"),
+                    "Buffer replaced")
+                {
+                    Payload =
+                        new EventPayloadDescriptor(
+                        "Buffer value",
+                        new ByteArrayDataDescriptor())
+                        {
+                            Description =
+                                "The replacement bytes."
+                        }
+                });
+
+        Assert.NotNull(
+            result.Payload);
+        Assert.Equal(
+            "Buffer value",
+            result.Payload.DisplayName);
+        Assert.Equal(
+            "The replacement bytes.",
+            result.Payload.Description);
+        Assert.NotNull(
+            result.Payload.Data.ByteArrayDescriptor);
+    }
+
+    private static EventDescriptorMapper CreateMapper()
+    {
+        var quantityMapper =
+            new QuantityMapper();
+        var unitMapper =
+            new UnitMapper(
+                quantityMapper);
+
+        return new EventDescriptorMapper(
+            new DataDescriptorMapper(
+                new NumericDataDescriptorMapper(
+                    quantityMapper,
+                    unitMapper)));
     }
 }

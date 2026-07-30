@@ -539,18 +539,47 @@ public sealed class RuntimeHostGrpcObservationMapper
     private static EventDescriptor MapEventDescriptor(
         GrpcV1.EventDescriptor descriptor)
     {
-        return new EventDescriptor(
+        DescriptorPath path =
             MapPath(
                 descriptor.PathSegments,
-                "Event path"),
+                "Event path");
+        string displayName =
             RequireText(
                 descriptor.DisplayName,
-                "Event display name"))
+                "Event display name");
+        string? description =
+            OptionalText(
+                descriptor.HasDescription,
+                descriptor.Description);
+
+        if (descriptor.Payload is null)
         {
-            Description =
-                OptionalText(
-                    descriptor.HasDescription,
-                    descriptor.Description)
+            return new EventDescriptor(
+                path,
+                displayName)
+            {
+                Description = description
+            };
+        }
+
+        return new EventDescriptor(
+            path,
+            displayName)
+        {
+            Description = description,
+            Payload =
+                new EventPayloadDescriptor(
+                RequireText(
+                    descriptor.Payload.DisplayName,
+                    "Event payload display name"),
+                MapDataDescriptor(
+                    descriptor.Payload.Data))
+                {
+                    Description =
+                        OptionalText(
+                            descriptor.Payload.HasDescription,
+                            descriptor.Payload.Description)
+                }
         };
     }
 
@@ -758,4 +787,3 @@ public sealed class RuntimeHostGrpcObservationMapper
             message);
     }
 }
-

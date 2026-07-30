@@ -1221,8 +1221,58 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 DataDescriptor.Descriptor,
                 false));
 
-        AssertPathDescriptor(
-            EventDescriptor.Descriptor);
+        Assert.Collection(
+            EventDescriptor.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "path_segments",
+                1,
+                FieldType.String,
+                false,
+                true),
+            field => AssertField(
+                field,
+                "display_name",
+                2,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                3,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "payload",
+                4,
+                EventPayloadDescriptor.Descriptor,
+                false));
+
+        Assert.Collection(
+            EventPayloadDescriptor.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "display_name",
+                1,
+                FieldType.String,
+                false,
+                false),
+            field => AssertField(
+                field,
+                "description",
+                2,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "data",
+                3,
+                DataDescriptor.Descriptor,
+                false));
     }
 
     [Fact]
@@ -1291,7 +1341,21 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 DisplayName =
                     "PLL Lock Lost",
                 Description =
-                    "Reports loss of PLL lock"
+                    "Reports loss of PLL lock",
+                Payload =
+                    new EventPayloadDescriptor
+                    {
+                        DisplayName =
+                            "Locked",
+                        Description =
+                            "PLL lock state",
+                        Data =
+                            new DataDescriptor
+                            {
+                                BooleanDescriptor =
+                                    new BooleanDataDescriptor()
+                            }
+                    }
             };
 
         eventDescriptor.PathSegments.Add(
@@ -1316,6 +1380,17 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
         Assert.Equal(
             eventDescriptor.Description,
             eventRoundTrip.Description);
+        Assert.Equal(
+            "Locked",
+            eventRoundTrip.Payload.DisplayName);
+        Assert.True(
+            eventRoundTrip.Payload.HasDescription);
+        Assert.Equal(
+            "PLL lock state",
+            eventRoundTrip.Payload.Description);
+        Assert.Equal(
+            DataDescriptor.KindOneofCase.BooleanDescriptor,
+            eventRoundTrip.Payload.Data.KindCase);
     }
 
     [Fact]

@@ -83,6 +83,20 @@ public sealed class RuntimeHostGrpcObservationMapperTests
             {
                 DisplayName =
                     "Button pressed",
+                Payload =
+                    new GrpcV1.EventPayloadDescriptor
+                    {
+                        DisplayName =
+                            "Pressed state",
+                        Description =
+                            "True when pressed",
+                        Data =
+                            new GrpcV1.DataDescriptor
+                            {
+                                BooleanDescriptor =
+                                    new GrpcV1.BooleanDataDescriptor()
+                            }
+                    },
                 PathSegments =
                 {
                     "Controller",
@@ -136,8 +150,19 @@ public sealed class RuntimeHostGrpcObservationMapperTests
             mappedCommand.Argument.Description);
         Assert.IsType<ByteArrayDataDescriptor>(
             mappedCommand.Argument.Data);
-        Assert.Single(
-            mappedInstrument.Interface.Events);
+        var mappedEvent =
+            Assert.Single(
+                mappedInstrument.Interface.Events);
+        Assert.NotNull(
+            mappedEvent.Payload);
+        Assert.Equal(
+            "Pressed state",
+            mappedEvent.Payload.DisplayName);
+        Assert.Equal(
+            "True when pressed",
+            mappedEvent.Payload.Description);
+        Assert.IsType<BooleanDataDescriptor>(
+            mappedEvent.Payload.Data);
     }
 
     [Fact]
@@ -523,4 +548,3 @@ public sealed class RuntimeHostGrpcObservationMapperTests
         };
     }
 }
-

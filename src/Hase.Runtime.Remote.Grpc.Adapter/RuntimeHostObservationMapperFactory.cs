@@ -30,7 +30,8 @@ public static class RuntimeHostObservationMapperFactory
                 propertyDescriptorMapper,
                 new CommandDescriptorMapper(
                     dataDescriptorMapper),
-                new EventDescriptorMapper());
+                new EventDescriptorMapper(
+                    dataDescriptorMapper));
         var endpointDescriptorMapper =
             new EndpointDescriptorMapper(
                 instrumentDescriptorMapper);
