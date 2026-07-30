@@ -23,7 +23,8 @@ public sealed class RuntimeDiagnosticEvent
         Guid? operationId = null,
         TimeSpan? duration = null,
         RuntimeDiagnosticOutcome? outcome = null,
-        IReadOnlyDictionary<string, string>? details = null)
+        IReadOnlyDictionary<string, string>? details = null,
+        RuntimeDiagnosticByteSnapshot? byteSnapshot = null)
     {
         ValidateEnum(
             level,
@@ -68,6 +69,17 @@ public sealed class RuntimeDiagnosticEvent
                 "Duration must not be negative.");
         }
 
+        if (byteSnapshot is not null &&
+            (level != RuntimeDiagnosticLevel.Bytes ||
+             category != RuntimeDiagnosticCategory.TransportBytes ||
+             direction is null))
+        {
+            throw new ArgumentException(
+                "A byte snapshot requires the Bytes level, TransportBytes "
+                + "category, and a direction.",
+                nameof(byteSnapshot));
+        }
+
         Level = level;
         Category = category;
         EventName = eventName.Trim();
@@ -80,6 +92,8 @@ public sealed class RuntimeDiagnosticEvent
         Outcome = outcome;
         Details = CopyDetails(
             details);
+        ByteSnapshot =
+            byteSnapshot;
     }
 
     public RuntimeDiagnosticLevel Level { get; }
@@ -103,6 +117,8 @@ public sealed class RuntimeDiagnosticEvent
     public RuntimeDiagnosticOutcome? Outcome { get; }
 
     public IReadOnlyDictionary<string, string> Details { get; }
+
+    public RuntimeDiagnosticByteSnapshot? ByteSnapshot { get; }
 
     private static IReadOnlyDictionary<string, string> CopyDetails(
         IReadOnlyDictionary<string, string>? details)

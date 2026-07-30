@@ -35,6 +35,8 @@ public sealed record RuntimeDiagnosticRecord
         Duration = diagnosticEvent.Duration;
         Outcome = diagnosticEvent.Outcome;
         Details = diagnosticEvent.Details;
+        ByteSnapshot =
+            diagnosticEvent.ByteSnapshot;
     }
 
     public long Sequence { get; }
@@ -62,4 +64,6 @@ public sealed record RuntimeDiagnosticRecord
     public RuntimeDiagnosticOutcome? Outcome { get; }
 
     public IReadOnlyDictionary<string, string> Details { get; }
+
+    public RuntimeDiagnosticByteSnapshot? ByteSnapshot { get; }
 }
