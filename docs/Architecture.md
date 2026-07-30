@@ -582,3 +582,14 @@ replacement or disposal, preventing duplicate records after reconnect.
 Default, Operational-only, and Protocol-only configurations remain
 unsubscribed. Byte diagnostics are process-local and cannot be enabled or
 retrieved through the current northbound API.
+
+The Desktop Runtime Host owns one bounded local diagnostic session per
+production start. It defaults to Operational capture; Protocol and Bytes are
+explicit local startup choices. A deterministic presentation projector and
+scroll-safe WPF panel expose retained records without adding diagnostic
+northbound contracts.
+
+The display filter is cumulative but presentation-only: it neither changes the
+session capture level nor removes hidden records. Clearing empties only the
+local collector. When Bytes capture is active, the application warns that exact
+frames may contain application payloads.

@@ -252,6 +252,9 @@ public sealed class RuntimeDiagnosticsViewModelTests
         } =
             current;
 
+        public RuntimeDiagnosticLevel MaximumLevel =>
+            Current.MaximumLevel;
+
         public IReadOnlyList<RuntimeDiagnosticRecord> CaptureDiagnostics()
         {
             return Current.CaptureDiagnostics();

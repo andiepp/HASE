@@ -1046,17 +1046,94 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="12" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock
-                        Foreground="DimGray"
-                        Text="{Binding Diagnostics.RetainedEntryCount, StringFormat=Retained diagnostic records: {0}}" />
-
-                    <Grid Grid.Row="2">
+                    <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="3*" MinWidth="420" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="Capture level" />
+                        <TextBlock
+                            Grid.Column="2"
+                            VerticalAlignment="Center"
+                            Text="{Binding Diagnostics.CaptureMaximumLevelText}" />
+                        <TextBlock
+                            Grid.Column="4"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="Display filter" />
+                        <ComboBox
+                            Grid.Column="6"
+                            MinWidth="120"
+                            ItemsSource="{Binding Diagnostics.AvailableDisplayLevels}"
+                            SelectedItem="{Binding Diagnostics.SelectedDisplayMaximumLevel, Mode=TwoWay}" />
+                        <Button
+                            Grid.Column="8"
+                            MinWidth="130"
+                            Command="{Binding Diagnostics.ClearDiagnosticsCommand}"
+                            Content="Clear diagnostics" />
+                    </Grid>
+
+                    <Border
+                        Grid.Row="2"
+                        Padding="10"
+                        Background="MistyRose"
+                        BorderBrush="IndianRed"
+                        BorderThickness="1"
+                        CornerRadius="3">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger
+                                        Binding="{Binding Diagnostics.IsByteCaptureEnabled}"
+                                        Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock
+                            Foreground="Firebrick"
+                            Text="Bytes capture is active. Exact protocol frames may contain application payloads. The display filter does not change what is captured."
+                            TextWrapping="Wrap" />
+                    </Border>
+
+                    <Grid Grid.Row="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="8" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock
+                            Foreground="DimGray"
+                            Text="{Binding Diagnostics.DisplayedEntryCount, StringFormat=Displayed records: {0}}" />
+
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            Foreground="DimGray"
+                            Text="{Binding Diagnostics.RetainedEntryCount, StringFormat=Retained records: {0}}" />
+
+                        <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*" MinWidth="360" />
                             <ColumnDefinition Width="20" />
-                            <ColumnDefinition Width="2*" MinWidth="300" />
+                            <ColumnDefinition Width="2*" MinWidth="260" />
                         </Grid.ColumnDefinitions>
 
                         <Grid Grid.Column="0">
@@ -1064,7 +1141,7 @@
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Foreground="DimGray"
-                                Text="No runtime diagnostics have been retained."
+                                Text="No diagnostic records match the display filter."
                                 TextAlignment="Center"
                                 TextWrapping="Wrap">
                                 <TextBlock.Style>
@@ -1259,6 +1336,7 @@
                                 </ScrollViewer>
                             </Grid>
                         </Border>
+                        </Grid>
                     </Grid>
                 </Grid>
             </GroupBox>

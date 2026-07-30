@@ -471,6 +471,10 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             ?? [];
     }
 
+    public RuntimeDiagnosticLevel MaximumLevel =>
+        diagnosticSession?.MaximumLevel
+        ?? configuration.MaximumDiagnosticLevel;
+
     public void ClearDiagnostics()
     {
         diagnosticSession?.ClearDiagnostics();

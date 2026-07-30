@@ -8,6 +8,14 @@ namespace Hase.DesktopHost;
 public interface IDesktopRuntimeDiagnosticSource
 {
     /// <summary>
+    /// Gets the highest cumulative level captured by the current session.
+    /// </summary>
+    RuntimeDiagnosticLevel MaximumLevel
+    {
+        get;
+    }
+
+    /// <summary>
     /// Captures retained records in process-local sequence order.
     /// </summary>
     IReadOnlyList<RuntimeDiagnosticRecord> CaptureDiagnostics();

@@ -12,7 +12,8 @@
 - ADR-0040 Increment 40C Complete
 - ADR-0040 Increment 40D Complete
 - ADR-0040 Increment 40E Complete
-- 3,884 automated tests passing
+- ADR-0040 Increment 40F Complete
+- 3,913 automated tests passing
 - Structured operational diagnostic foundation implemented
 - Native and Compact Serial lifecycle diagnostics implemented
 - Recovery scheduling diagnostics active for both physical endpoint families
@@ -38,7 +39,15 @@
   production byte observer
 - Connection replacement and disposal remove generation-owned byte observers
   before transport teardown
+- Desktop Runtime Host owns one bounded 2,000-record diagnostic session per
+  production start
+- Desktop diagnostics present deterministic structured metadata and bounded
+  hexadecimal bytes through a scroll-safe master/detail panel
+- Capture level is selected locally before startup; cumulative display
+  filtering never changes capture or discards retained records
+- Local clearing affects only the process-local collector
+- Bytes capture displays an explicit application-payload warning
 
 ### Next
-Implement ADR-0040 Increment 40F — Desktop Runtime Host diagnostic
-presentation.
+Implement ADR-0040 Increment 40G — physical validation, final documentation,
+and closure.

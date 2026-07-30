@@ -1248,5 +1248,22 @@ remains published.
 : Also owns the optional Compact byte observer for one operational generation
   and preserves the inner byte-trace capability shape.
 
+`DesktopRuntimeDiagnosticSession`
+: Owns one 2,000-record bounded collector and shared publisher for a Desktop
+  Runtime Host production start.
+
+`IDesktopRuntimeDiagnosticSource`
+: Local Desktop snapshot, maximum capture-level, and clear boundary. It is not
+  a northbound service.
+
+`DesktopRuntimeDiagnosticEntryProjector`
+: Produces immutable deterministic presentation entries with invariant
+  metadata, ordinal details, and bounded uppercase hexadecimal bytes.
+
+`RuntimeDiagnosticsViewModel`
+: Incrementally reconciles the bounded source, collector eviction, clear and
+  replacement sessions, newest-first ordering, selection, cumulative display
+  filtering, and the local clear command.
+
 These components do not replace `ILogger`, aggregate transport statistics,
 runtime observation, or endpoint supervision.

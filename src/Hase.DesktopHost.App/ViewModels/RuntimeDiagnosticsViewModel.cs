@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Hase.Runtime.Diagnostics;
+using Prism.Commands;
 
 namespace Hase.DesktopHost.App.ViewModels;
 
@@ -9,11 +10,15 @@ public sealed class RuntimeDiagnosticsViewModel
     : INotifyPropertyChanged
 {
     private readonly IDesktopRuntimeDiagnosticSource source;
+    private readonly Dictionary<long, DesktopRuntimeDiagnosticEntry>
+        retainedEntries =
+            [];
     private readonly ObservableCollection<
         DesktopRuntimeDiagnosticEntry> entries =
             [];
 
     private DesktopRuntimeDiagnosticEntry? selectedEntry;
+    private RuntimeDiagnosticLevel selectedDisplayMaximumLevel;
 
     public RuntimeDiagnosticsViewModel(
         IDesktopRuntimeDiagnosticSource? source = null)
@@ -22,10 +27,30 @@ public sealed class RuntimeDiagnosticsViewModel
             source
             ?? EmptyDiagnosticSource.Instance;
 
+        CaptureMaximumLevel =
+            this.source.MaximumLevel;
+
+        AvailableDisplayLevels =
+            Array.AsReadOnly(
+                Enum.GetValues<RuntimeDiagnosticLevel>()
+                    .Where(
+                        level =>
+                            level <= CaptureMaximumLevel)
+                    .ToArray());
+
+        selectedDisplayMaximumLevel =
+            CaptureMaximumLevel;
+
         Entries =
             new ReadOnlyObservableCollection<
                 DesktopRuntimeDiagnosticEntry>(
                     entries);
+
+        ClearDiagnosticsCommand =
+            new DelegateCommand(
+                ClearDiagnostics,
+                () =>
+                    retainedEntries.Count > 0);
     }
 
     public event PropertyChangedEventHandler?
@@ -35,6 +60,53 @@ public sealed class RuntimeDiagnosticsViewModel
         DesktopRuntimeDiagnosticEntry> Entries
     {
         get;
+    }
+
+    public IReadOnlyList<RuntimeDiagnosticLevel>
+        AvailableDisplayLevels
+    {
+        get;
+    }
+
+    public RuntimeDiagnosticLevel CaptureMaximumLevel
+    {
+        get;
+    }
+
+    public string CaptureMaximumLevelText =>
+        CaptureMaximumLevel.ToString();
+
+    public bool IsByteCaptureEnabled =>
+        CaptureMaximumLevel
+        == RuntimeDiagnosticLevel.Bytes;
+
+    public RuntimeDiagnosticLevel SelectedDisplayMaximumLevel
+    {
+        get =>
+            selectedDisplayMaximumLevel;
+
+        set
+        {
+            if (!AvailableDisplayLevels.Contains(
+                    value))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(value),
+                    value,
+                    "The display level exceeds the session capture level.");
+            }
+
+            if (selectedDisplayMaximumLevel == value)
+            {
+                return;
+            }
+
+            selectedDisplayMaximumLevel =
+                value;
+
+            ApplyDisplayFilter();
+            OnPropertyChanged();
+        }
     }
 
     public DesktopRuntimeDiagnosticEntry? SelectedEntry
@@ -61,6 +133,9 @@ public sealed class RuntimeDiagnosticsViewModel
     }
 
     public int RetainedEntryCount =>
+        retainedEntries.Count;
+
+    public int DisplayedEntryCount =>
         entries.Count;
 
     public bool IsEmpty =>
@@ -69,6 +144,11 @@ public sealed class RuntimeDiagnosticsViewModel
     public bool HasSelection =>
         SelectedEntry is not null;
 
+    public DelegateCommand ClearDiagnosticsCommand
+    {
+        get;
+    }
+
     public void Refresh()
     {
         IReadOnlyList<RuntimeDiagnosticRecord> snapshot =
@@ -76,8 +156,8 @@ public sealed class RuntimeDiagnosticsViewModel
 
         if (snapshot.Count == 0)
         {
-            ReplaceAll(
-                []);
+            retainedEntries.Clear();
+            ApplyDisplayFilter();
 
             return;
         }
@@ -85,10 +165,7 @@ public sealed class RuntimeDiagnosticsViewModel
         if (IsReplacementSession(
                 snapshot))
         {
-            ReplaceAll(
-                snapshot);
-
-            return;
+            retainedEntries.Clear();
         }
 
         HashSet<long> retainedSequences =
@@ -98,58 +175,41 @@ public sealed class RuntimeDiagnosticsViewModel
                         record.Sequence)
                 .ToHashSet();
 
-        for (
-            int index = entries.Count - 1;
-            index >= 0;
-            index--)
+        foreach (long sequence
+            in retainedEntries.Keys
+                .Where(
+                    sequence =>
+                        !retainedSequences.Contains(
+                            sequence))
+                .ToArray())
         {
-            if (!retainedSequences.Contains(
-                    entries[index].Sequence))
+            retainedEntries.Remove(
+                sequence);
+        }
+
+        foreach (RuntimeDiagnosticRecord record
+            in snapshot)
+        {
+            if (!retainedEntries.ContainsKey(
+                    record.Sequence))
             {
-                entries.RemoveAt(
-                    index);
+                retainedEntries.Add(
+                    record.Sequence,
+                    DesktopRuntimeDiagnosticEntryProjector.Project(
+                        record));
             }
         }
 
-        HashSet<long> projectedSequences =
-            entries
-                .Select(
-                    entry =>
-                        entry.Sequence)
-                .ToHashSet();
-
-        foreach (RuntimeDiagnosticRecord record
-            in snapshot
-                .Where(
-                    record =>
-                        !projectedSequences.Contains(
-                            record.Sequence))
-                .OrderBy(
-                    record =>
-                        record.Sequence))
-        {
-            entries.Insert(
-                0,
-                DesktopRuntimeDiagnosticEntryProjector.Project(
-                    record));
-        }
-
-        ReconcileSelection();
-        NotifyCollectionState();
+        ApplyDisplayFilter();
     }
 
     private bool IsReplacementSession(
         IReadOnlyList<RuntimeDiagnosticRecord> snapshot)
     {
-        if (entries.Count == 0)
+        if (retainedEntries.Count == 0)
         {
             return false;
         }
-
-        Dictionary<long, DesktopRuntimeDiagnosticEntry> existingBySequence =
-            entries.ToDictionary(
-                entry =>
-                    entry.Sequence);
 
         bool foundOverlap =
             false;
@@ -157,7 +217,7 @@ public sealed class RuntimeDiagnosticsViewModel
         foreach (RuntimeDiagnosticRecord record
             in snapshot)
         {
-            if (!existingBySequence.TryGetValue(
+            if (!retainedEntries.TryGetValue(
                     record.Sequence,
                     out DesktopRuntimeDiagnosticEntry? existing))
             {
@@ -182,22 +242,28 @@ public sealed class RuntimeDiagnosticsViewModel
         return !foundOverlap;
     }
 
-    private void ReplaceAll(
-        IReadOnlyList<RuntimeDiagnosticRecord> snapshot)
+    private void ApplyDisplayFilter()
     {
         long? selectedSequence =
             SelectedEntry?.Sequence;
 
+        SelectedEntry =
+            null;
+
         entries.Clear();
 
-        foreach (RuntimeDiagnosticRecord record
-            in snapshot.OrderByDescending(
-                record =>
-                    record.Sequence))
+        foreach (DesktopRuntimeDiagnosticEntry entry
+            in retainedEntries.Values
+                .Where(
+                    entry =>
+                        entry.Level
+                        <= SelectedDisplayMaximumLevel)
+                .OrderByDescending(
+                    entry =>
+                        entry.Sequence))
         {
             entries.Add(
-                DesktopRuntimeDiagnosticEntryProjector.Project(
-                    record));
+                entry);
         }
 
         SelectedEntry =
@@ -209,28 +275,20 @@ public sealed class RuntimeDiagnosticsViewModel
                         == selectedSequence.Value)
                     ?? entries.FirstOrDefault();
 
-        NotifyCollectionState();
-    }
-
-    private void ReconcileSelection()
-    {
-        if (SelectedEntry is not null
-            && entries.Contains(
-                SelectedEntry))
-        {
-            return;
-        }
-
-        SelectedEntry =
-            entries.FirstOrDefault();
-    }
-
-    private void NotifyCollectionState()
-    {
         OnPropertyChanged(
             nameof(RetainedEntryCount));
         OnPropertyChanged(
+            nameof(DisplayedEntryCount));
+        OnPropertyChanged(
             nameof(IsEmpty));
+
+        ClearDiagnosticsCommand.RaiseCanExecuteChanged();
+    }
+
+    private void ClearDiagnostics()
+    {
+        source.ClearDiagnostics();
+        Refresh();
     }
 
     private void OnPropertyChanged(
@@ -250,6 +308,9 @@ public sealed class RuntimeDiagnosticsViewModel
             get;
         } =
             new();
+
+        public RuntimeDiagnosticLevel MaximumLevel =>
+            RuntimeDiagnosticLevel.Operational;
 
         public IReadOnlyList<RuntimeDiagnosticRecord> CaptureDiagnostics()
         {

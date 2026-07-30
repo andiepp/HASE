@@ -13,6 +13,9 @@ public sealed class DesktopRuntimeDiagnosticSessionTests
         Assert.Equal(
             RuntimeDiagnosticLevel.Operational,
             session.MaximumLevel);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Operational,
+            ((IDesktopRuntimeDiagnosticSource)session).MaximumLevel);
         Assert.True(
             session.Publisher.IsEnabled(
                 RuntimeDiagnosticLevel.Operational));

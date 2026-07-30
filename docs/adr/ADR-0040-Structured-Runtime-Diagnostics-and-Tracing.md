@@ -122,7 +122,7 @@ human correlation but do not establish distributed causal order.
 3. 40C — Property, Command, and Event interaction diagnostics. **Completed.**
 4. 40D — native and compact protocol exchange tracing. **Completed.**
 5. 40E — bounded opt-in native and compact byte tracing. **Completed.**
-6. 40F — Desktop Runtime Host presentation.
+6. 40F — Desktop Runtime Host presentation. **Completed.**
 7. 40G — physical validation, documentation, and closure.
 
 ## Implemented lifecycle diagnostics
@@ -242,8 +242,7 @@ only when Protocol diagnostics are enabled. Diagnostic sink failures never
 alter protocol behavior.
 
 Compact discovery, verification, and authoritative bootstrap traffic remains
-outside attached-runtime Protocol tracing. Exact byte capture remains disabled
-and deferred to Increment 40E.
+outside attached-runtime Protocol tracing.
 
 Increment 40D is validated with 3,855 passing automated tests.
 
@@ -296,6 +295,40 @@ Implementation detail is recorded by:
 - [40E2 — Native Byte Tracing](../ADR-0040-Increment-40E2-Native-Byte-Tracing.md);
 - [40E3 — Compact Byte Tracing](../ADR-0040-Increment-40E3-Compact-Byte-Tracing.md); and
 - [40E4 — Production Byte Activation](../ADR-0040-Increment-40E4-Production-Byte-Activation.md).
+
+## Implemented Desktop Runtime Host presentation
+
+Increment 40F gives the local Desktop Runtime Host one bounded diagnostic
+session and a WPF presentation without adding remote diagnostic access.
+
+`DesktopRuntimeDiagnosticSession` owns a 2,000-record collector and the
+publisher shared by its runtime context and northbound composition. Each
+production start creates a fresh session. Operational capture is the default;
+Protocol or Bytes capture requires an explicit local startup option before
+endpoint generations are created.
+
+`DesktopRuntimeDiagnosticEntryProjector` maps retained records into immutable
+presentation entries with invariant UTC, identity, duration, ordinal detail,
+and bounded uppercase hexadecimal byte formatting. It does not decode payloads
+or introduce fields outside the structured diagnostic envelope.
+
+`RuntimeDiagnosticsViewModel` incrementally reconciles the bounded source,
+orders entries newest first, preserves selection, handles clear and replacement
+sessions, and exposes a cumulative display filter limited to the captured
+levels. Filtering does not change capture or discard hidden records.
+
+The WPF panel presents a scrollable record list and selected-record detail.
+Bytes capture displays an explicit payload warning. The local Clear action
+empties only the current process-local collector.
+
+Increment 40F is validated with 3,913 passing automated tests.
+
+Implementation detail is recorded by:
+
+- [40F1 — Desktop Diagnostic Session Foundation](../ADR-0040-Increment-40F1-Desktop-Diagnostic-Session-Foundation.md);
+- [40F2 — Diagnostic Record Projection](../ADR-0040-Increment-40F2-Diagnostic-Record-Projection.md);
+- [40F3 — Desktop Diagnostics Panel](../ADR-0040-Increment-40F3-Desktop-Diagnostics-Panel.md); and
+- [40F4 — Local Session Controls and Presentation Closure](../ADR-0040-Increment-40F4-Local-Session-Controls-and-Presentation-Closure.md).
 
 ## Deferred
 

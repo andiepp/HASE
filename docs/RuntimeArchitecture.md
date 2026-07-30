@@ -360,6 +360,18 @@ configurations remain unsubscribed. Legacy Native exchange-only transport,
 Compact discovery, verification, and bootstrap remain outside this capture
 boundary.
 
+The Desktop Runtime Host creates one bounded 2,000-record diagnostic session
+before constructing its runtime context. Operational capture is the default;
+Protocol and Bytes require explicit local startup selection. The same publisher
+is used by runtime and northbound producers.
+
+Desktop projection formats only admitted structured fields, sorts detail keys
+ordinally, and renders only the bounded captured bytes. Its WPF panel refreshes
+from the existing UI timer, reconciles collector eviction and replacement
+sessions, and provides cumulative display filtering without changing capture.
+The local Clear action empties only the collector. Bytes capture shows an
+application-payload warning.
+
 Diagnostics are explanatory. They do not own endpoint state, retry decisions,
 attachment generation, runtime failure categories, or application behavior.
 Diagnostic sink failures never propagate into runtime execution.
