@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for validation.
+Completed.
 
 ## Scope
 
@@ -39,4 +39,4 @@ unknown Event fallback, parameterless Events, every typed payload family,
 missing, unexpected, and mismatched payloads, newest-first history, retention,
 and consecutive endpoint source identity.
 
-Cross-application multi-type runtime validation remains Increment 10E.
+Cross-application multi-type runtime validation was completed in Increment 10E.

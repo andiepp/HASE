@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for validation.
+Completed.
 
 ## Scope
 
@@ -39,6 +39,5 @@ descriptor/value mismatches, non-finite numeric values, culture independence,
 empty Strings and ByteArrays, hexadecimal formatting, immutable ByteArray
 handling, and result-constructor validation.
 
-This increment introduces the formatter only. The Laptop Client and Desktop
-Runtime Host continue using their existing Event presentation until Increments
-10C and 10D.
+This increment introduced the shared formatter. Laptop Client and Desktop
+Runtime Host integration was completed in Increments 10C and 10D.

@@ -507,9 +507,13 @@ A Runtime Event owns or exposes:
 
 * Event descriptor association;
 * subscription availability;
-* event payload definition;
+* an optional `EventPayloadDescriptor`;
 * event occurrence notifications;
 * event metadata such as occurrence time where available.
+
+The payload descriptor supplies a display name, optional description, and one
+`DataDescriptor`. A null payload descriptor defines a parameterless Event.
+Boolean, Numeric, String, and ByteArray payload descriptors are supported.
 
 ### Event distinction
 
@@ -526,6 +530,10 @@ An Event occurrence belongs to the Endpoint Session in which it was received.
 Delayed Events from a previous session must not be presented as occurrences
 from a replacement endpoint.
 
+Application presentation resolves an occurrence by Endpoint ID, attachment
+generation, Instrument ID, and Event path. This prevents an occurrence from an
+earlier attachment from acquiring metadata from a replacement attachment.
+
 ### Lifetime
 
 The Runtime Event definition follows descriptor information.
@@ -533,6 +541,11 @@ The Runtime Event definition follows descriptor information.
 Individual Event occurrences are transient.
 
 Applications may store Event history outside the active runtime state.
+
+Such history is application-owned presentation state. The Desktop Runtime Host
+and Laptop Client format payloads through the shared
+`Hase.Operator.Presentation.EventPayloadFormatter`; this does not add runtime
+cache state or Event replay.
 
 ## Runtime Cache
 
@@ -1127,5 +1140,4 @@ either the remote client adapter or local Desktop operator.
 Authoritative reads and observations update displayed current state. Confirmed
 Laptop reads are retained only while the matching attachment generation
 remains published.
-
 

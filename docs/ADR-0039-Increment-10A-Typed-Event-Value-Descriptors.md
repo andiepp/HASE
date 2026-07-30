@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for validation.
+Completed.
 
 ## Scope
 
@@ -40,6 +40,6 @@ Automated coverage includes:
 - host-side gRPC mapping; and
 - client-side snapshot mapping.
 
-This increment changes descriptor contracts and mappings only. Descriptor-driven
-Event value formatting and application presentation remain Increment 10B and
-later.
+This increment changed descriptor contracts and mappings only.
+Descriptor-driven formatting and application presentation were completed in
+Increments 10B through 10D.

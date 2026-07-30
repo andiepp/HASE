@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for validation.
+Completed.
 
 ## Scope
 
@@ -72,9 +72,8 @@ Execute at least one trigger from the Desktop Host and one from the Laptop
 Client. Each occurrence must appear in both applications, demonstrating that
 Command direction does not change Event publication or presentation.
 
-## Stop condition
+## Acceptance
 
-Increment 10E is accepted when the complete solution builds, all tests pass,
-and all five valid occurrences appear without payload diagnostics in both
-applications.
-
+Increment 10E was accepted with the complete solution building, 3,762 tests
+passing, and all five valid occurrences appearing without payload diagnostics
+in both applications.

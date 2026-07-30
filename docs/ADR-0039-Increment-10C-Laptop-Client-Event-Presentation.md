@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for validation.
+Completed.
 
 ## Scope
 
@@ -30,5 +30,5 @@ Automated coverage includes normalization of every remote value kind,
 parameterless Events, every typed payload kind, payload metadata, missing
 payloads, unexpected payloads, type mismatches, and diagnostic visibility.
 
-This increment changes the Laptop Client only. Desktop Runtime Host Event
-presentation remains Increment 10D.
+This increment changed the Laptop Client only. Desktop Runtime Host Event
+presentation was completed in Increment 10D.
