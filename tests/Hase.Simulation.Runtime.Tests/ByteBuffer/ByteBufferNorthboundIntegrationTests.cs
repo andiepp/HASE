@@ -1,6 +1,7 @@
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
@@ -10,6 +11,156 @@ namespace Hase.Simulation.Runtime.Tests.ByteBuffer;
 
 public sealed class ByteBufferNorthboundIntegrationTests
 {
+    [Fact]
+    public async Task EventTriggerCommands_PublishAllTypedNorthboundOccurrences()
+    {
+        var endpointId =
+            new EndpointId(
+                "simulation-byte-buffer-validation");
+        string identityFilePath =
+            Path.Combine(
+                Path.GetTempPath(),
+                $"hase-byte-buffer-events-{Guid.NewGuid():N}.json");
+
+        try
+        {
+            var context =
+                new RuntimeContext();
+            var attachmentService =
+                new InProcessEndpointAttachmentService(
+                    context);
+
+            await using var inventory =
+                new RuntimeEndpointAttachmentInventory(
+                    attachmentService);
+
+            await inventory.AttachAsync(
+                CreateRequest(
+                    endpointId));
+
+            await using RuntimeHostNorthboundSnapshotComposition composition =
+                await RuntimeHostNorthboundSnapshotComposition
+                    .CreateFileBackedAsync(
+                        inventory,
+                        identityFilePath,
+                        new RuntimeHostId(
+                            "byte-buffer-event-integration-host"));
+
+            PublishedRuntimeEndpointSnapshot endpoint =
+                Assert.Single(
+                    composition.SnapshotProvider
+                        .Capture()
+                        .Endpoints);
+
+            await using RuntimeHostObservationSubscription subscription =
+                await composition.ObservationService
+                    .OpenSubscriptionAsync(
+                        new RuntimeHostObservationSubscriptionOptions());
+
+            (
+                DescriptorPath CommandPath,
+                DescriptorPath EventPath,
+                object? Value)[] cases =
+            [
+                (
+                    ByteBufferDescriptorFactory.EmitNoPayloadCommandPath,
+                    ByteBufferDescriptorFactory.NoPayloadEventPath,
+                    null),
+                (
+                    ByteBufferDescriptorFactory.EmitBooleanCommandPath,
+                    ByteBufferDescriptorFactory.BooleanEventPath,
+                    true),
+                (
+                    ByteBufferDescriptorFactory.EmitNumericCommandPath,
+                    ByteBufferDescriptorFactory.NumericEventPath,
+                    23.5),
+                (
+                    ByteBufferDescriptorFactory.EmitStringCommandPath,
+                    ByteBufferDescriptorFactory.StringEventPath,
+                    "HASE event validation"),
+                (
+                    ByteBufferDescriptorFactory.EmitByteArrayCommandPath,
+                    ByteBufferDescriptorFactory.ByteArrayEventPath,
+                    new ByteArrayValue(
+                        new byte[]
+                        {
+                            0x01,
+                            0xAB,
+                            0x00,
+                            0xFF
+                        }))
+            ];
+
+            using var observationTimeout =
+                new CancellationTokenSource(
+                    TimeSpan.FromSeconds(
+                        5));
+
+            await using IAsyncEnumerator<RuntimeHostObservation> observations =
+                subscription.ReadAllAsync(
+                        observationTimeout.Token)
+                    .GetAsyncEnumerator(
+                        observationTimeout.Token);
+
+            foreach (var validationCase in cases)
+            {
+                var target =
+                    new RuntimeHostCommandTarget(
+                        endpointId,
+                        endpoint.Generation,
+                        ByteBufferDescriptorFactory.InstrumentId,
+                        validationCase.CommandPath);
+
+                RuntimeHostCommandOperationResult result =
+                    await composition.CommandService.ExecuteAsync(
+                        target,
+                        null);
+
+                Assert.True(
+                    result.IsSuccess);
+                Assert.Null(
+                    result.ReturnValue);
+                Assert.True(
+                    await observations.MoveNextAsync());
+
+                RuntimeHostObservation observation =
+                    observations.Current;
+                Assert.Equal(
+                    RuntimeHostObservationKind.EventOccurred,
+                    observation.Kind);
+                Assert.Equal(
+                    endpointId,
+                    observation.EndpointId);
+                Assert.Equal(
+                    endpoint.Generation,
+                    observation.AttachmentGeneration);
+
+                RuntimeHostEventOccurredObservationPayload occurrence =
+                    Assert.IsType<
+                        RuntimeHostEventOccurredObservationPayload>(
+                        observation.Payload);
+                Assert.Equal(
+                    ByteBufferDescriptorFactory.InstrumentId,
+                    occurrence.InstrumentId);
+                Assert.Equal(
+                    validationCase.EventPath,
+                    occurrence.EventPath);
+                Assert.Equal(
+                    validationCase.Value,
+                    occurrence.Value);
+            }
+        }
+        finally
+        {
+            if (File.Exists(
+                    identityFilePath))
+            {
+                File.Delete(
+                    identityFilePath);
+            }
+        }
+    }
+
     [Fact]
     public async Task CommandExecution_UpdatesCachedValueAndPublishesObservation()
     {

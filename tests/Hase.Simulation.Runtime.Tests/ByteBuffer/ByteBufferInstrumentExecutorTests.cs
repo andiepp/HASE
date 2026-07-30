@@ -303,6 +303,120 @@ public sealed class ByteBufferInstrumentExecutorTests
             observer.NotificationCount);
     }
 
+    public static TheoryData<DescriptorPath, DescriptorPath, object?>
+        EventOccurrences =>
+        new()
+        {
+            {
+                ByteBufferDescriptorFactory.EmitNoPayloadCommandPath,
+                ByteBufferDescriptorFactory.NoPayloadEventPath,
+                null
+            },
+            {
+                ByteBufferDescriptorFactory.EmitBooleanCommandPath,
+                ByteBufferDescriptorFactory.BooleanEventPath,
+                true
+            },
+            {
+                ByteBufferDescriptorFactory.EmitNumericCommandPath,
+                ByteBufferDescriptorFactory.NumericEventPath,
+                23.5
+            },
+            {
+                ByteBufferDescriptorFactory.EmitStringCommandPath,
+                ByteBufferDescriptorFactory.StringEventPath,
+                "HASE event validation"
+            },
+            {
+                ByteBufferDescriptorFactory.EmitByteArrayCommandPath,
+                ByteBufferDescriptorFactory.ByteArrayEventPath,
+                new ByteArrayValue(
+                    new byte[]
+                    {
+                        0x01,
+                        0xAB,
+                        0x00,
+                        0xFF
+                    })
+            }
+        };
+
+    [Theory]
+    [MemberData(
+        nameof(EventOccurrences))]
+    public async Task ExecuteCommandAsync_EventTrigger_ShouldPublishExactOccurrence(
+        DescriptorPath commandPath,
+        DescriptorPath eventPath,
+        object? expectedValue)
+    {
+        RuntimeInstrument instrument =
+            CreateRuntimeInstrument();
+        RuntimeEvent runtimeEvent =
+            instrument.FindEvent(
+                eventPath)!;
+        var observer =
+            new RecordingEventObserver();
+        runtimeEvent.Subscribe(
+            observer);
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                new ByteBufferSimulation(),
+                instrument,
+                new FixedTimeProvider(
+                    Timestamp));
+
+        var result =
+            await executor.ExecuteCommandAsync(
+                commandPath,
+                null);
+
+        Assert.True(
+            result.Success);
+        Assert.Null(
+            result.Value);
+
+        RuntimeEventOccurrence occurrence =
+            Assert.Single(
+                observer.Occurrences);
+        Assert.Same(
+            runtimeEvent,
+            occurrence.Event);
+        Assert.Equal(
+            Timestamp,
+            occurrence.TimestampUtc);
+        Assert.Equal(
+            expectedValue,
+            occurrence.Value);
+    }
+
+    [Fact]
+    public async Task ExecuteCommandAsync_EventTriggerWithArgument_ShouldFail()
+    {
+        RuntimeInstrument instrument =
+            CreateRuntimeInstrument();
+        RuntimeEvent runtimeEvent =
+            instrument.FindEvent(
+                ByteBufferDescriptorFactory.BooleanEventPath)!;
+        var observer =
+            new RecordingEventObserver();
+        runtimeEvent.Subscribe(
+            observer);
+        var executor =
+            new ByteBufferInstrumentExecutor(
+                new ByteBufferSimulation(),
+                instrument);
+
+        var result =
+            await executor.ExecuteCommandAsync(
+                ByteBufferDescriptorFactory.EmitBooleanCommandPath,
+                true);
+
+        Assert.False(
+            result.Success);
+        Assert.Empty(
+            observer.Occurrences);
+    }
+
     private static RuntimeInstrument CreateRuntimeInstrument()
     {
         var descriptor =
@@ -353,6 +467,22 @@ public sealed class ByteBufferInstrumentExecutorTests
             PropertyValueChanged change)
         {
             NotificationCount++;
+        }
+    }
+
+    private sealed class RecordingEventObserver
+        : IRuntimeEventObserver
+    {
+        public List<RuntimeEventOccurrence> Occurrences
+        {
+            get;
+        } = [];
+
+        public void OnRuntimeEventOccurred(
+            RuntimeEventOccurrence occurrence)
+        {
+            Occurrences.Add(
+                occurrence);
         }
     }
 }

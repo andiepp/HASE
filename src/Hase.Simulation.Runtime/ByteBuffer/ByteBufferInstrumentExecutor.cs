@@ -55,6 +55,27 @@ public sealed class ByteBufferInstrumentExecutor
                 + "Property-editor validation Properties.",
                 nameof(runtimeInstrument));
         }
+
+        DescriptorPath[] requiredEvents =
+        [
+            ByteBufferDescriptorFactory.NoPayloadEventPath,
+            ByteBufferDescriptorFactory.BooleanEventPath,
+            ByteBufferDescriptorFactory.NumericEventPath,
+            ByteBufferDescriptorFactory.StringEventPath,
+            ByteBufferDescriptorFactory.ByteArrayEventPath
+        ];
+
+        if (requiredEvents.Any(
+                path =>
+                    runtimeInstrument.FindEvent(
+                        path)
+                    is null))
+        {
+            throw new ArgumentException(
+                "The runtime instrument does not contain all required "
+                + "Event-validation Events.",
+                nameof(runtimeInstrument));
+        }
     }
 
     public Task<ExecutionResult<PropertyValue?>> ReadPropertyAsync(
@@ -159,29 +180,120 @@ public sealed class ByteBufferInstrumentExecutor
         cancellationToken.ThrowIfCancellationRequested();
 
         if (commandPath
-                != ByteBufferDescriptorFactory.ReplaceCommandPath
-            || argument is not ByteArrayValue replacement)
+                == ByteBufferDescriptorFactory.ReplaceCommandPath
+            && argument is ByteArrayValue replacement)
         {
-            return Task.FromResult(
-                new ExecutionResult<object?>(
-                    success: false,
-                    value: null));
+            lock (gate)
+            {
+                simulation.Replace(
+                    replacement);
+                UpdateRuntimeProperty(
+                    ByteBufferDescriptorFactory.ValuePropertyPath,
+                    replacement);
+
+                return Task.FromResult(
+                    new ExecutionResult<object?>(
+                        success: true,
+                        value:
+                            replacement));
+            }
         }
 
-        lock (gate)
+        if (argument is null
+            && TryResolveEventOccurrence(
+                commandPath,
+                out DescriptorPath eventPath,
+                out object? value))
         {
-            simulation.Replace(
-                replacement);
-            UpdateRuntimeProperty(
-                ByteBufferDescriptorFactory.ValuePropertyPath,
-                replacement);
+            RuntimeEvent runtimeEvent =
+                runtimeInstrument.FindEvent(
+                    eventPath)
+                ?? throw new InvalidOperationException(
+                    "A required Event-validation Event could not be found.");
+
+            runtimeEvent.PublishOccurrence(
+                timeProvider.GetUtcNow(),
+                value);
 
             return Task.FromResult(
                 new ExecutionResult<object?>(
                     success: true,
-                    value:
-                        replacement));
+                    value: null));
         }
+
+        return Task.FromResult(
+            new ExecutionResult<object?>(
+                success: false,
+                value: null));
+    }
+
+    private static bool TryResolveEventOccurrence(
+        DescriptorPath commandPath,
+        out DescriptorPath eventPath,
+        out object? value)
+    {
+        if (commandPath
+            == ByteBufferDescriptorFactory.EmitNoPayloadCommandPath)
+        {
+            eventPath =
+                ByteBufferDescriptorFactory.NoPayloadEventPath;
+            value =
+                null;
+            return true;
+        }
+
+        if (commandPath
+            == ByteBufferDescriptorFactory.EmitBooleanCommandPath)
+        {
+            eventPath =
+                ByteBufferDescriptorFactory.BooleanEventPath;
+            value =
+                true;
+            return true;
+        }
+
+        if (commandPath
+            == ByteBufferDescriptorFactory.EmitNumericCommandPath)
+        {
+            eventPath =
+                ByteBufferDescriptorFactory.NumericEventPath;
+            value =
+                23.5;
+            return true;
+        }
+
+        if (commandPath
+            == ByteBufferDescriptorFactory.EmitStringCommandPath)
+        {
+            eventPath =
+                ByteBufferDescriptorFactory.StringEventPath;
+            value =
+                "HASE event validation";
+            return true;
+        }
+
+        if (commandPath
+            == ByteBufferDescriptorFactory.EmitByteArrayCommandPath)
+        {
+            eventPath =
+                ByteBufferDescriptorFactory.ByteArrayEventPath;
+            value =
+                new ByteArrayValue(
+                    new byte[]
+                    {
+                        0x01,
+                        0xAB,
+                        0x00,
+                        0xFF
+                    });
+            return true;
+        }
+
+        eventPath =
+            commandPath;
+        value =
+            null;
+        return false;
     }
 
     private object? GetCurrentValue(

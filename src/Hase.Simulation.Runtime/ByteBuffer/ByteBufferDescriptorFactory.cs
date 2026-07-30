@@ -1,5 +1,6 @@
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
@@ -56,6 +57,56 @@ public static class ByteBufferDescriptorFactory
         new(
             "Buffer",
             "Replace");
+
+    public static readonly DescriptorPath EmitNoPayloadCommandPath =
+        new(
+            "Event Validation",
+            "Emit No Payload");
+
+    public static readonly DescriptorPath EmitBooleanCommandPath =
+        new(
+            "Event Validation",
+            "Emit Boolean");
+
+    public static readonly DescriptorPath EmitNumericCommandPath =
+        new(
+            "Event Validation",
+            "Emit Numeric");
+
+    public static readonly DescriptorPath EmitStringCommandPath =
+        new(
+            "Event Validation",
+            "Emit String");
+
+    public static readonly DescriptorPath EmitByteArrayCommandPath =
+        new(
+            "Event Validation",
+            "Emit ByteArray");
+
+    public static readonly DescriptorPath NoPayloadEventPath =
+        new(
+            "Event Validation",
+            "No Payload");
+
+    public static readonly DescriptorPath BooleanEventPath =
+        new(
+            "Event Validation",
+            "Boolean");
+
+    public static readonly DescriptorPath NumericEventPath =
+        new(
+            "Event Validation",
+            "Numeric");
+
+    public static readonly DescriptorPath StringEventPath =
+        new(
+            "Event Validation",
+            "String");
+
+    public static readonly DescriptorPath ByteArrayEventPath =
+        new(
+            "Event Validation",
+            "ByteArray");
 
     public static InstrumentDescriptor CreateDescriptor()
     {
@@ -126,6 +177,62 @@ public static class ByteBufferDescriptorFactory
                     "Atomically replaces the simulated ByteArray buffer."
             };
 
+        var emitNoPayload =
+            CreateEventCommand(
+                EmitNoPayloadCommandPath,
+                "Emit No-Payload Event");
+        var emitBoolean =
+            CreateEventCommand(
+                EmitBooleanCommandPath,
+                "Emit Boolean Event");
+        var emitNumeric =
+            CreateEventCommand(
+                EmitNumericCommandPath,
+                "Emit Numeric Event");
+        var emitString =
+            CreateEventCommand(
+                EmitStringCommandPath,
+                "Emit String Event");
+        var emitByteArray =
+            CreateEventCommand(
+                EmitByteArrayCommandPath,
+                "Emit ByteArray Event");
+
+        var noPayload =
+            new EventDescriptor(
+                NoPayloadEventPath,
+                "No-Payload Event")
+            {
+                Description =
+                    "Deterministic parameterless Event validation occurrence."
+            };
+        var boolean =
+            CreatePayloadEvent(
+                BooleanEventPath,
+                "Boolean Event",
+                "State",
+                new BooleanDataDescriptor());
+        var numeric =
+            CreatePayloadEvent(
+                NumericEventPath,
+                "Numeric Event",
+                "Temperature",
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius));
+        var text =
+            CreatePayloadEvent(
+                StringEventPath,
+                "String Event",
+                "Message",
+                new StringDataDescriptor());
+        var bytes =
+            CreatePayloadEvent(
+                ByteArrayEventPath,
+                "ByteArray Event",
+                "Bytes",
+                new ByteArrayDataDescriptor());
+
         return new InstrumentDescriptor(
             InstrumentId,
             "Simulated Property Editor Validation",
@@ -154,8 +261,58 @@ public static class ByteBufferDescriptorFactory
                     ],
                     commands:
                     [
-                        replace
+                        replace,
+                        emitNoPayload,
+                        emitBoolean,
+                        emitNumeric,
+                        emitString,
+                        emitByteArray
+                    ],
+                    events:
+                    [
+                        noPayload,
+                        boolean,
+                        numeric,
+                        text,
+                        bytes
                     ])
+        };
+    }
+
+    private static CommandDescriptor CreateEventCommand(
+        DescriptorPath path,
+        string displayName)
+    {
+        return new CommandDescriptor(
+            path,
+            displayName)
+        {
+            Description =
+                "Publishes one deterministic Event validation occurrence."
+        };
+    }
+
+    private static EventDescriptor CreatePayloadEvent(
+        DescriptorPath path,
+        string displayName,
+        string payloadDisplayName,
+        DataDescriptor data)
+    {
+        return new EventDescriptor(
+            path,
+            displayName)
+        {
+            Description =
+                "Deterministic typed Event validation occurrence.",
+            Payload =
+                new EventPayloadDescriptor(
+                    payloadDisplayName,
+                    data)
+                {
+                    Description =
+                        "Deterministic payload used for local and remote "
+                        + "presentation validation."
+                }
         };
     }
 }
