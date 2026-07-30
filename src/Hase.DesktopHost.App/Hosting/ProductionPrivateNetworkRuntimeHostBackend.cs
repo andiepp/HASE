@@ -7,6 +7,7 @@ using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Physical;
 using Hase.Protocol;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Runtime.Transport;
@@ -22,7 +23,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     : IDesktopRuntimeHostBackend,
       IDesktopRuntimeHostInventorySource,
       IDesktopRuntimeHostOperator,
-      IDesktopRuntimeHostEventSource
+      IDesktopRuntimeHostEventSource,
+      IDesktopRuntimeDiagnosticSource
 {
     private const int NativeTcpPort = 5000;
     private const int MaximumPayloadLength = 4096;
@@ -42,6 +44,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private RuntimeHostNorthboundSnapshotComposition? composition;
     private RuntimeHostPrivateNetworkDeployment? deployment;
     private DesktopRuntimeHostOperator? runtimeOperator;
+    private DesktopRuntimeDiagnosticSession? diagnosticSession;
 
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration)
@@ -267,6 +270,13 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
         try
         {
+            var session =
+                new DesktopRuntimeDiagnosticSession(
+                    configuration.MaximumDiagnosticLevel);
+
+            diagnosticSession =
+                session;
+
             CompactEndpointDefinition compactDefinition =
                 ArduinoUnoCompactDefinitionFactory.Create();
             var definitionRepository =
@@ -283,7 +293,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             definitionRepository,
                             new DefaultRuntimeEndpointReconnectPolicy(),
                             MaximumPayloadLength,
-                            CompactEndpointHealthProbeOptions.Default)
+                            CompactEndpointHealthProbeOptions.Default,
+                            diagnostics:
+                                session.Publisher)
                     : RuntimeEndpointAttachmentHost
                         .CreateNativeNetworkAndCompactSerial(
                             new ProtocolNativeEndpointBootstrapper(),
@@ -292,7 +304,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             definitionRepository,
                             new DefaultRuntimeEndpointReconnectPolicy(),
                             MaximumPayloadLength,
-                            CompactEndpointHealthProbeOptions.Default);
+                            CompactEndpointHealthProbeOptions.Default,
+                            diagnostics:
+                                session.Publisher);
 
             composition =
                 await RuntimeHostNorthboundSnapshotComposition
@@ -451,6 +465,17 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
     }
 
+    public IReadOnlyList<RuntimeDiagnosticRecord> CaptureDiagnostics()
+    {
+        return diagnosticSession?.CaptureDiagnostics()
+            ?? [];
+    }
+
+    public void ClearDiagnostics()
+    {
+        diagnosticSession?.ClearDiagnostics();
+    }
+
     private static async Task AttachNativeEndpointAsync(
         RuntimeEndpointAttachmentHost host,
         string endpointHost)
@@ -570,6 +595,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         composition = null;
         attachmentHost = null;
         runtimeOperator = null;
+        diagnosticSession = null;
 
         if (deploymentToDispose is not null)
         {

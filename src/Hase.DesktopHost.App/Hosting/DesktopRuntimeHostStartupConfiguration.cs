@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Hosting;
 
 namespace Hase.DesktopHost.App.Hosting;
@@ -7,7 +8,9 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
     string DeploymentConfigurationFilePath,
     string Esp32Host,
     RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions,
-    bool IncludeByteBufferSimulation = false)
+    bool IncludeByteBufferSimulation = false,
+    RuntimeDiagnosticLevel MaximumDiagnosticLevel =
+        RuntimeDiagnosticLevel.Operational)
 {
     public string PrivateNetworkBindingDisplay =>
         $"https://{DeploymentOptions.Binding.Address}:{DeploymentOptions.Binding.Port}";
@@ -20,30 +23,78 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
         const string includeSimulationSwitch =
             "--include-byte-buffer-simulation";
 
-        if (commandLineArguments.Count is < 3 or > 4)
+        const string operationalDiagnosticsSwitch =
+            "--diagnostics=operational";
+
+        const string protocolDiagnosticsSwitch =
+            "--diagnostics=protocol";
+
+        const string byteDiagnosticsSwitch =
+            "--diagnostics=bytes";
+
+        if (commandLineArguments.Count is < 3 or > 5)
         {
             throw new ArgumentException(
                 "Hase.DesktopHost.App requires the external desktop "
                 + "private-network configuration file and ESP32 host name "
-                + "or IP address, followed optionally by "
-                + $"'{includeSimulationSwitch}'.",
+                + "or IP address, followed optionally by the simulation "
+                + "switch and one diagnostics-level switch.",
                 nameof(commandLineArguments));
         }
 
         bool includeByteBufferSimulation =
-            commandLineArguments.Count == 4
-            && string.Equals(
-                commandLineArguments[3],
-                includeSimulationSwitch,
-                StringComparison.Ordinal);
+            false;
 
-        if (commandLineArguments.Count == 4
-            && !includeByteBufferSimulation)
+        RuntimeDiagnosticLevel maximumDiagnosticLevel =
+            RuntimeDiagnosticLevel.Operational;
+
+        bool diagnosticLevelSpecified =
+            false;
+
+        foreach (string option
+            in commandLineArguments.Skip(3))
         {
-            throw new ArgumentException(
-                $"The only supported optional argument is "
-                + $"'{includeSimulationSwitch}'.",
-                nameof(commandLineArguments));
+            if (string.Equals(
+                    option,
+                    includeSimulationSwitch,
+                    StringComparison.Ordinal))
+            {
+                if (includeByteBufferSimulation)
+                {
+                    throw CreateUnsupportedOptionsException(
+                        commandLineArguments);
+                }
+
+                includeByteBufferSimulation =
+                    true;
+
+                continue;
+            }
+
+            RuntimeDiagnosticLevel? selectedLevel =
+                option switch
+                {
+                    operationalDiagnosticsSwitch =>
+                        RuntimeDiagnosticLevel.Operational,
+                    protocolDiagnosticsSwitch =>
+                        RuntimeDiagnosticLevel.Protocol,
+                    byteDiagnosticsSwitch =>
+                        RuntimeDiagnosticLevel.Bytes,
+                    _ =>
+                        null
+                };
+
+            if (selectedLevel is null
+                || diagnosticLevelSpecified)
+            {
+                throw CreateUnsupportedOptionsException(
+                    commandLineArguments);
+            }
+
+            maximumDiagnosticLevel =
+                selectedLevel.Value;
+            diagnosticLevelSpecified =
+                true;
         }
 
         string configurationFilePath =
@@ -79,7 +130,18 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
             fullConfigurationFilePath,
             esp32Host.Trim(),
             deploymentOptions,
-            includeByteBufferSimulation);
+            includeByteBufferSimulation,
+            maximumDiagnosticLevel);
+    }
+
+    private static ArgumentException CreateUnsupportedOptionsException(
+        IReadOnlyList<string> commandLineArguments)
+    {
+        return new ArgumentException(
+            "Optional arguments may contain "
+            + "'--include-byte-buffer-simulation' once and one of "
+            + "'--diagnostics=operational', '--diagnostics=protocol', "
+            + "or '--diagnostics=bytes'.",
+            nameof(commandLineArguments));
     }
 }
-

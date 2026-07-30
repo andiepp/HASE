@@ -3,6 +3,7 @@ using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Xunit;
@@ -30,6 +31,34 @@ public sealed class RuntimeEndpointAttachmentHostTests
             host.AttachmentInventory);
         Assert.Empty(
             host.AttachmentInventory.List());
+    }
+
+    [Fact]
+    public async Task CreateNativeNetworkAndCompactSerial_ShouldUseSuppliedDiagnostics()
+    {
+        var collector =
+            new BoundedRuntimeDiagnosticCollector(
+                4);
+
+        var diagnostics =
+            new RuntimeDiagnosticPublisher(
+                collector);
+
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost
+                .CreateNativeNetworkAndCompactSerial(
+                    new ProtocolNativeEndpointBootstrapper(),
+                    new ProtocolRuntimeEndpointSynchronizer(
+                        new EndpointDescriptorCompatibilityValidator()),
+                    new InMemoryCompactEndpointDefinitionRepository(
+                        []),
+                    new DefaultRuntimeEndpointReconnectPolicy(),
+                    diagnostics:
+                        diagnostics);
+
+        Assert.Same(
+            diagnostics,
+            host.RuntimeContext.Diagnostics);
     }
 
     [Fact]

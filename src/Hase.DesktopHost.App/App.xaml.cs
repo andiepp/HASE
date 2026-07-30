@@ -65,6 +65,9 @@ public partial class App : PrismApplication
         containerRegistry.RegisterInstance<
             IDesktopRuntimeHostEventSource>(
                 productionBackend);
+        containerRegistry.RegisterInstance<
+            IDesktopRuntimeDiagnosticSource>(
+                productionBackend);
         containerRegistry.RegisterSingleton<
             IDesktopRuntimeHost,
             DesktopRuntimeHost>();

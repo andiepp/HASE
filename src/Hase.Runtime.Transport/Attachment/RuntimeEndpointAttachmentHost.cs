@@ -1,5 +1,6 @@
 ﻿using Hase.CompactProtocol;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
 using Hase.Transport.Serial;
 
@@ -33,7 +34,8 @@ public sealed class RuntimeEndpointAttachmentHost
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
         int maximumPayloadLength =
             TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
-        CompactEndpointHealthProbeOptions? compactProbeOptions = null)
+        CompactEndpointHealthProbeOptions? compactProbeOptions = null,
+        RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             bootstrapper);
@@ -48,7 +50,8 @@ public sealed class RuntimeEndpointAttachmentHost
             reconnectPolicy);
 
         var runtimeContext =
-            new RuntimeContext();
+            new RuntimeContext(
+                diagnostics);
 
         var nativeNetworkService =
             new NativeNetworkEndpointAttachmentService(
@@ -89,7 +92,8 @@ public sealed class RuntimeEndpointAttachmentHost
             IRuntimeEndpointReconnectPolicy reconnectPolicy,
             int maximumPayloadLength =
                 TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
-            CompactEndpointHealthProbeOptions? compactProbeOptions = null)
+            CompactEndpointHealthProbeOptions? compactProbeOptions = null,
+            RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             bootstrapper);
@@ -101,7 +105,8 @@ public sealed class RuntimeEndpointAttachmentHost
             reconnectPolicy);
 
         var runtimeContext =
-            new RuntimeContext();
+            new RuntimeContext(
+                diagnostics);
 
         var nativeNetworkService =
             new NativeNetworkEndpointAttachmentService(
@@ -144,7 +149,8 @@ public sealed class RuntimeEndpointAttachmentHost
         IRuntimeEndpointSynchronizer synchronizer,
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
         int maximumPayloadLength =
-            TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength)
+            TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
+        RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             bootstrapper);
@@ -156,7 +162,8 @@ public sealed class RuntimeEndpointAttachmentHost
             reconnectPolicy);
 
         var runtimeContext =
-            new RuntimeContext();
+            new RuntimeContext(
+                diagnostics);
 
         var attachmentService =
             new NativeNetworkEndpointAttachmentService(
@@ -189,7 +196,8 @@ public sealed class RuntimeEndpointAttachmentHost
     public static RuntimeEndpointAttachmentHost CreateCompactSerial(
         ICompactEndpointDefinitionRepository definitionRepository,
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
-        CompactEndpointHealthProbeOptions? probeOptions = null)
+        CompactEndpointHealthProbeOptions? probeOptions = null,
+        RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             definitionRepository);
@@ -198,7 +206,8 @@ public sealed class RuntimeEndpointAttachmentHost
             reconnectPolicy);
 
         var runtimeContext =
-            new RuntimeContext();
+            new RuntimeContext(
+                diagnostics);
 
         var attachmentService =
             new CompactSerialEndpointAttachmentService(
@@ -257,4 +266,3 @@ public sealed class RuntimeEndpointAttachmentHost
         return AttachmentInventory.DisposeAsync();
     }
 }
-
