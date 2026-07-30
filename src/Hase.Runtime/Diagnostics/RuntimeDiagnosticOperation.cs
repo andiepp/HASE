@@ -224,6 +224,79 @@ public sealed class RuntimeDiagnosticOperation
         }
     }
 
+    public async Task<TResult> RunAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> operation,
+        Func<TResult, RuntimeDiagnosticOutcome> outcomeSelector,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(
+            operation);
+
+        ArgumentNullException.ThrowIfNull(
+            outcomeSelector);
+
+        try
+        {
+            TResult result =
+                await operation(
+                        cancellationToken)
+                    .ConfigureAwait(
+                        false);
+
+            RuntimeDiagnosticOutcome outcome =
+                SelectOutcome(
+                    result,
+                    outcomeSelector);
+
+            Complete(
+                outcome);
+
+            return result;
+        }
+        catch (TimeoutException)
+        {
+            Complete(
+                RuntimeDiagnosticOutcome.TimedOut);
+
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            Complete(
+                RuntimeDiagnosticOutcome.Cancelled);
+
+            throw;
+        }
+        catch
+        {
+            Complete(
+                RuntimeDiagnosticOutcome.Failed);
+
+            throw;
+        }
+    }
+
+    private static RuntimeDiagnosticOutcome SelectOutcome<TResult>(
+        TResult result,
+        Func<TResult, RuntimeDiagnosticOutcome> outcomeSelector)
+    {
+        try
+        {
+            RuntimeDiagnosticOutcome outcome =
+                outcomeSelector(
+                    result);
+
+            return Enum.IsDefined(
+                       outcome)
+                ? outcome
+                : RuntimeDiagnosticOutcome.Failed;
+        }
+        catch
+        {
+            return RuntimeDiagnosticOutcome.Failed;
+        }
+    }
+
     private static void ValidateEventName(
         string eventName,
         string parameterName)

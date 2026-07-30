@@ -299,7 +299,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     .CreateFileBackedAsync(
                         attachmentHost.AttachmentInventory,
                         GetRuntimeIdentityFilePath(),
-                        RuntimeHostId);
+                        RuntimeHostId,
+                        diagnostics:
+                            attachmentHost
+                                .RuntimeContext
+                                .Diagnostics);
 
             runtimeOperator =
                 new DesktopRuntimeHostOperator(

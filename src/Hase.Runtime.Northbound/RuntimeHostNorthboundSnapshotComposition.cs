@@ -1,4 +1,5 @@
-﻿using Hase.Runtime.Transport.Attachment;
+﻿using Hase.Runtime.Diagnostics;
+using Hase.Runtime.Transport.Attachment;
 
 namespace Hase.Runtime.Northbound;
 
@@ -92,7 +93,8 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
             IRuntimeEndpointAttachmentInventory attachmentInventory,
             string identityFilePath,
             RuntimeHostId? configuredRuntimeHostId = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            RuntimeDiagnosticPublisher? diagnostics = null)
     {
         ArgumentNullException.ThrowIfNull(
             attachmentInventory);
@@ -137,7 +139,8 @@ public sealed class RuntimeHostNorthboundSnapshotComposition
 
             var propertyService =
                 new RuntimeHostPropertyService(
-                    attachmentProjection);
+                    attachmentProjection,
+                    diagnostics);
 
             var commandService =
                 new RuntimeHostCommandService(
