@@ -8,7 +8,8 @@ namespace Hase.CompactProtocol;
 /// unsolicited-frame delivery over one owned serial byte stream.
 /// </summary>
 internal sealed class CompactSerialProtocolConnection
-    : ICompactSerialProtocolConnection
+    : ICompactSerialProtocolConnection,
+      ITransportByteTraceSource
 {
     private readonly ISerialByteStream _stream;
     private readonly CompactSerialFrameReader _reader;
@@ -25,6 +26,12 @@ internal sealed class CompactSerialProtocolConnection
 
     private readonly object _pendingGate =
         new();
+
+    private readonly object _byteTraceGate =
+        new();
+
+    private readonly List<ITransportByteTraceObserver> _byteTraceObservers =
+        [];
 
     private Task? _receiveLoopTask;
     private TaskCompletionSource<CompactSerialFrame>? _pendingResponse;
@@ -59,6 +66,42 @@ internal sealed class CompactSerialProtocolConnection
     /// <inheritdoc />
     public TransportConnectionState State =>
         _state;
+
+    public void SubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observer);
+
+        lock (_byteTraceGate)
+        {
+            if (!_byteTraceObservers.Any(
+                    current =>
+                        ReferenceEquals(
+                            current,
+                            observer)))
+            {
+                _byteTraceObservers.Add(
+                    observer);
+            }
+        }
+    }
+
+    public void UnsubscribeByteTrace(
+        ITransportByteTraceObserver observer)
+    {
+        ArgumentNullException.ThrowIfNull(
+            observer);
+
+        lock (_byteTraceGate)
+        {
+            _byteTraceObservers.RemoveAll(
+                current =>
+                    ReferenceEquals(
+                        current,
+                        observer));
+        }
+    }
 
     /// <inheritdoc />
     public async Task<CompactSerialFrame> ExchangeAsync(
@@ -117,6 +160,11 @@ internal sealed class CompactSerialProtocolConnection
                 await _stream.WriteAsync(
                     encodedRequest,
                     cancellationToken);
+
+                PublishByteTrace(
+                    TransportByteDirection.Outbound,
+                    encodedRequest,
+                    request.CorrelationId);
             }
             catch
             {
@@ -241,9 +289,28 @@ internal sealed class CompactSerialProtocolConnection
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                CompactSerialFrame frame =
-                    await _reader.ReadAsync(
-                        cancellationToken);
+                CompactSerialFrame frame;
+
+                if (HasByteTraceObservers())
+                {
+                    CompactSerialFrameReadResult readResult =
+                        await _reader.ReadWithBytesAsync(
+                            cancellationToken);
+
+                    frame =
+                        readResult.Frame;
+
+                    PublishByteTrace(
+                        TransportByteDirection.Inbound,
+                        readResult.EncodedBytes,
+                        frame.CorrelationId);
+                }
+                else
+                {
+                    frame =
+                        await _reader.ReadAsync(
+                            cancellationToken);
+                }
 
                 if (frame.CorrelationId == 0)
                 {
@@ -334,6 +401,56 @@ internal sealed class CompactSerialProtocolConnection
 
             _pendingCorrelationId =
                 0;
+        }
+    }
+
+    private bool HasByteTraceObservers()
+    {
+        lock (_byteTraceGate)
+        {
+            return _byteTraceObservers.Count > 0;
+        }
+    }
+
+    private void PublishByteTrace(
+        TransportByteDirection direction,
+        ReadOnlyMemory<byte> bytes,
+        byte correlationId)
+    {
+        ITransportByteTraceObserver[] observers;
+
+        lock (_byteTraceGate)
+        {
+            if (_byteTraceObservers.Count == 0)
+            {
+                return;
+            }
+
+            observers =
+                _byteTraceObservers.ToArray();
+        }
+
+        var trace =
+            new TransportByteTrace(
+                direction,
+                bytes,
+                correlationId == 0
+                    ? null
+                    : correlationId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture));
+
+        foreach (ITransportByteTraceObserver observer
+                 in observers)
+        {
+            try
+            {
+                observer.OnTransportBytes(
+                    trace);
+            }
+            catch
+            {
+                // Raw-byte trace observers are observational.
+            }
         }
     }
 

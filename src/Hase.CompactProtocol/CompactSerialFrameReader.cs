@@ -40,6 +40,56 @@ internal sealed class CompactSerialFrameReader
     public async Task<CompactSerialFrame> ReadAsync(
         CancellationToken cancellationToken = default)
     {
+        return await ReadCoreAsync(
+            captureEncodedBytes: false,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns the next valid decoded frame together with an owned copy of its
+    /// exact complete wire representation.
+    /// </summary>
+    internal async Task<CompactSerialFrameReadResult> ReadWithBytesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CompactSerialFrame frame;
+        byte[] encodedBytes;
+
+        (frame, encodedBytes) =
+            await ReadCoreWithBytesAsync(
+                cancellationToken);
+
+        return new CompactSerialFrameReadResult(
+            frame,
+            encodedBytes);
+    }
+
+    private async Task<CompactSerialFrame> ReadCoreAsync(
+        bool captureEncodedBytes,
+        CancellationToken cancellationToken)
+    {
+        (CompactSerialFrame frame, _) =
+            await ReadCoreWithBytesAsync(
+                cancellationToken,
+                captureEncodedBytes);
+
+        return frame;
+    }
+
+    private Task<(CompactSerialFrame Frame, byte[] EncodedBytes)>
+        ReadCoreWithBytesAsync(
+            CancellationToken cancellationToken)
+    {
+        return ReadCoreWithBytesAsync(
+            cancellationToken,
+            captureEncodedBytes: true);
+    }
+
+    private async Task<(CompactSerialFrame Frame, byte[] EncodedBytes)>
+        ReadCoreWithBytesAsync(
+            CancellationToken cancellationToken,
+            bool captureEncodedBytes)
+    {
         cancellationToken.ThrowIfCancellationRequested();
 
         var encoded =
@@ -91,10 +141,24 @@ internal sealed class CompactSerialFrameReader
 
             try
             {
-                return CompactSerialFrameCodec.Decode(
-                    encoded.AsSpan(
-                        0,
-                        frameLength));
+                CompactSerialFrame frame =
+                    CompactSerialFrameCodec.Decode(
+                        encoded.AsSpan(
+                            0,
+                            frameLength));
+
+                byte[] encodedBytes =
+                    captureEncodedBytes
+                        ? encoded
+                            .AsSpan(
+                                0,
+                                frameLength)
+                            .ToArray()
+                        : [];
+
+                return (
+                    frame,
+                    encodedBytes);
             }
             catch (InvalidDataException)
             {
