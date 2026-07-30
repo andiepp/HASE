@@ -60,49 +60,95 @@ public static class RuntimeHostInventoryProjector
                                         instrument.Interface.Commands
                                             .Select(
                                                 command =>
-                                                    new CommandInventoryItemViewModel(
-                                                        new RemoteCommandTarget(
-                                                            attachment.Key,
-                                                            instrument.Id,
-                                                            command.Path),
-                                                        command.Path.ToString(),
-                                                        command.DisplayName,
-                                                        command.Description,
-                                                        attachment.ConnectionStatus.State
-                                                            == RemoteEndpointConnectionState.Ready)
-                                                    {
-                                                        RequiresArgument =
-                                                            command.Argument
-                                                            is not null,
-                                                        ArgumentDisplayName =
-                                                            command.Argument
-                                                                ?.DisplayName,
-                                                        ArgumentDescription =
-                                                            command.Argument
-                                                                ?.Description,
-                                                        ArgumentDataType =
-                                                            command.Argument
-                                                            is null
-                                                                ? null
-                                                                : GetDataType(
-                                                                    command.Argument.Data),
-                                                        RequestedArgumentText =
-                                                            requestedCommandArgumentTexts
-                                                            is not null
-                                                            && requestedCommandArgumentTexts
-                                                                .TryGetValue(
-                                                                    new RemoteCommandTarget(
-                                                                        attachment.Key,
-                                                                        instrument.Id,
-                                                                        command.Path),
-                                                                    out string? requestedText)
-                                                                ? requestedText
-                                                                : string.Empty
-                                                    })
+                                                    ProjectCommand(
+                                                        attachment,
+                                                        instrument.Id,
+                                                        command,
+                                                        requestedCommandArgumentTexts))
                                             .ToArray()))
                             .ToArray()))
             .ToArray()
             ?? [];
+    }
+
+    private static CommandInventoryItemViewModel ProjectCommand(
+        RemoteEndpointAttachmentSnapshot attachment,
+        Hase.Core.Domain.Identity.InstrumentId instrumentId,
+        Hase.Core.Domain.Commands.CommandDescriptor command,
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? requestedCommandArgumentTexts)
+    {
+        var target =
+            new RemoteCommandTarget(
+                attachment.Key,
+                instrumentId,
+                command.Path);
+        string requestedText =
+            FindRequestedCommandArgumentText(
+                requestedCommandArgumentTexts,
+                target)
+            ?? string.Empty;
+
+        return new CommandInventoryItemViewModel(
+            target,
+            command.Path.ToString(),
+            command.DisplayName,
+            command.Description,
+            attachment.ConnectionStatus.State
+                == RemoteEndpointConnectionState.Ready)
+        {
+            Descriptor =
+                command,
+            RequestedArgumentText =
+                requestedText,
+            RequestedBooleanArgument =
+                command.Argument?.Data
+                    is BooleanDataDescriptor
+                && bool.TryParse(
+                    requestedText,
+                    out bool requestedBoolean)
+                    ? requestedBoolean
+                    : null
+        };
+    }
+
+    private static string? FindRequestedCommandArgumentText(
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? values,
+        RemoteCommandTarget target)
+    {
+        if (values is null)
+        {
+            return null;
+        }
+
+        if (values.TryGetValue(
+                target,
+                out string? exact))
+        {
+            return exact;
+        }
+
+        foreach (KeyValuePair<
+            RemoteCommandTarget,
+            string> item in values)
+        {
+            if (string.Equals(
+                    item.Key.InstrumentId.Value,
+                    target.InstrumentId.Value,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    item.Key.CommandPath.ToString(),
+                    target.CommandPath.ToString(),
+                    StringComparison.Ordinal))
+            {
+                return item.Value;
+            }
+        }
+
+        return null;
     }
 
     private static PropertyInventoryItemViewModel ProjectProperty(
@@ -278,20 +324,4 @@ public static class RuntimeHostInventoryProjector
                 string.Empty
         };
     }
-
-    private static string GetDataType(
-        DataDescriptor descriptor) =>
-        descriptor switch
-        {
-            NumericDataDescriptor =>
-                "Numeric",
-            BooleanDataDescriptor =>
-                "Boolean",
-            StringDataDescriptor =>
-                "String",
-            ByteArrayDataDescriptor =>
-                "ByteArray",
-            _ =>
-                descriptor.GetType().Name
-        };
 }
