@@ -298,8 +298,9 @@ Diagnostic detail is cumulative:
 
 `Operational` production records are implemented through ADR-0040 Increment
 40C. Increment 40D implements payload-free logical Protocol records for Native
-Protocol Version 1 and Compact Serial Protocol Version 1. Exact byte tracing
-remains disabled and deferred.
+Protocol Version 1 and Compact Serial Protocol Version 1. Increment 40E
+implements bounded exact-frame diagnostics for both protocol families through
+explicit local opt-in.
 
 Every runtime context owns one diagnostic publisher. Endpoint inventory and
 connection-state changes therefore share one process-local sequence. Native
@@ -344,6 +345,20 @@ subscription set. Each Compact connection generation owns one notification
 diagnostic subscription and removes it before disposal. Reconnect therefore
 replaces rather than duplicates diagnostic observers. Compact discovery,
 verification, and bootstrap traffic is outside the attached runtime boundary.
+
+`RuntimeDiagnosticByteSnapshot` retains an immutable copy of at most 256 bytes
+and records original length, captured length, and truncation. Native duplex
+sessions expose exact sent and received frames. Compact operational connections
+expose exact written requests and exact valid response or notification frames;
+their reader copies complete frame bytes only while an observer is installed.
+
+Production byte observers are installed only when `Bytes` is enabled as a
+connection generation is created. Each Native binding and Compact operational
+generation owns at most one observer and removes it before stopping or
+disposing the connection. Default, Operational-only, and Protocol-only
+configurations remain unsubscribed. Legacy Native exchange-only transport,
+Compact discovery, verification, and bootstrap remain outside this capture
+boundary.
 
 Diagnostics are explanatory. They do not own endpoint state, retry decisions,
 attachment generation, runtime failure categories, or application behavior.

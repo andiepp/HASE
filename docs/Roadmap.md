@@ -8,6 +8,7 @@
 - ADR-0040 Increment 40B Runtime Lifecycle Diagnostics
 - ADR-0040 Increment 40C Property, Command, and Event Interaction Diagnostics
 - ADR-0040 Increment 40D Native and Compact Protocol Exchange Tracing
+- ADR-0040 Increment 40E Bounded Opt-In Native and Compact Byte Tracing
 
 ## Next
-- ADR-0040 Increment 40E Bounded Opt-In Native and Compact Byte Tracing
+- ADR-0040 Increment 40F Desktop Runtime Host Diagnostic Presentation

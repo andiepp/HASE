@@ -1168,6 +1168,14 @@ remains published.
 : Thread-safe process-local retention with bounded capacity and snapshot
   filtering.
 
+`RuntimeDiagnosticByteSnapshot`
+: Immutable exact-byte snapshot retaining at most 256 bytes together with
+  original count, captured count, and truncation state.
+
+`RuntimeTransportByteDiagnosticPublisher`
+: Publishes lazily constructed `TransportBytes` records only when the
+  cumulative sink level enables `Bytes`.
+
 `RuntimeEndpointLifecycleDiagnosticObserver`
 : Converts authoritative endpoint status transitions into operational
   connection, synchronization, attachment, and recovery records.
@@ -1218,6 +1226,27 @@ remains published.
 `CompactProtocolNotificationDiagnosticObserver`
 : Publishes one payload-free Compact event-notification record with reserved
   correlation identifier zero.
+
+`ITransportByteTraceSource`
+: Optional transport capability for exact complete-frame observation.
+  Subscription is explicit and observer failures do not alter transport
+  behavior.
+
+`NativeTransportByteDiagnosticObserver`
+: Maps exact Native duplex frames to bounded byte diagnostics using
+  authoritative endpoint identity and protocol correlation.
+
+`CompactTransportByteDiagnosticObserver`
+: Maps exact valid Compact request, response, and notification frames to
+  bounded byte diagnostics.
+
+`RuntimeProtocolConnectionBinding`
+: Owns the optional Native byte observer for one duplex generation and removes
+  it before stopping the receive pump.
+
+`CompactRuntimeProtocolDiagnosticConnection`
+: Also owns the optional Compact byte observer for one operational generation
+  and preserves the inner byte-trace capability shape.
 
 These components do not replace `ILogger`, aggregate transport statistics,
 runtime observation, or endpoint supervision.

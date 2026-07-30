@@ -553,7 +553,7 @@ ADR-0040 defines one UI-neutral, cumulative diagnostic path:
    interactions.
 2. `Protocol` adds payload-free logical request, response, failure, and
    notification records.
-3. `Bytes` is reserved for explicitly enabled, bounded exact-byte capture.
+3. `Bytes` adds explicitly enabled, bounded exact-frame capture.
 
 The runtime context owns the publisher and process-local sequence. Diagnostics
 are explanatory only: endpoint state, attachment generation, retry policy,
@@ -572,6 +572,13 @@ outcome. They never contain payload bytes, decoded interaction values,
 exception text, addresses, ports, COM names, credentials, or configuration
 paths. Diagnostic sink failures cannot propagate into runtime execution.
 
-Exact transport bytes remain outside the implemented 40D boundary and require
-the separate explicit opt-in design of ADR-0040 Increment 40E.
+Increment 40E implements exact-frame capture for Native Protocol Version 1 and
+Compact Serial Protocol Version 1. Each record owns an immutable snapshot of at
+most 256 bytes while retaining original length and truncation metadata.
+Production observers are installed only when `Bytes` is locally enabled and
+are owned by the matching connection generation. They are removed before
+replacement or disposal, preventing duplicate records after reconnect.
 
+Default, Operational-only, and Protocol-only configurations remain
+unsubscribed. Byte diagnostics are process-local and cannot be enabled or
+retrieved through the current northbound API.

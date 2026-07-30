@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; Increments 40A, 40B, 40C, and 40D implemented.
+Accepted; Increments 40A, 40B, 40C, 40D, and 40E implemented.
 
 ## Context
 
@@ -121,7 +121,7 @@ human correlation but do not establish distributed causal order.
 2. 40B — runtime lifecycle diagnostics. **Completed.**
 3. 40C — Property, Command, and Event interaction diagnostics. **Completed.**
 4. 40D — native and compact protocol exchange tracing. **Completed.**
-5. 40E — bounded opt-in native and compact byte tracing.
+5. 40E — bounded opt-in native and compact byte tracing. **Completed.**
 6. 40F — Desktop Runtime Host presentation.
 7. 40G — physical validation, documentation, and closure.
 
@@ -253,6 +253,49 @@ Implementation detail is recorded by:
 - [40D2 — Native Protocol V1 Tracing](../ADR-0040-Increment-40D2-Native-Protocol-Tracing.md);
 - [40D3 — Compact Protocol Tracing](../ADR-0040-Increment-40D3-Compact-Protocol-Tracing.md); and
 - [40D4 — Production Protocol Activation](../ADR-0040-Increment-40D4-Production-Protocol-Activation.md).
+
+## Implemented byte diagnostics
+
+Increment 40E adds explicit local opt-in capture of exact complete Native
+Protocol Version 1 and Compact Serial Protocol Version 1 frames.
+
+`RuntimeDiagnosticByteSnapshot` owns an immutable bounded copy. It retains at
+most 256 bytes per record and preserves the original byte count, captured byte
+count, and truncation state. `RuntimeTransportByteDiagnosticPublisher`
+publishes these snapshots at `RuntimeDiagnosticLevel.Bytes` in the
+`TransportBytes` category. Disabled levels do not invoke the byte factory.
+
+`ProtocolDuplexSession` exposes exact outbound and inbound Native frames through
+`ITransportByteTraceSource`. `CompactSerialProtocolConnection` exposes exact
+written request frames and exact valid response or notification frames. The
+Compact reader creates an owned complete-frame copy only while a byte observer
+is subscribed; boot noise and corrupted frame candidates are not published.
+
+Production activation occurs only when the runtime sink enables `Bytes` while
+the connection generation is created. Default, Operational-only, and
+Protocol-only configurations install no production byte observer and retain
+their no-observer receive paths.
+
+Each Native duplex binding owns at most one
+`NativeTransportByteDiagnosticObserver` and removes it before stopping its
+receive pump. Each Compact operational generation owns at most one
+`CompactTransportByteDiagnosticObserver` and removes it before disposing its
+inner connection. Replacement therefore replaces rather than duplicates byte
+observers. Legacy Native exchange-only transport remains unchanged.
+
+Byte records use the authoritative runtime endpoint identity, protocol family,
+direction, and protocol correlation identifier where available. Exact bytes
+may contain application payloads, so collection remains bounded, process-local,
+disabled by default, and unavailable through the current northbound API.
+
+Increment 40E is validated with 3,884 passing automated tests.
+
+Implementation detail is recorded by:
+
+- [40E1 — Byte Diagnostic Foundation](../ADR-0040-Increment-40E1-Byte-Diagnostic-Foundation.md);
+- [40E2 — Native Byte Tracing](../ADR-0040-Increment-40E2-Native-Byte-Tracing.md);
+- [40E3 — Compact Byte Tracing](../ADR-0040-Increment-40E3-Compact-Byte-Tracing.md); and
+- [40E4 — Production Byte Activation](../ADR-0040-Increment-40E4-Production-Byte-Activation.md).
 
 ## Deferred
 
