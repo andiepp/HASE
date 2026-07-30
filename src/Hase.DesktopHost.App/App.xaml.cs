@@ -93,6 +93,8 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<
             EndpointDetailsViewModel>();
         containerRegistry.RegisterSingleton<
+            RuntimeDiagnosticsViewModel>();
+        containerRegistry.RegisterSingleton<
             MainWindowViewModel>();
         containerRegistry.RegisterSingleton<
             MainWindow>();

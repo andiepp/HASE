@@ -20,7 +20,8 @@ public sealed class MainWindowViewModel : IDisposable
         RuntimeInventoryViewModel inventoryViewModel,
         EndpointDetailsViewModel endpointDetailsViewModel,
         IDesktopRuntimeHostOperator runtimeHostOperator,
-        IDesktopRuntimeHostEventSource? eventSource = null)
+        IDesktopRuntimeHostEventSource? eventSource = null,
+        RuntimeDiagnosticsViewModel? diagnosticsViewModel = null)
     {
         this.runtimeHostViewModel =
             runtimeHostViewModel
@@ -42,6 +43,9 @@ public sealed class MainWindowViewModel : IDisposable
             new OperatorActivityViewModel();
         EndpointEvents =
             new EndpointEventHistoryViewModel();
+        Diagnostics =
+            diagnosticsViewModel
+            ?? new RuntimeDiagnosticsViewModel();
         this.eventSource =
             eventSource;
         dispatcher =
@@ -91,6 +95,11 @@ public sealed class MainWindowViewModel : IDisposable
         get;
     }
 
+    public RuntimeDiagnosticsViewModel Diagnostics
+    {
+        get;
+    }
+
     public DelegateCommand<DesktopRuntimePropertyViewModel>
         WritePropertyCommand
     {
@@ -114,6 +123,7 @@ public sealed class MainWindowViewModel : IDisposable
             cancellationToken);
 
         Inventory.Refresh();
+        Diagnostics.Refresh();
 
         if (eventSource is not null)
         {
@@ -159,6 +169,7 @@ public sealed class MainWindowViewModel : IDisposable
     public void RefreshInventory()
     {
         Inventory.Refresh();
+        Diagnostics.Refresh();
         WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteParameterlessCommand.RaiseCanExecuteChanged();
     }

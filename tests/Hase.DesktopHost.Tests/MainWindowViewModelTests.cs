@@ -27,12 +27,16 @@ public sealed class MainWindowViewModelTests
         using var endpointDetailsViewModel =
             new EndpointDetailsViewModel(
                 inventoryViewModel);
+        var diagnosticsViewModel =
+            new RuntimeDiagnosticsViewModel();
         using var viewModel =
             new MainWindowViewModel(
                 runtimeViewModel,
                 inventoryViewModel,
                 endpointDetailsViewModel,
-                new StubOperator());
+                new StubOperator(),
+                diagnosticsViewModel:
+                    diagnosticsViewModel);
 
         await viewModel.StartAsync();
         await viewModel.StopAsync();
@@ -49,6 +53,9 @@ public sealed class MainWindowViewModelTests
         Assert.Same(
             endpointDetailsViewModel,
             viewModel.EndpointDetails);
+        Assert.Same(
+            diagnosticsViewModel,
+            viewModel.Diagnostics);
         Assert.Equal(
             1,
             backend.StartCount);

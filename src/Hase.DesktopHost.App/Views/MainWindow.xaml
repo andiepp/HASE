@@ -77,6 +77,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="24" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="24" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0">
@@ -1035,6 +1037,229 @@
                                 Header="Diagnostic" />
                         </DataGrid.Columns>
                     </DataGrid>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Row="14" Header="Runtime Diagnostics">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Foreground="DimGray"
+                        Text="{Binding Diagnostics.RetainedEntryCount, StringFormat=Retained diagnostic records: {0}}" />
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="3*" MinWidth="420" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="2*" MinWidth="300" />
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Grid.Column="0">
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="DimGray"
+                                Text="No runtime diagnostics have been retained."
+                                TextAlignment="Center"
+                                TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger
+                                                Binding="{Binding Diagnostics.IsEmpty}"
+                                                Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <DataGrid
+                                Height="320"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                HeadersVisibility="Column"
+                                HorizontalScrollBarVisibility="Auto"
+                                IsReadOnly="True"
+                                ItemsSource="{Binding Diagnostics.Entries}"
+                                SelectedItem="{Binding Diagnostics.SelectedEntry, Mode=TwoWay}"
+                                VerticalScrollBarVisibility="Auto">
+                                <DataGrid.Style>
+                                    <Style TargetType="DataGrid">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger
+                                                Binding="{Binding Diagnostics.IsEmpty}"
+                                                Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.Style>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Width="190"
+                                        Binding="{Binding TimestampUtcText}"
+                                        Header="Timestamp UTC" />
+                                    <DataGridTextColumn
+                                        Width="90"
+                                        Binding="{Binding Level}"
+                                        Header="Level" />
+                                    <DataGridTextColumn
+                                        Width="150"
+                                        Binding="{Binding Category}"
+                                        Header="Category" />
+                                    <DataGridTextColumn
+                                        Width="190"
+                                        Binding="{Binding EventName}"
+                                        Header="Event" />
+                                    <DataGridTextColumn
+                                        Width="160"
+                                        Binding="{Binding EndpointId}"
+                                        Header="Endpoint" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+
+                        <Border
+                            Grid.Column="2"
+                            Padding="14"
+                            BorderBrush="LightGray"
+                            BorderThickness="1"
+                            CornerRadius="4">
+                            <Grid>
+                                <TextBlock
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Foreground="DimGray"
+                                    Text="Select a diagnostic record to inspect its details."
+                                    TextAlignment="Center"
+                                    TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger
+                                                    Binding="{Binding Diagnostics.HasSelection}"
+                                                    Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <ScrollViewer
+                                    MaxHeight="320"
+                                    VerticalScrollBarVisibility="Auto">
+                                    <ScrollViewer.Style>
+                                        <Style TargetType="ScrollViewer">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger
+                                                    Binding="{Binding Diagnostics.HasSelection}"
+                                                    Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ScrollViewer.Style>
+                                    <StackPanel>
+                                        <TextBlock
+                                            FontSize="16"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding Diagnostics.SelectedEntry.EventName}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Margin="0,8,0,0"
+                                            Text="{Binding Diagnostics.SelectedEntry.Sequence, StringFormat=Sequence: {0}}" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.Severity, StringFormat=Severity: {0}}" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.EndpointId, StringFormat=Endpoint: {0}}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.AttachmentGeneration, StringFormat=Generation: {0}}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.Direction, StringFormat=Direction: {0}}" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.OperationId, StringFormat=Operation: {0}}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.Duration, StringFormat=Duration: {0}}" />
+                                        <TextBlock
+                                            Text="{Binding Diagnostics.SelectedEntry.Outcome, StringFormat=Outcome: {0}}" />
+
+                                        <TextBlock
+                                            Margin="0,12,0,0"
+                                            FontWeight="SemiBold"
+                                            Text="Details" />
+                                        <ItemsControl
+                                            Margin="0,4,0,0"
+                                            ItemsSource="{Binding Diagnostics.SelectedEntry.Details}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,0,0,4">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" MinWidth="110" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock
+                                                            FontWeight="SemiBold"
+                                                            Text="{Binding Key}" />
+                                                        <TextBlock
+                                                            Grid.Column="1"
+                                                            Margin="8,0,0,0"
+                                                            Text="{Binding Value}"
+                                                            TextWrapping="Wrap" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <StackPanel Margin="0,12,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger
+                                                            Binding="{Binding Diagnostics.SelectedEntry.HasByteSnapshot}"
+                                                            Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Text="Captured bytes" />
+                                            <TextBlock
+                                                Margin="0,4,0,0"
+                                                Text="{Binding Diagnostics.SelectedEntry.ByteSummary}" />
+                                            <TextBox
+                                                Margin="0,4,0,0"
+                                                MaxHeight="140"
+                                                FontFamily="Consolas"
+                                                HorizontalScrollBarVisibility="Disabled"
+                                                IsReadOnly="True"
+                                                Text="{Binding Diagnostics.SelectedEntry.ByteHex}"
+                                                TextWrapping="Wrap"
+                                                VerticalScrollBarVisibility="Auto" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Border>
+                    </Grid>
                 </Grid>
             </GroupBox>
         </Grid>
