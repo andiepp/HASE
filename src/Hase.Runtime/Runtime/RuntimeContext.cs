@@ -1,5 +1,6 @@
 ﻿using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.Runtime.Diagnostics;
 
 namespace Hase.Runtime.Runtime;
 
@@ -11,6 +12,15 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
 {
     private readonly List<RuntimeEndpoint> _endpoints = [];
     private readonly List<IPropertyValueObserver> _observers = [];
+    private readonly RuntimeDiagnosticPublisher _diagnostics;
+
+    public RuntimeContext(
+        RuntimeDiagnosticPublisher? diagnostics = null)
+    {
+        _diagnostics =
+            diagnostics ??
+            new RuntimeDiagnosticPublisher();
+    }
 
     public IReadOnlyList<RuntimeEndpoint> Endpoints => _endpoints;
 
@@ -18,6 +28,12 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
 
     public IReadOnlyList<IRuntimeNode> Children =>
         _endpoints.Cast<IRuntimeNode>().ToArray();
+
+    /// <summary>
+    /// Gets the structured diagnostic publisher used by this runtime.
+    /// </summary>
+    public RuntimeDiagnosticPublisher Diagnostics =>
+        _diagnostics;
 
     /// <summary>
     /// Constructs a runtime endpoint associated with this context without
@@ -66,8 +82,17 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
         endpoint.Subscribe(
             this);
 
+        endpoint.SubscribeConnectionStatus(
+            new RuntimeEndpointLifecycleDiagnosticObserver(
+                endpoint,
+                _diagnostics));
+
         _endpoints.Add(
             endpoint);
+
+        PublishAttachmentInventoryEvent(
+            endpoint,
+            "EndpointPublished");
 
         return endpoint;
     }
@@ -100,6 +125,10 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
 
         endpoint.Unsubscribe(
             this);
+
+        PublishAttachmentInventoryEvent(
+            endpoint,
+            "EndpointRemoved");
 
         return true;
     }
@@ -150,5 +179,20 @@ public sealed class RuntimeContext : IRuntimeNode, IPropertyValueObserver
             observer.OnPropertyValueChanged(
                 change);
         }
+    }
+
+    private void PublishAttachmentInventoryEvent(
+        RuntimeEndpoint endpoint,
+        string eventName)
+    {
+        _diagnostics.Publish(
+            RuntimeDiagnosticLevel.Operational,
+            () =>
+                new RuntimeDiagnosticEvent(
+                    RuntimeDiagnosticLevel.Operational,
+                    RuntimeDiagnosticCategory.RuntimeAttachment,
+                    eventName,
+                    endpointId:
+                        endpoint.Descriptor.Id.Value));
     }
 }
