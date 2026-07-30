@@ -450,6 +450,12 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
@@ -659,12 +665,6 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
-                                                                                        <RowDefinition Height="5" />
-                                                                                        <RowDefinition Height="Auto" />
-                                                                                        <RowDefinition Height="5" />
-                                                                                        <RowDefinition Height="Auto" />
-                                                                                        <RowDefinition Height="5" />
-                                                                                        <RowDefinition Height="Auto" />
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <TextBlock FontWeight="SemiBold" Text="Command" />
@@ -832,6 +832,12 @@
                                                                                         <RowDefinition Height="Auto" />
                                                                                         <RowDefinition Height="5" />
                                                                                         <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
+                                                                                        <RowDefinition Height="5" />
+                                                                                        <RowDefinition Height="Auto" />
                                                                                     </Grid.RowDefinitions>
 
                                                                                     <TextBlock FontWeight="SemiBold" Text="Event" />
@@ -853,6 +859,27 @@
                                                                                         Grid.Row="4"
                                                                                         Grid.Column="1"
                                                                                         Text="{Binding Description}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Payload" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="6"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding PayloadDisplayName}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Payload type" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="8"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding PayloadDataKind}"
+                                                                                        TextWrapping="Wrap" />
+
+                                                                                    <TextBlock Grid.Row="10" FontWeight="SemiBold" Text="Payload description" />
+                                                                                    <TextBlock
+                                                                                        Grid.Row="10"
+                                                                                        Grid.Column="1"
+                                                                                        Text="{Binding PayloadDescription}"
                                                                                         TextWrapping="Wrap" />
                                                                                 </Grid>
                                                                             </Border>
@@ -983,13 +1010,25 @@
                                 Binding="{Binding InstrumentId}"
                                 Header="Instrument" />
                             <DataGridTextColumn
+                                Width="180"
+                                Binding="{Binding EventDisplayName}"
+                                Header="Event name" />
+                            <DataGridTextColumn
                                 Width="210"
                                 Binding="{Binding EventPath}"
-                                Header="Event" />
+                                Header="Event path" />
+                            <DataGridTextColumn
+                                Width="150"
+                                Binding="{Binding PayloadDisplayName}"
+                                Header="Payload" />
                             <DataGridTextColumn
                                 Width="180"
-                                Binding="{Binding Value}"
-                                Header="Value" />
+                                Binding="{Binding PayloadText}"
+                                Header="Payload value" />
+                            <DataGridTextColumn
+                                Width="130"
+                                Binding="{Binding PayloadDiagnostic}"
+                                Header="Diagnostic" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

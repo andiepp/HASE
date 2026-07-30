@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hase.Operator.Presentation\Hase.Operator.Presentation.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,9 @@
+using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.ViewModels;
+using Hase.Operator.Presentation;
 using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost.Tests;
@@ -81,7 +84,11 @@ public sealed class EndpointEventHistoryViewModelTests
 
         DesktopRuntimeEventOccurrence occurrence =
             DesktopRuntimeEventOccurrenceProjector.Project(
-                observation);
+                observation,
+                CreateEventDescriptor(
+                    "Controller.ButtonPressed",
+                    "Button pressed",
+                    CreateNumericDescriptor()));
 
         Assert.Equal(
             "esp32-01",
@@ -96,8 +103,20 @@ public sealed class EndpointEventHistoryViewModelTests
             "Controller.ButtonPressed",
             occurrence.EventPath);
         Assert.Equal(
+            "Button pressed",
+            occurrence.EventDisplayName);
+        Assert.Equal(
+            "Reported value",
+            occurrence.PayloadDisplayName);
+        Assert.Equal(
             "12.5",
-            occurrence.Value);
+            occurrence.PayloadText);
+        Assert.Equal(
+            EventPayloadFormatStatus.Formatted,
+            occurrence.PayloadStatus);
+        Assert.Equal(
+            string.Empty,
+            occurrence.PayloadDiagnostic);
         Assert.Equal(
             "2026-07-28T12:30:00.0000000+00:00",
             occurrence.OccurredAtUtcText);
@@ -113,7 +132,10 @@ public sealed class EndpointEventHistoryViewModelTests
                     "e475e69a-bf4a-4e16-9aca-9477a9350d97",
                     "arduino-uno-controller-01",
                     "Controller.ButtonPressed",
-                    null));
+                    null),
+                CreateEventDescriptor(
+                    "Controller.ButtonPressed",
+                    "Button pressed"));
         DesktopRuntimeEventOccurrence esp32 =
             DesktopRuntimeEventOccurrenceProjector.Project(
                 CreateObservation(
@@ -121,7 +143,11 @@ public sealed class EndpointEventHistoryViewModelTests
                     "5cc3e26e-a2c8-43c6-925f-3de8293ee99d",
                     "controller-01",
                     "Controller.ButtonPressed",
-                    true));
+                    true),
+                CreateEventDescriptor(
+                    "Controller.ButtonPressed",
+                    "Button pressed",
+                    new BooleanDataDescriptor()));
 
         Assert.Equal(
             "arduino-uno-01",
@@ -140,6 +166,96 @@ public sealed class EndpointEventHistoryViewModelTests
             esp32.AttachmentGeneration);
     }
 
+    [Theory]
+    [MemberData(nameof(PayloadPresentationCases))]
+    public void Project_Payload_ShouldUseDescriptorDrivenPresentation(
+        DataDescriptor? data,
+        object? value,
+        string expectedText,
+        EventPayloadFormatStatus expectedStatus)
+    {
+        EventDescriptor? descriptor =
+            data is null
+                ? null
+                : CreateEventDescriptor(
+                    "Controller.Event",
+                    "Event",
+                    data);
+        DesktopRuntimeEventOccurrence occurrence =
+            DesktopRuntimeEventOccurrenceProjector.Project(
+                CreateObservation(
+                    "endpoint-01",
+                    "e475e69a-bf4a-4e16-9aca-9477a9350d97",
+                    "controller-01",
+                    "Controller.Event",
+                    value),
+                descriptor);
+
+        Assert.Equal(
+            expectedText,
+            occurrence.PayloadText);
+        Assert.Equal(
+            expectedStatus,
+            occurrence.PayloadStatus);
+        Assert.Equal(
+            expectedStatus is EventPayloadFormatStatus.Formatted
+                or EventPayloadFormatStatus.NoPayload
+                    ? string.Empty
+                    : expectedStatus.ToString(),
+            occurrence.PayloadDiagnostic);
+    }
+
+    public static TheoryData<
+        DataDescriptor?,
+        object?,
+        string,
+        EventPayloadFormatStatus> PayloadPresentationCases =>
+        new()
+        {
+            {
+                new BooleanDataDescriptor(),
+                true,
+                "True",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                new StringDataDescriptor(),
+                "ready",
+                "ready",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                new ByteArrayDataDescriptor(),
+                new ByteArrayValue(
+                    new byte[]
+                    {
+                        0x00,
+                        0x53,
+                        0xFF
+                    }),
+                "0053FF",
+                EventPayloadFormatStatus.Formatted
+            },
+            {
+                new BooleanDataDescriptor(),
+                null,
+                "Missing payload",
+                EventPayloadFormatStatus.MissingPayload
+            },
+            {
+                null,
+                true,
+                "Unexpected payload",
+                EventPayloadFormatStatus.UnexpectedPayload
+            },
+            {
+                new BooleanDataDescriptor(),
+                "true",
+                "Invalid payload",
+                EventPayloadFormatStatus.TypeMismatch
+            }
+        };
+
     [Fact]
     public void Project_WithNonEventObservation_ShouldThrow()
     {
@@ -156,7 +272,8 @@ public sealed class EndpointEventHistoryViewModelTests
             "observation",
             () =>
                 DesktopRuntimeEventOccurrenceProjector.Project(
-                    observation));
+                    observation,
+                    descriptor: null));
     }
 
     private static DesktopRuntimeEventOccurrence CreateOccurrence(
@@ -168,7 +285,52 @@ public sealed class EndpointEventHistoryViewModelTests
             "generation-1",
             "instrument-1",
             "Controller.ButtonPressed",
-            "null");
+            "Button pressed",
+            string.Empty,
+            "Payload",
+            string.Empty,
+            "No payload",
+            EventPayloadFormatStatus.NoPayload);
+
+    private static EventDescriptor CreateEventDescriptor(
+        string path,
+        string displayName,
+        DataDescriptor? data = null)
+    {
+        var descriptor =
+            new EventDescriptor(
+                DescriptorPath.Parse(
+                    path),
+                displayName);
+
+        return data is null
+            ? descriptor
+            : descriptor with
+            {
+                Payload =
+                    new EventPayloadDescriptor(
+                        "Reported value",
+                        data)
+            };
+    }
+
+    private static NumericDataDescriptor CreateNumericDescriptor()
+    {
+        Quantity quantity =
+            new(
+                "ratio",
+                "Ratio");
+        Unit unit =
+            new(
+                "ratio",
+                "Ratio",
+                "ratio",
+                quantity);
+
+        return new NumericDataDescriptor(
+            quantity,
+            unit);
+    }
 
     private static RuntimeHostObservation CreateObservation(
         string endpointId,

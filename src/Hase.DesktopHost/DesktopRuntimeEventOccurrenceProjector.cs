@@ -1,4 +1,5 @@
-using System.Globalization;
+using Hase.Core.Domain.Events;
+using Hase.Operator.Presentation;
 using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost;
@@ -6,7 +7,8 @@ namespace Hase.DesktopHost;
 public static class DesktopRuntimeEventOccurrenceProjector
 {
     public static DesktopRuntimeEventOccurrence Project(
-        RuntimeHostObservation observation)
+        RuntimeHostObservation observation,
+        EventDescriptor? descriptor)
     {
         ArgumentNullException.ThrowIfNull(
             observation);
@@ -19,30 +21,26 @@ public static class DesktopRuntimeEventOccurrenceProjector
                 nameof(observation));
         }
 
+        EventPayloadFormatResult payloadPresentation =
+            EventPayloadFormatter.Format(
+                descriptor?.Payload,
+                payload.Value);
+
         return new DesktopRuntimeEventOccurrence(
             payload.OccurredAtUtc,
             observation.EndpointId.Value,
             observation.AttachmentGeneration.ToString(),
             payload.InstrumentId.Value,
             payload.EventPath.ToString(),
-            FormatValue(
-                payload.Value));
-    }
-
-    private static string FormatValue(
-        object? value)
-    {
-        if (value is null)
-        {
-            return "null";
-        }
-
-        return value is IFormattable formattable
-            ? formattable.ToString(
-                format: null,
-                CultureInfo.InvariantCulture)
-                ?? string.Empty
-            : value.ToString()
-                ?? string.Empty;
+            descriptor?.DisplayName
+                ?? payload.EventPath.ToString(),
+            descriptor?.Description
+                ?? string.Empty,
+            descriptor?.Payload?.DisplayName
+                ?? "Payload",
+            descriptor?.Payload?.Description
+                ?? string.Empty,
+            payloadPresentation.Text,
+            payloadPresentation.Status);
     }
 }

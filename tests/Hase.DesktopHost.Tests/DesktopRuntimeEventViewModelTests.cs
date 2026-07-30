@@ -1,3 +1,6 @@
+using Hase.Core.Domain.Data;
+using Hase.Core.Domain.Events;
+using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.ViewModels;
 
 namespace Hase.DesktopHost.Tests;
@@ -23,6 +26,29 @@ public sealed class DesktopRuntimeEventViewModelTests
         Assert.Equal(
             "Raised when the controller button is pressed.",
             viewModel.Description);
+    }
+
+    [Fact]
+    public void Constructor_ShouldProjectPayloadMetadata()
+    {
+        var viewModel =
+            new DesktopRuntimeEventViewModel(
+                CreateTypedEvent(
+                    new ByteArrayDataDescriptor(),
+                    "Buffer",
+                    "Replacement bytes."));
+
+        Assert.True(
+            viewModel.HasPayload);
+        Assert.Equal(
+            "Buffer",
+            viewModel.PayloadDisplayName);
+        Assert.Equal(
+            "ByteArray",
+            viewModel.PayloadDataKind);
+        Assert.Equal(
+            "Replacement bytes.",
+            viewModel.PayloadDescription);
     }
 
     [Fact]
@@ -82,6 +108,41 @@ public sealed class DesktopRuntimeEventViewModelTests
         Assert.Equal(
             "Updated description.",
             instrument.Events[0].Description);
+    }
+
+    [Fact]
+    public void InstrumentUpdate_WithChangedPayload_ShouldReplaceEventViewModel()
+    {
+        var instrument =
+            new DesktopRuntimeInstrumentViewModel(
+                CreateInstrument(
+                    [
+                        CreateTypedEvent(
+                            new BooleanDataDescriptor(),
+                            "State",
+                            null)
+                    ]));
+        DesktopRuntimeEventViewModel original =
+            instrument.Events[0];
+
+        instrument.Update(
+            CreateInstrument(
+                [
+                    CreateTypedEvent(
+                        new StringDataDescriptor(),
+                        "Message",
+                        "Reported message.")
+                ]));
+
+        Assert.NotSame(
+            original,
+            instrument.Events[0]);
+        Assert.Equal(
+            "String",
+            instrument.Events[0].PayloadDataKind);
+        Assert.Equal(
+            "Message",
+            instrument.Events[0].PayloadDisplayName);
     }
 
     [Fact]
@@ -165,6 +226,26 @@ public sealed class DesktopRuntimeEventViewModelTests
             path,
             displayName,
             description);
+
+    private static DesktopRuntimeEventSnapshot CreateTypedEvent(
+        DataDescriptor data,
+        string payloadDisplayName,
+        string? payloadDescription) =>
+        new(
+            new EventDescriptor(
+                DescriptorPath.Parse(
+                    "Controller.Event"),
+                "Event")
+            {
+                Payload =
+                    new EventPayloadDescriptor(
+                        payloadDisplayName,
+                        data)
+                    {
+                        Description =
+                            payloadDescription
+                    }
+            });
 
     private static DesktopRuntimeInstrumentSnapshot CreateInstrument(
         IReadOnlyList<DesktopRuntimeEventSnapshot> events) =>

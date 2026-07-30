@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\src\Hase.DesktopHost.App\Hase.DesktopHost.App.csproj" />
     <ProjectReference Include="..\..\src\Hase.DesktopHost\Hase.DesktopHost.csproj" />
     <ProjectReference Include="..\..\src\Hase.Operator.Input\Hase.Operator.Input.csproj" />
+    <ProjectReference Include="..\..\src\Hase.Operator.Presentation\Hase.Operator.Presentation.csproj" />
   </ItemGroup>
 
   <ItemGroup>

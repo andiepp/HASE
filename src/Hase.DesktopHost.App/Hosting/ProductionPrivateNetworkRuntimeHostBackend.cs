@@ -123,9 +123,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                                     .Select(
                                                         eventDescriptor =>
                                                             new DesktopRuntimeEventSnapshot(
-                                                                eventDescriptor.Path.ToString(),
-                                                                eventDescriptor.DisplayName,
-                                                                eventDescriptor.Description))
+                                                                eventDescriptor))
                                                     .ToArray()
                                         })
                                 .ToArray()
@@ -436,8 +434,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 continue;
             }
 
+            PublishedRuntimeHostSnapshot snapshot =
+                currentComposition.SnapshotProvider.Capture();
+            Hase.Core.Domain.Events.EventDescriptor? descriptor =
+                DesktopRuntimeEventDescriptorResolver.Resolve(
+                    snapshot,
+                    observation);
+
             yield return DesktopRuntimeEventOccurrenceProjector.Project(
-                observation);
+                observation,
+                descriptor);
         }
     }
 
@@ -577,4 +583,3 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
     }
 }
-
