@@ -115,7 +115,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                                                 command.DisplayName,
                                                                 command.Description,
                                                                 endpoint.ConnectionStatus.State
-                                                                    == EndpointConnectionState.Ready))
+                                                                    == EndpointConnectionState.Ready,
+                                                                command))
                                                     .ToArray(),
                                             Events =
                                                 instrument.Interface.Events

@@ -1,6 +1,8 @@
-using Hase.DesktopHost.App.ViewModels;
+using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
+using Hase.DesktopHost.App.ViewModels;
 using Hase.Runtime.Northbound;
 
 namespace Hase.DesktopHost.Tests;
@@ -10,12 +12,19 @@ public sealed class DesktopRuntimeCommandViewModelTests
     [Fact]
     public void Constructor_ShouldProjectDescriptorMetadata()
     {
+        var descriptor =
+            new CommandDescriptor(
+                DescriptorPath.Parse(
+                    "Controller.Toggle"),
+                "Toggle status LED")
+            {
+                Description =
+                    "Toggles the endpoint status LED."
+            };
         var viewModel =
             new DesktopRuntimeCommandViewModel(
                 CreateCommand(
-                    "Controller.Toggle",
-                    "Toggle status LED",
-                    "Toggles the endpoint status LED."));
+                    descriptor));
 
         Assert.Equal(
             "Controller.Toggle",
@@ -26,6 +35,134 @@ public sealed class DesktopRuntimeCommandViewModelTests
         Assert.Equal(
             "Toggles the endpoint status LED.",
             viewModel.Description);
+        Assert.Same(
+            descriptor,
+            viewModel.Descriptor);
+        Assert.False(
+            viewModel.RequiresArgument);
+        Assert.True(
+            viewModel.HasValidArgument);
+        Assert.True(
+            viewModel.CanExecute);
+    }
+
+    [Fact]
+    public void BooleanCommand_ShouldExposeBooleanEditor()
+    {
+        DesktopRuntimeCommandViewModel viewModel =
+            CreateTypedCommand(
+                new BooleanDataDescriptor());
+
+        Assert.True(
+            viewModel.RequiresArgument);
+        Assert.True(
+            viewModel.HasBooleanEditor);
+        Assert.False(
+            viewModel.HasTextEditor);
+        Assert.False(
+            viewModel.HasValidArgument);
+        Assert.False(
+            viewModel.CanExecute);
+
+        viewModel.RequestedBooleanArgument =
+            true;
+
+        Assert.True(
+            viewModel.HasValidArgument);
+        Assert.True(
+            viewModel.CanExecute);
+        Assert.True(
+            Assert.IsType<bool>(
+                viewModel.InputResult.Value));
+    }
+
+    [Theory]
+    [InlineData("23.5", true)]
+    [InlineData("23,5", false)]
+    [InlineData("126", false)]
+    public void NumericCommand_ShouldUseDescriptorValidation(
+        string input,
+        bool expectedValid)
+    {
+        DesktopRuntimeCommandViewModel viewModel =
+            CreateTypedCommand(
+                new NumericDataDescriptor(
+                    Quantities.Temperature,
+                    Units.Celsius,
+                    new ValueRange(
+                        -40,
+                        125)));
+
+        viewModel.RequestedArgumentText =
+            input;
+
+        Assert.True(
+            viewModel.HasTextEditor);
+        Assert.Equal(
+            expectedValid,
+            viewModel.HasValidArgument);
+        Assert.Equal(
+            expectedValid,
+            viewModel.CanExecute);
+    }
+
+    [Fact]
+    public void ByteArrayCommand_InvalidInput_ShouldRemainDisabled()
+    {
+        DesktopRuntimeCommandViewModel viewModel =
+            CreateTypedCommand(
+                new ByteArrayDataDescriptor());
+
+        viewModel.RequestedArgumentText =
+            "0";
+
+        Assert.False(
+            viewModel.HasValidArgument);
+        Assert.False(
+            viewModel.CanExecute);
+        Assert.NotEmpty(
+            viewModel.ValidationMessage);
+    }
+
+    [Fact]
+    public void ByteArrayCommand_ValidInput_ShouldBecomeExecutableAndNotify()
+    {
+        DesktopRuntimeCommandViewModel viewModel =
+            CreateTypedCommand(
+                new ByteArrayDataDescriptor());
+        var changedProperties =
+            new List<string?>();
+        viewModel.PropertyChanged +=
+            (_, eventArgs) =>
+                changedProperties.Add(
+                    eventArgs.PropertyName);
+
+        viewModel.RequestedArgumentText =
+            "00 7F FF";
+
+        Assert.True(
+            viewModel.HasValidArgument);
+        Assert.True(
+            viewModel.CanExecute);
+        Assert.Equal(
+            new byte[]
+            {
+                0x00,
+                0x7F,
+                0xFF
+            },
+            Assert.IsType<ByteArrayValue>(
+                    viewModel.InputResult.Value)
+                .ToArray());
+        Assert.Contains(
+            nameof(DesktopRuntimeCommandViewModel.RequestedArgumentText),
+            changedProperties);
+        Assert.Contains(
+            nameof(DesktopRuntimeCommandViewModel.HasValidArgument),
+            changedProperties);
+        Assert.Contains(
+            nameof(DesktopRuntimeCommandViewModel.CanExecute),
+            changedProperties);
     }
 
     [Fact]
@@ -33,9 +170,14 @@ public sealed class DesktopRuntimeCommandViewModelTests
     {
         DesktopRuntimeCommandSnapshot command =
             CreateCommand(
-                "Controller.Toggle",
-                "Toggle status LED",
-                "Toggles the endpoint status LED.");
+                new CommandDescriptor(
+                    DescriptorPath.Parse(
+                        "Controller.Toggle"),
+                    "Toggle status LED")
+                {
+                    Description =
+                        "Toggles the endpoint status LED."
+                });
         var instrument =
             new DesktopRuntimeInstrumentViewModel(
                 CreateInstrument(
@@ -53,16 +195,20 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Fact]
-    public void InstrumentUpdate_WithChangedMetadata_ShouldReplaceCommandViewModel()
+    public void InstrumentUpdate_WithChangedDescriptor_ShouldReplaceCommandViewModel()
     {
         var instrument =
             new DesktopRuntimeInstrumentViewModel(
                 CreateInstrument(
                     [
                         CreateCommand(
-                            "Controller.Toggle",
-                            "Toggle status LED",
-                            null)
+                            new CommandDescriptor(
+                                DescriptorPath.Parse(
+                                    "Controller.Send"),
+                                "Send",
+                                new CommandArgumentDescriptor(
+                                    "Value",
+                                    new StringDataDescriptor())))
                     ]));
         DesktopRuntimeCommandViewModel original =
             instrument.Commands[0];
@@ -71,20 +217,21 @@ public sealed class DesktopRuntimeCommandViewModelTests
             CreateInstrument(
                 [
                     CreateCommand(
-                        "Controller.Toggle",
-                        "Toggle LED",
-                        "Updated description.")
+                        new CommandDescriptor(
+                            DescriptorPath.Parse(
+                                "Controller.Send"),
+                            "Send",
+                            new CommandArgumentDescriptor(
+                                "Value",
+                                new ByteArrayDataDescriptor())))
                 ]));
 
         Assert.NotSame(
             original,
             instrument.Commands[0]);
         Assert.Equal(
-            "Toggle LED",
-            instrument.Commands[0].DisplayName);
-        Assert.Equal(
-            "Updated description.",
-            instrument.Commands[0].Description);
+            "ByteArray",
+            instrument.Commands[0].ArgumentDataType);
     }
 
     [Fact]
@@ -95,13 +242,13 @@ public sealed class DesktopRuntimeCommandViewModelTests
                 CreateInstrument(
                     [
                         CreateCommand(
-                            "Controller.First",
-                            "First",
-                            null),
+                            CreateParameterlessDescriptor(
+                                "Controller.First",
+                                "First")),
                         CreateCommand(
-                            "Controller.Removed",
-                            "Removed",
-                            null)
+                            CreateParameterlessDescriptor(
+                                "Controller.Removed",
+                                "Removed"))
                     ]));
         DesktopRuntimeCommandViewModel first =
             instrument.Commands[0];
@@ -110,13 +257,13 @@ public sealed class DesktopRuntimeCommandViewModelTests
             CreateInstrument(
                 [
                     CreateCommand(
-                        "Controller.Added",
-                        "Added",
-                        null),
+                        CreateParameterlessDescriptor(
+                            "Controller.Added",
+                            "Added")),
                     CreateCommand(
-                        "Controller.First",
-                        "First",
-                        null)
+                        CreateParameterlessDescriptor(
+                            "Controller.First",
+                            "First"))
                 ]));
 
         Assert.Equal(
@@ -141,9 +288,11 @@ public sealed class DesktopRuntimeCommandViewModelTests
             "snapshot",
             () => new DesktopRuntimeCommandViewModel(
                 CreateCommand(
-                    string.Empty,
-                    "Command",
-                    null)));
+                    CreateParameterlessDescriptor(
+                        "Controller.Command",
+                        "Command"),
+                    pathOverride:
+                        string.Empty)));
     }
 
     [Fact]
@@ -153,22 +302,47 @@ public sealed class DesktopRuntimeCommandViewModelTests
             "snapshot",
             () => new DesktopRuntimeCommandViewModel(
                 CreateCommand(
-                    "Controller.Command",
-                    string.Empty,
-                    null)));
+                    CreateParameterlessDescriptor(
+                        "Controller.Command",
+                        "Command"),
+                    displayNameOverride:
+                        string.Empty)));
     }
 
-    private static DesktopRuntimeCommandSnapshot CreateCommand(
+    private static DesktopRuntimeCommandViewModel CreateTypedCommand(
+        DataDescriptor data) =>
+        new(
+            CreateCommand(
+                new CommandDescriptor(
+                    DescriptorPath.Parse(
+                        "Controller.Send"),
+                    "Send",
+                    new CommandArgumentDescriptor(
+                        "Value",
+                        data))));
+
+    private static CommandDescriptor CreateParameterlessDescriptor(
         string path,
-        string displayName,
-        string? description) =>
+        string displayName) =>
+        new(
+            DescriptorPath.Parse(
+                path),
+            displayName);
+
+    private static DesktopRuntimeCommandSnapshot CreateCommand(
+        CommandDescriptor descriptor,
+        string? pathOverride = null,
+        string? displayNameOverride = null) =>
         new(
             CreateTarget(
-                path),
-            path,
-            displayName,
-            description,
-            IsEndpointReady: true);
+                descriptor.Path.ToString()),
+            pathOverride
+                ?? descriptor.Path.ToString(),
+            displayNameOverride
+                ?? descriptor.DisplayName,
+            descriptor.Description,
+            IsEndpointReady: true,
+            descriptor);
 
     private static RuntimeHostCommandTarget CreateTarget(
         string path) =>
@@ -177,10 +351,8 @@ public sealed class DesktopRuntimeCommandViewModelTests
             new RuntimeEndpointAttachmentGeneration(
                 Guid.Parse("55e39774-cc7f-4473-8a2e-4bc5bbb79f55")),
             new InstrumentId("instrument-1"),
-            new DescriptorPath(
-                string.IsNullOrWhiteSpace(path)
-                    ? ["Command"]
-                    : path.Split('.')));
+            DescriptorPath.Parse(
+                path));
 
     private static DesktopRuntimeInstrumentSnapshot CreateInstrument(
         IReadOnlyList<DesktopRuntimeCommandSnapshot> commands) =>
