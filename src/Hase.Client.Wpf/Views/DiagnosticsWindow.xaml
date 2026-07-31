@@ -66,6 +66,26 @@
                 <DataGridTextColumn Width="90" Header="Outcome" Binding="{Binding Outcome}" />
             </DataGrid.Columns>
         </DataGrid>
+        <Border
+            Grid.Row="2"
+            Margin="12"
+            Padding="16"
+            VerticalAlignment="Top"
+            Background="#FFFFF4CE"
+            BorderBrush="#FFE0B000"
+            BorderThickness="1">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsBytesUnavailable}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <TextBlock Text="{Binding BytesUnavailableMessage}" TextWrapping="Wrap" />
+        </Border>
         <ScrollViewer Grid.Row="4" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
             <Grid>
                 <Grid.ColumnDefinitions>

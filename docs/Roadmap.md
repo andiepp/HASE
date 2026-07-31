@@ -28,9 +28,10 @@
 - ADR-0042 Increment 42B Client Diagnostics Capture Model
 - ADR-0042 Increment 42C Client Instrumentation
 - ADR-0042 Increment 42D Separate Diagnostics Window
-
-## In progress
 - ADR-0042 Increment 42E Presentation Pause/Resume
 
-## Next
+## In progress
 - ADR-0042 Increment 42F Structured Northbound Presentation
+
+## Next
+- ADR-0042 Increment 42G Physical Validation and Closure

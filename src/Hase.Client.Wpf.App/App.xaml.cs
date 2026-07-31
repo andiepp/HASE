@@ -53,7 +53,9 @@ public partial class App
         containerRegistry.RegisterInstance(
             startupConfiguration);
         containerRegistry.RegisterSingleton<MainWindowViewModel>();
-        var diagnosticCollector = new BoundedClientDiagnosticCollector(2000);
+        var diagnosticCollector = new BoundedClientDiagnosticCollector(
+            2000,
+            ClientDiagnosticLevel.Protocol);
         var diagnosticPublisher = new ClientDiagnosticPublisher(diagnosticCollector);
         containerRegistry.RegisterInstance(diagnosticCollector);
         containerRegistry.RegisterInstance(diagnosticPublisher);

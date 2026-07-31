@@ -44,6 +44,11 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public bool IsPaused => isPaused;
     public string PresentationState => IsPaused ? "Paused" : "Running";
     public int PendingRecordCount => pendingRecordCount;
+    public bool IsBytesUnavailable =>
+        string.Equals(SelectedLevelFilter, nameof(ClientDiagnosticLevel.Bytes), StringComparison.Ordinal);
+    public string BytesUnavailableMessage => IsBytesUnavailable
+        ? "Exact gRPC / HTTP/2 / TLS transport bytes are unavailable at the client application boundary. No reconstructed values are presented as captured bytes."
+        : string.Empty;
 
     public string SelectedLevelFilter
     {
@@ -52,6 +57,8 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         {
             if (SetProperty(ref selectedLevelFilter, value))
             {
+                RaisePropertyChanged(nameof(IsBytesUnavailable));
+                RaisePropertyChanged(nameof(BytesUnavailableMessage));
                 ApplyFilter();
             }
         }
@@ -148,7 +155,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         long? selectedSequence = SelectedRecord?.Sequence;
         IReadOnlyList<ClientDiagnosticRecord> filtered = presentationSource
             .Where(record =>
-                (level is null || record.Level == level) &&
+                (level is null || record.Level <= level) &&
                 (category is null || record.Category == category))
             .ToArray();
 

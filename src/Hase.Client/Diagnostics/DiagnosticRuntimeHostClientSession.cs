@@ -52,6 +52,14 @@ public sealed class DiagnosticRuntimeHostClientSession
             "ObservationSubscriptionStarted",
             direction: ClientDiagnosticDirection.Outbound,
             operationId: operationId);
+        PublishProtocol(
+            "ObserveRequest",
+            ClientDiagnosticDirection.Outbound,
+            operationId,
+            metadata: new Dictionary<string, string>
+            {
+                ["ApiOperation"] = "Observe"
+            });
 
         ClientDiagnosticOutcome outcome = ClientDiagnosticOutcome.Succeeded;
         bool firstState = true;
@@ -88,6 +96,16 @@ public sealed class DiagnosticRuntimeHostClientSession
                     firstState ? "SnapshotDelivered" : "ObservationStateDelivered",
                     direction: ClientDiagnosticDirection.Inbound,
                     operationId: operationId);
+                PublishProtocol(
+                    firstState ? "InitialSnapshotResponse" : "ObservationResponse",
+                    ClientDiagnosticDirection.Inbound,
+                    operationId,
+                    metadata: new Dictionary<string, string>
+                    {
+                        ["ApiOperation"] = "Observe",
+                        ["ObservationSequence"] =
+                            state.LastSequence?.Value.ToString() ?? "None"
+                    });
 
                 firstState = false;
 
@@ -106,6 +124,18 @@ public sealed class DiagnosticRuntimeHostClientSession
                 severity: outcome == ClientDiagnosticOutcome.Failed
                     ? ClientDiagnosticSeverity.Error
                     : ClientDiagnosticSeverity.Information);
+            PublishProtocol(
+                outcome == ClientDiagnosticOutcome.Succeeded
+                    ? "ObserveCompleted"
+                    : "ObserveFailure",
+                direction: null,
+                operationId: operationId,
+                duration: duration.Elapsed,
+                outcome: outcome,
+                metadata: new Dictionary<string, string>
+                {
+                    ["ApiOperation"] = "Observe"
+                });
         }
     }
 
@@ -165,6 +195,11 @@ public sealed class DiagnosticRuntimeHostClientSession
             target.CommandPath.ToString(),
             operationId,
             ClientDiagnosticDirection.Outbound);
+        PublishProtocolCommandTarget(
+            "CommandExecutionRequest",
+            target,
+            operationId,
+            ClientDiagnosticDirection.Outbound);
 
         try
         {
@@ -184,6 +219,14 @@ public sealed class DiagnosticRuntimeHostClientSession
                 result.IsSuccess ? ClientDiagnosticOutcome.Succeeded : ClientDiagnosticOutcome.Failed,
                 result.IsSuccess ? ClientDiagnosticSeverity.Information : ClientDiagnosticSeverity.Warning,
                 new Dictionary<string, string> { ["ResultStatus"] = result.Status.ToString() });
+            PublishProtocolCommandTarget(
+                "CommandExecutionResponse",
+                target,
+                operationId,
+                ClientDiagnosticDirection.Inbound,
+                duration.Elapsed,
+                result.IsSuccess ? ClientDiagnosticOutcome.Succeeded : ClientDiagnosticOutcome.Failed,
+                new Dictionary<string, string> { ["ResultStatus"] = result.Status.ToString() });
             return result;
         }
         catch (Exception exception)
@@ -199,6 +242,15 @@ public sealed class DiagnosticRuntimeHostClientSession
                 target.AttachmentGeneration.Value,
                 target.InstrumentId.Value,
                 target.CommandPath.ToString());
+            PublishProtocolCommandTarget(
+                "CommandExecutionFailure",
+                target,
+                operationId,
+                direction: null,
+                duration: duration.Elapsed,
+                outcome: IsCancellation(exception)
+                    ? ClientDiagnosticOutcome.Cancelled
+                    : ClientDiagnosticOutcome.Failed);
             throw;
         }
     }
@@ -230,6 +282,11 @@ public sealed class DiagnosticRuntimeHostClientSession
         Guid operationId = Guid.NewGuid();
         Stopwatch duration = Stopwatch.StartNew();
         PublishPropertyTarget(operationName + "Started", target, operationId, ClientDiagnosticDirection.Outbound);
+        PublishProtocolPropertyTarget(
+            operationName + "Request",
+            target,
+            operationId,
+            ClientDiagnosticDirection.Outbound);
 
         try
         {
@@ -243,6 +300,14 @@ public sealed class DiagnosticRuntimeHostClientSession
                 duration.Elapsed,
                 result.IsSuccess ? ClientDiagnosticOutcome.Succeeded : ClientDiagnosticOutcome.Failed,
                 result.IsSuccess ? ClientDiagnosticSeverity.Information : ClientDiagnosticSeverity.Warning,
+                new Dictionary<string, string> { ["ResultStatus"] = result.Status.ToString() });
+            PublishProtocolPropertyTarget(
+                operationName + "Response",
+                target,
+                operationId,
+                ClientDiagnosticDirection.Inbound,
+                duration.Elapsed,
+                result.IsSuccess ? ClientDiagnosticOutcome.Succeeded : ClientDiagnosticOutcome.Failed,
                 new Dictionary<string, string> { ["ResultStatus"] = result.Status.ToString() });
             return result;
         }
@@ -259,6 +324,15 @@ public sealed class DiagnosticRuntimeHostClientSession
                 target.AttachmentGeneration.Value,
                 target.InstrumentId.Value,
                 target.PropertyId.Value);
+            PublishProtocolPropertyTarget(
+                operationName + "Failure",
+                target,
+                operationId,
+                direction: null,
+                duration: duration.Elapsed,
+                outcome: IsCancellation(exception)
+                    ? ClientDiagnosticOutcome.Cancelled
+                    : ClientDiagnosticOutcome.Failed);
             throw;
         }
     }
@@ -308,6 +382,20 @@ public sealed class DiagnosticRuntimeHostClientSession
             payload.EventPath.ToString(),
             operationId: null,
             direction: ClientDiagnosticDirection.Inbound);
+        PublishProtocolTarget(
+            "EventObservation",
+            observation.Attachment.EndpointId.Value,
+            observation.Attachment.Generation.Value,
+            payload.InstrumentId.Value,
+            payload.EventPath.ToString(),
+            operationId: null,
+            direction: ClientDiagnosticDirection.Inbound,
+            metadata: new Dictionary<string, string>
+            {
+                ["ApiOperation"] = "Observe",
+                ["ObservationKind"] = observation.Kind.ToString(),
+                ["ObservationSequence"] = observation.Sequence.Value.ToString()
+            });
         EventOccurred?.Invoke(this, eventArgs);
     }
 
@@ -360,6 +448,116 @@ public sealed class DiagnosticRuntimeHostClientSession
             severity: IsCancellation(exception)
                 ? ClientDiagnosticSeverity.Information
                 : ClientDiagnosticSeverity.Error);
+
+    private void PublishProtocolPropertyTarget(
+        string eventName,
+        RemotePropertyTarget target,
+        Guid operationId,
+        ClientDiagnosticDirection? direction,
+        TimeSpan? duration = null,
+        ClientDiagnosticOutcome? outcome = null,
+        IReadOnlyDictionary<string, string>? metadata = null) =>
+        PublishProtocolTarget(
+            eventName,
+            target.EndpointId.Value,
+            target.AttachmentGeneration.Value,
+            target.InstrumentId.Value,
+            target.PropertyId.Value,
+            operationId,
+            direction,
+            duration,
+            outcome,
+            WithApiOperation(
+                eventName.StartsWith("PropertyRead", StringComparison.Ordinal)
+                    ? "ReadAuthoritativeProperty"
+                    : "WriteProperty",
+                metadata));
+
+    private void PublishProtocolCommandTarget(
+        string eventName,
+        RemoteCommandTarget target,
+        Guid operationId,
+        ClientDiagnosticDirection? direction,
+        TimeSpan? duration = null,
+        ClientDiagnosticOutcome? outcome = null,
+        IReadOnlyDictionary<string, string>? metadata = null) =>
+        PublishProtocolTarget(
+            eventName,
+            target.EndpointId.Value,
+            target.AttachmentGeneration.Value,
+            target.InstrumentId.Value,
+            target.CommandPath.ToString(),
+            operationId,
+            direction,
+            duration,
+            outcome,
+            WithApiOperation("ExecuteCommand", metadata));
+
+    private static IReadOnlyDictionary<string, string> WithApiOperation(
+        string apiOperation,
+        IReadOnlyDictionary<string, string>? metadata)
+    {
+        Dictionary<string, string> result = new(StringComparer.Ordinal)
+        {
+            ["ApiOperation"] = apiOperation
+        };
+
+        if (metadata is not null)
+        {
+            foreach (KeyValuePair<string, string> item in metadata)
+            {
+                result.Add(item.Key, item.Value);
+            }
+        }
+
+        return result;
+    }
+
+    private void PublishProtocolTarget(
+        string eventName,
+        string endpointId,
+        Guid generation,
+        string instrumentId,
+        string descriptorPath,
+        Guid? operationId,
+        ClientDiagnosticDirection? direction,
+        TimeSpan? duration = null,
+        ClientDiagnosticOutcome? outcome = null,
+        IReadOnlyDictionary<string, string>? metadata = null) =>
+        diagnostics.Publish(
+            ClientDiagnosticLevel.Protocol,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Protocol,
+                ClientDiagnosticCategory.NorthboundExchange,
+                eventName,
+                direction: direction,
+                operationId: operationId,
+                endpointId: endpointId,
+                attachmentGeneration: generation,
+                instrumentId: instrumentId,
+                descriptorPath: descriptorPath,
+                duration: duration,
+                outcome: outcome,
+                metadata: metadata));
+
+    private void PublishProtocol(
+        string eventName,
+        ClientDiagnosticDirection? direction,
+        Guid? operationId,
+        TimeSpan? duration = null,
+        ClientDiagnosticOutcome? outcome = null,
+        IReadOnlyDictionary<string, string>? metadata = null) =>
+        diagnostics.Publish(
+            ClientDiagnosticLevel.Protocol,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Protocol,
+                ClientDiagnosticCategory.NorthboundExchange,
+                eventName,
+                direction: direction,
+                operationId: operationId,
+                duration: duration,
+                outcome: outcome,
+                metadata: metadata));
 
     private static bool IsCancellation(Exception exception) =>
         exception is OperationCanceledException ||

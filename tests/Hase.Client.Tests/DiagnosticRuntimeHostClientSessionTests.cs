@@ -1,9 +1,79 @@
 using Hase.Client.Diagnostics;
+using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 
 namespace Hase.Client.Tests;
 
 public sealed class DiagnosticRuntimeHostClientSessionTests
 {
+    [Fact]
+    public async Task ReadStatesAsync_ProtocolCapture_CorrelatesObserveRequestAndResponse()
+    {
+        var inner = new StubSession([RemoteObservationState.Empty]);
+        BoundedClientDiagnosticCollector collector =
+            new(20, ClientDiagnosticLevel.Protocol);
+        await using var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher(collector));
+
+        await ReadAllAsync(session.ReadStatesAsync());
+
+        ClientDiagnosticRecord[] protocol = collector.GetSnapshot(
+            ClientDiagnosticLevel.Protocol).Records.ToArray();
+        Assert.Contains(protocol, record => record.EventName == "ObserveRequest");
+        Assert.Contains(protocol, record => record.EventName == "InitialSnapshotResponse");
+        Assert.Single(protocol.Select(record => record.OperationId).Distinct());
+        Assert.All(protocol, record => Assert.Equal("Observe", record.Metadata["ApiOperation"]));
+    }
+
+    [Fact]
+    public async Task PropertyRead_ProtocolCapture_ContainsTargetAndStatusButNoValue()
+    {
+        var inner = new StubSession([]);
+        BoundedClientDiagnosticCollector collector =
+            new(20, ClientDiagnosticLevel.Protocol);
+        await using var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher(collector));
+        RemotePropertyTarget target = CreatePropertyTarget();
+
+        RemotePropertyOperationResult result = await session.ReadPropertyAsync(target);
+
+        Assert.False(result.IsSuccess);
+        ClientDiagnosticRecord response = collector.GetSnapshot().Records.Single(
+            record => record.EventName == "PropertyReadResponse");
+        Assert.Equal("endpoint-01", response.EndpointId);
+        Assert.Equal("property-01", response.DescriptorPath);
+        Assert.Equal("EndpointUnavailable", response.Metadata["ResultStatus"]);
+        Assert.DoesNotContain(response.Metadata.Keys, key => key.Contains("Value", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CommandExecution_ProtocolCapture_ContainsTargetButNoArgumentOrReturnValue()
+    {
+        var inner = new StubSession([]);
+        BoundedClientDiagnosticCollector collector =
+            new(20, ClientDiagnosticLevel.Protocol);
+        await using var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher(collector));
+        var request = new RemoteCommandExecutionRequest(
+            new RemoteCommandTarget(
+                CreateAttachment(),
+                new InstrumentId("instrument-01"),
+                DescriptorPath.Parse("Led.Toggle")),
+            RemoteValue.FromString("must-not-be-captured"));
+
+        await session.ExecuteCommandAsync(request);
+
+        ClientDiagnosticRecord response = collector.GetSnapshot().Records.Single(
+            record => record.EventName == "CommandExecutionResponse");
+        Assert.Equal("Led.Toggle", response.DescriptorPath);
+        Assert.DoesNotContain(
+            response.Metadata.Values,
+            value => value.Contains("must-not-be-captured", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task ReadStatesAsync_RecordsLifecycleAndObservationWithoutChangingStates()
     {
@@ -96,7 +166,23 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
         }
     }
 
-    private sealed class StubSession : IRuntimeHostClientSession
+    private static RemotePropertyTarget CreatePropertyTarget() =>
+        new(
+            CreateAttachment(),
+            new InstrumentId("instrument-01"),
+            new PropertyId("property-01"));
+
+    private static RemoteEndpointAttachmentKey CreateAttachment() =>
+        new(
+            new EndpointId("endpoint-01"),
+            new RemoteEndpointAttachmentGeneration(
+                Guid.Parse("0a11d9d4-7a02-43be-ae3f-eef9d11e0de8")));
+
+    private sealed class StubSession
+        : IRuntimeHostClientSession,
+          IRuntimeHostPropertyReader,
+          IRuntimeHostPropertyWriter,
+          IRuntimeHostCommandExecutor
     {
         private readonly IReadOnlyList<RemoteObservationState> states;
         private readonly Exception? failure;
@@ -146,5 +232,25 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
             DisposeCount++;
             return ValueTask.CompletedTask;
         }
+
+        public Task<RemotePropertyOperationResult> ReadPropertyAsync(
+            RemotePropertyTarget target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                RemotePropertyOperationResult.Failed(
+                    RemotePropertyOperationStatus.EndpointUnavailable));
+
+        public Task<RemotePropertyOperationResult> WritePropertyAsync(
+            RemotePropertyTarget target,
+            RemoteValue requestedValue,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                RemotePropertyOperationResult.Failed(
+                    RemotePropertyOperationStatus.InvalidValue));
+
+        public Task<RemoteCommandOperationResult> ExecuteCommandAsync(
+            RemoteCommandExecutionRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(RemoteCommandOperationResult.Successful());
     }
 }

@@ -6,6 +6,41 @@ namespace Hase.Client.Wpf.Tests;
 public sealed class ClientDiagnosticsViewModelTests
 {
     [Fact]
+    public void ProtocolFilter_IsCumulative()
+    {
+        BoundedClientDiagnosticCollector collector =
+            new(10, ClientDiagnosticLevel.Protocol);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Operational", ClientDiagnosticCategory.ClientConnection));
+        publisher.Publish(
+            new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Protocol,
+                ClientDiagnosticCategory.NorthboundExchange,
+                "Protocol"));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+
+        viewModel.SelectedLevelFilter = nameof(ClientDiagnosticLevel.Protocol);
+
+        Assert.Equal(new[] { "Operational", "Protocol" }, viewModel.Records.Select(record => record.EventName));
+    }
+
+    [Fact]
+    public void BytesFilter_ShowsAvailableLevelsAndExplicitUnavailableMessage()
+    {
+        BoundedClientDiagnosticCollector collector =
+            new(10, ClientDiagnosticLevel.Protocol);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Operational", ClientDiagnosticCategory.ClientConnection));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+
+        viewModel.SelectedLevelFilter = nameof(ClientDiagnosticLevel.Bytes);
+
+        Assert.True(viewModel.IsBytesUnavailable);
+        Assert.Contains("unavailable", viewModel.BytesUnavailableMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(viewModel.Records);
+    }
+
+    [Fact]
     public void Pause_CaptureContinuesWhileProjectionAndSelectionRemainFrozen()
     {
         BoundedClientDiagnosticCollector collector = new(10);
