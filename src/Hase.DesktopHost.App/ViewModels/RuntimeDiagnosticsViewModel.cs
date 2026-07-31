@@ -19,6 +19,7 @@ public sealed class RuntimeDiagnosticsViewModel
 
     private DesktopRuntimeDiagnosticEntry? selectedEntry;
     private RuntimeDiagnosticLevel selectedDisplayMaximumLevel;
+    private bool isPresentationPaused;
 
     public RuntimeDiagnosticsViewModel(
         IDesktopRuntimeDiagnosticSource? source = null)
@@ -51,6 +52,18 @@ public sealed class RuntimeDiagnosticsViewModel
                 ClearDiagnostics,
                 () =>
                     retainedEntries.Count > 0);
+
+        PausePresentationCommand =
+            new DelegateCommand(
+                PausePresentation,
+                () =>
+                    !IsPresentationPaused);
+
+        ResumePresentationCommand =
+            new DelegateCommand(
+                ResumePresentation,
+                () =>
+                    IsPresentationPaused);
     }
 
     public event PropertyChangedEventHandler?
@@ -144,12 +157,53 @@ public sealed class RuntimeDiagnosticsViewModel
     public bool HasSelection =>
         SelectedEntry is not null;
 
+    public bool IsPresentationPaused
+    {
+        get =>
+            isPresentationPaused;
+
+        private set
+        {
+            if (isPresentationPaused == value)
+            {
+                return;
+            }
+
+            isPresentationPaused =
+                value;
+
+            OnPropertyChanged();
+            PausePresentationCommand.RaiseCanExecuteChanged();
+            ResumePresentationCommand.RaiseCanExecuteChanged();
+        }
+    }
+
     public DelegateCommand ClearDiagnosticsCommand
     {
         get;
     }
 
+    public DelegateCommand PausePresentationCommand
+    {
+        get;
+    }
+
+    public DelegateCommand ResumePresentationCommand
+    {
+        get;
+    }
+
     public void Refresh()
+    {
+        if (IsPresentationPaused)
+        {
+            return;
+        }
+
+        ReconcileSourceSnapshot();
+    }
+
+    private void ReconcileSourceSnapshot()
     {
         IReadOnlyList<RuntimeDiagnosticRecord> snapshot =
             source.CaptureDiagnostics();
@@ -288,7 +342,21 @@ public sealed class RuntimeDiagnosticsViewModel
     private void ClearDiagnostics()
     {
         source.ClearDiagnostics();
-        Refresh();
+        retainedEntries.Clear();
+        ApplyDisplayFilter();
+    }
+
+    private void PausePresentation()
+    {
+        IsPresentationPaused =
+            true;
+    }
+
+    private void ResumePresentation()
+    {
+        IsPresentationPaused =
+            false;
+        ReconcileSourceSnapshot();
     }
 
     private void OnPropertyChanged(
