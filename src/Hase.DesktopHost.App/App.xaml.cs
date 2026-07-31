@@ -95,6 +95,9 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<
             RuntimeDiagnosticsViewModel>();
         containerRegistry.RegisterSingleton<
+            IDesktopDiagnosticsWindowFactory,
+            WpfDesktopDiagnosticsWindowFactory>();
+        containerRegistry.RegisterSingleton<
             IDesktopDiagnosticsWindowService,
             DesktopDiagnosticsWindowService>();
         containerRegistry.RegisterSingleton<
