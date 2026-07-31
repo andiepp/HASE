@@ -24,6 +24,10 @@
 - ADR-0041 Increment 41G4 Structured Byte Presentation Integration
 - ADR-0041 Increment 41G5 Structured Byte Physical Validation
 - ADR-0041 Desktop Diagnostics Window and Presentation Pause
+- ADR-0042 Increment 42A Decision and Client Diagnostics Boundary
+
+## In progress
+- ADR-0042 Increment 42B Client Diagnostics Capture Model
 
 ## Next
-- Select the next architectural objective
+- ADR-0042 Increment 42C Client Instrumentation

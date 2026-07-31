@@ -1,87 +1,35 @@
 # Project Status
 
 ## Current architectural work
-**ADR-0041 — Desktop Diagnostics Window and Presentation Pause — Complete**
+**ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause — In Progress**
 
 ### Current status
-- ADR-0037 Complete
-- ADR-0038 Complete
-- ADR-0039 Complete
-- ADR-0040 Increment 40A Complete
-- ADR-0040 Increment 40B Complete
-- ADR-0040 Increment 40C Complete
-- ADR-0040 Increment 40D Complete
-- ADR-0040 Increment 40E Complete
-- ADR-0040 Increment 40F Complete
-- ADR-0040 Increment 40G Complete
-- ADR-0040 accepted, physically validated, and closed
-- ADR-0040 closure baseline: 3,913 automated tests passing
-- Structured operational diagnostic foundation implemented
-- Native and Compact Serial lifecycle diagnostics implemented
-- Recovery scheduling diagnostics active for both physical endpoint families
-- Northbound attachment publication and ending diagnostics include
-  authoritative attachment generation
-- Authoritative Property reads and writes publish correlated operational
-  diagnostics without values
-- Normalized Command execution publishes correlated operational diagnostics
-  without arguments or return values
-- Runtime Event occurrences publish one payload-free diagnostic before
-  observer fan-out
-- Native and Compact operational connections publish payload-free Protocol
-  request, response, failure, and notification diagnostics
-- Protocol diagnostics preserve authoritative endpoint identity, correlation,
-  reconnect ownership, existing results, exceptions, and transport statistics
-- Compact discovery, verification, and bootstrap traffic remains outside
-  attached-runtime Protocol tracing
-- Native and Compact operational generations publish bounded exact-frame
-  diagnostics only through explicit local `Bytes` enablement
-- Byte snapshots retain at most 256 bytes with original length and truncation
-  metadata
-- Default, Operational-only, and Protocol-only configurations install no
-  production byte observer
-- Connection replacement and disposal remove generation-owned byte observers
-  before transport teardown
-- Desktop Runtime Host owns one bounded 2,000-record diagnostic session per
-  production start
-- Desktop diagnostics present deterministic structured metadata and bounded
-  hexadecimal bytes through a scroll-safe master/detail panel
-- Capture level is selected locally before startup; cumulative display
-  filtering never changes capture or discards retained records
-- Local clearing affects only the process-local collector
-- Bytes capture displays an explicit application-payload warning
-- Physical ESP32 Native Protocol Version 1 diagnostics validated at
-  Operational, Protocol, and Bytes display levels
-- Physical Arduino Uno Compact Serial Protocol Version 1 diagnostics validated
-  at Operational, Protocol, and Bytes display levels
-- Property, Command, Event, clear, disconnect, reconnect, recovery, and
-  post-recovery stability behavior validated through the Desktop Runtime Host
-  and WPF client
-- Both physical endpoints returned to `Ready` and remained operational after
-  recovery
-- Capture level remained startup-owned and independent of cumulative display
-  filtering throughout physical validation
-
-- ADR-0041 accepted and complete
-- Desktop diagnostics moved into a separate, modeless, single-instance window
-- Open Diagnostics restores or activates the existing window
-- Closing Diagnostics does not stop the runtime host; main-host shutdown closes
-  the owned diagnostics window
-- Presentation Pause/Resume freezes only projected records while capture and
-  bounded retention continue
-- Paused/running state, filter, records, and selection survive window reopen;
-  application restart begins in Running state
-- Raw hexadecimal bytes remain visible
-- Native Protocol V1 byte records expose version, role, type, correlation,
-  payload length, and payload boundaries
-- Compact Serial Protocol V1 byte records expose marker, version, type,
-  correlation, payload length, payload, and CRC-16/CCITT-FALSE validity
-- Structured interpretation is read-only and cannot affect protocol, transport,
-  runtime, or endpoint behavior
-- 3,981 automated tests passing
-- ADR-0041 physical validation completed across Operational, Protocol, and Bytes
-  capture levels for ESP32 and Arduino Uno
-- Final structured-byte validation completed for Native and Compact request,
-  response, and notification records
+- ADR-0041 accepted, physically validated, and complete
+- ADR-0041 closure baseline: 3,981 automated tests passing
+- ADR-0042 Increment 42A decision and client diagnostics boundary accepted
+- ADR-0042 Increment 42B Client Diagnostics Capture Model implemented
+- Client diagnostics use client-owned contracts without coupling `Hase.Client`
+  to `Hase.Runtime`
+- Operational, Protocol, and Bytes levels define cumulative capture detail
+- Stable client lifecycle, configuration, connection, snapshot, Property,
+  Command, observation, recovery, presentation, northbound exchange, and
+  northbound byte categories are defined
+- Diagnostic events carry structured identity, direction, operation,
+  duration, outcome, and immutable metadata without payload-value fields
+- Sensitive credential, secret, token, network-address, URI, and host-name
+  metadata keys are rejected at the capture-model boundary
+- Diagnostic records receive process-local increasing sequence numbers and UTC
+  timestamps
+- Diagnostic observers are failure-isolated from client behavior
+- The client collector is bounded, thread-safe, filterable, and clearable
+- Concurrent retention is sequence-based and preserves the newest records
+- Atomic snapshots include retained records and capacity-eviction accounting
+- Clear removes retained records and resets eviction accounting
+- Fourteen focused automated cases cover validation, metadata immutability,
+  redaction-safe contracts, enablement, sequencing, UTC timestamps, observer
+  isolation, bounded retention, filtering, clearing, and concurrency
+- WPF presentation and production client instrumentation remain unchanged
 
 ### Next
-Select the next architectural objective after ADR-0041.
+Build and run the complete automated suite, review Increment 42B, then implement
+Increment 42C Client Instrumentation after explicit approval.
