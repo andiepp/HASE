@@ -18,6 +18,7 @@ public partial class MainWindow : Window
                 diagnosticsWindowService.Open);
 
         InitializeComponent();
+        RemoveEmbeddedDiagnosticsPanel();
         AddOpenDiagnosticsButton();
     }
 
@@ -26,20 +27,36 @@ public partial class MainWindow : Window
         get;
     }
 
+    private void RemoveEmbeddedDiagnosticsPanel()
+    {
+        Grid contentGrid =
+            ResolveContentGrid();
+
+        GroupBox diagnosticsPanel =
+            contentGrid.Children
+                .OfType<GroupBox>()
+                .Single(
+                    groupBox =>
+                        string.Equals(
+                            groupBox.Header as string,
+                            "Runtime Diagnostics",
+                            StringComparison.Ordinal));
+
+        contentGrid.Children.Remove(
+            diagnosticsPanel);
+    }
+
     private void AddOpenDiagnosticsButton()
     {
-        if (Content is not ScrollViewer scrollViewer
-            || scrollViewer.Content is not Grid contentGrid
-            || contentGrid.Children
+        Grid contentGrid =
+            ResolveContentGrid();
+
+        StackPanel header =
+            contentGrid.Children
                 .OfType<StackPanel>()
-                .FirstOrDefault(
+                .First(
                     panel =>
-                        Grid.GetRow(panel) == 0)
-                is not StackPanel header)
-        {
-            throw new InvalidOperationException(
-                "The main-window header could not be resolved.");
-        }
+                        Grid.GetRow(panel) == 0);
 
         var button =
             new Button
@@ -55,13 +72,24 @@ public partial class MainWindow : Window
                 MinWidth =
                     150,
                 HorizontalAlignment =
-                    HorizontalAlignment.Left
+                    HorizontalAlignment.Left,
+                Command =
+                    OpenDiagnosticsCommand
             };
-
-        button.Command =
-            OpenDiagnosticsCommand;
 
         header.Children.Add(
             button);
+    }
+
+    private Grid ResolveContentGrid()
+    {
+        if (Content is ScrollViewer scrollViewer
+            && scrollViewer.Content is Grid contentGrid)
+        {
+            return contentGrid;
+        }
+
+        throw new InvalidOperationException(
+            "The main-window content grid could not be resolved.");
     }
 }
