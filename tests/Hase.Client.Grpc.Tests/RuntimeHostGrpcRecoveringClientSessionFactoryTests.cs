@@ -1,10 +1,54 @@
 ﻿using System.Security.Cryptography.X509Certificates;
+using Hase.Client.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Hosting;
 
 namespace Hase.Client.Grpc.Tests;
 
 public sealed class RuntimeHostGrpcRecoveringClientSessionFactoryTests
 {
+    [Fact]
+    public async Task CreateAsync_EnabledDiagnostics_RecordsConfigurationAndWrapsSession()
+    {
+        BoundedClientDiagnosticCollector collector = new(20);
+        var publisher = new ClientDiagnosticPublisher(collector);
+        var factory = new RuntimeHostGrpcRecoveringClientSessionFactory(
+            (_, _) => Task.FromResult(CreateOptions()),
+            _ => new StubSession(),
+            publisher);
+
+        IRuntimeHostClientSession result = await factory.CreateAsync(
+            @"C:\HASE\client.json");
+
+        Assert.IsType<DiagnosticRuntimeHostClientSession>(result);
+        Assert.Equal(
+            new[] { "ConfigurationLoadStarted", "ConfigurationLoadCompleted" },
+            collector.GetSnapshot().Records.Select(record => record.EventName));
+        Assert.All(
+            collector.GetSnapshot().Records,
+            record => Assert.DoesNotContain("192.0.2.10", record.Metadata.Values));
+        await result.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task CreateAsync_EnabledDiagnostics_LoaderFailureRecordsNoPathOrAddress()
+    {
+        BoundedClientDiagnosticCollector collector = new(20);
+        var expected = new InvalidDataException("Invalid configuration.");
+        var factory = new RuntimeHostGrpcRecoveringClientSessionFactory(
+            (_, _) => Task.FromException<RuntimeHostPrivateNetworkClientOptions>(expected),
+            _ => new StubSession(),
+            new ClientDiagnosticPublisher(collector));
+
+        InvalidDataException actual = await Assert.ThrowsAsync<InvalidDataException>(
+            () => factory.CreateAsync(@"C:\Private\client.json"));
+
+        Assert.Same(expected, actual);
+        ClientDiagnosticRecord failed = collector.GetSnapshot().Records[^1];
+        Assert.Equal("ConfigurationLoadFailed", failed.EventName);
+        Assert.Equal(ClientDiagnosticOutcome.Failed, failed.Outcome);
+        Assert.Empty(failed.Metadata);
+    }
+
     [Fact]
     public async Task CreateAsync_ShouldLoadOptionsAndReturnSession()
     {
