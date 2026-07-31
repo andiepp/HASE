@@ -1,9 +1,13 @@
 # Project Status
 
 ## Current architectural work
-**ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause — In Progress**
+**ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause — Complete**
 
 ### Current status
+- ADR-0042 accepted, physically validated, and complete
+- ADR-0042 closure baseline: 4,017 automated tests passing
+- All thirty-seven combined physical validation checks passed without
+  deviation with ESP32 and Arduino Uno published concurrently
 - ADR-0042 Increments 42A through 42E accepted
 - ADR-0042 42E baseline: 4,012 automated tests passing
 - ADR-0042 Increment 42F Structured Northbound Presentation implemented
@@ -27,5 +31,4 @@
   targets and redaction, cumulative filtering, and Bytes-unavailable behavior
 
 ### Next
-Build and run the complete automated suite, physically validate all client
-diagnostic levels, then close ADR-0042 through Increment 42G.
+Select the next architectural objective after ADR-0042.

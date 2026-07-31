@@ -29,9 +29,9 @@
 - ADR-0042 Increment 42C Client Instrumentation
 - ADR-0042 Increment 42D Separate Diagnostics Window
 - ADR-0042 Increment 42E Presentation Pause/Resume
-
-## In progress
 - ADR-0042 Increment 42F Structured Northbound Presentation
+- ADR-0042 Increment 42G Physical Validation and Closure
+- ADR-0042 Laptop Client Diagnostics Window and Presentation Pause
 
 ## Next
-- ADR-0042 Increment 42G Physical Validation and Closure
+- Select the next architectural objective

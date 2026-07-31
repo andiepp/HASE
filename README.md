@@ -39,6 +39,10 @@ changes.
   - Parameterless Command execution
   - Endpoint disconnect and reconnect state
   - Live Event feed with endpoint and instrument attribution
+  - Separate bounded diagnostics window for client lifecycle and structured
+    northbound activity
+  - Presentation Pause/Resume without interrupting capture or client operation
+  - Truthful Bytes-unavailable explanation at the client application boundary
 
 ## Validated hardware
 

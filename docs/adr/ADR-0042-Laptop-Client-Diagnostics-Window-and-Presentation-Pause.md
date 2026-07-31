@@ -1,6 +1,6 @@
 # ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-31
 
 ## Context
@@ -105,7 +105,7 @@ authentication, recovery, or physical-endpoint behavior.
 - Presentation Pause/Resume is not transport flow control and cannot delay or
   suppress observation processing.
 
-## Planned increments
+## Implemented increments
 
 1. 42A — Decision and Client Diagnostics Boundary.
 2. 42B — Client Diagnostics Capture Model.
@@ -115,17 +115,27 @@ authentication, recovery, or physical-endpoint behavior.
 6. 42F — Structured Northbound Presentation.
 7. 42G — Physical Validation and Closure.
 
-## Validation required before acceptance
+## Validation
 
-- Automated tests for bounded capture, ordering, filtering, redaction,
-  Pause/Resume reconciliation, clear, and window lifecycle.
-- Desktop/laptop validation with authenticated connection and both physical
-  endpoints published.
-- Property, Command, Event, disconnect, reconnect, recovery, pause, resume,
-  clear, close, and reopen behavior validated without changing client or host
-  operation.
-- Presentation verified to distinguish normalized northbound evidence from
-  physical Native and Compact protocol evidence.
+- 4,017 automated tests pass.
+- The authenticated Desktop Runtime Host published the ESP32 Native Protocol
+  V1 and Arduino Uno Compact Serial Protocol V1 endpoints concurrently.
+- Thirty-seven combined physical checks passed without deviation.
+- Operational and cumulative Protocol presentation was validated for initial
+  connection, snapshot, Property reads and writes, Commands, Events,
+  disconnect, reconnect, and physical endpoint recovery.
+- Pause/Resume, pending count, filtering, selection, automatic scrolling,
+  Clear, close/reopen, and main-client shutdown behaved deterministically.
+- Arduino and ESP32 Events retained correct endpoint and instrument
+  attribution.
+- Bytes presentation truthfully reported that exact gRPC, HTTP/2, TLS, and
+  transport bytes are unavailable at the client application boundary and did
+  not present reconstructed hexadecimal data.
+- No Property value, requested value, Command argument or return value, Event
+  payload, private address, configuration path, credential, or certificate
+  material appeared in diagnostics.
+- Diagnostic actions did not change client, runtime-host, or physical-endpoint
+  behavior; both endpoints returned to Ready after recovery.
 
 ## Deferred
 

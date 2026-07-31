@@ -1053,3 +1053,44 @@ The first real laptop UI is complete when:
 - it disconnects and disposes all owned resources orderly;
 - automated tests cover the client state model;
 - the physical desktop-to-laptop scenario passes for ESP32 and Arduino.
+
+---
+
+# 27. Use the laptop-client diagnostics window
+
+The implemented WPF client exposes `Open Diagnostics` in its main window. The
+button opens one modeless diagnostics window that can be positioned beside the
+client. Repeated invocation restores and activates the existing window.
+
+Closing Diagnostics does not disconnect the client, stop observation
+processing, or stop capture. Reopening the window restores the application-
+session presentation state. Closing the main client closes both windows and
+allows deterministic process exit.
+
+The client owns one bounded 2,000-record diagnostic collector. Use the Level
+filter as a cumulative view:
+
+- `Operational` shows client lifecycle and normalized activity;
+- `Protocol` shows Operational plus structured northbound request, response,
+  observation, completion, cancellation, and failure records;
+- `Bytes` shows every available captured level and explains that exact gRPC,
+  HTTP/2, TLS, and transport bytes are unavailable at this application
+  boundary.
+
+The Bytes explanation is intentional. Do not reconstruct protobuf values and
+label them as captured wire bytes.
+
+Use Pause to freeze only the projection, selection, and automatic scrolling.
+Capture and bounded eviction continue, and Pending shows retained records
+awaiting reconciliation. Resume reconciles the current retained snapshot.
+Records evicted during Pause do not reappear.
+
+Clear affects only the client-local diagnostic collector. It never changes the
+runtime-host connection or a physical endpoint.
+
+Diagnostic records deliberately exclude Property values and requested values,
+Command arguments and return values, Event payloads, exception messages,
+configuration paths, private addresses, credentials, and certificate material.
+
+ADR-0042 closed with 4,017 automated tests passing and thirty-seven combined
+physical checks passing without deviation for the ESP32 and Arduino Uno.
