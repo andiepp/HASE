@@ -593,3 +593,23 @@ The display filter is cumulative but presentation-only: it neither changes the
 session capture level nor removes hidden records. Clearing empties only the
 local collector. When Bytes capture is active, the application warns that exact
 frames may contain application payloads.
+
+ADR-0041 moves the Desktop Runtime Host diagnostics presentation into one
+separate modeless window opened from the main host window. The window is
+single-instance within an application session, can be positioned independently,
+and remains owned by the main window for deterministic shutdown. Closing and
+reopening the diagnostics window preserves the singleton presentation session.
+
+Presentation pause is independent of diagnostic capture. While paused, source
+publication, bounded retention, and eviction continue; the projected records,
+filter, and selection remain stable. Resume immediately reconciles the current
+bounded snapshot. A new application process starts in Running state.
+
+Bytes presentation retains raw hexadecimal content and adds read-only
+structured interpretation. Native Protocol V1 interpretation follows its
+12-byte envelope header and opaque payload boundary. Compact Serial Protocol V1
+interpretation follows its marker, version, message type, correlation, payload,
+and CRC-16/CCITT-FALSE fields. Interpretation consumes only immutable diagnostic
+snapshots, never participates in protocol execution, and converts malformed,
+incomplete, truncated, unsupported, or failed interpretation into safe
+presentation results.

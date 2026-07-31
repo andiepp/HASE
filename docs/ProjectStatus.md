@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current architectural work
-**ADR-0040 — Structured Runtime Diagnostics and Tracing — Complete**
+**ADR-0041 — Desktop Diagnostics Window and Presentation Pause — Complete**
 
 ### Current status
 - ADR-0037 Complete
@@ -15,7 +15,7 @@
 - ADR-0040 Increment 40F Complete
 - ADR-0040 Increment 40G Complete
 - ADR-0040 accepted, physically validated, and closed
-- 3,913 automated tests passing
+- ADR-0040 closure baseline: 3,913 automated tests passing
 - Structured operational diagnostic foundation implemented
 - Native and Compact Serial lifecycle diagnostics implemented
 - Recovery scheduling diagnostics active for both physical endpoint families
@@ -61,5 +61,27 @@
 - Capture level remained startup-owned and independent of cumulative display
   filtering throughout physical validation
 
+- ADR-0041 accepted and complete
+- Desktop diagnostics moved into a separate, modeless, single-instance window
+- Open Diagnostics restores or activates the existing window
+- Closing Diagnostics does not stop the runtime host; main-host shutdown closes
+  the owned diagnostics window
+- Presentation Pause/Resume freezes only projected records while capture and
+  bounded retention continue
+- Paused/running state, filter, records, and selection survive window reopen;
+  application restart begins in Running state
+- Raw hexadecimal bytes remain visible
+- Native Protocol V1 byte records expose version, role, type, correlation,
+  payload length, and payload boundaries
+- Compact Serial Protocol V1 byte records expose marker, version, type,
+  correlation, payload length, payload, and CRC-16/CCITT-FALSE validity
+- Structured interpretation is read-only and cannot affect protocol, transport,
+  runtime, or endpoint behavior
+- 3,981 automated tests passing
+- ADR-0041 physical validation completed across Operational, Protocol, and Bytes
+  capture levels for ESP32 and Arduino Uno
+- Final structured-byte validation completed for Native and Compact request,
+  response, and notification records
+
 ### Next
-Select the next architectural objective after ADR-0040.
+Select the next architectural objective after ADR-0041.

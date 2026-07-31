@@ -1263,7 +1263,39 @@ remains published.
 `RuntimeDiagnosticsViewModel`
 : Incrementally reconciles the bounded source, collector eviction, clear and
   replacement sessions, newest-first ordering, selection, cumulative display
-  filtering, and the local clear command.
+  filtering, presentation-only pause/resume, and the local clear command.
+
+`DesktopDiagnosticsWindowService`
+: Owns the single-instance modeless diagnostics-window lifecycle for one
+  application session and reuses the singleton diagnostics view model.
+
+`IDesktopDiagnosticsWindowFactory`
+: Creates a WPF diagnostics window over the supplied shared presentation state.
+  The production factory assigns main-window ownership for deterministic host
+  shutdown.
+
+`SingleInstanceDesktopWindowController`
+: Shows the first window, activates or restores an existing instance, and
+  releases closed instances so a fresh window can be created.
+
+`DesktopRuntimeByteInterpretationService`
+: Dispatches immutable bounded snapshots by exact `protocolFamily` to one
+  read-only interpreter and converts interpreter failure into a safe result.
+
+`NativeProtocolV1DesktopRuntimeByteInterpreter`
+: Interprets the Native 12-byte envelope header and opaque payload boundary.
+
+`CompactSerialProtocolV1DesktopRuntimeByteInterpreter`
+: Interprets Compact marker, version, type, correlation, payload boundary, and
+  CRC-16/CCITT-FALSE validity.
+
+`CompactSerialProtocolV1Inspection`
+: Narrow read-only facade over the frozen internal Compact wire constants,
+  message-type rules, correlation rules, and CRC implementation.
+
+`DesktopRuntimeByteInterpretation` / `DesktopRuntimeByteField`
+: Immutable UI-neutral status, summary, byte-range, interpreted-value, and
+  validation presentation models.
 
 These components do not replace `ILogger`, aggregate transport statistics,
 runtime observation, or endpoint supervision.

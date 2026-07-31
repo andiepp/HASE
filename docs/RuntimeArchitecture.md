@@ -375,3 +375,21 @@ application-payload warning.
 Diagnostics are explanatory. They do not own endpoint state, retry decisions,
 attachment generation, runtime failure categories, or application behavior.
 Diagnostic sink failures never propagate into runtime execution.
+
+The Desktop diagnostics UI is hosted in one main-window-owned modeless window.
+`DesktopDiagnosticsWindowService` and
+`SingleInstanceDesktopWindowController` activate the existing window or create
+a replacement through `IDesktopDiagnosticsWindowFactory`. The factory receives
+the application-session singleton `RuntimeDiagnosticsViewModel`, so window
+recreation does not recreate presentation state.
+
+`RuntimeDiagnosticsViewModel` owns presentation-only pause. Timer refresh is
+inert while paused, but the runtime collector remains active. Clear is an
+explicit operator action that clears both source and frozen projection. Resume
+reconciles immediately from the current bounded source.
+
+Structured byte interpretation occurs during immutable Desktop projection.
+The existing `protocolFamily` detail selects either the Native Protocol V1 or
+Compact Serial Protocol V1 interpreter. Both consume the bounded owned byte
+snapshot directly; the displayed hexadecimal string is never reparsed. Raw
+bytes remain visible beside offset/length/field/value/bytes/validation rows.
