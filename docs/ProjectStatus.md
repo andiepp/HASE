@@ -1,7 +1,7 @@
 # Project Status
 
 ## Current architectural work
-**ADR-0040 — Structured Runtime Diagnostics and Tracing**
+**ADR-0040 — Structured Runtime Diagnostics and Tracing — Complete**
 
 ### Current status
 - ADR-0037 Complete
@@ -13,6 +13,8 @@
 - ADR-0040 Increment 40D Complete
 - ADR-0040 Increment 40E Complete
 - ADR-0040 Increment 40F Complete
+- ADR-0040 Increment 40G Complete
+- ADR-0040 accepted, physically validated, and closed
 - 3,913 automated tests passing
 - Structured operational diagnostic foundation implemented
 - Native and Compact Serial lifecycle diagnostics implemented
@@ -47,7 +49,17 @@
   filtering never changes capture or discards retained records
 - Local clearing affects only the process-local collector
 - Bytes capture displays an explicit application-payload warning
+- Physical ESP32 Native Protocol Version 1 diagnostics validated at
+  Operational, Protocol, and Bytes display levels
+- Physical Arduino Uno Compact Serial Protocol Version 1 diagnostics validated
+  at Operational, Protocol, and Bytes display levels
+- Property, Command, Event, clear, disconnect, reconnect, recovery, and
+  post-recovery stability behavior validated through the Desktop Runtime Host
+  and WPF client
+- Both physical endpoints returned to `Ready` and remained operational after
+  recovery
+- Capture level remained startup-owned and independent of cumulative display
+  filtering throughout physical validation
 
 ### Next
-Implement ADR-0040 Increment 40G — physical validation, final documentation,
-and closure.
+Select the next architectural objective after ADR-0040.
