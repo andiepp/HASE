@@ -1,0 +1,51 @@
+<Window
+    x:Class="Hase.DesktopHost.App.Views.DiagnosticsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="HASE Runtime Diagnostics"
+    Width="900"
+    Height="650"
+    MinWidth="640"
+    MinHeight="420"
+    ShowInTaskbar="True"
+    WindowStartupLocation="CenterOwner">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            FontSize="24"
+            FontWeight="SemiBold"
+            Text="Runtime Diagnostics" />
+
+        <Border
+            Grid.Row="2"
+            Padding="24"
+            BorderBrush="LightGray"
+            BorderThickness="1"
+            CornerRadius="4">
+            <StackPanel
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Text="Diagnostics window ready" />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    Foreground="DimGray"
+                    Text="The existing diagnostics presentation moves here in Increment 41B."
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Center"
+                    Text="{Binding CaptureMaximumLevelText, StringFormat=Capture level: {0}}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
