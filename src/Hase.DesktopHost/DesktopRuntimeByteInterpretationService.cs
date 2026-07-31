@@ -47,6 +47,15 @@ public sealed class DesktopRuntimeByteInterpretationService
             byProtocolFamily;
     }
 
+    public static DesktopRuntimeByteInterpretationService CreateDefault()
+    {
+        return new DesktopRuntimeByteInterpretationService(
+            [
+                new NativeProtocolV1DesktopRuntimeByteInterpreter(),
+                new CompactSerialProtocolV1DesktopRuntimeByteInterpreter()
+            ]);
+    }
+
     public DesktopRuntimeByteInterpretation Interpret(
         string? protocolFamily,
         RuntimeDiagnosticByteSnapshot? snapshot)

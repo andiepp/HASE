@@ -10,11 +10,26 @@ namespace Hase.DesktopHost;
 /// </summary>
 public static class DesktopRuntimeDiagnosticEntryProjector
 {
+    private static readonly DesktopRuntimeByteInterpretationService
+        DefaultByteInterpretationService =
+            DesktopRuntimeByteInterpretationService.CreateDefault();
+
     public static DesktopRuntimeDiagnosticEntry Project(
         RuntimeDiagnosticRecord record)
     {
+        return Project(
+            record,
+            DefaultByteInterpretationService);
+    }
+
+    public static DesktopRuntimeDiagnosticEntry Project(
+        RuntimeDiagnosticRecord record,
+        DesktopRuntimeByteInterpretationService byteInterpretationService)
+    {
         ArgumentNullException.ThrowIfNull(
             record);
+        ArgumentNullException.ThrowIfNull(
+            byteInterpretationService);
 
         RuntimeDiagnosticByteSnapshot? byteSnapshot =
             record.ByteSnapshot;
@@ -30,6 +45,15 @@ public static class DesktopRuntimeDiagnosticEntryProjector
         bool isTruncated =
             byteSnapshot?.IsTruncated
             ?? false;
+
+        record.Details.TryGetValue(
+            "protocolFamily",
+            out string? protocolFamily);
+
+        DesktopRuntimeByteInterpretation interpretation =
+            byteInterpretationService.Interpret(
+                protocolFamily,
+                byteSnapshot);
 
         return new DesktopRuntimeDiagnosticEntry(
             record.Sequence,
@@ -70,7 +94,11 @@ public static class DesktopRuntimeDiagnosticEntryProjector
             byteSnapshot is null
                 ? string.Empty
                 : Convert.ToHexString(
-                    byteSnapshot.ToArray()));
+                    byteSnapshot.ToArray()))
+        {
+            ByteInterpretation =
+                interpretation
+        };
     }
 
     private static IReadOnlyList<DesktopRuntimeDiagnosticDetail>

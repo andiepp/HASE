@@ -10,6 +10,8 @@ public sealed class RuntimeDiagnosticsViewModel
     : INotifyPropertyChanged
 {
     private readonly IDesktopRuntimeDiagnosticSource source;
+    private readonly DesktopRuntimeByteInterpretationService
+        byteInterpretationService;
     private readonly Dictionary<long, DesktopRuntimeDiagnosticEntry>
         retainedEntries =
             [];
@@ -22,11 +24,16 @@ public sealed class RuntimeDiagnosticsViewModel
     private bool isPresentationPaused;
 
     public RuntimeDiagnosticsViewModel(
-        IDesktopRuntimeDiagnosticSource? source = null)
+        IDesktopRuntimeDiagnosticSource? source = null,
+        DesktopRuntimeByteInterpretationService?
+            byteInterpretationService = null)
     {
         this.source =
             source
             ?? EmptyDiagnosticSource.Instance;
+        this.byteInterpretationService =
+            byteInterpretationService
+            ?? DesktopRuntimeByteInterpretationService.CreateDefault();
 
         CaptureMaximumLevel =
             this.source.MaximumLevel;
@@ -264,7 +271,8 @@ public sealed class RuntimeDiagnosticsViewModel
                 retainedEntries.Add(
                     record.Sequence,
                     DesktopRuntimeDiagnosticEntryProjector.Project(
-                        record));
+                        record,
+                        byteInterpretationService));
             }
         }
 

@@ -327,7 +327,7 @@
                                     </StackPanel.Style>
                                     <TextBlock
                                         FontWeight="SemiBold"
-                                        Text="Captured bytes" />
+                                        Text="Raw captured bytes" />
                                     <TextBlock
                                         Margin="0,4,0,0"
                                         Text="{Binding SelectedEntry.ByteSummary}" />
@@ -340,6 +340,61 @@
                                         Text="{Binding SelectedEntry.ByteHex}"
                                         TextWrapping="Wrap"
                                         VerticalScrollBarVisibility="Auto" />
+
+                                    <TextBlock
+                                        Margin="0,16,0,0"
+                                        FontWeight="SemiBold"
+                                        Text="Structured interpretation" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        Text="{Binding SelectedEntry.ByteProtocolFamily, StringFormat=Protocol family: {0}}"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
+                                        Text="{Binding SelectedEntry.ByteInterpretationStatusText, StringFormat=Status: {0}}"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        Foreground="DimGray"
+                                        Text="{Binding SelectedEntry.ByteInterpretationSummary}"
+                                        TextWrapping="Wrap" />
+                                    <DataGrid
+                                        Margin="0,8,0,0"
+                                        Height="220"
+                                        AutoGenerateColumns="False"
+                                        CanUserAddRows="False"
+                                        CanUserDeleteRows="False"
+                                        HeadersVisibility="Column"
+                                        HorizontalScrollBarVisibility="Auto"
+                                        IsReadOnly="True"
+                                        ItemsSource="{Binding SelectedEntry.ByteInterpretationFields}"
+                                        VerticalScrollBarVisibility="Auto">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn
+                                                Width="70"
+                                                Binding="{Binding Offset}"
+                                                Header="Offset" />
+                                            <DataGridTextColumn
+                                                Width="70"
+                                                Binding="{Binding Length}"
+                                                Header="Length" />
+                                            <DataGridTextColumn
+                                                Width="170"
+                                                Binding="{Binding Name}"
+                                                Header="Field" />
+                                            <DataGridTextColumn
+                                                Width="260"
+                                                Binding="{Binding InterpretedValue}"
+                                                Header="Interpreted value" />
+                                            <DataGridTextColumn
+                                                Width="220"
+                                                Binding="{Binding ByteHex}"
+                                                Header="Bytes" />
+                                            <DataGridTextColumn
+                                                Width="110"
+                                                Binding="{Binding Validation}"
+                                                Header="Validation" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

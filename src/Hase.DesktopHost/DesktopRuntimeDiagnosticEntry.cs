@@ -26,4 +26,28 @@ public sealed record DesktopRuntimeDiagnosticEntry(
     int CapturedByteCount,
     bool IsByteSnapshotTruncated,
     string ByteSummary,
-    string ByteHex);
+    string ByteHex)
+{
+    public DesktopRuntimeByteInterpretation ByteInterpretation
+    {
+        get;
+        init;
+    } =
+        new(
+            DesktopRuntimeByteInterpretationStatus.NoCapturedBytes,
+            string.Empty,
+            "No captured bytes are available for interpretation.");
+
+    public string ByteProtocolFamily =>
+        ByteInterpretation.ProtocolFamily;
+
+    public string ByteInterpretationStatusText =>
+        ByteInterpretation.Status.ToString();
+
+    public string ByteInterpretationSummary =>
+        ByteInterpretation.Summary;
+
+    public IReadOnlyList<DesktopRuntimeByteField>
+        ByteInterpretationFields =>
+            ByteInterpretation.Fields;
+}

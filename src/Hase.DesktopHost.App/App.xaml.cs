@@ -92,6 +92,8 @@ public partial class App : PrismApplication
             RuntimeInventoryViewModel>();
         containerRegistry.RegisterSingleton<
             EndpointDetailsViewModel>();
+        containerRegistry.RegisterInstance(
+            DesktopRuntimeByteInterpretationService.CreateDefault());
         containerRegistry.RegisterSingleton<
             RuntimeDiagnosticsViewModel>();
         containerRegistry.RegisterSingleton<

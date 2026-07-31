@@ -2,7 +2,7 @@
   "profiles": {
     "HASE.DesktopHost.App": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\aeppi\\AppData\\Local\\HASE\\PrivateNetworkValidation\\desktop-private-network.json\" \"192.168.0.223\" --include-byte-buffer-simulation --diagnostics=protocol"
+      "commandLineArgs": "\"C:\\Users\\aeppi\\AppData\\Local\\HASE\\PrivateNetworkValidation\\desktop-private-network.json\" \"192.168.0.223\" --include-byte-buffer-simulation --diagnostics=bytes"
     }
   }
 }
