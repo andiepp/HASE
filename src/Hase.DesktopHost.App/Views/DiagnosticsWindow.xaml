@@ -34,6 +34,10 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="12" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
@@ -58,6 +62,20 @@
                 SelectedItem="{Binding SelectedDisplayMaximumLevel, Mode=TwoWay}" />
             <Button
                 Grid.Column="8"
+                MinWidth="90"
+                AutomationProperties.Name="Pause diagnostics presentation"
+                Command="{Binding PausePresentationCommand}"
+                Content="Pause"
+                ToolTip="Pause presentation updates. Diagnostic capture and bounded retention continue." />
+            <Button
+                Grid.Column="10"
+                MinWidth="90"
+                AutomationProperties.Name="Resume diagnostics presentation"
+                Command="{Binding ResumePresentationCommand}"
+                Content="Resume"
+                ToolTip="Resume presentation updates and reconcile the current retained diagnostics." />
+            <Button
+                Grid.Column="12"
                 MinWidth="130"
                 Command="{Binding ClearDiagnosticsCommand}"
                 Content="Clear diagnostics" />
@@ -92,18 +110,38 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="8" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="12" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock
-                Foreground="DimGray"
-                Text="{Binding DisplayedEntryCount, StringFormat=Displayed records: {0}}" />
-            <TextBlock
-                HorizontalAlignment="Right"
-                Foreground="DimGray"
-                Text="{Binding RetainedEntryCount, StringFormat=Retained records: {0}}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Text="{Binding PresentationStatusText}" />
+                <TextBlock
+                    Grid.Column="2"
+                    Foreground="DimGray"
+                    Text="{Binding PresentationStatusDescription}"
+                    TextWrapping="Wrap" />
+            </Grid>
 
             <Grid Grid.Row="2">
+                <TextBlock
+                    Foreground="DimGray"
+                    Text="{Binding DisplayedEntryCount, StringFormat=Displayed records: {0}}" />
+                <TextBlock
+                    HorizontalAlignment="Right"
+                    Foreground="DimGray"
+                    Text="{Binding RetainedEntryCount, StringFormat=Retained records: {0}}" />
+            </Grid>
+
+            <Grid Grid.Row="4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" MinWidth="400" />
                     <ColumnDefinition Width="20" />

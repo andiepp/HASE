@@ -173,10 +173,24 @@ public sealed class RuntimeDiagnosticsViewModel
                 value;
 
             OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(PresentationStatusText));
+            OnPropertyChanged(
+                nameof(PresentationStatusDescription));
             PausePresentationCommand.RaiseCanExecuteChanged();
             ResumePresentationCommand.RaiseCanExecuteChanged();
         }
     }
+
+    public string PresentationStatusText =>
+        IsPresentationPaused
+            ? "Presentation: Paused"
+            : "Presentation: Running";
+
+    public string PresentationStatusDescription =>
+        IsPresentationPaused
+            ? "Presentation is paused. Diagnostic capture and bounded retention continue."
+            : "Presentation updates automatically from the retained diagnostic session.";
 
     public DelegateCommand ClearDiagnosticsCommand
     {
