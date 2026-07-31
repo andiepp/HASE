@@ -1,4 +1,5 @@
 ﻿using System.Windows.Threading;
+using Hase.Client.Diagnostics;
 using Hase.Client.Grpc;
 using Hase.Client.Wpf.Services;
 
@@ -10,8 +11,11 @@ namespace Hase.Client.Wpf.AppHost;
 /// </summary>
 public static class RuntimeHostClientComposition
 {
-    public static IRuntimeHostClientSessionFactory CreateSessionFactory() =>
-        new RuntimeHostGrpcRecoveringClientSessionFactory();
+    public static IRuntimeHostClientSessionFactory CreateSessionFactory(
+        ClientDiagnosticPublisher? diagnostics = null) =>
+        diagnostics is null
+            ? new RuntimeHostGrpcRecoveringClientSessionFactory()
+            : new RuntimeHostGrpcRecoveringClientSessionFactory(diagnostics);
 
     public static IClientUiDispatcher CreateDispatcher(
         Dispatcher dispatcher) =>

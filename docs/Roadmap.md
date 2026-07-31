@@ -26,9 +26,10 @@
 - ADR-0041 Desktop Diagnostics Window and Presentation Pause
 - ADR-0042 Increment 42A Decision and Client Diagnostics Boundary
 - ADR-0042 Increment 42B Client Diagnostics Capture Model
-
-## In progress
 - ADR-0042 Increment 42C Client Instrumentation
 
-## Next
+## In progress
 - ADR-0042 Increment 42D Separate Diagnostics Window
+
+## Next
+- ADR-0042 Increment 42E Presentation Pause/Resume

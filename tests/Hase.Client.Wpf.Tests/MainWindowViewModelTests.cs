@@ -13,6 +13,21 @@ namespace Hase.Client.Wpf.Tests;
 public sealed class MainWindowViewModelTests
 {
     [Fact]
+    public void OpenDiagnosticsCommand_Configured_DelegatesToWindowController()
+    {
+        var viewModel = new MainWindowViewModel();
+        var diagnostics = new StubDiagnosticsWindowController();
+        viewModel.Configure(
+            new StubController(),
+            new StubFilePicker(null),
+            diagnostics);
+
+        viewModel.OpenDiagnosticsCommand.Execute();
+
+        Assert.Equal(1, diagnostics.OpenCount);
+    }
+
+    [Fact]
     public void Constructor_ShouldExposeDisconnectedShell()
     {
         var viewModel =
@@ -1337,6 +1352,18 @@ public sealed class MainWindowViewModelTests
 
         public string? PickConfigurationFile() =>
             configurationFilePath;
+    }
+
+    private sealed class StubDiagnosticsWindowController
+        : IClientDiagnosticsWindowController
+    {
+        public int OpenCount { get; private set; }
+
+        public void Open() => OpenCount++;
+
+        public void Close()
+        {
+        }
     }
 
     private sealed class StubController

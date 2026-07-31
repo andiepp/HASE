@@ -22,10 +22,18 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock
-            FontSize="28"
-            FontWeight="SemiBold"
-            Text="HASE Laptop Client" />
+        <DockPanel>
+            <Button
+                DockPanel.Dock="Right"
+                Padding="16,8"
+                Command="{Binding OpenDiagnosticsCommand}"
+                Content="Open Diagnostics" />
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="28"
+                FontWeight="SemiBold"
+                Text="HASE Laptop Client" />
+        </DockPanel>
 
         <Border
             Grid.Row="2"

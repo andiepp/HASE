@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using Hase.Client.Diagnostics;
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Client.Wpf.Views;
@@ -11,6 +12,7 @@ public partial class App
     : PrismApplication
 {
     private RuntimeHostClientSessionController? sessionController;
+    private IClientDiagnosticsWindowController? diagnosticsWindowController;
 
     protected override Window CreateShell()
     {
@@ -20,9 +22,13 @@ public partial class App
         MainWindowViewModel viewModel =
             Container.Resolve<MainWindowViewModel>();
 
+        diagnosticsWindowController =
+            Container.Resolve<IClientDiagnosticsWindowController>();
+
         viewModel.Configure(
             sessionController,
-            Container.Resolve<IClientConfigurationFilePicker>());
+            Container.Resolve<IClientConfigurationFilePicker>(),
+            diagnosticsWindowController);
 
         Window window =
             Container.Resolve<MainWindow>();
@@ -47,8 +53,12 @@ public partial class App
         containerRegistry.RegisterInstance(
             startupConfiguration);
         containerRegistry.RegisterSingleton<MainWindowViewModel>();
+        var diagnosticCollector = new BoundedClientDiagnosticCollector(2000);
+        var diagnosticPublisher = new ClientDiagnosticPublisher(diagnosticCollector);
+        containerRegistry.RegisterInstance(diagnosticCollector);
+        containerRegistry.RegisterInstance(diagnosticPublisher);
         containerRegistry.RegisterInstance<IRuntimeHostClientSessionFactory>(
-            RuntimeHostClientComposition.CreateSessionFactory());
+            RuntimeHostClientComposition.CreateSessionFactory(diagnosticPublisher));
         containerRegistry.RegisterInstance<IClientUiDispatcher>(
             RuntimeHostClientComposition.CreateDispatcher(
                 Dispatcher));
@@ -58,6 +68,10 @@ public partial class App
                     startupConfiguration));
         containerRegistry.RegisterSingleton<
             RuntimeHostClientSessionController>();
+        containerRegistry.RegisterSingleton<ClientDiagnosticsViewModel>();
+        containerRegistry.RegisterSingleton<
+            IClientDiagnosticsWindowController,
+            ClientDiagnosticsWindowController>();
     }
 
     protected override void OnExit(
@@ -65,6 +79,9 @@ public partial class App
     {
         try
         {
+            diagnosticsWindowController ??=
+                Container.Resolve<IClientDiagnosticsWindowController>();
+            diagnosticsWindowController.Close();
             sessionController?.DisposeAsync()
                 .AsTask()
                 .GetAwaiter()
@@ -77,5 +94,3 @@ public partial class App
         }
     }
 }
-
-

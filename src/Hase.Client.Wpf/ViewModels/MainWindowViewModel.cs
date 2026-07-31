@@ -23,6 +23,7 @@ public sealed class MainWindowViewModel
         RemoteObservationState.Empty;
     private IRuntimeHostClientSessionController? sessionController;
     private IClientConfigurationFilePicker? configurationFilePicker;
+    private IClientDiagnosticsWindowController? diagnosticsWindowController;
     private bool isBusy;
     private string? failureMessage;
     private RuntimeHostClientFailureCategory? lastFailureCategory;
@@ -91,6 +92,10 @@ public sealed class MainWindowViewModel
                     && IsOperational
                     && !IsBusy
                     && command.EndpointReady);
+        OpenDiagnosticsCommand =
+            new DelegateCommand(
+                () => diagnosticsWindowController!.Open(),
+                () => diagnosticsWindowController is not null);
     }
 
     public string Title =>
@@ -224,9 +229,12 @@ public sealed class MainWindowViewModel
         get;
     }
 
+    public DelegateCommand OpenDiagnosticsCommand { get; }
+
     public void Configure(
         IRuntimeHostClientSessionController controller,
-        IClientConfigurationFilePicker filePicker)
+        IClientConfigurationFilePicker filePicker,
+        IClientDiagnosticsWindowController? diagnosticsController = null)
     {
         ArgumentNullException.ThrowIfNull(
             controller);
@@ -243,6 +251,8 @@ public sealed class MainWindowViewModel
             controller;
         configurationFilePicker =
             filePicker;
+        diagnosticsWindowController = diagnosticsController;
+        OpenDiagnosticsCommand.RaiseCanExecuteChanged();
         RaiseCommandStateChanged();
     }
 
