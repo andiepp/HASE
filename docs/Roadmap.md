@@ -27,9 +27,10 @@
 - ADR-0042 Increment 42A Decision and Client Diagnostics Boundary
 - ADR-0042 Increment 42B Client Diagnostics Capture Model
 - ADR-0042 Increment 42C Client Instrumentation
-
-## In progress
 - ADR-0042 Increment 42D Separate Diagnostics Window
 
-## Next
+## In progress
 - ADR-0042 Increment 42E Presentation Pause/Resume
+
+## Next
+- ADR-0042 Increment 42F Structured Northbound Presentation

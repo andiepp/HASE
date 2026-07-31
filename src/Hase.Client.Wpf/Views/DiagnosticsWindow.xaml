@@ -22,6 +22,20 @@
                 Padding="12,6"
                 Command="{Binding ClearCommand}"
                 Content="Clear" />
+            <Button
+                DockPanel.Dock="Right"
+                MinWidth="80"
+                Margin="0,0,8,0"
+                Padding="12,6"
+                Command="{Binding ResumeCommand}"
+                Content="Resume" />
+            <Button
+                DockPanel.Dock="Right"
+                MinWidth="80"
+                Margin="0,0,8,0"
+                Padding="12,6"
+                Command="{Binding PauseCommand}"
+                Content="Pause" />
             <StackPanel Orientation="Horizontal">
                 <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Text="Level" />
                 <ComboBox Width="130" ItemsSource="{Binding LevelFilters}" SelectedItem="{Binding SelectedLevelFilter}" />
@@ -29,6 +43,8 @@
                 <ComboBox Width="190" ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding SelectedCategoryFilter}" />
                 <TextBlock Margin="20,0,0,0" VerticalAlignment="Center" Text="{Binding RecordCount, StringFormat='Records: {0}'}" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding EvictedRecordCount, StringFormat='Evicted: {0}'}" />
+                <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding PresentationState}" />
+                <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding PendingRecordCount, StringFormat='Pending: {0}'}" />
             </StackPanel>
         </DockPanel>
         <DataGrid

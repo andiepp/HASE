@@ -4,32 +4,28 @@
 **ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause — In Progress**
 
 ### Current status
-- ADR-0042 Increment 42A decision and client diagnostics boundary accepted
-- ADR-0042 Increment 42B Client Diagnostics Capture Model accepted
-- ADR-0042 Increment 42C Client Instrumentation accepted
-- ADR-0042 42C baseline: 4,001 automated tests passing
-- ADR-0042 Increment 42D Separate Diagnostics Window implemented
-- The laptop application owns one bounded 2,000-record diagnostic collector
-  and injects its publisher into the recovering gRPC session factory
-- The main client window exposes `Open Diagnostics`
-- One modeless diagnostics window exists at a time; repeated opening restores
-  and activates the current window
-- Closing Diagnostics leaves the client, connection, observation processing,
-  and capture session running
-- Filter, selection, records, and eviction accounting are owned by a singleton
-  diagnostics view-model and therefore survive window close/reopen
-- Main application exit closes the owned diagnostics window
-- The diagnostics master/detail presentation shows sequence, UTC timestamp,
-  level, category, event, severity, direction, outcome, correlation, duration,
-  target identity, descriptor path, and structured metadata
-- Level and category filters never change capture or discard retained records
-- Clear affects only the client-local collector
-- Automatic scrolling follows newly retained displayed records
-- Presentation Pause/Resume remains deferred to Increment 42E
-- Five focused tests cover main-window command delegation, projection,
-  selection, filtering independence, clearing, eviction accounting, and
-  deterministic metadata presentation
+- ADR-0042 Increments 42A through 42D accepted
+- ADR-0042 42D baseline: 4,006 automated tests passing
+- ADR-0042 Increment 42E Presentation Pause/Resume implemented
+- Pause freezes projected records, selection, and automatic scrolling only
+- Diagnostic capture, sequence assignment, bounded retention, and eviction
+  continue while presentation is paused
+- Running/Paused state and the count of retained records awaiting reconciliation
+  are shown explicitly
+- Filter changes while paused apply to the frozen presentation source without
+  admitting newly captured records
+- Resume replaces the frozen source with the collector's current retained
+  snapshot; records evicted during pause do not reappear
+- Clear while paused clears the collector and frozen projection, resets pending
+  and eviction display, and preserves Paused state
+- Pause state, filter, selection, and projection remain owned by the singleton
+  diagnostics view-model and survive window close/reopen
+- A new application process begins in Running state
+- Pause/Resume does not control transport, connection, observation processing,
+  Property operations, Commands, or Events
+- Six focused tests cover pause, continued capture, pending records, resume,
+  bounded eviction, clear while paused, filtering, and session-state ownership
 
 ### Next
-Build and run the complete automated suite, validate Increment 42D window
-lifecycle, then implement Increment 42E after explicit approval.
+Build and run the complete automated suite, validate Increment 42E behavior,
+then define Increment 42F structured northbound presentation.

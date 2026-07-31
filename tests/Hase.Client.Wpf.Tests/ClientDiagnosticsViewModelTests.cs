@@ -6,6 +6,114 @@ namespace Hase.Client.Wpf.Tests;
 public sealed class ClientDiagnosticsViewModelTests
 {
     [Fact]
+    public void Pause_CaptureContinuesWhileProjectionAndSelectionRemainFrozen()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Before", ClientDiagnosticCategory.ClientConnection));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        ClientDiagnosticRecord selected = viewModel.SelectedRecord!;
+
+        viewModel.PauseCommand.Execute();
+        publisher.Publish(CreateEvent("During", ClientDiagnosticCategory.ClientConnection));
+        viewModel.Refresh();
+
+        Assert.True(viewModel.IsPaused);
+        Assert.Equal("Paused", viewModel.PresentationState);
+        Assert.Equal("Before", Assert.Single(viewModel.Records).EventName);
+        Assert.Same(selected, viewModel.SelectedRecord);
+        Assert.Equal(1, viewModel.PendingRecordCount);
+        Assert.Equal(2, collector.GetSnapshot().Records.Count);
+    }
+
+    [Fact]
+    public void Resume_ReconcilesCurrentRetainedSnapshot()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Before", ClientDiagnosticCategory.ClientConnection));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        viewModel.PauseCommand.Execute();
+        publisher.Publish(CreateEvent("During", ClientDiagnosticCategory.ClientConnection));
+        viewModel.Refresh();
+
+        viewModel.ResumeCommand.Execute();
+
+        Assert.False(viewModel.IsPaused);
+        Assert.Equal("Running", viewModel.PresentationState);
+        Assert.Equal(new[] { "Before", "During" }, viewModel.Records.Select(record => record.EventName));
+        Assert.Equal(0, viewModel.PendingRecordCount);
+    }
+
+    [Fact]
+    public void Pause_OverCapacity_ResumeShowsOnlyCurrentlyRetainedRecords()
+    {
+        BoundedClientDiagnosticCollector collector = new(2);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Before", ClientDiagnosticCategory.ClientConnection));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        viewModel.PauseCommand.Execute();
+        publisher.Publish(CreateEvent("During1", ClientDiagnosticCategory.ClientConnection));
+        publisher.Publish(CreateEvent("During2", ClientDiagnosticCategory.ClientConnection));
+        publisher.Publish(CreateEvent("During3", ClientDiagnosticCategory.ClientConnection));
+        viewModel.Refresh();
+
+        viewModel.ResumeCommand.Execute();
+
+        Assert.Equal(new[] { "During2", "During3" }, viewModel.Records.Select(record => record.EventName));
+        Assert.Equal(2, viewModel.EvictedRecordCount);
+    }
+
+    [Fact]
+    public void ClearWhilePaused_ClearsFrozenProjectionAndPreservesPausedState()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Before", ClientDiagnosticCategory.ClientConnection));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        viewModel.PauseCommand.Execute();
+        publisher.Publish(CreateEvent("During", ClientDiagnosticCategory.ClientConnection));
+        viewModel.Refresh();
+
+        viewModel.ClearCommand.Execute();
+
+        Assert.True(viewModel.IsPaused);
+        Assert.Empty(viewModel.Records);
+        Assert.Empty(collector.GetSnapshot().Records);
+        Assert.Equal(0, viewModel.PendingRecordCount);
+    }
+
+    [Fact]
+    public void FilterWhilePaused_AppliesToFrozenSourceOnly()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        ClientDiagnosticPublisher publisher = new(collector);
+        publisher.Publish(CreateEvent("Connection", ClientDiagnosticCategory.ClientConnection));
+        publisher.Publish(CreateEvent("Property", ClientDiagnosticCategory.ClientProperty));
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        viewModel.PauseCommand.Execute();
+        publisher.Publish(CreateEvent("LaterProperty", ClientDiagnosticCategory.ClientProperty));
+
+        viewModel.SelectedCategoryFilter = nameof(ClientDiagnosticCategory.ClientProperty);
+
+        Assert.Equal("Property", Assert.Single(viewModel.Records).EventName);
+    }
+
+    [Fact]
+    public void SameViewModel_PreservesPauseAndFilterAcrossWindowIndependentUse()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+        viewModel.SelectedCategoryFilter = nameof(ClientDiagnosticCategory.ClientObservation);
+        viewModel.PauseCommand.Execute();
+
+        ClientDiagnosticsViewModel reopened = viewModel;
+
+        Assert.True(reopened.IsPaused);
+        Assert.Equal(nameof(ClientDiagnosticCategory.ClientObservation), reopened.SelectedCategoryFilter);
+    }
+
+    [Fact]
     public void Refresh_ProjectsRecordsAndSelectsNewest()
     {
         BoundedClientDiagnosticCollector collector = new(10);

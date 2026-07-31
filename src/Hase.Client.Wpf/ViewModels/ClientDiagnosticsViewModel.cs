@@ -8,10 +8,14 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
 {
     private readonly BoundedClientDiagnosticCollector collector;
     private IReadOnlyList<ClientDiagnosticRecord> records = [];
+    private IReadOnlyList<ClientDiagnosticRecord> presentationSource = [];
     private ClientDiagnosticRecord? selectedRecord;
     private string selectedLevelFilter = "All";
     private string selectedCategoryFilter = "All";
     private long evictedRecordCount;
+    private bool isPaused;
+    private int pendingRecordCount;
+    private long presentationWatermark;
 
     public ClientDiagnosticsViewModel(BoundedClientDiagnosticCollector collector)
     {
@@ -23,6 +27,8 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
             .Concat(Enum.GetNames<ClientDiagnosticCategory>())
             .ToArray();
         ClearCommand = new DelegateCommand(Clear);
+        PauseCommand = new DelegateCommand(Pause, () => !IsPaused);
+        ResumeCommand = new DelegateCommand(Resume, () => IsPaused);
         Refresh();
     }
 
@@ -30,9 +36,14 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public IReadOnlyList<string> LevelFilters { get; }
     public IReadOnlyList<string> CategoryFilters { get; }
     public DelegateCommand ClearCommand { get; }
+    public DelegateCommand PauseCommand { get; }
+    public DelegateCommand ResumeCommand { get; }
     public IReadOnlyList<ClientDiagnosticRecord> Records => records;
     public int RecordCount => records.Count;
     public long EvictedRecordCount => evictedRecordCount;
+    public bool IsPaused => isPaused;
+    public string PresentationState => IsPaused ? "Paused" : "Running";
+    public int PendingRecordCount => pendingRecordCount;
 
     public string SelectedLevelFilter
     {
@@ -41,7 +52,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         {
             if (SetProperty(ref selectedLevelFilter, value))
             {
-                Refresh();
+                ApplyFilter();
             }
         }
     }
@@ -53,7 +64,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         {
             if (SetProperty(ref selectedCategoryFilter, value))
             {
-                Refresh();
+                ApplyFilter();
             }
         }
     }
@@ -80,25 +91,78 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
 
     public void Refresh()
     {
+        ClientDiagnosticSnapshot snapshot = collector.GetSnapshot();
+        SetProperty(ref evictedRecordCount, snapshot.EvictedRecordCount, nameof(EvictedRecordCount));
+        long newestSequence = snapshot.Records.LastOrDefault()?.Sequence ?? presentationWatermark;
+
+        if (IsPaused)
+        {
+            SetPendingRecordCount(
+                snapshot.Records.Count(record => record.Sequence > presentationWatermark));
+            return;
+        }
+
+        presentationSource = snapshot.Records;
+        presentationWatermark = newestSequence;
+        SetPendingRecordCount(0);
+        ApplyFilter();
+    }
+
+    private void Clear()
+    {
+        ClientDiagnosticSnapshot beforeClear = collector.GetSnapshot();
+        presentationWatermark = Math.Max(
+            presentationWatermark,
+            beforeClear.Records.LastOrDefault()?.Sequence ?? presentationWatermark);
+        collector.Clear();
+        presentationSource = [];
+        SetProperty(ref records, Array.Empty<ClientDiagnosticRecord>(), nameof(Records));
+        SetProperty(ref evictedRecordCount, 0, nameof(EvictedRecordCount));
+        SetPendingRecordCount(0);
+        SelectedRecord = null;
+        RaisePropertyChanged(nameof(RecordCount));
+    }
+
+    private void Pause()
+    {
+        Refresh();
+        SetProperty(ref isPaused, true, nameof(IsPaused));
+        RaisePropertyChanged(nameof(PresentationState));
+        PauseCommand.RaiseCanExecuteChanged();
+        ResumeCommand.RaiseCanExecuteChanged();
+    }
+
+    private void Resume()
+    {
+        SetProperty(ref isPaused, false, nameof(IsPaused));
+        RaisePropertyChanged(nameof(PresentationState));
+        PauseCommand.RaiseCanExecuteChanged();
+        ResumeCommand.RaiseCanExecuteChanged();
+        Refresh();
+    }
+
+    private void ApplyFilter()
+    {
         ClientDiagnosticLevel? level = ParseFilter<ClientDiagnosticLevel>(SelectedLevelFilter);
         ClientDiagnosticCategory? category = ParseFilter<ClientDiagnosticCategory>(SelectedCategoryFilter);
-        ClientDiagnosticSnapshot snapshot = collector.GetSnapshot(level, category);
         long? selectedSequence = SelectedRecord?.Sequence;
+        IReadOnlyList<ClientDiagnosticRecord> filtered = presentationSource
+            .Where(record =>
+                (level is null || record.Level == level) &&
+                (category is null || record.Category == category))
+            .ToArray();
 
-        SetProperty(ref records, snapshot.Records, nameof(Records));
-        SetProperty(ref evictedRecordCount, snapshot.EvictedRecordCount, nameof(EvictedRecordCount));
+        SetProperty(ref records, filtered, nameof(Records));
         RaisePropertyChanged(nameof(RecordCount));
-
         SelectedRecord = selectedSequence is null
             ? records.LastOrDefault()
             : records.FirstOrDefault(record => record.Sequence == selectedSequence)
                 ?? records.LastOrDefault();
     }
 
-    private void Clear()
+    private void SetPendingRecordCount(int value)
     {
-        collector.Clear();
-        Refresh();
+        SetProperty(ref pendingRecordCount, value, nameof(PendingRecordCount));
     }
 
     private static TEnum? ParseFilter<TEnum>(string value)
