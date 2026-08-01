@@ -88,22 +88,6 @@
                     Grid.Column="1"
                     Text="{Binding EndpointCount}" />
 
-                <StackPanel
-                    Grid.Row="8"
-                    Grid.ColumnSpan="2"
-                    Orientation="Horizontal">
-                    <Button
-                        MinWidth="100"
-                        Padding="16,8"
-                        Command="{Binding ConnectCommand}"
-                        Content="Connect" />
-                    <Button
-                        MinWidth="100"
-                        Margin="12,0,0,0"
-                        Padding="16,8"
-                        Command="{Binding DisconnectCommand}"
-                        Content="Disconnect" />
-                </StackPanel>
             </Grid>
         </Border>
 
@@ -113,6 +97,37 @@
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <StackPanel>
+                <TextBlock FontSize="18" FontWeight="SemiBold" Text="Runtime Hosts" />
+                <ListBox
+                    Margin="0,8,0,0"
+                    ItemsSource="{Binding RuntimeHosts}"
+                    SelectedItem="{Binding SelectedRuntimeHost, Mode=TwoWay}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
+                                    <TextBlock Text="{Binding ExpectedRuntimeHostId, StringFormat='Expected: {0}'}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding SessionState}" />
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{Binding AuthoritativeRuntimeHostId, StringFormat='Connected: {0}', TargetNullValue='Not connected'}" />
+                                    <TextBlock Foreground="#FFB00020" Text="{Binding FailureMessage}" />
+                                    <TextBlock Text="{Binding ChangedAtUtc, StringFormat='UTC: {0:u}'}" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel Margin="0,8,0,20" Orientation="Horizontal">
+                    <Button MinWidth="150" Padding="16,8" Command="{Binding ConnectSelectedRuntimeHostCommand}" Content="Connect Selected Host" />
+                    <Button MinWidth="170" Margin="12,0,0,0" Padding="16,8" Command="{Binding DisconnectSelectedRuntimeHostCommand}" Content="Disconnect Selected Host" />
+                </StackPanel>
                 <TextBlock
                     Foreground="#FFB00020"
                     Text="{Binding FailureMessage}"

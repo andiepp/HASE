@@ -15,7 +15,7 @@ public sealed record LaptopClientStartupConfiguration(
         {
             throw new ArgumentException(
                 "Hase.Client.Wpf.App requires exactly one argument: "
-                + "the laptop private-network configuration file.",
+                + "the client runtime-host registry file.",
                 nameof(commandLineArguments));
         }
 
@@ -26,7 +26,7 @@ public sealed record LaptopClientStartupConfiguration(
                 configurationFilePath))
         {
             throw new ArgumentException(
-                "The laptop private-network configuration file path "
+                "The client runtime-host registry file path "
                 + "must not be empty.",
                 nameof(commandLineArguments));
         }

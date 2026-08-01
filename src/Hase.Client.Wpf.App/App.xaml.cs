@@ -4,6 +4,8 @@ using Hase.Client.Wpf.AppHost.Hosting;
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Client.Wpf.Views;
+using Hase.Client.Configuration;
+using Hase.Client.Grpc.Configuration;
 using Prism.DryIoc;
 using Prism.Ioc;
 
@@ -18,6 +20,9 @@ public partial class App
     private RuntimeHostClientSessionController? sessionController;
     private IClientDiagnosticsWindowController? diagnosticsWindowController;
     private HaseClientSingleInstanceLease? singleInstanceLease;
+    private IMultiHostClientSessionCoordinator? multiHostCoordinator;
+    private IClientUiDispatcher? uiDispatcher;
+    private MainWindowViewModel? mainWindowViewModel;
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -49,6 +54,7 @@ public partial class App
 
         MainWindowViewModel viewModel =
             Container.Resolve<MainWindowViewModel>();
+        mainWindowViewModel = viewModel;
 
         diagnosticsWindowController =
             Container.Resolve<IClientDiagnosticsWindowController>();
@@ -58,15 +64,16 @@ public partial class App
             Container.Resolve<IClientConfigurationFilePicker>(),
             diagnosticsWindowController);
 
+        PrivateNetworkRuntimeHostProfileRegistry registry =
+            Container.Resolve<PrivateNetworkRuntimeHostProfileRegistry>();
+        multiHostCoordinator = Container.Resolve<IMultiHostClientSessionCoordinator>();
+        uiDispatcher = Container.Resolve<IClientUiDispatcher>();
+        viewModel.ConfigureRuntimeHosts(registry.CoreProfiles);
+        viewModel.ConfigureMultiHostCoordinator(multiHostCoordinator);
+        multiHostCoordinator.SnapshotChanged += MultiHostSnapshotChanged;
+
         Window window =
             Container.Resolve<MainWindow>();
-
-        window.Loaded +=
-            async (_, _) =>
-                await viewModel.ConnectAsync(
-                    Container.Resolve<
-                        LaptopClientStartupConfiguration>()
-                        .ConfigurationFilePath);
 
         return window;
     }
@@ -92,6 +99,20 @@ public partial class App
         containerRegistry.RegisterInstance<IClientUiDispatcher>(
             RuntimeHostClientComposition.CreateDispatcher(
                 Dispatcher));
+        PrivateNetworkRuntimeHostProfileRegistry registry =
+            PrivateNetworkRuntimeHostProfileRegistryFile.LoadAsync(
+                    startupConfiguration.ConfigurationFilePath)
+                .GetAwaiter()
+                .GetResult();
+        containerRegistry.RegisterInstance(registry);
+        var profileSessionFactory = new PrivateNetworkRuntimeHostProfileClientSessionFactory(
+            registry,
+            RuntimeHostClientComposition.CreateSessionFactory(diagnosticPublisher));
+        containerRegistry.RegisterInstance<IRuntimeHostProfileClientSessionFactory>(profileSessionFactory);
+        var controllerFactory = new RuntimeHostProfileSessionControllerFactory(profileSessionFactory);
+        containerRegistry.RegisterInstance<IRuntimeHostProfileSessionControllerFactory>(controllerFactory);
+        containerRegistry.RegisterInstance<IMultiHostClientSessionCoordinator>(
+            new MultiHostClientSessionCoordinator(registry.CoreProfiles, controllerFactory));
         containerRegistry.RegisterInstance<
             IClientConfigurationFilePicker>(
                 new StartupClientConfigurationFilePicker(
@@ -112,6 +133,11 @@ public partial class App
             diagnosticsWindowController ??=
                 Container.Resolve<IClientDiagnosticsWindowController>();
             diagnosticsWindowController.Close();
+            if (multiHostCoordinator is not null)
+            {
+                multiHostCoordinator.SnapshotChanged -= MultiHostSnapshotChanged;
+                multiHostCoordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
             sessionController?.DisposeAsync()
                 .AsTask()
                 .GetAwaiter()
@@ -130,5 +156,11 @@ public partial class App
                 singleInstanceLease = null;
             }
         }
+    }
+
+    private void MultiHostSnapshotChanged(object? sender, EventArgs eventArgs)
+    {
+        MultiHostClientSessionSnapshot snapshot = multiHostCoordinator!.Snapshot;
+        uiDispatcher!.Post(() => mainWindowViewModel!.ApplyMultiHostSnapshot(snapshot));
     }
 }

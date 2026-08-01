@@ -54,6 +54,7 @@ public sealed class MainWindowViewModel
     private MultiHostClientSessionSnapshot? multiHostSnapshot;
     private RuntimeHostProfileId? selectedRuntimeHostProfileId;
     private IReadOnlyList<RuntimeHostProfileItemViewModel> runtimeHosts = [];
+    private IMultiHostClientSessionCoordinator? multiHostCoordinator;
 
     public MainWindowViewModel()
     {
@@ -102,6 +103,14 @@ public sealed class MainWindowViewModel
             new DelegateCommand(
                 () => diagnosticsWindowController!.Open(),
                 () => diagnosticsWindowController is not null);
+        ConnectSelectedRuntimeHostCommand = new DelegateCommand(
+            ExecuteConnectSelectedRuntimeHost,
+            () => multiHostCoordinator is not null && !IsBusy
+                && SelectedRuntimeHost is { IsEnabled: true, SessionState: RuntimeHostClientSessionState.Disconnected or RuntimeHostClientSessionState.Faulted });
+        DisconnectSelectedRuntimeHostCommand = new DelegateCommand(
+            ExecuteDisconnectSelectedRuntimeHost,
+            () => multiHostCoordinator is not null && !IsBusy
+                && SelectedRuntimeHost is { SessionState: RuntimeHostClientSessionState.Connecting or RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting });
     }
 
     public string Title =>
@@ -158,8 +167,29 @@ public sealed class MainWindowViewModel
 
     public IReadOnlyList<RuntimeHostProfileItemViewModel> RuntimeHosts => runtimeHosts;
 
-    public RuntimeHostProfileItemViewModel? SelectedRuntimeHost =>
-        runtimeHosts.SingleOrDefault(item => item.IsSelected);
+    public RuntimeHostProfileItemViewModel? SelectedRuntimeHost
+    {
+        get => runtimeHosts.SingleOrDefault(item => item.IsSelected);
+        set
+        {
+            RuntimeHostProfileId? valueId = value?.ProfileId;
+            if (valueId != selectedRuntimeHostProfileId)
+                SelectRuntimeHost(valueId);
+        }
+    }
+
+    public DelegateCommand ConnectSelectedRuntimeHostCommand { get; }
+    public DelegateCommand DisconnectSelectedRuntimeHostCommand { get; }
+
+    public void ConfigureMultiHostCoordinator(IMultiHostClientSessionCoordinator coordinator)
+    {
+        ArgumentNullException.ThrowIfNull(coordinator);
+        if (multiHostCoordinator is not null)
+            throw new InvalidOperationException("The multi-host coordinator is already configured.");
+        multiHostCoordinator = coordinator;
+        ApplyMultiHostSnapshot(coordinator.Snapshot);
+        RaiseCommandStateChanged();
+    }
 
     public void ConfigureRuntimeHosts(RuntimeHostProfileRegistry registry)
     {
@@ -189,6 +219,7 @@ public sealed class MainWindowViewModel
         selectedRuntimeHostProfileId = profileId;
         if (multiHostSnapshot is not null)
             ApplyRuntimeHostProjection(registry, multiHostSnapshot);
+        RaiseCommandStateChanged();
     }
 
     private void ApplyRuntimeHostProjection(RuntimeHostProfileRegistry registry, MultiHostClientSessionSnapshot snapshot)
@@ -196,6 +227,35 @@ public sealed class MainWindowViewModel
         runtimeHosts = runtimeHostProjector.Project(registry, snapshot, selectedRuntimeHostProfileId);
         RaisePropertyChanged(nameof(RuntimeHosts));
         RaisePropertyChanged(nameof(SelectedRuntimeHost));
+        RaiseCommandStateChanged();
+    }
+
+    public async Task ConnectSelectedRuntimeHostAsync()
+    {
+        RuntimeHostProfileItemViewModel selected = SelectedRuntimeHost
+            ?? throw new InvalidOperationException("A runtime-host profile must be selected.");
+        if (multiHostCoordinator is null)
+            throw new InvalidOperationException("The multi-host coordinator is not configured.");
+        if (!selected.IsEnabled)
+            throw new InvalidOperationException("The selected runtime-host profile is disabled.");
+        IsBusy = true;
+        FailureMessage = null;
+        try { await multiHostCoordinator.ConnectAsync(selected.ProfileId).ConfigureAwait(true); }
+        catch { FailureMessage = "The selected runtime-host connection could not be started."; }
+        finally { IsBusy = false; }
+    }
+
+    public async Task DisconnectSelectedRuntimeHostAsync()
+    {
+        RuntimeHostProfileItemViewModel selected = SelectedRuntimeHost
+            ?? throw new InvalidOperationException("A runtime-host profile must be selected.");
+        if (multiHostCoordinator is null)
+            throw new InvalidOperationException("The multi-host coordinator is not configured.");
+        IsBusy = true;
+        FailureMessage = null;
+        try { await multiHostCoordinator.DisconnectAsync(selected.ProfileId).ConfigureAwait(true); }
+        catch { FailureMessage = "The selected runtime-host connection could not be stopped cleanly."; }
+        finally { IsBusy = false; }
     }
 
     public bool HasEventOccurrences =>
@@ -830,6 +890,9 @@ public sealed class MainWindowViewModel
         await ConnectAsync();
     }
 
+    private async void ExecuteConnectSelectedRuntimeHost() => await ConnectSelectedRuntimeHostAsync();
+    private async void ExecuteDisconnectSelectedRuntimeHost() => await DisconnectSelectedRuntimeHostAsync();
+
     private void PreserveRequestedBooleanValues()
     {
         requestedBooleanValues.Clear();
@@ -1002,5 +1065,7 @@ public sealed class MainWindowViewModel
         ReadPropertyCommand.RaiseCanExecuteChanged();
         WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteCommand.RaiseCanExecuteChanged();
+        ConnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
+        DisconnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
     }
 }
