@@ -4,6 +4,7 @@ using Hase.CompactProtocol;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
+using Hase.DesktopHost.Configuration;
 using Hase.DesktopHost.App.Physical;
 using Hase.Protocol;
 using Hase.Runtime.Connections;
@@ -26,14 +27,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
       IDesktopRuntimeHostEventSource,
       IDesktopRuntimeDiagnosticSource
 {
-    private const int NativeTcpPort = 5000;
     private const int MaximumPayloadLength = 4096;
-    private const int CompactBaudRate = 115200;
-    private const ushort ArduinoVendorId = 0x2341;
-    private const ushort ArduinoUnoProductId = 0x0043;
-
-    private static readonly TimeSpan CompactVerificationTimeout =
-        TimeSpan.FromSeconds(3);
 
     public static readonly RuntimeHostId RuntimeHostId =
         new("hase-desktop-runtime-host");
@@ -308,12 +302,22 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             diagnostics:
                                 session.Publisher);
 
+            DesktopRuntimeHostProductionConfigurationPlan productionPlan =
+                DesktopRuntimeHostProductionConfigurationPlan.Create(
+                    configuration,
+                    configuration.InstallationProfile is null
+                        ? GetRuntimeIdentityFilePath()
+                        : configuration.InstallationProfile.IdentityFilePath,
+                    RuntimeHostId);
+            DesktopRuntimeHostEndpointCompositionProfile endpointComposition =
+                productionPlan.EndpointComposition;
+
             composition =
                 await RuntimeHostNorthboundSnapshotComposition
                     .CreateFileBackedAsync(
                         attachmentHost.AttachmentInventory,
-                        GetRuntimeIdentityFilePath(),
-                        RuntimeHostId,
+                        productionPlan.IdentityFilePath,
+                        productionPlan.ConfiguredRuntimeHostId,
                         diagnostics:
                             attachmentHost
                                 .RuntimeContext
@@ -324,12 +328,24 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     composition.PropertyService,
                     composition.CommandService);
 
-            await AttachNativeEndpointAsync(
-                attachmentHost,
-                configuration.Esp32Host);
-            await AttachCompactEndpointAsync(
-                attachmentHost,
-                definitionRepository);
+            foreach (
+                DesktopRuntimeHostNativeNetworkEndpointProfile nativeEndpoint
+                in endpointComposition.NativeNetworkEndpoints)
+            {
+                await AttachNativeEndpointAsync(
+                    attachmentHost,
+                    nativeEndpoint);
+            }
+
+            foreach (
+                DesktopRuntimeHostCompactSerialEndpointProfile compactEndpoint
+                in endpointComposition.CompactSerialEndpoints)
+            {
+                await AttachCompactEndpointAsync(
+                    attachmentHost,
+                    definitionRepository,
+                    compactEndpoint);
+            }
 
             if (configuration.IncludeByteBufferSimulation)
             {
@@ -341,9 +357,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 composition.SnapshotProvider.Capture();
 
             int expectedEndpointCount =
-                configuration.IncludeByteBufferSimulation
-                    ? 3
-                    : 2;
+                productionPlan.ExpectedPublishedEndpointCount;
 
             if (snapshot.Endpoints.Count != expectedEndpointCount)
             {
@@ -482,15 +496,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
     private static async Task AttachNativeEndpointAsync(
         RuntimeEndpointAttachmentHost host,
-        string endpointHost)
+        DesktopRuntimeHostNativeNetworkEndpointProfile endpoint)
     {
         var request =
             new EndpointAttachmentRequest(
                 NetworkEndpointConnectionDefinition.FromConfiguration(
                     new TcpTransportOptions(
-                        endpointHost,
-                        NativeTcpPort),
-                    PhysicalEndpointIdentities.Esp32EndpointId),
+                        endpoint.Host,
+                        endpoint.Port),
+                    new EndpointId(
+                        endpoint.ExpectedEndpointId)),
                 EndpointProvidedDescriptorSource.Instance);
 
         await host.AttachmentInventory.AttachAsync(
@@ -499,15 +514,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
     private static async Task AttachCompactEndpointAsync(
         RuntimeEndpointAttachmentHost host,
-        ICompactEndpointDefinitionRepository definitionRepository)
+        ICompactEndpointDefinitionRepository definitionRepository,
+        DesktopRuntimeHostCompactSerialEndpointProfile endpoint)
     {
         var descriptorRepository =
             new CompactEndpointDescriptorRepositoryAdapter(
                 definitionRepository);
         var candidateFilter =
             new UsbSerialEndpointMetadataFilter(
-                vendorId: ArduinoVendorId,
-                productId: ArduinoUnoProductId);
+                vendorId: endpoint.VendorId,
+                productId: endpoint.ProductId);
 
         UsbSerialEndpointDiscoveryService discoveryService =
             WindowsUsbSerialEndpointDiscovery.Create(
@@ -515,8 +531,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 candidateFilter);
         var discoveryOptions =
             new UsbSerialEndpointDiscoveryOptions(
-                CompactBaudRate,
-                CompactVerificationTimeout);
+                endpoint.BaudRate,
+                endpoint.VerificationTimeout);
 
         UsbSerialEndpointDiscoveryResult discoveryResult =
             await discoveryService.DiscoverAsync(
@@ -526,12 +542,21 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         {
             throw new InvalidOperationException(
                 "The desktop runtime host requires exactly one "
-                + "authoritatively verified Arduino Uno endpoint after "
+                + "authoritatively verified compact endpoint after "
                 + "VID/PID filtering.");
         }
 
         VerifiedUsbSerialEndpoint selectedEndpoint =
             discoveryResult.VerifiedEndpoints[0];
+
+        if (!selectedEndpoint.EndpointId.Equals(
+                new EndpointId(
+                    endpoint.ExpectedEndpointId)))
+        {
+            throw new InvalidDataException(
+                "The verified compact endpoint identity does not match the configured expected identity.");
+        }
+
         SerialEndpointConnectionDefinition connectionDefinition =
             SerialEndpointConnectionDefinition.FromVerifiedEndpoint(
                 selectedEndpoint,
