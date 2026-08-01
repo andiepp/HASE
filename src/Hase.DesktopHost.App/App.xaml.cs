@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.ComponentModel;
+using System.Windows;
 using System.Windows.Threading;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.ViewModels;
@@ -19,6 +20,7 @@ public partial class App : PrismApplication
         };
 
     private MainWindowViewModel? mainWindowViewModel;
+    private DesktopRuntimeHostWindowShutdownCoordinator? shutdownCoordinator;
 
     protected override Window CreateShell()
     {
@@ -32,6 +34,12 @@ public partial class App : PrismApplication
 
         window.Loaded +=
             OnMainWindowLoaded;
+        window.Closing +=
+            OnMainWindowClosing;
+
+        shutdownCoordinator =
+            new DesktopRuntimeHostWindowShutdownCoordinator(
+                mainWindowViewModel.StopAsync);
 
         inventoryRefreshTimer.Tick +=
             OnInventoryRefreshTimerTick;
@@ -115,18 +123,56 @@ public partial class App : PrismApplication
         inventoryRefreshTimer.Tick -=
             OnInventoryRefreshTimerTick;
 
+        mainWindowViewModel?.Dispose();
+        base.OnExit(
+            eventArgs);
+    }
+
+    private async void OnMainWindowClosing(
+        object? sender,
+        CancelEventArgs eventArgs)
+    {
+        DesktopRuntimeHostWindowShutdownCoordinator? coordinator =
+            shutdownCoordinator;
+
+        if (coordinator is null
+            || coordinator.IsCompleted)
+        {
+            return;
+        }
+
+        eventArgs.Cancel =
+            true;
+
+        if (coordinator.IsStarted)
+        {
+            return;
+        }
+
+        inventoryRefreshTimer.Stop();
+
         try
         {
-            mainWindowViewModel?.StopAsync(
-                    CancellationToken.None)
-                .GetAwaiter()
-                .GetResult();
+            await coordinator.StopAsync(
+                CancellationToken.None);
+        }
+        catch
+        {
+            // Shutdown remains terminal. The Runtime Host view model already
+            // retains any backend stop failure for diagnostics.
         }
         finally
         {
-            mainWindowViewModel?.Dispose();
-            base.OnExit(
-                eventArgs);
+            if (sender is Window window)
+            {
+                window.Closing -=
+                    OnMainWindowClosing;
+                window.Close();
+            }
+            else
+            {
+                Shutdown();
+            }
         }
     }
 

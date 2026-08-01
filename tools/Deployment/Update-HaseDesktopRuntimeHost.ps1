@@ -1,0 +1,119 @@
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+
+function Get-OptionalFileHash {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+}
+
+function Assert-EqualPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Actual,
+        [Parameter(Mandatory = $true)]
+        [string]$Expected,
+        [Parameter(Mandatory = $true)]
+        [string]$Role
+    )
+
+    if (-not [string]::Equals(
+            [System.IO.Path]::GetFullPath($Actual),
+            [System.IO.Path]::GetFullPath($Expected),
+            [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "The installed Runtime Host $Role does not match the guided installation."
+    }
+}
+
+$publisherPath = Join-Path $PSScriptRoot "Publish-HaseDesktopRuntimeHost.ps1"
+if (-not (Test-Path -LiteralPath $publisherPath -PathType Leaf)) {
+    throw "The lower-level Desktop Runtime Host publisher was not found."
+}
+
+$installationDirectory = Join-Path $env:LOCALAPPDATA "HASE\RuntimeHost"
+$applicationDirectory = Join-Path $installationDirectory "Application"
+$configurationDirectory = Join-Path $installationDirectory "Configuration"
+$identityDirectory = Join-Path $installationDirectory "Identity"
+$executableFilePath = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
+$applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-host.json"
+$endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
+$privateNetworkConfigurationPath = Join-Path $configurationDirectory "desktop-private-network.json"
+$identityFilePath = Join-Path $identityDirectory "runtime-host-identity.json"
+$desktopDirectory = [Environment]::GetFolderPath(
+    [Environment+SpecialFolder]::Desktop)
+$shortcutPath = Join-Path $desktopDirectory "HASE Runtime Host.lnk"
+
+$requiredFiles = @(
+    $executableFilePath,
+    $applicationProfilePath,
+    $endpointCompositionPath,
+    $privateNetworkConfigurationPath,
+    $shortcutPath
+)
+
+foreach ($requiredFile in $requiredFiles) {
+    if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
+        throw "The guided Runtime Host installation is incomplete. Run Install-HaseDesktopRuntimeHost.ps1 first."
+    }
+}
+
+if (-not (Test-Path -LiteralPath $identityDirectory -PathType Container)) {
+    throw "The guided Runtime Host identity directory is missing. Run Install-HaseDesktopRuntimeHost.ps1 first."
+}
+
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut($shortcutPath)
+Assert-EqualPath `
+    -Actual $shortcut.TargetPath `
+    -Expected $executableFilePath `
+    -Role "shortcut target"
+Assert-EqualPath `
+    -Actual $shortcut.WorkingDirectory `
+    -Expected $applicationDirectory `
+    -Role "shortcut working directory"
+
+$expectedArguments = '"' + $applicationProfilePath + '"'
+if (-not [string]::Equals(
+        $shortcut.Arguments,
+        $expectedArguments,
+        [System.StringComparison]::Ordinal)) {
+    throw "The installed Runtime Host shortcut arguments do not contain exactly one application-profile path."
+}
+
+$applicationProfileHash = Get-OptionalFileHash -Path $applicationProfilePath
+$endpointCompositionHash = Get-OptionalFileHash -Path $endpointCompositionPath
+$privateNetworkConfigurationHash = Get-OptionalFileHash -Path $privateNetworkConfigurationPath
+$shortcutHash = Get-OptionalFileHash -Path $shortcutPath
+$identityHash = Get-OptionalFileHash -Path $identityFilePath
+
+& $publisherPath -InstallationDirectory $installationDirectory
+
+if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
+    throw "The updated Desktop Runtime Host executable was not found."
+}
+
+if ($applicationProfileHash -ne (Get-OptionalFileHash -Path $applicationProfilePath) -or
+    $endpointCompositionHash -ne (Get-OptionalFileHash -Path $endpointCompositionPath) -or
+    $privateNetworkConfigurationHash -ne (Get-OptionalFileHash -Path $privateNetworkConfigurationPath) -or
+    $shortcutHash -ne (Get-OptionalFileHash -Path $shortcutPath) -or
+    $identityHash -ne (Get-OptionalFileHash -Path $identityFilePath)) {
+    throw "The application update changed configuration, identity, or shortcut custody."
+}
+
+Write-Host "HASE Desktop Runtime Host update succeeded."
+Write-Host "Installation directory : $installationDirectory"
+Write-Host "Application             : updated"
+Write-Host "Configuration profiles  : preserved"
+Write-Host "Private-network settings: preserved"
+Write-Host "Installation identity   : preserved"
+Write-Host "Desktop shortcut        : preserved"
