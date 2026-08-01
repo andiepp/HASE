@@ -66,6 +66,28 @@ public sealed class MultiHostClientSessionCoordinator
         await controller.DisconnectAsync().ConfigureAwait(false);
     }
 
+    public async Task<RemotePropertyOperationResult> ReadPropertyAsync(RemoteRuntimeHostPropertyTarget target, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        IRuntimeHostProfileSessionController controller = await GetConnectedControllerAsync(target.RuntimeHostId, cancellationToken).ConfigureAwait(false);
+        return await controller.ReadPropertyAsync(target.Target, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RemotePropertyOperationResult> WritePropertyAsync(RemoteRuntimeHostPropertyTarget target, RemoteValue requestedValue, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(requestedValue);
+        IRuntimeHostProfileSessionController controller = await GetConnectedControllerAsync(target.RuntimeHostId, cancellationToken).ConfigureAwait(false);
+        return await controller.WritePropertyAsync(target.Target, requestedValue, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<RemoteCommandOperationResult> ExecuteCommandAsync(RemoteRuntimeHostCommandExecutionRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        IRuntimeHostProfileSessionController controller = await GetConnectedControllerAsync(request.RuntimeHostId, cancellationToken).ConfigureAwait(false);
+        return await controller.ExecuteCommandAsync(request.Request, cancellationToken).ConfigureAwait(false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync().ConfigureAwait(false);
@@ -136,6 +158,30 @@ public sealed class MultiHostClientSessionCoordinator
         {
             gate.Release();
         }
+    }
+
+    private async Task<IRuntimeHostProfileSessionController> GetConnectedControllerAsync(
+        RemoteRuntimeHostId runtimeHostId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeHostId);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            IRuntimeHostProfileSessionController[] matches = controllersByProfileId.Values
+                .Where(controller =>
+                    controller.Snapshot.Status.State == RuntimeHostClientSessionState.Connected
+                    && controller.Snapshot.Status.RuntimeHostId == runtimeHostId)
+                .ToArray();
+            return matches.Length switch
+            {
+                1 => matches[0],
+                0 => throw new KeyNotFoundException($"No connected runtime-host session matches '{runtimeHostId}'."),
+                _ => throw new InvalidOperationException($"More than one connected session matches runtime host '{runtimeHostId}'.")
+            };
+        }
+        finally { gate.Release(); }
     }
 
     private void ControllerSnapshotChanged(object? sender, EventArgs args)

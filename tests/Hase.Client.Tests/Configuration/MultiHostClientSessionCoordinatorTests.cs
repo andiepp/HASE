@@ -231,6 +231,15 @@ public sealed class MultiHostClientSessionCoordinatorTests
         public Task DisconnectAsync()
         { DisconnectCount++; return Task.CompletedTask; }
 
+        public Task<RemotePropertyOperationResult> ReadPropertyAsync(RemotePropertyTarget target, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemotePropertyOperationResult> WritePropertyAsync(RemotePropertyTarget target, RemoteValue requestedValue, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteCommandOperationResult> ExecuteCommandAsync(RemoteCommandExecutionRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public ValueTask DisposeAsync()
         {
             DisposeCount++;

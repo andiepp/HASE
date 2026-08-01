@@ -73,6 +73,45 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
         }
     }
 
+    public Task<RemotePropertyOperationResult> ReadPropertyAsync(RemotePropertyTarget target, CancellationToken cancellationToken = default) =>
+        UseSessionAsync<IRuntimeHostPropertyReader, RemotePropertyTarget, RemotePropertyOperationResult>(
+            target, (reader, value) => reader.ReadPropertyAsync(value, cancellationToken), cancellationToken);
+
+    public Task<RemotePropertyOperationResult> WritePropertyAsync(RemotePropertyTarget target, RemoteValue requestedValue, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requestedValue);
+        return UseSessionAsync<IRuntimeHostPropertyWriter, RemotePropertyTarget, RemotePropertyOperationResult>(
+            target, (writer, value) => writer.WritePropertyAsync(value, requestedValue, cancellationToken), cancellationToken);
+    }
+
+    public Task<RemoteCommandOperationResult> ExecuteCommandAsync(RemoteCommandExecutionRequest request, CancellationToken cancellationToken = default) =>
+        UseSessionAsync<IRuntimeHostCommandExecutor, RemoteCommandExecutionRequest, RemoteCommandOperationResult>(
+            request, (executor, value) => executor.ExecuteCommandAsync(value, cancellationToken), cancellationToken);
+
+    private async Task<TResult> UseSessionAsync<TCapability, TTarget, TResult>(
+        TTarget target,
+        Func<TCapability, TTarget, Task<TResult>> operation,
+        CancellationToken cancellationToken)
+        where TCapability : class
+        where TTarget : class
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        IRuntimeHostClientSession active;
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            active = session ?? throw new InvalidOperationException("A runtime-host profile session is not active.");
+            if (Snapshot.Status.State != RuntimeHostClientSessionState.Connected)
+                throw new InvalidOperationException("The runtime-host profile session is not connected.");
+        }
+        finally { gate.Release(); }
+
+        if (active is not TCapability capability)
+            throw new NotSupportedException($"The active runtime-host session does not support {typeof(TCapability).Name}.");
+        return await operation(capability, target).ConfigureAwait(false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await gate.WaitAsync().ConfigureAwait(false);

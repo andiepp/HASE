@@ -15,4 +15,8 @@ public interface IMultiHostClientSessionCoordinator : IAsyncDisposable
 
     Task DisconnectAsync(
         RuntimeHostProfileId profileId);
+
+    Task<RemotePropertyOperationResult> ReadPropertyAsync(RemoteRuntimeHostPropertyTarget target, CancellationToken cancellationToken = default);
+    Task<RemotePropertyOperationResult> WritePropertyAsync(RemoteRuntimeHostPropertyTarget target, RemoteValue requestedValue, CancellationToken cancellationToken = default);
+    Task<RemoteCommandOperationResult> ExecuteCommandAsync(RemoteRuntimeHostCommandExecutionRequest request, CancellationToken cancellationToken = default);
 }
