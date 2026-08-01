@@ -78,7 +78,7 @@ public sealed class MainWindowViewModel
                 property =>
                     property is not null
                     && sessionController is not null
-                    && IsOperational
+                    && IsOperationHostConnected
                     && !IsBusy
                     && property.CanRead);
         WritePropertyCommand =
@@ -87,7 +87,7 @@ public sealed class MainWindowViewModel
                 property =>
                     property is not null
                     && sessionController is not null
-                    && IsOperational
+                    && IsOperationHostConnected
                     && !IsBusy
                     && property.CanSubmitWrite);
         ExecuteCommand =
@@ -96,7 +96,7 @@ public sealed class MainWindowViewModel
                 command =>
                     command is not null
                     && sessionController is not null
-                    && IsOperational
+                    && IsOperationHostConnected
                     && !IsBusy
                     && command.EndpointReady);
         OpenDiagnosticsCommand =
@@ -144,6 +144,11 @@ public sealed class MainWindowViewModel
     public bool IsOperational =>
         sessionStatus.State
             == RuntimeHostClientSessionState.Connected;
+
+    private bool IsOperationHostConnected =>
+        multiHostCoordinator is null
+            ? IsOperational
+            : SelectedRuntimeHost?.SessionState == RuntimeHostClientSessionState.Connected;
 
     public bool IsStale =>
         sessionStatus.State
@@ -208,6 +213,7 @@ public sealed class MainWindowViewModel
         if (selectedRuntimeHostProfileId is not null && !registry.TryGet(selectedRuntimeHostProfileId, out _))
             selectedRuntimeHostProfileId = null;
         ApplyRuntimeHostProjection(registry, snapshot);
+        ApplySelectedHostState();
     }
 
     public void SelectRuntimeHost(RuntimeHostProfileId? profileId)
@@ -218,7 +224,10 @@ public sealed class MainWindowViewModel
             throw new ArgumentException("The selected runtime-host profile is not registered.", nameof(profileId));
         selectedRuntimeHostProfileId = profileId;
         if (multiHostSnapshot is not null)
+        {
             ApplyRuntimeHostProjection(registry, multiHostSnapshot);
+            ApplySelectedHostState();
+        }
         RaiseCommandStateChanged();
     }
 
@@ -228,6 +237,46 @@ public sealed class MainWindowViewModel
         RaisePropertyChanged(nameof(RuntimeHosts));
         RaisePropertyChanged(nameof(SelectedRuntimeHost));
         RaiseCommandStateChanged();
+    }
+
+    private void ApplySelectedHostState()
+    {
+        RuntimeHostProfileSessionSnapshot? selectedSession =
+            selectedRuntimeHostProfileId is null
+                ? null
+                : multiHostSnapshot?.Sessions.Single(session => session.ProfileId == selectedRuntimeHostProfileId);
+        bool mayPresentState = selectedSession?.Status.State is
+            RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting;
+
+        confirmedReads.Clear();
+        requestedBooleanValues.Clear();
+        requestedPropertyValueTexts.Clear();
+        requestedCommandArgumentTexts.Clear();
+        ClearEventOccurrences();
+        RemoteObservationState selectedState =
+            mayPresentState && selectedSession!.CurrentState is not null
+                ? selectedSession.CurrentState
+                : RemoteObservationState.Empty;
+        SetProperty(ref currentState, selectedState, nameof(CurrentState));
+        SetProperty(
+            ref endpoints,
+            RuntimeHostInventoryProjector.Project(
+                selectedState,
+                confirmedReads,
+                requestedBooleanValues,
+                requestedCommandArgumentTexts,
+                requestedPropertyValueTexts),
+            nameof(Endpoints));
+        RaisePropertyChanged(nameof(EndpointCount));
+        RaisePropertyChanged(nameof(HasEndpoints));
+        PropertyReadMessage = selectedSession switch
+        {
+            null => "Select a Runtime Host to view its endpoints.",
+            { Status.State: RuntimeHostClientSessionState.Connected } => null,
+            { Status.State: RuntimeHostClientSessionState.Reconnecting } =>
+                "The selected Runtime Host is reconnecting; retained endpoint state is read-only.",
+            _ => "The selected Runtime Host is not connected."
+        };
     }
 
     public async Task ConnectSelectedRuntimeHostAsync()
@@ -631,13 +680,13 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(
             property);
 
-        if (sessionController is null)
+        if (sessionController is null && multiHostCoordinator is null)
         {
             throw new InvalidOperationException(
                 "The main window client services are not configured.");
         }
 
-        if (!IsOperational
+        if (!IsOperationHostConnected
             || !property.CanRead)
         {
             return;
@@ -650,11 +699,19 @@ public sealed class MainWindowViewModel
 
         try
         {
-            RemotePropertyOperationResult result =
-                await sessionController.ReadPropertyAsync(
-                        property.Target)
+            RemoteRuntimeHostId? operationHostId = SelectedRuntimeHost?.AuthoritativeRuntimeHostId;
+            RemotePropertyOperationResult result = multiHostCoordinator is null
+                ? await sessionController!.ReadPropertyAsync(property.Target).ConfigureAwait(true)
+                : await multiHostCoordinator.ReadPropertyAsync(
+                        new RemoteRuntimeHostPropertyTarget(
+                            operationHostId ?? throw new InvalidOperationException("The selected host has no authoritative identity."),
+                            property.Target))
                     .ConfigureAwait(
                         true);
+
+            if (multiHostCoordinator is not null
+                && SelectedRuntimeHost?.AuthoritativeRuntimeHostId != operationHostId)
+                return;
 
             if (result.IsSuccess)
             {
@@ -708,13 +765,13 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(
             property);
 
-        if (sessionController is null)
+        if (sessionController is null && multiHostCoordinator is null)
         {
             throw new InvalidOperationException(
                 "The main window client services are not configured.");
         }
 
-        if (!IsOperational
+        if (!IsOperationHostConnected
             || !property.CanWrite)
         {
             return;
@@ -746,13 +803,21 @@ public sealed class MainWindowViewModel
 
         try
         {
-            RemotePropertyOperationResult result =
-                await sessionController.WritePropertyAsync(
-                        property.Target,
-                        PropertyInputRemoteValueMapper.Map(
-                            inputResult.Value!))
+            RemoteRuntimeHostId? operationHostId = SelectedRuntimeHost?.AuthoritativeRuntimeHostId;
+            RemoteValue requestedValue = PropertyInputRemoteValueMapper.Map(inputResult.Value!);
+            RemotePropertyOperationResult result = multiHostCoordinator is null
+                ? await sessionController!.WritePropertyAsync(property.Target, requestedValue).ConfigureAwait(true)
+                : await multiHostCoordinator.WritePropertyAsync(
+                        new RemoteRuntimeHostPropertyTarget(
+                            operationHostId ?? throw new InvalidOperationException("The selected host has no authoritative identity."),
+                            property.Target),
+                        requestedValue)
                     .ConfigureAwait(
                         true);
+
+            if (multiHostCoordinator is not null
+                && SelectedRuntimeHost?.AuthoritativeRuntimeHostId != operationHostId)
+                return;
 
             if (result.IsSuccess)
             {
@@ -813,13 +878,13 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(
             command);
 
-        if (sessionController is null)
+        if (sessionController is null && multiHostCoordinator is null)
         {
             throw new InvalidOperationException(
                 "The main window client services are not configured.");
         }
 
-        if (!IsOperational
+        if (!IsOperationHostConnected
             || !command.EndpointReady)
         {
             return;
@@ -853,13 +918,20 @@ public sealed class MainWindowViewModel
 
         try
         {
-            RemoteCommandOperationResult result =
-                await sessionController.ExecuteCommandAsync(
-                    new RemoteCommandExecutionRequest(
-                            command.Target,
-                            argument))
+            RemoteRuntimeHostId? operationHostId = SelectedRuntimeHost?.AuthoritativeRuntimeHostId;
+            var localRequest = new RemoteCommandExecutionRequest(command.Target, argument);
+            RemoteCommandOperationResult result = multiHostCoordinator is null
+                ? await sessionController!.ExecuteCommandAsync(localRequest).ConfigureAwait(true)
+                : await multiHostCoordinator.ExecuteCommandAsync(
+                    new RemoteRuntimeHostCommandExecutionRequest(
+                        operationHostId ?? throw new InvalidOperationException("The selected host has no authoritative identity."),
+                        localRequest))
                     .ConfigureAwait(
                         true);
+
+            if (multiHostCoordinator is not null
+                && SelectedRuntimeHost?.AuthoritativeRuntimeHostId != operationHostId)
+                return;
 
             PropertyReadMessage =
                 result.IsSuccess
