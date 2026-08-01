@@ -22,6 +22,7 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
     }
 
     public event EventHandler? SnapshotChanged;
+    public event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
     public RuntimeHostProfileSessionSnapshot Snapshot => Volatile.Read(ref snapshot);
 
     public async Task ConnectAsync(CancellationToken cancellationToken = default)
@@ -37,6 +38,8 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
             IRuntimeHostClientSession created = await factory.CreateAsync(profile.ProfileId, cancellationToken).ConfigureAwait(false);
             var createdCancellation = new CancellationTokenSource();
             created.StatusChanged += SessionStatusChanged;
+            if (created is IRuntimeHostEventSource eventSource)
+                eventSource.EventOccurred += SessionEventOccurred;
             session = created;
             cancellation = createdCancellation;
             sessionTask = RunAsync(created, createdCancellation.Token);
@@ -58,6 +61,16 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
         try
         {
             active = session; activeCancellation = cancellation; activeTask = sessionTask;
+            if (active is not null)
+            {
+                RuntimeHostProfileSessionSnapshot current = Snapshot;
+                Publish(CreateSnapshot(
+                    new RuntimeHostClientSessionStatus(
+                        RuntimeHostClientSessionState.Disconnecting,
+                        current.Status.RuntimeHostId,
+                        current.Status.ApiVersion),
+                    current.CurrentState));
+            }
             session = null; cancellation = null; sessionTask = null;
         }
         finally { gate.Release(); }
@@ -67,6 +80,8 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
         finally
         {
             active.StatusChanged -= SessionStatusChanged;
+            if (active is IRuntimeHostEventSource eventSource)
+                eventSource.EventOccurred -= SessionEventOccurred;
             await active.DisposeAsync().ConfigureAwait(false);
             activeCancellation.Dispose();
             Publish(CreateSnapshot(new(RuntimeHostClientSessionState.Disconnected)));
@@ -163,6 +178,22 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
         }
 
         Publish(CreateSnapshot(args.Current, state));
+    }
+
+    private void SessionEventOccurred(object? sender, RemoteEventOccurredEventArgs args)
+    {
+        RuntimeHostProfileSessionSnapshot current = Snapshot;
+        if (current.Status.State != RuntimeHostClientSessionState.Connected
+            || current.Status.RuntimeHostId is null
+            || current.CurrentState?.Snapshot?.Attachments.Any(
+                attachment => attachment.Key == args.Observation.Attachment) != true)
+            return;
+        EventOccurred?.Invoke(
+            this,
+            new RuntimeHostProfileEventOccurredEventArgs(
+                profile.ProfileId,
+                current.Status.RuntimeHostId,
+                args.Observation));
     }
 
     private RuntimeHostProfileSessionSnapshot CreateSnapshot(RuntimeHostClientSessionStatus status, RemoteObservationState? state = null) =>

@@ -3,6 +3,7 @@ namespace Hase.Client.Configuration;
 public interface IRuntimeHostProfileSessionController : IAsyncDisposable
 {
     event EventHandler? SnapshotChanged;
+    event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
     RuntimeHostProfileSessionSnapshot Snapshot { get; }
     Task ConnectAsync(CancellationToken cancellationToken = default);
     Task DisconnectAsync();

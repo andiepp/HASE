@@ -519,6 +519,17 @@ public sealed class MainWindowViewModel
             nameof(HasEventOccurrences));
     }
 
+    public void ApplyMultiHostEventOccurred(RuntimeHostProfileEventOccurredEventArgs eventArgs)
+    {
+        ArgumentNullException.ThrowIfNull(eventArgs);
+        RuntimeHostProfileItemViewModel? selected = SelectedRuntimeHost;
+        if (selected is null
+            || selected.ProfileId != eventArgs.ProfileId
+            || selected.AuthoritativeRuntimeHostId != eventArgs.RuntimeHostId)
+            return;
+        ApplyEventOccurred(eventArgs.Observation);
+    }
+
     public void ApplyObservationState(
         RemoteObservationState value)
     {

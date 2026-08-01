@@ -39,6 +39,7 @@ public sealed class MultiHostClientSessionCoordinator
             }
 
             controller.SnapshotChanged += ControllerSnapshotChanged;
+            controller.EventOccurred += ControllerEventOccurred;
             controllers.Add(profile.ProfileId, controller);
         }
 
@@ -47,6 +48,7 @@ public sealed class MultiHostClientSessionCoordinator
     }
 
     public event EventHandler? SnapshotChanged;
+    public event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
 
     public MultiHostClientSessionSnapshot Snapshot => Volatile.Read(ref snapshot);
 
@@ -111,6 +113,7 @@ public sealed class MultiHostClientSessionCoordinator
             in controllersByProfileId.Values)
         {
             controller.SnapshotChanged -= ControllerSnapshotChanged;
+            controller.EventOccurred -= ControllerEventOccurred;
             try
             {
                 await controller.DisposeAsync().ConfigureAwait(false);
@@ -188,6 +191,14 @@ public sealed class MultiHostClientSessionCoordinator
     {
         Volatile.Write(ref snapshot, BuildSnapshot());
         SnapshotChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ControllerEventOccurred(object? sender, RuntimeHostProfileEventOccurredEventArgs args)
+    {
+        if (sender is not IRuntimeHostProfileSessionController controller
+            || controller.Snapshot.ProfileId != args.ProfileId)
+            throw new InvalidOperationException("The Event profile does not match its session controller.");
+        EventOccurred?.Invoke(this, args);
     }
 
     private MultiHostClientSessionSnapshot BuildSnapshot() =>

@@ -80,6 +80,7 @@ public sealed class MainWindowMultiHostLifecycleTests
     private sealed class FakeCoordinator(MultiHostClientSessionSnapshot snapshot) : IMultiHostClientSessionCoordinator
     {
         public event EventHandler? SnapshotChanged;
+        public event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
         public MultiHostClientSessionSnapshot Snapshot { get; } = snapshot;
         public RuntimeHostProfileId? ConnectedProfileId { get; private set; }
         public RuntimeHostProfileId? DisconnectedProfileId { get; private set; }

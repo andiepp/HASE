@@ -6,6 +6,7 @@ namespace Hase.Client.Configuration;
 public interface IMultiHostClientSessionCoordinator : IAsyncDisposable
 {
     event EventHandler? SnapshotChanged;
+    event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
 
     MultiHostClientSessionSnapshot Snapshot { get; }
 

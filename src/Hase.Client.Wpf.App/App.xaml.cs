@@ -71,6 +71,7 @@ public partial class App
         viewModel.ConfigureRuntimeHosts(registry.CoreProfiles);
         viewModel.ConfigureMultiHostCoordinator(multiHostCoordinator);
         multiHostCoordinator.SnapshotChanged += MultiHostSnapshotChanged;
+        multiHostCoordinator.EventOccurred += MultiHostEventOccurred;
 
         Window window =
             Container.Resolve<MainWindow>();
@@ -136,6 +137,7 @@ public partial class App
             if (multiHostCoordinator is not null)
             {
                 multiHostCoordinator.SnapshotChanged -= MultiHostSnapshotChanged;
+                multiHostCoordinator.EventOccurred -= MultiHostEventOccurred;
                 multiHostCoordinator.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
             sessionController?.DisposeAsync()
@@ -162,5 +164,10 @@ public partial class App
     {
         MultiHostClientSessionSnapshot snapshot = multiHostCoordinator!.Snapshot;
         uiDispatcher!.Post(() => mainWindowViewModel!.ApplyMultiHostSnapshot(snapshot));
+    }
+
+    private void MultiHostEventOccurred(object? sender, RuntimeHostProfileEventOccurredEventArgs eventArgs)
+    {
+        uiDispatcher!.Post(() => mainWindowViewModel!.ApplyMultiHostEventOccurred(eventArgs));
     }
 }

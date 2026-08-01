@@ -219,6 +219,7 @@ public sealed class MultiHostClientSessionCoordinatorTests
         }
 
         public event EventHandler? SnapshotChanged;
+        public event EventHandler<RuntimeHostProfileEventOccurredEventArgs>? EventOccurred;
         public RuntimeHostProfileSessionSnapshot Snapshot { get; private set; }
         public int ConnectCount { get; private set; }
         public int DisconnectCount { get; private set; }
