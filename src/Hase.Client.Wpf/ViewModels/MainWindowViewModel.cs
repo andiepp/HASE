@@ -1,5 +1,6 @@
 using System.IO;
 using Hase.Client.Wpf.Services;
+using Hase.Client.Configuration;
 using Hase.Operator.Input;
 using Hase.Operator.Presentation;
 using Prism.Commands;
@@ -48,6 +49,11 @@ public sealed class MainWindowViewModel
     private string? propertyReadMessage;
     private IReadOnlyList<EventOccurrenceItemViewModel> eventOccurrences =
         [];
+    private readonly RuntimeHostProfileListProjector runtimeHostProjector = new();
+    private RuntimeHostProfileRegistry? runtimeHostRegistry;
+    private MultiHostClientSessionSnapshot? multiHostSnapshot;
+    private RuntimeHostProfileId? selectedRuntimeHostProfileId;
+    private IReadOnlyList<RuntimeHostProfileItemViewModel> runtimeHosts = [];
 
     public MainWindowViewModel()
     {
@@ -149,6 +155,48 @@ public sealed class MainWindowViewModel
 
     public IReadOnlyList<EventOccurrenceItemViewModel> EventOccurrences =>
         eventOccurrences;
+
+    public IReadOnlyList<RuntimeHostProfileItemViewModel> RuntimeHosts => runtimeHosts;
+
+    public RuntimeHostProfileItemViewModel? SelectedRuntimeHost =>
+        runtimeHosts.SingleOrDefault(item => item.IsSelected);
+
+    public void ConfigureRuntimeHosts(RuntimeHostProfileRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        if (runtimeHostRegistry is not null)
+            throw new InvalidOperationException("The runtime-host registry is already configured.");
+        runtimeHostRegistry = registry;
+    }
+
+    public void ApplyMultiHostSnapshot(MultiHostClientSessionSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        RuntimeHostProfileRegistry registry = runtimeHostRegistry
+            ?? throw new InvalidOperationException("The runtime-host registry is not configured.");
+        multiHostSnapshot = snapshot;
+        if (selectedRuntimeHostProfileId is not null && !registry.TryGet(selectedRuntimeHostProfileId, out _))
+            selectedRuntimeHostProfileId = null;
+        ApplyRuntimeHostProjection(registry, snapshot);
+    }
+
+    public void SelectRuntimeHost(RuntimeHostProfileId? profileId)
+    {
+        RuntimeHostProfileRegistry registry = runtimeHostRegistry
+            ?? throw new InvalidOperationException("The runtime-host registry is not configured.");
+        if (profileId is not null && !registry.TryGet(profileId, out _))
+            throw new ArgumentException("The selected runtime-host profile is not registered.", nameof(profileId));
+        selectedRuntimeHostProfileId = profileId;
+        if (multiHostSnapshot is not null)
+            ApplyRuntimeHostProjection(registry, multiHostSnapshot);
+    }
+
+    private void ApplyRuntimeHostProjection(RuntimeHostProfileRegistry registry, MultiHostClientSessionSnapshot snapshot)
+    {
+        runtimeHosts = runtimeHostProjector.Project(registry, snapshot, selectedRuntimeHostProfileId);
+        RaisePropertyChanged(nameof(RuntimeHosts));
+        RaisePropertyChanged(nameof(SelectedRuntimeHost));
+    }
 
     public bool HasEventOccurrences =>
         eventOccurrences.Count > 0;
