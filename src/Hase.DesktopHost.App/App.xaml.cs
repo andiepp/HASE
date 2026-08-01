@@ -12,6 +12,9 @@ namespace Hase.DesktopHost.App;
 
 public partial class App : PrismApplication
 {
+    private const string SingleInstanceMutexName =
+        @"Local\HASE.DesktopRuntimeHost";
+
     private readonly DispatcherTimer inventoryRefreshTimer =
         new()
         {
@@ -21,6 +24,30 @@ public partial class App : PrismApplication
 
     private MainWindowViewModel? mainWindowViewModel;
     private DesktopRuntimeHostWindowShutdownCoordinator? shutdownCoordinator;
+    private DesktopRuntimeHostSingleInstanceLease? singleInstanceLease;
+
+    protected override void OnStartup(
+        StartupEventArgs eventArgs)
+    {
+        singleInstanceLease =
+            DesktopRuntimeHostSingleInstanceLease.TryAcquire(
+                SingleInstanceMutexName);
+
+        if (singleInstanceLease is null)
+        {
+            MessageBox.Show(
+                "HASE Desktop Runtime Host is already running.\n\n"
+                + "Close the existing Runtime Host before starting another instance.",
+                "HASE Desktop Runtime Host",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        base.OnStartup(
+            eventArgs);
+    }
 
     protected override Window CreateShell()
     {
@@ -123,9 +150,18 @@ public partial class App : PrismApplication
         inventoryRefreshTimer.Tick -=
             OnInventoryRefreshTimerTick;
 
-        mainWindowViewModel?.Dispose();
-        base.OnExit(
-            eventArgs);
+        try
+        {
+            mainWindowViewModel?.Dispose();
+            base.OnExit(
+                eventArgs);
+        }
+        finally
+        {
+            singleInstanceLease?.Dispose();
+            singleInstanceLease =
+                null;
+        }
     }
 
     private async void OnMainWindowClosing(
