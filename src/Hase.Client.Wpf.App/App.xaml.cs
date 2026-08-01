@@ -1,5 +1,6 @@
-﻿using System.Windows;
+using System.Windows;
 using Hase.Client.Diagnostics;
+using Hase.Client.Wpf.AppHost.Hosting;
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Client.Wpf.Views;
@@ -11,8 +12,35 @@ namespace Hase.Client.Wpf.AppHost;
 public partial class App
     : PrismApplication
 {
+    private const string SingleInstanceMutexName =
+        @"Local\HASE.Client";
+
     private RuntimeHostClientSessionController? sessionController;
     private IClientDiagnosticsWindowController? diagnosticsWindowController;
+    private HaseClientSingleInstanceLease? singleInstanceLease;
+
+    protected override void OnStartup(
+        StartupEventArgs eventArgs)
+    {
+        singleInstanceLease =
+            HaseClientSingleInstanceLease.TryAcquire(
+                SingleInstanceMutexName);
+
+        if (singleInstanceLease is null)
+        {
+            MessageBox.Show(
+                "HASE Client is already running.\n\n"
+                + "Close the existing client before starting another instance.",
+                "HASE Client",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
+        base.OnStartup(
+            eventArgs);
+    }
 
     protected override Window CreateShell()
     {
@@ -91,8 +119,16 @@ public partial class App
         }
         finally
         {
-            base.OnExit(
-                eventArgs);
+            try
+            {
+                base.OnExit(
+                    eventArgs);
+            }
+            finally
+            {
+                singleInstanceLease?.Dispose();
+                singleInstanceLease = null;
+            }
         }
     }
 }
