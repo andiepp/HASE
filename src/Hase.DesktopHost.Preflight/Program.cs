@@ -6,6 +6,12 @@ using Hase.Runtime.Remote.Grpc.Adapter;
 using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Transport.Discovery;
 
+if (args.Length == 3
+    && string.Equals(args[0], "validate-provisioning", StringComparison.Ordinal))
+{
+    return await ValidateProvisioningAsync(args[1], args[2]);
+}
+
 if (args.Length != 4)
 {
     Console.Error.WriteLine("Usage: Hase.DesktopHost.Preflight <repository-root> <private-network-config> <0xVID> <0xPID>");
@@ -125,4 +131,83 @@ static async Task<bool> HasDotNet10SdkAsync()
             && output.Split(Environment.NewLine).Any(line => line.StartsWith("10.", StringComparison.Ordinal));
     }
     catch { return false; }
+}
+
+static async Task<int> ValidateProvisioningAsync(
+    string configurationFilePath,
+    string publicCertificateFilePath)
+{
+    bool configurationValid = false;
+    bool enrollmentValid = false;
+    bool privateKeyReady = false;
+    bool publicCertificateMatches = false;
+    bool addressOwned = false;
+
+    RuntimeHostPrivateNetworkDeploymentOptions? options = null;
+    X509Certificate2? serverCertificate = null;
+    try
+    {
+        options = await RuntimeHostPrivateNetworkDeploymentOptionsFile.LoadAsync(
+            Path.GetFullPath(configurationFilePath));
+        configurationValid = true;
+    }
+    catch { }
+
+    if (options is not null)
+    {
+        try
+        {
+            _ = await RuntimeHostClientCredentialEnrollmentRegistryFile.LoadAsync(
+                options.ClientEnrollmentFilePath);
+            enrollmentValid = true;
+        }
+        catch { }
+
+        try
+        {
+            serverCertificate = RuntimeHostCertificateStoreLoader.Load(
+                options.ServerCertificate,
+                requirePrivateKey: true);
+            privateKeyReady = serverCertificate.HasPrivateKey;
+        }
+        catch { }
+
+        addressOwned = NetworkInterface.GetAllNetworkInterfaces()
+            .SelectMany(network => network.GetIPProperties().UnicastAddresses)
+            .Any(address => address.Address.Equals(options.Binding.Address));
+    }
+
+    if (serverCertificate is not null)
+    {
+        try
+        {
+            using X509Certificate2 publicCertificate =
+                X509CertificateLoader.LoadCertificateFromFile(
+                    Path.GetFullPath(publicCertificateFilePath));
+            publicCertificateMatches = !publicCertificate.HasPrivateKey
+                && string.Equals(
+                    publicCertificate.Thumbprint,
+                    serverCertificate.Thumbprint,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+        catch { }
+        finally
+        {
+            serverCertificate.Dispose();
+        }
+    }
+
+    var assessment = new SecondPcRuntimeHostSecurityProvisioningAssessment(
+        configurationValid,
+        enrollmentValid,
+        privateKeyReady,
+        publicCertificateMatches,
+        addressOwned);
+
+    Console.WriteLine("HASE second Runtime Host security provisioning validation");
+    foreach ((string name, bool ready) in assessment.Readiness)
+        Console.WriteLine($"{name,-34}: {(ready ? "Ready" : "Blocked")}");
+    Console.WriteLine("Sensitive deployment values          : Withheld");
+    Console.WriteLine($"Overall readiness                 : {(assessment.IsReady ? "Ready" : "Blocked")}");
+    return assessment.IsReady ? 0 : 1;
 }
