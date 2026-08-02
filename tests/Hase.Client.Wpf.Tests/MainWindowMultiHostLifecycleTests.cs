@@ -52,6 +52,27 @@ public sealed class MainWindowMultiHostLifecycleTests
     }
 
     [Fact]
+    public void TransientNullSelection_ShouldPreserveActiveHostAndDisconnectCommand()
+    {
+        RuntimeHostProfile profile = CreateProfile(true);
+        var coordinator = new FakeCoordinator(CreateSnapshot(profile));
+        var viewModel = CreateViewModel(profile, coordinator);
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        viewModel.ApplyMultiHostSnapshot(
+            new MultiHostClientSessionSnapshot(
+                [new RuntimeHostProfileSessionSnapshot(
+                    profile,
+                    new RuntimeHostClientSessionStatus(
+                        RuntimeHostClientSessionState.Connecting),
+                    DateTimeOffset.UtcNow)]));
+
+        viewModel.SelectedRuntimeHost = null;
+
+        Assert.Equal(profile.ProfileId, viewModel.SelectedRuntimeHost!.ProfileId);
+        Assert.True(viewModel.DisconnectSelectedRuntimeHostCommand.CanExecute());
+    }
+
+    [Fact]
     public async Task ConnectionFailure_ShouldRestoreBusyAndExposeSafeMessage()
     {
         RuntimeHostProfile profile = CreateProfile(true);

@@ -41,6 +41,8 @@
                 <ComboBox Width="130" ItemsSource="{Binding LevelFilters}" SelectedItem="{Binding SelectedLevelFilter}" />
                 <TextBlock Margin="16,0,8,0" VerticalAlignment="Center" Text="Category" />
                 <ComboBox Width="190" ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding SelectedCategoryFilter}" />
+                <TextBlock Margin="16,0,8,0" VerticalAlignment="Center" Text="Runtime Host" />
+                <ComboBox Width="180" ItemsSource="{Binding RuntimeHostFilters}" SelectedItem="{Binding SelectedRuntimeHostFilter}" />
                 <TextBlock Margin="20,0,0,0" VerticalAlignment="Center" Text="{Binding RecordCount, StringFormat='Records: {0}'}" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding EvictedRecordCount, StringFormat='Evicted: {0}'}" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding PresentationState}" />
@@ -61,6 +63,7 @@
                 <DataGridTextColumn Width="95" Header="Level" Binding="{Binding Level}" />
                 <DataGridTextColumn Width="150" Header="Category" Binding="{Binding Category}" />
                 <DataGridTextColumn Width="190" Header="Event" Binding="{Binding EventName}" />
+                <DataGridTextColumn Width="130" Header="Profile" Binding="{Binding RuntimeHostProfileDisplayName}" />
                 <DataGridTextColumn Width="90" Header="Severity" Binding="{Binding Severity}" />
                 <DataGridTextColumn Width="90" Header="Direction" Binding="{Binding Direction}" />
                 <DataGridTextColumn Width="90" Header="Outcome" Binding="{Binding Outcome}" />
@@ -96,6 +99,8 @@
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock FontWeight="SemiBold" Text="Operation" /><TextBlock Grid.Column="1" Text="{Binding SelectedRecord.OperationId}" />
@@ -105,6 +110,9 @@
                 <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Instrument" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedRecord.InstrumentId}" />
                 <TextBlock Grid.Row="5" FontWeight="SemiBold" Text="Descriptor path" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding SelectedRecord.DescriptorPath}" />
                 <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Metadata" /><TextBlock Grid.Row="6" Grid.Column="1" FontFamily="Consolas" Text="{Binding MetadataText}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="7" FontWeight="SemiBold" Text="Profile" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedRecord.RuntimeHostProfileDisplayName}" />
+                <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Expected host" /><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding SelectedRecord.ExpectedRuntimeHostId}" />
+                <TextBlock Grid.Row="9" FontWeight="SemiBold" Text="Authoritative host" /><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding SelectedRecord.AuthoritativeRuntimeHostId}" />
             </Grid>
         </ScrollViewer>
     </Grid>

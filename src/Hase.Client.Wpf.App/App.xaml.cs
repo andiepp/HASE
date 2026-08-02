@@ -69,6 +69,8 @@ public partial class App
         multiHostCoordinator = Container.Resolve<IMultiHostClientSessionCoordinator>();
         uiDispatcher = Container.Resolve<IClientUiDispatcher>();
         viewModel.ConfigureRuntimeHosts(registry.CoreProfiles);
+        Container.Resolve<ClientDiagnosticsViewModel>()
+            .ConfigureRuntimeHosts(registry.CoreProfiles);
         viewModel.ConfigureMultiHostCoordinator(multiHostCoordinator);
         multiHostCoordinator.SnapshotChanged += MultiHostSnapshotChanged;
         multiHostCoordinator.EventOccurred += MultiHostEventOccurred;
@@ -110,7 +112,7 @@ public partial class App
             registry,
             RuntimeHostClientComposition.CreateSessionFactory(diagnosticPublisher));
         containerRegistry.RegisterInstance<IRuntimeHostProfileClientSessionFactory>(profileSessionFactory);
-        var controllerFactory = new RuntimeHostProfileSessionControllerFactory(profileSessionFactory);
+        var controllerFactory = new RuntimeHostProfileSessionControllerFactory(profileSessionFactory, diagnosticPublisher);
         containerRegistry.RegisterInstance<IRuntimeHostProfileSessionControllerFactory>(controllerFactory);
         containerRegistry.RegisterInstance<IMultiHostClientSessionCoordinator>(
             new MultiHostClientSessionCoordinator(registry.CoreProfiles, controllerFactory));

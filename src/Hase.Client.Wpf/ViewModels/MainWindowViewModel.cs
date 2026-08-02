@@ -177,6 +177,14 @@ public sealed class MainWindowViewModel
         get => runtimeHosts.SingleOrDefault(item => item.IsSelected);
         set
         {
+            // Replacing the immutable host projection makes WPF briefly write
+            // a null SelectedItem back to the view model. Preserve the logical
+            // profile selection across that presentation-only reset.
+            if (value is null && selectedRuntimeHostProfileId is not null)
+            {
+                return;
+            }
+
             RuntimeHostProfileId? valueId = value?.ProfileId;
             if (valueId != selectedRuntimeHostProfileId)
                 SelectRuntimeHost(valueId);

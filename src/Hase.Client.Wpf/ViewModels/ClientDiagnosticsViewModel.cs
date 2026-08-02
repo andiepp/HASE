@@ -1,6 +1,7 @@
 using Hase.Client.Diagnostics;
 using Prism.Commands;
 using Prism.Mvvm;
+using Hase.Client.Configuration;
 
 namespace Hase.Client.Wpf.ViewModels;
 
@@ -16,6 +17,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     private bool isPaused;
     private int pendingRecordCount;
     private long presentationWatermark;
+    private RuntimeHostDiagnosticFilterItem selectedRuntimeHostFilter;
 
     public ClientDiagnosticsViewModel(BoundedClientDiagnosticCollector collector)
     {
@@ -26,6 +28,8 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         CategoryFilters = new[] { "All" }
             .Concat(Enum.GetNames<ClientDiagnosticCategory>())
             .ToArray();
+        RuntimeHostFilters = [new RuntimeHostDiagnosticFilterItem("All Runtime Hosts", null)];
+        selectedRuntimeHostFilter = RuntimeHostFilters[0];
         ClearCommand = new DelegateCommand(Clear);
         PauseCommand = new DelegateCommand(Pause, () => !IsPaused);
         ResumeCommand = new DelegateCommand(Resume, () => IsPaused);
@@ -35,6 +39,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public string Title => "HASE Laptop Client Diagnostics";
     public IReadOnlyList<string> LevelFilters { get; }
     public IReadOnlyList<string> CategoryFilters { get; }
+    public IReadOnlyList<RuntimeHostDiagnosticFilterItem> RuntimeHostFilters { get; private set; }
     public DelegateCommand ClearCommand { get; }
     public DelegateCommand PauseCommand { get; }
     public DelegateCommand ResumeCommand { get; }
@@ -74,6 +79,31 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
                 ApplyFilter();
             }
         }
+    }
+
+    public RuntimeHostDiagnosticFilterItem SelectedRuntimeHostFilter
+    {
+        get => selectedRuntimeHostFilter;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (!RuntimeHostFilters.Contains(value))
+                throw new ArgumentException("The Runtime Host filter is not available.", nameof(value));
+            if (SetProperty(ref selectedRuntimeHostFilter, value)) ApplyFilter();
+        }
+    }
+
+    public void ConfigureRuntimeHosts(RuntimeHostProfileRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        RuntimeHostFilters = new[] { new RuntimeHostDiagnosticFilterItem("All Runtime Hosts", null) }
+            .Concat(registry.Profiles.Select(profile =>
+                new RuntimeHostDiagnosticFilterItem(profile.DisplayName, profile.ProfileId)))
+            .ToArray();
+        selectedRuntimeHostFilter = RuntimeHostFilters[0];
+        RaisePropertyChanged(nameof(RuntimeHostFilters));
+        RaisePropertyChanged(nameof(SelectedRuntimeHostFilter));
+        ApplyFilter();
     }
 
     public ClientDiagnosticRecord? SelectedRecord
@@ -152,11 +182,13 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     {
         ClientDiagnosticLevel? level = ParseFilter<ClientDiagnosticLevel>(SelectedLevelFilter);
         ClientDiagnosticCategory? category = ParseFilter<ClientDiagnosticCategory>(SelectedCategoryFilter);
+        RuntimeHostProfileId? profileId = SelectedRuntimeHostFilter.ProfileId;
         long? selectedSequence = SelectedRecord?.Sequence;
         IReadOnlyList<ClientDiagnosticRecord> filtered = presentationSource
             .Where(record =>
                 (level is null || record.Level <= level) &&
-                (category is null || record.Category == category))
+                (category is null || record.Category == category) &&
+                (profileId is null || record.SessionContext?.ProfileId == profileId))
             .ToArray();
 
         SetProperty(ref records, filtered, nameof(Records));

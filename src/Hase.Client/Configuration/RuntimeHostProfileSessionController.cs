@@ -1,4 +1,5 @@
 namespace Hase.Client.Configuration;
+using Hase.Client.Diagnostics;
 
 /// <summary>Owns one independent runtime-host profile session.</summary>
 public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSessionController
@@ -11,13 +12,16 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
     private Task? sessionTask;
     private bool disposed;
     private RuntimeHostProfileSessionSnapshot snapshot;
+    private readonly ClientDiagnosticPublisher? diagnostics;
 
     public RuntimeHostProfileSessionController(
         RuntimeHostProfile profile,
-        IRuntimeHostProfileClientSessionFactory factory)
+        IRuntimeHostProfileClientSessionFactory factory,
+        ClientDiagnosticPublisher? diagnostics = null)
     {
         this.profile = profile ?? throw new ArgumentNullException(nameof(profile));
         this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        this.diagnostics = diagnostics;
         snapshot = CreateSnapshot(new(RuntimeHostClientSessionState.Disconnected));
     }
 
@@ -204,5 +208,22 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
             Snapshot.CurrentState, new(exception.Category, exception.Message)));
 
     private void Publish(RuntimeHostProfileSessionSnapshot value)
-    { Volatile.Write(ref snapshot, value); SnapshotChanged?.Invoke(this, EventArgs.Empty); }
+    {
+        Volatile.Write(ref snapshot, value);
+        diagnostics?.Publish(
+            ClientDiagnosticLevel.Operational,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Operational,
+                ClientDiagnosticCategory.ClientConnection,
+                "RuntimeHostProfileSessionStateChanged",
+                severity: value.Status.State == RuntimeHostClientSessionState.Faulted
+                    ? ClientDiagnosticSeverity.Error
+                    : ClientDiagnosticSeverity.Information,
+                sessionContext: new ClientDiagnosticSessionContext(
+                    profile.ProfileId,
+                    profile.DisplayName,
+                    profile.ExpectedRuntimeHostId,
+                    value.Status.RuntimeHostId)));
+        SnapshotChanged?.Invoke(this, EventArgs.Empty);
+    }
 }

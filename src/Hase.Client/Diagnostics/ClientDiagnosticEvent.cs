@@ -25,7 +25,8 @@ public sealed class ClientDiagnosticEvent
         string? descriptorPath = null,
         TimeSpan? duration = null,
         ClientDiagnosticOutcome? outcome = null,
-        IReadOnlyDictionary<string, string>? metadata = null)
+        IReadOnlyDictionary<string, string>? metadata = null,
+        ClientDiagnosticSessionContext? sessionContext = null)
     {
         ValidateEnum(level, nameof(level));
         ValidateEnum(category, nameof(category));
@@ -55,6 +56,7 @@ public sealed class ClientDiagnosticEvent
         Duration = duration;
         Outcome = outcome;
         Metadata = CopyMetadata(metadata);
+        SessionContext = sessionContext;
     }
 
     public ClientDiagnosticLevel Level { get; }
@@ -70,6 +72,7 @@ public sealed class ClientDiagnosticEvent
     public TimeSpan? Duration { get; }
     public ClientDiagnosticOutcome? Outcome { get; }
     public IReadOnlyDictionary<string, string> Metadata { get; }
+    public ClientDiagnosticSessionContext? SessionContext { get; }
 
     private static IReadOnlyDictionary<string, string> CopyMetadata(
         IReadOnlyDictionary<string, string>? metadata)

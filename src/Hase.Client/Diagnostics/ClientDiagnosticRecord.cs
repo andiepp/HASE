@@ -33,6 +33,7 @@ public sealed record ClientDiagnosticRecord
         Duration = diagnosticEvent.Duration;
         Outcome = diagnosticEvent.Outcome;
         Metadata = diagnosticEvent.Metadata;
+        SessionContext = diagnosticEvent.SessionContext;
     }
 
     public long Sequence { get; }
@@ -50,4 +51,9 @@ public sealed record ClientDiagnosticRecord
     public TimeSpan? Duration { get; }
     public ClientDiagnosticOutcome? Outcome { get; }
     public IReadOnlyDictionary<string, string> Metadata { get; }
+    public ClientDiagnosticSessionContext? SessionContext { get; }
+    public string? RuntimeHostProfileId => SessionContext?.ProfileId.Value;
+    public string? RuntimeHostProfileDisplayName => SessionContext?.ProfileDisplayName;
+    public string? ExpectedRuntimeHostId => SessionContext?.ExpectedRuntimeHostId.Value;
+    public string? AuthoritativeRuntimeHostId => SessionContext?.AuthoritativeRuntimeHostId?.Value;
 }

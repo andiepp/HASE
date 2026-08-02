@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Hase.Client.Configuration;
+using Hase.Client.Diagnostics;
 
 namespace Hase.Client.Tests.Configuration;
 
@@ -97,6 +98,26 @@ public sealed class RuntimeHostProfileSessionControllerTests
 
         Assert.Equal(RuntimeHostClientSessionState.Connected, second.Snapshot.Status.State);
         Assert.False(secondSession.WasCancelled);
+    }
+
+    [Fact]
+    public async Task StateTransitionDiagnostic_ShouldCarryExactProfileContext()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        await using var controller = new RuntimeHostProfileSessionController(
+            CreateProfile("first", "host-01"),
+            new FakeFactory(new FakeSession()),
+            diagnostics);
+
+        await controller.ConnectAsync();
+
+        ClientDiagnosticRecord record = Assert.Single(collector.GetSnapshot().Records);
+        Assert.Equal("RuntimeHostProfileSessionStateChanged", record.EventName);
+        Assert.Equal("first", record.RuntimeHostProfileId);
+        Assert.Equal("first", record.RuntimeHostProfileDisplayName);
+        Assert.Equal("host-01", record.ExpectedRuntimeHostId);
+        Assert.Null(record.AuthoritativeRuntimeHostId);
     }
 
     private static RuntimeHostProfile CreateProfile(string id, string host) =>
