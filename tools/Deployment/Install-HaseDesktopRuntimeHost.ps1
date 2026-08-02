@@ -1,5 +1,13 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidateSet("DefaultPhysical", "CompactSerialOnly")]
+    [string]$EndpointCompositionMode = "DefaultPhysical",
+    [string]$CompactExpectedEndpointId = "arduino-uno-01",
+    [string]$CompactVendorId = "0x2341",
+    [string]$CompactProductId = "0x0043",
+    [int]$CompactBaudRate = 115200,
+    [int]$CompactVerificationTimeoutMilliseconds = 3000
+)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -22,6 +30,21 @@ function Get-FullyQualifiedFilePath {
     }
 
     return [System.IO.Path]::GetFullPath($Path)
+}
+
+function ConvertFrom-ExactUsbIdentifier {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value,
+        [Parameter(Mandatory = $true)]
+        [string]$Role
+    )
+
+    if ($Value -notmatch '^0x[0-9A-Fa-f]{4}$') {
+        throw "The $Role must use exact 0xNNNN hexadecimal form."
+    }
+
+    return [Convert]::ToUInt16($Value.Substring(2), 16)
 }
 
 $repositoryRoot = [System.IO.Path]::GetFullPath(
@@ -67,11 +90,45 @@ if (-not (Test-Path -LiteralPath $privateNetworkSourcePath -PathType Leaf)) {
     throw "The selected private-network configuration source file does not exist."
 }
 
-$nativeEndpointHost = Read-Host "ESP32 host name or address"
-if ([string]::IsNullOrWhiteSpace($nativeEndpointHost)) {
-    throw "The ESP32 host name or address must not be empty."
+$vendorId = ConvertFrom-ExactUsbIdentifier `
+    -Value $CompactVendorId `
+    -Role "USB vendor ID"
+$productId = ConvertFrom-ExactUsbIdentifier `
+    -Value $CompactProductId `
+    -Role "USB product ID"
+if ([string]::IsNullOrWhiteSpace($CompactExpectedEndpointId)) {
+    throw "The compact endpoint identity must not be empty."
 }
-$nativeEndpointHost = $nativeEndpointHost.Trim()
+if ($CompactBaudRate -le 0) {
+    throw "The compact baud rate must be positive."
+}
+if ($CompactVerificationTimeoutMilliseconds -lt 1 -or
+    $CompactVerificationTimeoutMilliseconds -gt 60000) {
+    throw "The compact verification timeout must be between 1 and 60000 milliseconds."
+}
+
+$configuredEndpoints = New-Object System.Collections.Generic.List[object]
+if ($EndpointCompositionMode -eq "DefaultPhysical") {
+    $nativeEndpointHost = Read-Host "ESP32 host name or address"
+    if ([string]::IsNullOrWhiteSpace($nativeEndpointHost)) {
+        throw "The ESP32 host name or address must not be empty."
+    }
+    $configuredEndpoints.Add([ordered]@{
+        kind = "NativeNetwork"
+        expectedEndpointId = "doit-esp32-devkitc-v4-01"
+        host = $nativeEndpointHost.Trim()
+        port = 5000
+    })
+}
+
+$configuredEndpoints.Add([ordered]@{
+    kind = "CompactSerial"
+    expectedEndpointId = $CompactExpectedEndpointId.Trim()
+    vendorId = $vendorId
+    productId = $productId
+    baudRate = $CompactBaudRate
+    verificationTimeoutMilliseconds = $CompactVerificationTimeoutMilliseconds
+})
 
 $applicationProfile = [ordered]@{
     formatVersion = 1
@@ -84,22 +141,7 @@ $applicationProfile = [ordered]@{
 
 $endpointComposition = [ordered]@{
     formatVersion = 1
-    endpoints = @(
-        [ordered]@{
-            kind = "NativeNetwork"
-            expectedEndpointId = "doit-esp32-devkitc-v4-01"
-            host = $nativeEndpointHost
-            port = 5000
-        },
-        [ordered]@{
-            kind = "CompactSerial"
-            expectedEndpointId = "arduino-uno-01"
-            vendorId = 0x2341
-            productId = 0x0043
-            baudRate = 115200
-            verificationTimeoutMilliseconds = 3000
-        }
-    )
+    endpoints = $configuredEndpoints.ToArray()
 }
 
 $applicationDocument = $applicationProfile | ConvertTo-Json -Depth 8
@@ -167,3 +209,4 @@ Write-Host "Application profile  : $applicationProfilePath"
 Write-Host "Identity file        : $identityFilePath"
 Write-Host "Desktop shortcut     : $shortcutPath"
 Write-Host "Startup arguments    : one application-profile path"
+Write-Host "Endpoint composition : $EndpointCompositionMode"

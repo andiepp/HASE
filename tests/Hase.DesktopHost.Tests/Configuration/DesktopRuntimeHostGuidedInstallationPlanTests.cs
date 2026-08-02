@@ -7,6 +7,41 @@ namespace Hase.DesktopHost.Tests.Configuration;
 public sealed class DesktopRuntimeHostGuidedInstallationPlanTests
 {
     [Fact]
+    public void Constructor_CompactOnly_ShouldCreateOneExplicitCompactEndpoint()
+    {
+        var plan = new DesktopRuntimeHostGuidedInstallationPlan(
+            AbsolutePath("installation"),
+            AbsolutePath("source-private-network.json"),
+            "second-arduino", 0x1234, 0x5678, 57600,
+            TimeSpan.FromSeconds(5));
+
+        Assert.Empty(plan.EndpointComposition.NativeNetworkEndpoints);
+        DesktopRuntimeHostCompactSerialEndpointProfile compact =
+            Assert.Single(plan.EndpointComposition.CompactSerialEndpoints);
+        Assert.Equal("second-arduino", compact.ExpectedEndpointId);
+        Assert.Equal((ushort)0x1234, compact.VendorId);
+        Assert.Equal((ushort)0x5678, compact.ProductId);
+        Assert.Equal(57600, compact.BaudRate);
+        Assert.Equal(TimeSpan.FromSeconds(5), compact.VerificationTimeout);
+        Assert.Null(plan.NativeEndpointHost);
+    }
+
+    [Fact]
+    public void Constructor_CompactOnly_ShouldRetainIndependentIdentityCustodyPath()
+    {
+        var plan = new DesktopRuntimeHostGuidedInstallationPlan(
+            AbsolutePath("second-installation"),
+            AbsolutePath("source-private-network.json"),
+            "second-arduino", 0x1234, 0x5678, 57600,
+            TimeSpan.FromSeconds(5));
+
+        Assert.Equal(
+            Path.Combine(plan.InstallationDirectory, "Identity", "runtime-host-identity.json"),
+            plan.IdentityFilePath);
+        Assert.False(File.Exists(plan.IdentityFilePath));
+    }
+
+    [Fact]
     public void Constructor_DefaultPhysicalInstallation_ShouldCreateCompletePlan()
     {
         string installationDirectory = AbsolutePath("installation");
@@ -68,7 +103,7 @@ public sealed class DesktopRuntimeHostGuidedInstallationPlanTests
         string text = plan.ToString();
 
         Assert.Equal("Guided Desktop Runtime Host installation plan", text);
-        Assert.DoesNotContain(plan.NativeEndpointHost, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(plan.NativeEndpointHost!, text, StringComparison.Ordinal);
         Assert.DoesNotContain(plan.PrivateNetworkConfigurationSourceFilePath, text, StringComparison.Ordinal);
     }
 

@@ -8,6 +8,47 @@ public sealed record DesktopRuntimeHostGuidedInstallationPlan
         string installationDirectory,
         string privateNetworkConfigurationSourceFilePath,
         string nativeEndpointHost)
+        : this(
+            installationDirectory,
+            privateNetworkConfigurationSourceFilePath,
+            nativeEndpointHost,
+            new DesktopRuntimeHostEndpointCompositionProfile(
+                [new DesktopRuntimeHostNativeNetworkEndpointProfile(
+                    "doit-esp32-devkitc-v4-01", nativeEndpointHost, 5000)],
+                [new DesktopRuntimeHostCompactSerialEndpointProfile(
+                    "arduino-uno-01", 0x2341, 0x0043, 115200,
+                    TimeSpan.FromSeconds(3))]))
+    {
+    }
+
+    public DesktopRuntimeHostGuidedInstallationPlan(
+        string installationDirectory,
+        string privateNetworkConfigurationSourceFilePath,
+        string compactExpectedEndpointId,
+        ushort compactVendorId,
+        ushort compactProductId,
+        int compactBaudRate,
+        TimeSpan compactVerificationTimeout)
+        : this(
+            installationDirectory,
+            privateNetworkConfigurationSourceFilePath,
+            null,
+            new DesktopRuntimeHostEndpointCompositionProfile(
+                [],
+                [new DesktopRuntimeHostCompactSerialEndpointProfile(
+                    compactExpectedEndpointId,
+                    compactVendorId,
+                    compactProductId,
+                    compactBaudRate,
+                    compactVerificationTimeout)]))
+    {
+    }
+
+    private DesktopRuntimeHostGuidedInstallationPlan(
+        string installationDirectory,
+        string privateNetworkConfigurationSourceFilePath,
+        string? nativeEndpointHost,
+        DesktopRuntimeHostEndpointCompositionProfile endpointComposition)
     {
         InstallationDirectory = NormalizeDirectory(
             installationDirectory,
@@ -15,9 +56,7 @@ public sealed record DesktopRuntimeHostGuidedInstallationPlan
         PrivateNetworkConfigurationSourceFilePath = NormalizeFile(
             privateNetworkConfigurationSourceFilePath,
             nameof(privateNetworkConfigurationSourceFilePath));
-        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEndpointHost);
-
-        NativeEndpointHost = nativeEndpointHost.Trim();
+        NativeEndpointHost = nativeEndpointHost?.Trim();
         ApplicationDirectory = Path.Combine(InstallationDirectory, "Application");
         ConfigurationDirectory = Path.Combine(InstallationDirectory, "Configuration");
         IdentityDirectory = Path.Combine(InstallationDirectory, "Identity");
@@ -33,21 +72,7 @@ public sealed record DesktopRuntimeHostGuidedInstallationPlan
             EndpointCompositionFilePath,
             RuntimeDiagnosticLevel.Bytes,
             includeByteBufferSimulation: false);
-        EndpointComposition = new DesktopRuntimeHostEndpointCompositionProfile(
-            [
-                new DesktopRuntimeHostNativeNetworkEndpointProfile(
-                    "doit-esp32-devkitc-v4-01",
-                    NativeEndpointHost,
-                    5000)
-            ],
-            [
-                new DesktopRuntimeHostCompactSerialEndpointProfile(
-                    "arduino-uno-01",
-                    0x2341,
-                    0x0043,
-                    115200,
-                    TimeSpan.FromSeconds(3))
-            ]);
+        EndpointComposition = endpointComposition;
         Shortcut = new DesktopRuntimeHostShortcutPlan(
             "HASE Runtime Host",
             ExecutableFilePath,
@@ -57,7 +82,7 @@ public sealed record DesktopRuntimeHostGuidedInstallationPlan
 
     public string InstallationDirectory { get; }
     public string PrivateNetworkConfigurationSourceFilePath { get; }
-    public string NativeEndpointHost { get; }
+    public string? NativeEndpointHost { get; }
     public string ApplicationDirectory { get; }
     public string ConfigurationDirectory { get; }
     public string IdentityDirectory { get; }

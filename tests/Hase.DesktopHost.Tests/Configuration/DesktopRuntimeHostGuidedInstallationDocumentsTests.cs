@@ -8,6 +8,51 @@ namespace Hase.DesktopHost.Tests.Configuration;
 public sealed class DesktopRuntimeHostGuidedInstallationDocumentsTests
 {
     [Fact]
+    public async Task CreateEndpointComposition_CompactOnly_StrictReaderShouldLoadOneCompactEndpoint()
+    {
+        var plan = new DesktopRuntimeHostGuidedInstallationPlan(
+            Path.Combine(Path.GetTempPath(), "hase-43g4c1", "installation"),
+            Path.Combine(Path.GetTempPath(), "hase-43g4c1", "private-network.json"),
+            "second-arduino", 0x1234, 0x5678, 57600,
+            TimeSpan.FromMilliseconds(4500));
+        string filePath = TemporaryFilePath();
+        try
+        {
+            await File.WriteAllTextAsync(
+                filePath,
+                DesktopRuntimeHostGuidedInstallationDocuments.CreateEndpointComposition(plan),
+                new UTF8Encoding(false));
+            DesktopRuntimeHostEndpointCompositionProfile profile =
+                await DesktopRuntimeHostEndpointCompositionProfileFile.LoadAsync(filePath);
+            Assert.Empty(profile.NativeNetworkEndpoints);
+            DesktopRuntimeHostCompactSerialEndpointProfile compact =
+                Assert.Single(profile.CompactSerialEndpoints);
+            Assert.Equal("second-arduino", compact.ExpectedEndpointId);
+            Assert.Equal(TimeSpan.FromMilliseconds(4500), compact.VerificationTimeout);
+        }
+        finally
+        {
+            File.Delete(filePath);
+        }
+    }
+
+    [Fact]
+    public void CreateEndpointComposition_CompactOnly_ShouldContainNoNativeHostField()
+    {
+        var plan = new DesktopRuntimeHostGuidedInstallationPlan(
+            Path.Combine(Path.GetTempPath(), "hase-43g4c1", "installation"),
+            Path.Combine(Path.GetTempPath(), "hase-43g4c1", "private-network.json"),
+            "second-arduino", 0x1234, 0x5678, 57600,
+            TimeSpan.FromSeconds(5));
+
+        string document =
+            DesktopRuntimeHostGuidedInstallationDocuments.CreateEndpointComposition(plan);
+
+        Assert.DoesNotContain("NativeNetwork", document, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"host\"", document, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CreateApplicationProfile_StrictReader_ShouldLoadExactPlan()
     {
         DesktopRuntimeHostGuidedInstallationPlan plan = CreatePlan();
