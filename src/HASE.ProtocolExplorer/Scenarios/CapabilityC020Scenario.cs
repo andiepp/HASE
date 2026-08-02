@@ -2,6 +2,7 @@
 using Hase.CompactProtocol;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Endpoints;
+using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
@@ -122,10 +123,16 @@ internal sealed class CapabilityC020Scenario
             new CompactCommandExecutor(
                 connection.Connection);
 
-        CompactRuntimePropertySynchronizationResult initialResult =
-            await SynchronizeSinglePropertyAsync(
-                synchronizer,
+        IReadOnlyList<CompactRuntimePropertySynchronizationResult>
+            initialResults =
+            await synchronizer.SynchronizeAsync(
                 runtimeEndpoint);
+
+        CompactRuntimePropertySynchronizationResult initialResult =
+            SelectResult(
+                initialResults,
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .BuiltInLedStatePropertyId);
 
         bool initialState =
             RequireCachedBooleanValue(
@@ -136,6 +143,13 @@ internal sealed class CapabilityC020Scenario
             "Initial cached state",
             initialResult,
             initialState);
+
+        WriteAnalogVoltage(
+            "Initial A0 voltage",
+            SelectResult(
+                initialResults,
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .AnalogInputVoltagePropertyId));
 
         Console.WriteLine(
             "Executing compact LED toggle command.");
@@ -160,10 +174,16 @@ internal sealed class CapabilityC020Scenario
                 + "execution.");
         }
 
-        CompactRuntimePropertySynchronizationResult updatedResult =
-            await SynchronizeSinglePropertyAsync(
-                synchronizer,
+        IReadOnlyList<CompactRuntimePropertySynchronizationResult>
+            updatedResults =
+            await synchronizer.SynchronizeAsync(
                 runtimeEndpoint);
+
+        CompactRuntimePropertySynchronizationResult updatedResult =
+            SelectResult(
+                updatedResults,
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .BuiltInLedStatePropertyId);
 
         bool updatedState =
             RequireCachedBooleanValue(
@@ -174,6 +194,13 @@ internal sealed class CapabilityC020Scenario
             "Updated cached state",
             updatedResult,
             updatedState);
+
+        WriteAnalogVoltage(
+            "Updated A0 voltage",
+            SelectResult(
+                updatedResults,
+                PhysicalArduinoUnoCompactDescriptorFactory
+                    .AnalogInputVoltagePropertyId));
 
         if (updatedState == initialState)
         {
@@ -207,34 +234,45 @@ internal sealed class CapabilityC020Scenario
             "The serial connection will now be closed.");
     }
 
-    private static async Task<
-        CompactRuntimePropertySynchronizationResult>
-        SynchronizeSinglePropertyAsync(
-            CompactRuntimePropertySynchronizer synchronizer,
-            RuntimeEndpoint runtimeEndpoint)
+    private static CompactRuntimePropertySynchronizationResult SelectResult(
+        IReadOnlyList<CompactRuntimePropertySynchronizationResult> results,
+        PropertyId propertyId)
     {
-        IReadOnlyList<
-            CompactRuntimePropertySynchronizationResult> results =
-            await synchronizer.SynchronizeAsync(
-                runtimeEndpoint);
-
-        return AssertSingleResult(
-            results);
+        return results.Single(result =>
+            result.RuntimeProperty.Descriptor.Id == propertyId);
     }
 
-    private static CompactRuntimePropertySynchronizationResult
-        AssertSingleResult(
-            IReadOnlyList<
-                CompactRuntimePropertySynchronizationResult> results)
+    private static void WriteAnalogVoltage(
+        string label,
+        CompactRuntimePropertySynchronizationResult result)
     {
-        if (results.Count != 1)
+        if (result.Status != CompactPropertyReadStatus.Success
+            || !result.CacheUpdated)
         {
             throw new InvalidDataException(
-                $"Compact runtime synchronization returned {results.Count} "
-                + "results instead of exactly one.");
+                "The A0 voltage synchronization did not update the cache.");
         }
 
-        return results[0];
+        PropertyValue propertyValue =
+            result.RuntimeProperty.CurrentValue
+            ?? throw new InvalidDataException(
+                "The A0 voltage synchronization did not produce a value.");
+        double voltage =
+            propertyValue.Value is double value
+                ? value
+                : throw new InvalidDataException(
+                    "The synchronized A0 voltage is not numeric.");
+
+        if (voltage is < 0.0 or > 5.0)
+        {
+            throw new InvalidDataException(
+                "The synchronized A0 voltage is outside its descriptor range.");
+        }
+
+        Console.WriteLine($"{label,-22}: {voltage:F3} V");
+        Console.WriteLine($"Read status            : {result.Status}");
+        Console.WriteLine($"Cache updated          : {result.CacheUpdated}");
+        Console.WriteLine();
     }
 
     private static RuntimeProperty FindBuiltInLedStateProperty(

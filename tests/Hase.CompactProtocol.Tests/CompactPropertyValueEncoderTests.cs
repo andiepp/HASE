@@ -82,4 +82,43 @@ public sealed class CompactPropertyValueEncoderTests
         Assert.Throws<ArgumentOutOfRangeException>(
             Act);
     }
+
+    [Theory]
+    [InlineData(0.0, 0x00, 0x00)]
+    [InlineData(1.0, 0xE8, 0x03)]
+    [InlineData(5.0, 0x88, 0x13)]
+    [InlineData(65.535, 0xFF, 0xFF)]
+    public void Encode_Volts_ShouldReturnLittleEndianMillivolts(
+        double volts,
+        byte expectedLow,
+        byte expectedHigh)
+    {
+        ReadOnlyMemory<byte> result = CompactPropertyValueEncoder.Encode(
+            CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
+            volts);
+
+        Assert.Equal(new byte[] { expectedLow, expectedHigh }, result.ToArray());
+    }
+
+    [Theory]
+    [InlineData(-0.001)]
+    [InlineData(65.536)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void Encode_VoltsOutsideWireRange_ShouldThrow(double value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CompactPropertyValueEncoder.Encode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
+                value));
+    }
+
+    [Fact]
+    public void Encode_MillivoltsNonDouble_ShouldThrow()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            CompactPropertyValueEncoder.Encode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
+                5));
+    }
 }

@@ -273,9 +273,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
             CompactEndpointDefinition compactDefinition =
                 ArduinoUnoCompactDefinitionFactory.Create();
+            CompactEndpointDefinition legacyCompactDefinition =
+                ArduinoUnoCompactDefinitionFactory.CreateLegacy();
             var definitionRepository =
                 new InMemoryCompactEndpointDefinitionRepository(
-                    [compactDefinition]);
+                    [legacyCompactDefinition, compactDefinition]);
 
             attachmentHost =
                 configuration.IncludeByteBufferSimulation

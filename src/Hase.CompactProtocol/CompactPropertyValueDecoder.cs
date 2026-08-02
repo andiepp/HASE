@@ -25,11 +25,33 @@ internal static class CompactPropertyValueDecoder
                 DecodeBoolean(
                     value),
 
+            CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts =>
+                DecodeUnsigned16LittleEndianMillivolts(
+                    value),
+
             _ =>
                 throw new InvalidOperationException(
                     $"Compact property-value encoding '{encoding}' is not "
                     + "supported.")
         };
+    }
+
+    private static double DecodeUnsigned16LittleEndianMillivolts(
+        ReadOnlySpan<byte> value)
+    {
+        if (value.Length != 2)
+        {
+            throw new InvalidDataException(
+                "An unsigned 16-bit little-endian millivolt value must "
+                + "contain exactly two bytes.");
+        }
+
+        ushort millivolts =
+            (ushort)(
+                value[0]
+                | value[1] << 8);
+
+        return millivolts / 1000.0;
     }
 
     private static bool DecodeBoolean(

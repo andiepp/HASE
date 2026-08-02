@@ -112,4 +112,33 @@ public sealed class CompactPropertyValueDecoderTests
         Assert.Throws<ArgumentOutOfRangeException>(
             Act);
     }
+
+    [Theory]
+    [InlineData(0x00, 0x00, 0.0)]
+    [InlineData(0xE8, 0x03, 1.0)]
+    [InlineData(0x88, 0x13, 5.0)]
+    [InlineData(0xFF, 0xFF, 65.535)]
+    public void Decode_Millivolts_ShouldReturnVolts(
+        byte lowByte,
+        byte highByte,
+        double expected)
+    {
+        object result = CompactPropertyValueDecoder.Decode(
+            CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
+            [lowByte, highByte]);
+
+        Assert.Equal(expected, Assert.IsType<double>(result), precision: 3);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Decode_MillivoltsWrongLength_ShouldThrow(int length)
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            CompactPropertyValueDecoder.Decode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
+                new byte[length]));
+    }
 }

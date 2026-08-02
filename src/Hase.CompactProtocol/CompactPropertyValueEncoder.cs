@@ -28,10 +28,49 @@ internal static class CompactPropertyValueEncoder
                 EncodeBoolean(
                     value),
 
+            CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts =>
+                EncodeUnsigned16LittleEndianMillivolts(
+                    value),
+
             _ =>
                 throw new InvalidOperationException(
                     $"Compact property-value encoding '{encoding}' is not "
                     + "supported.")
+        };
+    }
+
+    private static ReadOnlyMemory<byte>
+        EncodeUnsigned16LittleEndianMillivolts(
+            object value)
+    {
+        if (value is not double volts)
+        {
+            throw new ArgumentException(
+                "A compact millivolt value must be represented by "
+                + "System.Double volts.",
+                nameof(value));
+        }
+
+        if (!double.IsFinite(volts)
+            || volts < 0.0
+            || volts > ushort.MaxValue / 1000.0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "A compact millivolt value must be finite and encode within "
+                + "an unsigned 16-bit value.");
+        }
+
+        ushort millivolts =
+            checked((ushort)Math.Round(
+                volts * 1000.0,
+                MidpointRounding.AwayFromZero));
+
+        return new byte[]
+        {
+            (byte)(millivolts & 0xFF),
+            (byte)(millivolts >> 8)
         };
     }
 

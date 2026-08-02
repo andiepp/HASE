@@ -14,12 +14,18 @@ internal static class ArduinoUnoCompactDefinitionFactory
 {
     private const byte ToggleBuiltInLedCompactCommandId = 0x01;
     private const byte BuiltInLedStateCompactPropertyId = 0x01;
+    private const byte AnalogInputVoltageCompactPropertyId = 0x02;
     private const byte ButtonPressedCompactEventId = 0x01;
+
+    private static readonly DescriptorReference LegacyDescriptorReference =
+        new(
+            new DescriptorId("arduino-uno-validation"),
+            version: 1);
 
     private static readonly DescriptorReference DescriptorReference =
         new(
             new DescriptorId("arduino-uno-validation"),
-            version: 1);
+            version: 2);
 
     private static readonly InstrumentId ControllerInstrumentId =
         new("arduino-uno-controller-01");
@@ -27,8 +33,14 @@ internal static class ArduinoUnoCompactDefinitionFactory
     private static readonly PropertyId BuiltInLedStatePropertyId =
         new("built-in-led-state");
 
+    private static readonly PropertyId AnalogInputVoltagePropertyId =
+        new("analog-input-voltage");
+
     private static readonly DescriptorPath BuiltInLedStatePropertyPath =
         new("Led", "State");
+
+    private static readonly DescriptorPath AnalogInputVoltagePropertyPath =
+        new("Analog", "Voltage");
 
     private static readonly DescriptorPath ToggleBuiltInLedCommandPath =
         new("Led", "Toggle");
@@ -39,10 +51,47 @@ internal static class ArduinoUnoCompactDefinitionFactory
     public static CompactEndpointDefinition Create()
     {
         EndpointDescriptorDefinition descriptorDefinition =
-            CreateDescriptorDefinition();
+            CreateDescriptorDefinition(
+                includeAnalogInput: true);
 
         return new CompactEndpointDefinition(
             DescriptorReference,
+            descriptorDefinition,
+            [
+                new CompactPropertyMapping(
+                    BuiltInLedStateCompactPropertyId,
+                    ControllerInstrumentId,
+                    BuiltInLedStatePropertyId,
+                    CompactPropertyValueEncoding.Boolean),
+                new CompactPropertyMapping(
+                    AnalogInputVoltageCompactPropertyId,
+                    ControllerInstrumentId,
+                    AnalogInputVoltagePropertyId,
+                    CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts)
+            ],
+            [
+                new CompactEventMapping(
+                    ButtonPressedCompactEventId,
+                    ControllerInstrumentId,
+                    ButtonPressedEventPath,
+                    CompactEventValueEncoding.None)
+            ],
+            [
+                new CompactCommandMapping(
+                    ToggleBuiltInLedCompactCommandId,
+                    ControllerInstrumentId,
+                    ToggleBuiltInLedCommandPath)
+            ]);
+    }
+
+    public static CompactEndpointDefinition CreateLegacy()
+    {
+        EndpointDescriptorDefinition descriptorDefinition =
+            CreateDescriptorDefinition(
+                includeAnalogInput: false);
+
+        return new CompactEndpointDefinition(
+            LegacyDescriptorReference,
             descriptorDefinition,
             [
                 new CompactPropertyMapping(
@@ -66,7 +115,8 @@ internal static class ArduinoUnoCompactDefinitionFactory
             ]);
     }
 
-    private static EndpointDescriptorDefinition CreateDescriptorDefinition()
+    private static EndpointDescriptorDefinition CreateDescriptorDefinition(
+        bool includeAnalogInput)
     {
         var builtInLedState =
             new PropertyDescriptor(
@@ -89,6 +139,27 @@ internal static class ArduinoUnoCompactDefinitionFactory
             {
                 Description =
                     "Toggles the Arduino Uno built-in LED."
+            };
+
+        var analogInputVoltage =
+            new PropertyDescriptor(
+                AnalogInputVoltagePropertyId,
+                AnalogInputVoltagePropertyPath,
+                "Analog Input Voltage",
+                new NumericDataDescriptor(
+                    Quantities.Voltage,
+                    Units.Volt,
+                    new ValueRange(
+                        0.0,
+                        5.0),
+                    new Resolution(
+                        5.0 / 1023.0)))
+            {
+                Description =
+                    "Reports the voltage measured by the Arduino Uno A0 "
+                    + "analog input.",
+                AccessMode =
+                    PropertyAccessMode.Read
             };
 
         var buttonPressed =
@@ -117,11 +188,14 @@ internal static class ArduinoUnoCompactDefinitionFactory
                             + "The built-in LED is exposed through a compact "
                             + "read/write property and command, and the "
                             + "validation pushbutton is exposed as a compact "
-                            + "event."
+                            + "event. Descriptor version 2 also exposes the "
+                            + "A0 analog-input voltage."
                     },
                 Interface =
                     new InstrumentInterface(
-                        properties: [builtInLedState],
+                        properties: includeAnalogInput
+                            ? [builtInLedState, analogInputVoltage]
+                            : [builtInLedState],
                         commands: [toggleBuiltInLed],
                         events: [buttonPressed])
             };

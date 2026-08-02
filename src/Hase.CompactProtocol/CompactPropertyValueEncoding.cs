@@ -10,5 +10,12 @@ public enum CompactPropertyValueEncoding : byte
     /// Encodes a Boolean value as one byte: zero for false and one for true.
     /// </summary>
     Boolean =
-        0x01
+        0x01,
+
+    /// <summary>
+    /// Encodes a voltage as unsigned 16-bit little-endian millivolts and
+    /// materializes it as a <see cref="double"/> value in volts.
+    /// </summary>
+    Unsigned16LittleEndianMillivolts =
+        0x02
 }

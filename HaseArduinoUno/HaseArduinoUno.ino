@@ -8,13 +8,21 @@
   - Read compact property 0x01
   - Write compact property 0x01
   - Return the current LED_BUILTIN state
+  - Read A0 voltage as unsigned 16-bit little-endian millivolts
   - Publish compact event 0x01 when the validation pushbutton is pressed
 
   Protocol settings:
   - Baud rate          : 115200
   - EndpointId         : arduino-uno-01
   - DescriptorId       : arduino-uno-validation
-  - Descriptor version : 1
+  - Descriptor version : 2
+
+  Analog voltage input:
+  - Pin                : A0
+  - Range              : 0 to 5 V
+  - ADC                 : 10-bit, 0 to 1023
+  - Compact PropertyId : 0x02
+  - Wire value         : unsigned 16-bit little-endian millivolts
 
   Validation pushbutton:
   - Pin                : D7
@@ -82,11 +90,17 @@ namespace
   const uint8_t BuiltInLedStatePropertyId =
     0x01;
 
+  const uint8_t AnalogInputVoltagePropertyId =
+    0x02;
+
   const uint8_t ButtonPressedEventId =
     0x01;
 
   const uint8_t ButtonPin =
     7;
+
+  const uint8_t AnalogInputPin =
+    A0;
 
   const unsigned long ButtonDebounceMilliseconds =
     50UL;
@@ -125,7 +139,7 @@ namespace
     "arduino-uno-validation";
 
   const uint16_t DescriptorVersion =
-    1;
+    2;
 
   uint8_t receiveBuffer[
     MaximumSupportedFrameLength];
@@ -375,9 +389,63 @@ namespace
     uint8_t correlationId,
     uint8_t propertyId)
   {
-    if (
-      propertyId
-      != BuiltInLedStatePropertyId)
+    if (propertyId == BuiltInLedStatePropertyId)
+    {
+      const uint8_t payload[] =
+      {
+        propertyId,
+        PropertyReadStatusSuccess,
+        builtInLedState
+          ? 0x01
+          : 0x00
+      };
+
+      SendFrame(
+        ReadPropertyResponseMessageType,
+        correlationId,
+        payload,
+        sizeof(payload));
+
+      return;
+    }
+
+    if (propertyId == AnalogInputVoltagePropertyId)
+    {
+      const uint16_t analogValue =
+        static_cast<uint16_t>(
+          analogRead(
+            AnalogInputPin));
+
+      const uint16_t millivolts =
+        static_cast<uint16_t>(
+          (
+            static_cast<unsigned long>(
+              analogValue)
+            * 5000UL
+            + 511UL)
+          / 1023UL);
+
+      const uint8_t payload[] =
+      {
+        propertyId,
+        PropertyReadStatusSuccess,
+        static_cast<uint8_t>(
+          millivolts
+          & 0xFF),
+        static_cast<uint8_t>(
+          millivolts
+          >> 8)
+      };
+
+      SendFrame(
+        ReadPropertyResponseMessageType,
+        correlationId,
+        payload,
+        sizeof(payload));
+
+      return;
+    }
+
     {
       const uint8_t payload[] =
       {
@@ -390,24 +458,7 @@ namespace
         correlationId,
         payload,
         sizeof(payload));
-
-      return;
     }
-
-    const uint8_t payload[] =
-    {
-      propertyId,
-      PropertyReadStatusSuccess,
-      builtInLedState
-        ? 0x01
-        : 0x00
-    };
-
-    SendFrame(
-      ReadPropertyResponseMessageType,
-      correlationId,
-      payload,
-      sizeof(payload));
   }
 
   void SendWritePropertyResponse(
