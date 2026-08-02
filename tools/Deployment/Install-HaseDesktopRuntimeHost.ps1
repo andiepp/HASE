@@ -6,7 +6,8 @@ param(
     [string]$CompactVendorId = "0x2341",
     [string]$CompactProductId = "0x0043",
     [int]$CompactBaudRate = 115200,
-    [int]$CompactVerificationTimeoutMilliseconds = 3000
+    [int]$CompactVerificationTimeoutMilliseconds = 3000,
+    [string]$PrivateNetworkConfigurationPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,8 +81,15 @@ foreach ($target in $protectedTargets) {
     }
 }
 
-$privateNetworkSourceInput = Read-Host `
-    "Fully qualified path to the existing desktop private-network JSON file"
+$privateNetworkSourceInput = if (
+    [string]::IsNullOrWhiteSpace($PrivateNetworkConfigurationPath)
+) {
+    Read-Host `
+        "Fully qualified path to the existing desktop private-network JSON file"
+}
+else {
+    $PrivateNetworkConfigurationPath
+}
 $privateNetworkSourcePath = Get-FullyQualifiedFilePath `
     -Path $privateNetworkSourceInput `
     -Role "private-network configuration source"

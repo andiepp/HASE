@@ -42,6 +42,27 @@ public sealed class DesktopRuntimeHostGuidedInstallationPlanTests
     }
 
     [Fact]
+    public void Constructor_MiniPcCompactOnly_ShouldRetainExactPhysicalContract()
+    {
+        string securityPath = AbsolutePath("minipc-private-network.json");
+        var plan = new DesktopRuntimeHostGuidedInstallationPlan(
+            AbsolutePath("minipc-installation"),
+            securityPath,
+            "arduino-uno-01", 0x2341, 0x0001, 115200,
+            TimeSpan.FromSeconds(3));
+
+        Assert.Equal(securityPath, plan.PrivateNetworkConfigurationSourceFilePath);
+        Assert.Empty(plan.EndpointComposition.NativeNetworkEndpoints);
+        DesktopRuntimeHostCompactSerialEndpointProfile compact =
+            Assert.Single(plan.EndpointComposition.CompactSerialEndpoints);
+        Assert.Equal("arduino-uno-01", compact.ExpectedEndpointId);
+        Assert.Equal((ushort)0x2341, compact.VendorId);
+        Assert.Equal((ushort)0x0001, compact.ProductId);
+        Assert.Equal(115200, compact.BaudRate);
+        Assert.Equal(TimeSpan.FromSeconds(3), compact.VerificationTimeout);
+    }
+
+    [Fact]
     public void Constructor_DefaultPhysicalInstallation_ShouldCreateCompletePlan()
     {
         string installationDirectory = AbsolutePath("installation");

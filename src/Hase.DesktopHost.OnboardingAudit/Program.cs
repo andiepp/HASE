@@ -1,9 +1,36 @@
 using Hase.DesktopHost.Configuration;
 
+if (args.Length == 2 && args[0] == "create-identity")
+{
+    try
+    {
+        var store = new Hase.Runtime.Northbound.FileRuntimeHostIdentityStore(
+            Path.GetFullPath(args[1]));
+        var candidate = new Hase.Runtime.Northbound.RuntimeHostId(
+            $"runtime-host-{Guid.NewGuid():D}");
+        var result = await store.CreateIfMissingAsync(candidate);
+        if (result.Outcome != Hase.Runtime.Northbound.RuntimeHostIdentityStoreCreateOutcome.Created)
+        {
+            Console.Error.WriteLine("Runtime Host identity creation refused because an identity already exists.");
+            return 1;
+        }
+
+        Console.WriteLine("Runtime Host identity created.");
+        Console.WriteLine("Authoritative identity value: Withheld");
+        return 0;
+    }
+    catch (Exception exception)
+    {
+        Console.Error.WriteLine(exception.Message);
+        return 1;
+    }
+}
+
 if (args.Length is not (1 or 3))
 {
     Console.Error.WriteLine("Usage: Hase.DesktopHost.OnboardingAudit <installation-directory>");
     Console.Error.WriteLine("   or: Hase.DesktopHost.OnboardingAudit export <installation-directory> <handoff-path>");
+    Console.Error.WriteLine("   or: Hase.DesktopHost.OnboardingAudit create-identity <identity-path>");
     return 2;
 }
 
