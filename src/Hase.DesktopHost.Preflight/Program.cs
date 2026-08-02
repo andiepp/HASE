@@ -12,6 +12,12 @@ if (args.Length == 3
     return await ValidateProvisioningAsync(args[1], args[2]);
 }
 
+if (args.Length == 3
+    && string.Equals(args[0], "validate-client-provisioning", StringComparison.Ordinal))
+{
+    return await ValidateClientProvisioningAsync(args[1], args[2]);
+}
+
 if (args.Length != 4)
 {
     Console.Error.WriteLine("Usage: Hase.DesktopHost.Preflight <repository-root> <private-network-config> <0xVID> <0xPID>");
@@ -209,6 +215,83 @@ static async Task<int> ValidateProvisioningAsync(
     foreach ((string name, bool ready) in assessment.Readiness)
         Console.WriteLine($"{name,-34}: {(ready ? "Ready" : "Blocked")}");
     Console.WriteLine("Sensitive deployment values          : Withheld");
+    Console.WriteLine($"Overall readiness                 : {(assessment.IsReady ? "Ready" : "Blocked")}");
+    return assessment.IsReady ? 0 : 1;
+}
+
+static async Task<int> ValidateClientProvisioningAsync(
+    string configurationFilePath,
+    string publicCertificateFilePath)
+{
+    bool configurationValid = false;
+    bool clientPrivateKeyReady = false;
+    bool trustedCertificateReady = false;
+    bool publicCertificateMatches = false;
+
+    RuntimeHostPrivateNetworkClientOptions? options = null;
+    X509Certificate2? trustedCertificate = null;
+    try
+    {
+        options = await RuntimeHostPrivateNetworkClientOptionsFile.LoadAsync(
+            Path.GetFullPath(configurationFilePath));
+        configurationValid = true;
+    }
+    catch { }
+
+    if (options is not null)
+    {
+        try
+        {
+            using X509Certificate2 clientCertificate =
+                RuntimeHostCertificateStoreLoader.Load(
+                    options.ClientCertificate,
+                    requirePrivateKey: true);
+            clientPrivateKeyReady = clientCertificate.HasPrivateKey;
+        }
+        catch { }
+
+        try
+        {
+            trustedCertificate = RuntimeHostCertificateStoreLoader.Load(
+                options.TrustedServerCertificate,
+                requirePrivateKey: false);
+            trustedCertificateReady = true;
+        }
+        catch { }
+    }
+
+    if (trustedCertificate is not null)
+    {
+        try
+        {
+            using X509Certificate2 publicCertificate =
+                X509CertificateLoader.LoadCertificateFromFile(
+                    Path.GetFullPath(publicCertificateFilePath));
+            publicCertificateMatches = publicCertificate.RawData.AsSpan()
+                    .SequenceEqual(trustedCertificate.RawData)
+                && string.Equals(
+                    publicCertificate.Thumbprint,
+                    trustedCertificate.Thumbprint,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+        catch { }
+        finally
+        {
+            trustedCertificate.Dispose();
+        }
+    }
+
+    var assessment = new MiniPcClientSecurityProvisioningAssessment(
+        configurationValid,
+        clientPrivateKeyReady,
+        trustedCertificateReady,
+        publicCertificateMatches,
+        ExistingClientStatePreserved: true);
+
+    Console.WriteLine("HASE MiniPC laptop security provisioning validation");
+    foreach ((string name, bool ready) in assessment.Readiness)
+        Console.WriteLine($"{name,-34}: {(ready ? "Ready" : "Blocked")}");
+    Console.WriteLine("Sensitive deployment values       : Withheld");
     Console.WriteLine($"Overall readiness                 : {(assessment.IsReady ? "Ready" : "Blocked")}");
     return assessment.IsReady ? 0 : 1;
 }
