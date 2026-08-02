@@ -3,28 +3,30 @@
 ## Current architectural update — ADR-0043
 
 **ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
-Client Topology — Active**
+Client Topology — Active at completed Increment 43F**
 
 - ADR-0043 accepted on 2026-08-01.
-- Increment 43A1 Architecture and Configuration Boundaries is approved.
+- Increments 43A through 43F are complete.
 - Authoritative starting commit:
   `c79d956de4603412c431425a94a7dac17ffae98d`.
 - Starting baseline: 4,017 automated tests passing.
 - Existing private-network deployment and client documents remain the
   lower-level security configuration.
-- New external application profiles will compose one Runtime Host installation
+- External application profiles compose one Runtime Host installation
   and an ordered client registry of expected Runtime Hosts.
-- Runtime Host identity will become installation-safe according to ADR-0024.
+- Runtime Host identity is installation-safe according to ADR-0024.
 - Certificate authentication and pinning remain mandatory; the client will
   additionally verify the authoritative `RuntimeHostId` from the initial
   snapshot.
-- A future multi-host coordinator will own several independent existing
-  single-host session controllers.
+- The multi-host coordinator owns several independent existing single-host
+  session controllers.
 - Endpoint operations in a multi-host client are qualified by Runtime Host,
   endpoint, and attachment-generation identity.
 - Tailscale remains reachability only and does not become HASE identity or
   authorization.
-- Increment 43A1 changes documentation only.
+- Client registry migration and safe offline add, enable, disable, remove, and
+  backup recovery are physically validated.
+- Current verified baseline: 4,305 automated tests passing.
 
 ### Recent completed architectural objectives
 
@@ -40,7 +42,7 @@ Client Topology — Active**
 
 ### Next
 
-Implement Increment 43A2 — Deployment and Multi-Host Configuration Contracts.
+Plan Increment 43G1 — Runtime Host and Endpoint Onboarding Preparation.
 
 ---
 
@@ -137,7 +139,7 @@ validated local and remote authoritative writes.
 The current verified baseline is:
 
 ```text
-3,643 automated tests passing
+4,305 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -1169,4 +1171,3 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
-

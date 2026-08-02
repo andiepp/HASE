@@ -1,6 +1,6 @@
 # ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host Client Topology
 
-- Status: Accepted
+- Status: Active — Increments 43A through 43F complete
 - Date: 2026-08-01
 
 ## Context
@@ -188,10 +188,17 @@ automatically selected endpoint.
 - ADR-0043 starts from authoritative commit
   `c79d956de4603412c431425a94a7dac17ffae98d`.
 - The accepted baseline has 4,017 automated tests passing.
-- Increment 43A1 changes documentation only.
-- No Release launcher, application profile, identity migration, multi-host
-  session, enrollment change, or endpoint onboarding behavior is implemented
-  by 43A1.
+- Increments 43A through 43F are complete at 4,305 passing automated tests.
+- Release publication, guided installation and update, installation-safe
+  Runtime Host identity, strict client registry startup, independent multi-host
+  sessions, multi-host WPF presentation, diagnostics context, client registry
+  migration, safe profile administration, and backup recovery are implemented.
+- Installed single-host migration, profile add, fail-closed conflicting enable,
+  confirmed removal, retained referenced configuration, backup restoration,
+  intended-state restoration, connection, and physical two-endpoint inventory
+  are validated.
+- Runtime Host and endpoint onboarding remains assigned to 43G. Combined
+  physical multi-host validation and ADR closure remain assigned to 43H.
 
 ## Deferred
 

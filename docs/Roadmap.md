@@ -1091,18 +1091,20 @@ physical ESP32 and Arduino Uno validation checks passing without deviation.
 
 ### ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host Client Topology
 
-Increment 43A1 Architecture and Configuration Boundaries is approved.
+Increments 43A through 43F are complete at 4,305 passing tests. Client registry
+migration, installed startup, profile administration, fail-closed conflict
+handling, retained backups, and recovery are physically validated.
 
 Planned increments:
 
-1. 43A2 — Deployment and Multi-Host Configuration Contracts.
-2. 43B — Release Publication and Runtime Host Launcher.
-3. 43C — Client Release Publication and Launcher.
-4. 43D — Multi-Host Client Session Core.
-5. 43E — Multi-Host WPF Presentation.
-6. 43F — Client Enrollment Recipe.
-7. 43G — Runtime Host and Endpoint Onboarding Recipe.
-8. 43H — Combined Multi-Host Validation and Closure.
+1. 43A — Deployment and Multi-Host Configuration Contracts — complete.
+2. 43B — Release Publication and Runtime Host Launcher — complete.
+3. 43C — Client Release Publication and Launcher — complete.
+4. 43D — Multi-Host Client Session Core — complete.
+5. 43E — Multi-Host WPF Presentation — complete.
+6. 43F — Client Enrollment Recipe — complete.
+7. 43G — Runtime Host and Endpoint Onboarding Recipe — next.
+8. 43H — Combined Multi-Host Validation and Closure — planned.
 
 The existing mutual-TLS, certificate-pinning, explicit endpoint-attachment, and
 runtime-host lifecycle-ownership boundaries remain unchanged. Tailscale remains
@@ -1114,5 +1116,4 @@ reachability only.
 - Python Automation Boundary.
 - Remote Media Feedback.
 - Diagnostic Export and Offline Analysis.
-
 
