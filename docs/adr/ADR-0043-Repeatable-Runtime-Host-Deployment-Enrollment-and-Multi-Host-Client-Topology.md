@@ -1,6 +1,6 @@
 # ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host Client Topology
 
-- Status: Active — Increments 43A through 43F complete
+- Status: Accepted and complete — Increments 43A through 43H complete
 - Date: 2026-08-01
 
 ## Context
@@ -171,7 +171,7 @@ automatically selected endpoint.
 - Multi-host support increases lifecycle and presentation complexity, but that
   complexity is isolated above the existing single-host session controller.
 
-## Planned increments
+## Completed increments
 
 1. 43A1 — ADR-0043 Architecture and Configuration Boundaries.
 2. 43A2 — Deployment and Multi-Host Configuration Contracts.
@@ -188,7 +188,7 @@ automatically selected endpoint.
 - ADR-0043 starts from authoritative commit
   `c79d956de4603412c431425a94a7dac17ffae98d`.
 - The accepted baseline has 4,017 automated tests passing.
-- Increments 43A through 43F are complete at 4,305 passing automated tests.
+- Increments 43A through 43H are complete at 4,405 passing automated tests.
 - Release publication, guided installation and update, installation-safe
   Runtime Host identity, strict client registry startup, independent multi-host
   sessions, multi-host WPF presentation, diagnostics context, client registry
@@ -197,8 +197,13 @@ automatically selected endpoint.
   confirmed removal, retained referenced configuration, backup restoration,
   intended-state restoration, connection, and physical two-endpoint inventory
   are validated.
-- Runtime Host and endpoint onboarding remains assigned to 43G. Combined
-  physical multi-host validation and ADR closure remain assigned to 43H.
+- Repeatable Runtime Host and endpoint onboarding is implemented and physically
+  validated on independently installed Desktop and MiniPC Runtime Hosts.
+- One laptop Client maintained both authenticated sessions concurrently.
+  Inventories, Property operations, Commands, Events, and diagnostics remained
+  scoped to the selected Runtime Host.
+- Disconnecting and reconnecting one Runtime Host did not disturb the other
+  connected session. ADR-0043 is therefore closed by Increment 43H.
 
 ## Deferred
 

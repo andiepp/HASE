@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved corrective increment; automated validation pending on Visual Studio 2026.
+Complete. Automated and physical validation succeeded on 2026-08-02.
 
 ## Physical finding
 
@@ -50,6 +50,8 @@ Focused regression coverage verifies the physical Event ordering:
 Existing coverage continues to require Events from an unselected Runtime Host
 to be ignored.
 
+The complete Visual Studio 2026 Release suite passed with 4,405 tests.
+
 ## Physical validation
 
 After a successful Release build and complete automated test run:
@@ -65,3 +67,6 @@ After a successful Release build and complete automated test run:
    Event appears; and
 8. stop the Client and Runtime Host cleanly.
 
+Both button presses produced one diagnostic record and one persistent Live
+Event each. Subsequent simultaneous-host validation confirmed that Desktop and
+MiniPC Events remained attributed to their originating Runtime Hosts.

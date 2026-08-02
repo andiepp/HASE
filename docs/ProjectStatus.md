@@ -3,10 +3,10 @@
 ## Current architectural update — ADR-0043
 
 **ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
-Client Topology — Active at completed Increment 43F**
+Client Topology — complete**
 
 - ADR-0043 accepted on 2026-08-01.
-- Increments 43A through 43F are complete.
+- Increments 43A through 43H are complete.
 - Authoritative starting commit:
   `c79d956de4603412c431425a94a7dac17ffae98d`.
 - Starting baseline: 4,017 automated tests passing.
@@ -15,9 +15,8 @@ Client Topology — Active at completed Increment 43F**
 - External application profiles compose one Runtime Host installation
   and an ordered client registry of expected Runtime Hosts.
 - Runtime Host identity is installation-safe according to ADR-0024.
-- Certificate authentication and pinning remain mandatory; the client will
-  additionally verify the authoritative `RuntimeHostId` from the initial
-  snapshot.
+- Certificate authentication and pinning remain mandatory; the client verifies
+  the authoritative `RuntimeHostId` from the initial snapshot.
 - The multi-host coordinator owns several independent existing single-host
   session controllers.
 - Endpoint operations in a multi-host client are qualified by Runtime Host,
@@ -26,7 +25,13 @@ Client Topology — Active at completed Increment 43F**
   authorization.
 - Client registry migration and safe offline add, enable, disable, remove, and
   backup recovery are physically validated.
-- Current verified baseline: 4,305 automated tests passing.
+- Independently installed Desktop and MiniPC Runtime Hosts operated
+  simultaneously while one laptop Client maintained both authenticated
+  sessions.
+- Inventories, Property operations, Commands, Events, diagnostics, and
+  independent disconnect/reconnect behavior were physically validated without
+  cross-host attribution or lifecycle interference.
+- Current verified baseline: 4,405 automated tests passing.
 
 ### Recent completed architectural objectives
 
@@ -42,7 +47,7 @@ Client Topology — Active at completed Increment 43F**
 
 ### Next
 
-Plan Increment 43G1 — Runtime Host and Endpoint Onboarding Preparation.
+Select the next architectural objective after ADR-0043 closure.
 
 ---
 
@@ -139,7 +144,7 @@ validated local and remote authoritative writes.
 The current verified baseline is:
 
 ```text
-4,305 automated tests passing
+4,405 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds

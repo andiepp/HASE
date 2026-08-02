@@ -1083,19 +1083,14 @@ The northbound runtime-host API begins in Phase 7 under ADR-0023.
 - ADR-0040 — Structured Runtime Diagnostics and Tracing.
 - ADR-0041 — Desktop Diagnostics Window and Presentation Pause.
 - ADR-0042 — Laptop Client Diagnostics Window and Presentation Pause.
+- ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
+  Client Topology — complete at 4,405 tests after simultaneous Desktop and
+  MiniPC Runtime Host validation from one laptop Client.
 
 ADR-0042 closed at 4,017 automated tests with all thirty-seven combined
 physical ESP32 and Arduino Uno validation checks passing without deviation.
 
-## Active
-
-### ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host Client Topology
-
-Increments 43A through 43F are complete at 4,305 passing tests. Client registry
-migration, installed startup, profile administration, fail-closed conflict
-handling, retained backups, and recovery are physically validated.
-
-Planned increments:
+## Completed ADR-0043 increments
 
 1. 43A — Deployment and Multi-Host Configuration Contracts — complete.
 2. 43B — Release Publication and Runtime Host Launcher — complete.
@@ -1103,12 +1098,16 @@ Planned increments:
 4. 43D — Multi-Host Client Session Core — complete.
 5. 43E — Multi-Host WPF Presentation — complete.
 6. 43F — Client Enrollment Recipe — complete.
-7. 43G — Runtime Host and Endpoint Onboarding Recipe — next.
-8. 43H — Combined Multi-Host Validation and Closure — planned.
+7. 43G — Runtime Host and Endpoint Onboarding Recipe — complete.
+8. 43H — Combined Multi-Host Validation and Closure — complete.
 
-The existing mutual-TLS, certificate-pinning, explicit endpoint-attachment, and
-runtime-host lifecycle-ownership boundaries remain unchanged. Tailscale remains
-reachability only.
+ADR-0043 closed at 4,405 passing tests. The Desktop and MiniPC Runtime Hosts ran
+simultaneously, the laptop Client maintained both authenticated sessions, and
+host-scoped inventory, Property, Command, Event, diagnostics, and independent
+disconnect/reconnect behavior passed physical validation. The existing mutual-
+TLS, certificate-pinning, explicit endpoint-attachment, and runtime-host
+lifecycle-ownership boundaries remain unchanged. Tailscale remains reachability
+only.
 
 ## Agreed later objectives
 
@@ -1116,4 +1115,3 @@ reachability only.
 - Python Automation Boundary.
 - Remote Media Feedback.
 - Diagnostic Export and Offline Analysis.
-
