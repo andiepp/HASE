@@ -49,11 +49,18 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
                 configuration.IncludeByteBufferSimulation);
         }
 
+        string? configuredEsp32Host = configuration.Esp32Host;
+        string legacyEsp32Host =
+            string.IsNullOrWhiteSpace(configuredEsp32Host)
+                ? throw new InvalidOperationException(
+                    "Legacy startup requires an ESP32 host.")
+                : configuredEsp32Host;
+
         var legacyEndpoints = new DesktopRuntimeHostEndpointCompositionProfile(
             [
                 new DesktopRuntimeHostNativeNetworkEndpointProfile(
                     PhysicalEndpointIdentities.Esp32EndpointId.Value,
-                    configuration.Esp32Host,
+                    legacyEsp32Host,
                     5000)
             ],
             [

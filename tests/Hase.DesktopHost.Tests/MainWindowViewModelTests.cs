@@ -1,4 +1,4 @@
-﻿using Hase.DesktopHost.App.ViewModels;
+using Hase.DesktopHost.App.ViewModels;
 
 namespace Hase.DesktopHost.Tests;
 
@@ -42,7 +42,7 @@ public sealed class MainWindowViewModelTests
         await viewModel.StopAsync();
 
         Assert.Equal(
-            "HASE Desktop Runtime Host",
+            "HASE Runtime Host",
             viewModel.ApplicationTitle);
         Assert.Same(
             runtimeViewModel,
@@ -140,3 +140,4 @@ public sealed class MainWindowViewModelTests
             throw new NotSupportedException();
     }
 }
+

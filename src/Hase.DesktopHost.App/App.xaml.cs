@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Threading;
 using Hase.DesktopHost.App.Hosting;
@@ -36,9 +36,9 @@ public partial class App : PrismApplication
         if (singleInstanceLease is null)
         {
             MessageBox.Show(
-                "HASE Desktop Runtime Host is already running.\n\n"
+                "HASE Runtime Host is already running.\n\n"
                 + "Close the existing Runtime Host before starting another instance.",
-                "HASE Desktop Runtime Host",
+                "HASE Runtime Host",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             Shutdown();
@@ -257,3 +257,4 @@ public partial class App : PrismApplication
         }
     }
 }
+

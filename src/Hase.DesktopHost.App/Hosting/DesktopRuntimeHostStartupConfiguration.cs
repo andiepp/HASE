@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Hosting;
@@ -7,7 +7,7 @@ namespace Hase.DesktopHost.App.Hosting;
 
 public sealed record DesktopRuntimeHostStartupConfiguration(
     string DeploymentConfigurationFilePath,
-    string Esp32Host,
+    string? Esp32Host,
     RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions,
     bool IncludeByteBufferSimulation = false,
     RuntimeDiagnosticLevel MaximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational)
@@ -50,15 +50,18 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
                 .GetAwaiter()
                 .GetResult();
 
-        DesktopRuntimeHostNativeNetworkEndpointProfile nativeEndpoint =
-            endpoints.NativeNetworkEndpoints.Count == 1
-                ? endpoints.NativeNetworkEndpoints[0]
-                : throw new InvalidDataException(
-                    "The current production backend requires exactly one native network endpoint.");
+        if (endpoints.NativeNetworkEndpoints.Count > 1)
+        {
+            throw new InvalidDataException(
+                "The current production backend supports at most one native network endpoint.");
+        }
+
+        DesktopRuntimeHostNativeNetworkEndpointProfile? nativeEndpoint =
+            endpoints.NativeNetworkEndpoints.SingleOrDefault();
 
         return new DesktopRuntimeHostStartupConfiguration(
             installation.PrivateNetworkConfigurationFilePath,
-            nativeEndpoint.Host,
+            nativeEndpoint?.Host,
             deployment,
             installation.IncludeByteBufferSimulation,
             installation.MaximumDiagnosticLevel)

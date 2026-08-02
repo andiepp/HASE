@@ -230,11 +230,16 @@ public sealed class MainWindowViewModel
         ArgumentNullException.ThrowIfNull(snapshot);
         RuntimeHostProfileRegistry registry = runtimeHostRegistry
             ?? throw new InvalidOperationException("The runtime-host registry is not configured.");
+        RuntimeHostProfileSessionSnapshot? previousSelectedSession =
+            SelectedRuntimeHostSession;
         multiHostSnapshot = snapshot;
         if (selectedRuntimeHostProfileId is not null && !registry.TryGet(selectedRuntimeHostProfileId, out _))
             selectedRuntimeHostProfileId = null;
         ApplyRuntimeHostProjection(registry, snapshot);
-        ApplySelectedHostState();
+        ApplySelectedHostState(
+            ShouldClearEventOccurrences(
+                previousSelectedSession,
+                SelectedRuntimeHostSession));
     }
 
     public void SelectRuntimeHost(RuntimeHostProfileId? profileId)
@@ -260,7 +265,8 @@ public sealed class MainWindowViewModel
         RaiseCommandStateChanged();
     }
 
-    private void ApplySelectedHostState()
+    private void ApplySelectedHostState(
+        bool clearEventOccurrences = true)
     {
         RuntimeHostProfileSessionSnapshot? selectedSession =
             SelectedRuntimeHostSession;
@@ -271,7 +277,10 @@ public sealed class MainWindowViewModel
         requestedBooleanValues.Clear();
         requestedPropertyValueTexts.Clear();
         requestedCommandArgumentTexts.Clear();
-        ClearEventOccurrences();
+        if (clearEventOccurrences)
+        {
+            ClearEventOccurrences();
+        }
         RemoteObservationState selectedState =
             mayPresentState && selectedSession!.CurrentState is not null
                 ? selectedSession.CurrentState
@@ -299,6 +308,32 @@ public sealed class MainWindowViewModel
                 "The selected Runtime Host is reconnecting; retained endpoint state is read-only.",
             _ => "The selected Runtime Host is not connected."
         };
+    }
+
+    private static bool ShouldClearEventOccurrences(
+        RuntimeHostProfileSessionSnapshot? previousSession,
+        RuntimeHostProfileSessionSnapshot? currentSession)
+    {
+        if (previousSession is null
+            || currentSession is null
+            || previousSession.ProfileId != currentSession.ProfileId)
+        {
+            return true;
+        }
+
+        if (currentSession.Status.State
+            is RuntimeHostClientSessionState.Disconnected
+                or RuntimeHostClientSessionState.Connecting
+                or RuntimeHostClientSessionState.Disconnecting
+                or RuntimeHostClientSessionState.Faulted)
+        {
+            return true;
+        }
+
+        return currentSession.Status.State
+                == RuntimeHostClientSessionState.Connected
+            && previousSession.Status.State
+                != RuntimeHostClientSessionState.Connected;
     }
 
     public async Task ConnectSelectedRuntimeHostAsync()

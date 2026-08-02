@@ -1,4 +1,4 @@
-﻿using Prism.Commands;
+using Prism.Commands;
 using System.Globalization;
 using System.Windows.Threading;
 using Hase.Core.Domain.Data;
@@ -70,7 +70,7 @@ public sealed class MainWindowViewModel : IDisposable
     }
 
     public string ApplicationTitle =>
-        "HASE Desktop Runtime Host";
+        "HASE Runtime Host";
 
     public DesktopRuntimeHostViewModel RuntimeHost =>
         runtimeHostViewModel;
@@ -553,3 +553,4 @@ public sealed class MainWindowViewModel : IDisposable
                 DesktopRuntimeOperatorActivityOutcome.Failed
         };
 }
+
