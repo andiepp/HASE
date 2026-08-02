@@ -29,6 +29,42 @@ public sealed class PrivateNetworkRuntimeHostProfileRegistryEditorTests
     }
 
     [Fact]
+    public async Task AddFromHandoffAsync_Enabled_ShouldAddEnabledProfile()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry(Host("first", "host-01", files.Configuration("first"), true));
+        string handoff = await files.HandoffAsync("runtime-host-02");
+
+        await new PrivateNetworkRuntimeHostProfileRegistryEditor()
+            .AddEnabledFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("second"), "Second Host",
+                files.Configuration("second"));
+
+        PrivateNetworkRuntimeHostProfileRegistry registry = await files.LoadAsync();
+        Assert.Equal(2, registry.Profiles.Count);
+        Assert.All(registry.Profiles, profile => Assert.True(profile.Profile.IsEnabled));
+    }
+
+    [Fact]
+    public async Task AddFromHandoffAsync_EnabledDuplicateIdentity_ShouldPreserveRegistry()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry(Host("first", "runtime-host-01", files.Configuration("first"), true));
+        string original = File.ReadAllText(files.RegistryPath);
+        string handoff = await files.HandoffAsync("runtime-host-01");
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            new PrivateNetworkRuntimeHostProfileRegistryEditor().AddEnabledFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("second"), "Second",
+                files.Configuration("second")));
+
+        Assert.Equal(original, File.ReadAllText(files.RegistryPath));
+        Assert.False(File.Exists(files.BackupPath));
+    }
+
+    [Fact]
     public async Task AddFromHandoffAsync_InvalidHandoff_ShouldPreserveRegistry()
     {
         using TestFiles files = new();

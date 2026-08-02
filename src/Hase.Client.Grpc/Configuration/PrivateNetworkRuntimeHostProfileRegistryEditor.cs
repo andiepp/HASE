@@ -18,6 +18,43 @@ public sealed class PrivateNetworkRuntimeHostProfileRegistryEditor
         string displayName,
         string privateNetworkConfigurationFilePath,
         CancellationToken cancellationToken = default)
+        => await AddFromHandoffCoreAsync(
+            registryFilePath,
+            backupFilePath,
+            handoffFilePath,
+            profileId,
+            displayName,
+            privateNetworkConfigurationFilePath,
+            isEnabled: false,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+    public async Task<RuntimeHostId> AddEnabledFromHandoffAsync(
+        string registryFilePath,
+        string backupFilePath,
+        string handoffFilePath,
+        RuntimeHostProfileId profileId,
+        string displayName,
+        string privateNetworkConfigurationFilePath,
+        CancellationToken cancellationToken = default)
+        => await AddFromHandoffCoreAsync(
+            registryFilePath,
+            backupFilePath,
+            handoffFilePath,
+            profileId,
+            displayName,
+            privateNetworkConfigurationFilePath,
+            isEnabled: true,
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+    private async Task<RuntimeHostId> AddFromHandoffCoreAsync(
+        string registryFilePath,
+        string backupFilePath,
+        string handoffFilePath,
+        RuntimeHostProfileId profileId,
+        string displayName,
+        string privateNetworkConfigurationFilePath,
+        bool isEnabled,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(profileId);
         RuntimeHostOnboardingHandoff handoff =
@@ -33,7 +70,7 @@ public sealed class PrivateNetworkRuntimeHostProfileRegistryEditor
                     profileId,
                     displayName,
                     new RemoteRuntimeHostId(handoff.RuntimeHostId.Value),
-                    isEnabled: false),
+                    isEnabled),
                 privateNetworkConfigurationFilePath),
             cancellationToken).ConfigureAwait(false);
 
