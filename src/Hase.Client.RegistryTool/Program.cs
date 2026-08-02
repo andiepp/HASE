@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Hase.Client;
 using Hase.Client.Configuration;
 using Hase.Client.Grpc.Configuration;
+using Hase.Runtime.Northbound;
 
 if (Process.GetProcessesByName("Hase.Client.Wpf.App").Length > 0)
 {
@@ -22,6 +23,7 @@ string backupPath = registryPath
     + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfffffff")
     + ".backup";
 var editor = new PrivateNetworkRuntimeHostProfileRegistryEditor();
+RuntimeHostId? importedRuntimeHostId = null;
 
 try
 {
@@ -38,6 +40,15 @@ try
                         new RemoteRuntimeHostId(args[4]),
                         ParseEnabled(args[6])),
                     Path.GetFullPath(args[5])));
+            break;
+        case "add-from-handoff" when args.Length == 6:
+            importedRuntimeHostId = await editor.AddFromHandoffAsync(
+                registryPath,
+                backupPath,
+                args[4],
+                profileId,
+                args[3],
+                Path.GetFullPath(args[5]));
             break;
         case "enable" when args.Length == 3:
             await editor.SetEnabledAsync(registryPath, backupPath, profileId, true);
@@ -59,6 +70,10 @@ catch (Exception exception)
 
 Console.WriteLine($"Runtime Host registry operation succeeded: {operation}");
 Console.WriteLine($"Profile ID: {profileId.Value}");
+if (importedRuntimeHostId is not null)
+{
+    Console.WriteLine($"Expected Runtime Host ID: {importedRuntimeHostId.Value}");
+}
 Console.WriteLine($"Previous registry backup: {backupPath}");
 return 0;
 
@@ -73,6 +88,7 @@ static int Usage()
 {
     Console.Error.WriteLine("Usage:");
     Console.Error.WriteLine("  add <registry> <profile-id> <display-name> <expected-host-id> <private-config> <true|false>");
+    Console.Error.WriteLine("  add-from-handoff <registry> <profile-id> <display-name> <handoff> <private-config>");
     Console.Error.WriteLine("  enable|disable <registry> <profile-id>");
     Console.Error.WriteLine("  remove <registry> <profile-id> <same-profile-id-confirmation>");
     return 2;

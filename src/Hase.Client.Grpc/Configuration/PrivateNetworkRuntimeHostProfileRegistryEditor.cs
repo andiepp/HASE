@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Hase.Client.Configuration;
+using Hase.Runtime.Northbound;
 
 namespace Hase.Client.Grpc.Configuration;
 
@@ -9,6 +10,36 @@ namespace Hase.Client.Grpc.Configuration;
 /// </summary>
 public sealed class PrivateNetworkRuntimeHostProfileRegistryEditor
 {
+    public async Task<RuntimeHostId> AddFromHandoffAsync(
+        string registryFilePath,
+        string backupFilePath,
+        string handoffFilePath,
+        RuntimeHostProfileId profileId,
+        string displayName,
+        string privateNetworkConfigurationFilePath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(profileId);
+        RuntimeHostOnboardingHandoff handoff =
+            await RuntimeHostOnboardingHandoffFile.LoadAsync(
+                handoffFilePath,
+                cancellationToken).ConfigureAwait(false);
+
+        await AddAsync(
+            registryFilePath,
+            backupFilePath,
+            new PrivateNetworkRuntimeHostProfile(
+                new RuntimeHostProfile(
+                    profileId,
+                    displayName,
+                    new RemoteRuntimeHostId(handoff.RuntimeHostId.Value),
+                    isEnabled: false),
+                privateNetworkConfigurationFilePath),
+            cancellationToken).ConfigureAwait(false);
+
+        return handoff.RuntimeHostId;
+    }
+
     public async Task AddAsync(
         string registryFilePath,
         string backupFilePath,

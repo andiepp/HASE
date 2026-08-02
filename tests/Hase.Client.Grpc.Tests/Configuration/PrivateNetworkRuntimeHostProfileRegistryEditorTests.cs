@@ -1,11 +1,98 @@
+using System.IO;
 using System.Text.Json;
 using Hase.Client.Configuration;
 using Hase.Client.Grpc.Configuration;
+using Hase.Runtime.Northbound;
 
 namespace Hase.Client.Grpc.Tests.Configuration;
 
 public sealed class PrivateNetworkRuntimeHostProfileRegistryEditorTests
 {
+    [Fact]
+    public async Task AddFromHandoffAsync_ShouldAddDisabledProfileAndBackupPriorRegistry()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry(Host("first", "host-01", files.Configuration("first"), true));
+        string handoff = await files.HandoffAsync("runtime-host-02");
+
+        RuntimeHostId imported = await new PrivateNetworkRuntimeHostProfileRegistryEditor()
+            .AddFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("second"), "Second Host",
+                files.Configuration("second"));
+
+        PrivateNetworkRuntimeHostProfile second = (await files.LoadAsync()).Profiles[1];
+        Assert.Equal("runtime-host-02", imported.Value);
+        Assert.Equal("runtime-host-02", second.Profile.ExpectedRuntimeHostId.Value);
+        Assert.False(second.Profile.IsEnabled);
+        Assert.Single((await files.LoadAsync(files.BackupPath)).Profiles);
+    }
+
+    [Fact]
+    public async Task AddFromHandoffAsync_InvalidHandoff_ShouldPreserveRegistry()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry();
+        string original = File.ReadAllText(files.RegistryPath);
+        string handoff = Path.Combine(files.DirectoryPath, "handoff.json");
+        File.WriteAllText(handoff, "{}");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new PrivateNetworkRuntimeHostProfileRegistryEditor().AddFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("second"), "Second",
+                files.Configuration("second")));
+
+        Assert.Equal(original, File.ReadAllText(files.RegistryPath));
+        Assert.False(File.Exists(files.BackupPath));
+    }
+
+    [Fact]
+    public async Task AddFromHandoffAsync_DuplicateProfile_ShouldReject()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry(Host("first", "host-01", files.Configuration("first"), true));
+        string handoff = await files.HandoffAsync("runtime-host-02");
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            new PrivateNetworkRuntimeHostProfileRegistryEditor().AddFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("first"), "Duplicate",
+                files.Configuration("duplicate")));
+    }
+
+    [Fact]
+    public async Task AddFromHandoffAsync_MissingPrivateConfiguration_ShouldReject()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry();
+        string handoff = await files.HandoffAsync("runtime-host-02");
+
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+            new PrivateNetworkRuntimeHostProfileRegistryEditor().AddFromHandoffAsync(
+                files.RegistryPath, files.BackupPath, handoff,
+                new RuntimeHostProfileId("second"), "Second",
+                Path.Combine(files.DirectoryPath, "missing.json")));
+    }
+
+    [Fact]
+    public async Task AddFromHandoffAsync_ShouldNotModifyHandoffOrPrivateConfiguration()
+    {
+        using TestFiles files = new();
+        files.WriteRegistry();
+        string handoff = await files.HandoffAsync("runtime-host-02");
+        string configuration = files.Configuration("second");
+        string handoffBefore = File.ReadAllText(handoff);
+        string configurationBefore = File.ReadAllText(configuration);
+
+        await new PrivateNetworkRuntimeHostProfileRegistryEditor().AddFromHandoffAsync(
+            files.RegistryPath, files.BackupPath, handoff,
+            new RuntimeHostProfileId("second"), "Second", configuration);
+
+        Assert.Equal(handoffBefore, File.ReadAllText(handoff));
+        Assert.Equal(configurationBefore, File.ReadAllText(configuration));
+    }
+
     [Fact]
     public async Task AddAsync_ShouldPreserveOrderAndRetainPreviousRegistryBackup()
     {
@@ -187,6 +274,14 @@ public sealed class PrivateNetworkRuntimeHostProfileRegistryEditorTests
 
         public Task<PrivateNetworkRuntimeHostProfileRegistry> LoadAsync(string? path = null) =>
             PrivateNetworkRuntimeHostProfileRegistryFile.LoadAsync(path ?? RegistryPath);
+
+        public async Task<string> HandoffAsync(string runtimeHostId)
+        {
+            string path = Path.Combine(DirectoryPath, "handoff.json");
+            await RuntimeHostOnboardingHandoffFile.CreateAsync(
+                path, new RuntimeHostId(runtimeHostId));
+            return path;
+        }
 
         public void Dispose() => Directory.Delete(DirectoryPath, recursive: true);
     }
