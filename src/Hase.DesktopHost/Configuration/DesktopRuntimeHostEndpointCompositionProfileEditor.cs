@@ -4,6 +4,33 @@ namespace Hase.DesktopHost.Configuration;
 
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
 {
+    public Task AddCompactAsync(string profilePath, string backupPath,
+        DesktopRuntimeHostCompactSerialEndpointProfile endpoint,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        return EditAsync(profilePath, backupPath, profile =>
+            new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints.Concat([endpoint])), cancellationToken);
+    }
+
+    public Task RemoveCompactAsync(string profilePath, string backupPath,
+        string expectedEndpointId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        return EditAsync(profilePath, backupPath, profile =>
+        {
+            if (!profile.CompactSerialEndpoints.Any(endpoint =>
+                    endpoint.ExpectedEndpointId == expectedEndpointId))
+                throw new KeyNotFoundException("The compact-serial endpoint profile is not registered.");
+            return new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints.Where(endpoint =>
+                    endpoint.ExpectedEndpointId != expectedEndpointId));
+        }, cancellationToken);
+    }
+
     public Task AddNativeAsync(string profilePath, string backupPath,
         DesktopRuntimeHostNativeNetworkEndpointProfile endpoint,
         CancellationToken cancellationToken = default)

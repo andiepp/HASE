@@ -7,6 +7,74 @@ namespace Hase.DesktopHost.Tests.Configuration;
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
 {
     [Fact]
+    public async Task AddCompactAsync_ShouldAppendAndBackup()
+    {
+        using Files files = new(); files.Write(Native("first"));
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().AddCompactAsync(
+            files.Profile, files.Backup,
+            new DesktopRuntimeHostCompactSerialEndpointProfile(
+                "second", 0x1234, 0x5678, 9600, TimeSpan.FromSeconds(2)));
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        Assert.Equal("first", Assert.Single(active.NativeNetworkEndpoints).ExpectedEndpointId);
+        Assert.Equal("second", Assert.Single(active.CompactSerialEndpoints).ExpectedEndpointId);
+        Assert.Single((await files.Load(files.Backup)).NativeNetworkEndpoints);
+    }
+
+    [Fact]
+    public async Task AddCompactAsync_DuplicateAcrossKinds_ShouldPreserveActive()
+    {
+        using Files files = new(); files.Write(Native("same"));
+        string before = File.ReadAllText(files.Profile);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().AddCompactAsync(
+                files.Profile, files.Backup,
+                new DesktopRuntimeHostCompactSerialEndpointProfile(
+                    "same", 0x1234, 0x5678, 9600, TimeSpan.FromSeconds(2))));
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task RemoveCompactAsync_ShouldRemoveExactAndBackup()
+    {
+        using Files files = new(); files.Write(Native("native"), Compact("compact"));
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveCompactAsync(
+            files.Profile, files.Backup, "compact");
+        Assert.Empty((await files.Load()).CompactSerialEndpoints);
+        Assert.Single((await files.Load()).NativeNetworkEndpoints);
+        Assert.Single((await files.Load(files.Backup)).CompactSerialEndpoints);
+    }
+
+    [Fact]
+    public async Task RemoveCompactAsync_WrongKind_ShouldReject()
+    {
+        using Files files = new(); files.Write(Native("native"));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveCompactAsync(
+                files.Profile, files.Backup, "native"));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public void UsbIdentifierParser_ExactHex_ShouldParse()
+    {
+        Assert.Equal((ushort)0x2341,
+            CompactSerialUsbIdentifierParser.ParseExactHex16("0x2341", "USB vendor ID"));
+        Assert.Equal((ushort)0xABcd,
+            CompactSerialUsbIdentifierParser.ParseExactHex16("0xABcd", "USB product ID"));
+    }
+
+    [Fact]
+    public void UsbIdentifierParser_MalformedValues_ShouldReject()
+    {
+        foreach (string value in new[] { "2341", "0X2341", "0x123", "0x12345", "0xZZZZ" })
+        {
+            Assert.Throws<ArgumentException>(() =>
+                CompactSerialUsbIdentifierParser.ParseExactHex16(value, "USB vendor ID"));
+        }
+    }
+
+    [Fact]
     public async Task AddNativeAsync_ShouldAppendAndBackup()
     {
         using Files files = new(); files.Write(Native("first"));
