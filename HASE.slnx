@@ -10,6 +10,7 @@
   <Project Path="src/Hase.CompactProtocol/Hase.CompactProtocol.csproj" Id="51084aab-9941-4d87-bb51-c78360041240" />
   <Project Path="src/Hase.Core/Hase.Core.csproj" />
   <Project Path="src/Hase.DesktopHost/Hase.DesktopHost.csproj" />
+  <Project Path="src/Hase.DesktopHost.EndpointProfileTool/Hase.DesktopHost.EndpointProfileTool.csproj" />
   <Project Path="src/Hase.DesktopHost.OnboardingAudit/Hase.DesktopHost.OnboardingAudit.csproj" />
   <Project Path="src/Hase.DesktopHost.App/Hase.DesktopHost.App.csproj" />
   <Project Path="src/Hase.Operator.Input/Hase.Operator.Input.csproj" />
