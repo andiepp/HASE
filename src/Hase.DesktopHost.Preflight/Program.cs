@@ -184,7 +184,8 @@ static async Task<int> ValidateProvisioningAsync(
             using X509Certificate2 publicCertificate =
                 X509CertificateLoader.LoadCertificateFromFile(
                     Path.GetFullPath(publicCertificateFilePath));
-            publicCertificateMatches = !publicCertificate.HasPrivateKey
+            publicCertificateMatches = publicCertificate.RawData.AsSpan()
+                    .SequenceEqual(serverCertificate.RawData)
                 && string.Equals(
                     publicCertificate.Thumbprint,
                     serverCertificate.Thumbprint,
