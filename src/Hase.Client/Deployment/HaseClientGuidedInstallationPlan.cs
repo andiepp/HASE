@@ -22,11 +22,14 @@ public sealed record HaseClientGuidedInstallationPlan
         ConfigurationDirectory = Path.Combine(InstallationDirectory, "Configuration");
         ExecutableFilePath = Path.Combine(ApplicationDirectory, "Hase.Client.Wpf.App.exe");
         ConfigurationFilePath = Path.Combine(ConfigurationDirectory, "laptop-private-network.json");
+        RuntimeHostRegistryFilePath = Path.Combine(
+            ConfigurationDirectory,
+            "client-runtime-hosts.json");
         ShortcutFilePath = Path.Combine(DesktopDirectory, "HASE Client.lnk");
         Shortcut = new HaseClientShortcutPlan(
             "HASE Client",
             ExecutableFilePath,
-            $"\"{ConfigurationFilePath}\"",
+            $"\"{RuntimeHostRegistryFilePath}\"",
             ApplicationDirectory);
     }
 
@@ -37,6 +40,7 @@ public sealed record HaseClientGuidedInstallationPlan
     public string ConfigurationDirectory { get; }
     public string ExecutableFilePath { get; }
     public string ConfigurationFilePath { get; }
+    public string RuntimeHostRegistryFilePath { get; }
     public string ShortcutFilePath { get; }
     public HaseClientShortcutPlan Shortcut { get; }
 

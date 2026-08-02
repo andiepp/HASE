@@ -2,8 +2,7 @@
   "$schema": "http://json.schemastore.org/launchsettings.json",
   "profiles": {
     "Hase.Client.Wpf.App": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\AEP\\AppData\\Local\\HASE\\PrivateNetworkValidation\\laptop-private-network.json\""
+      "commandName": "Project"
     }
   }
 }

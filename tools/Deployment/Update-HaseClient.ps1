@@ -46,7 +46,7 @@ $installationDirectory = Join-Path $env:LOCALAPPDATA "HASE\Client"
 $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
 $executableFilePath = Join-Path $applicationDirectory "Hase.Client.Wpf.App.exe"
-$configurationFilePath = Join-Path $configurationDirectory "laptop-private-network.json"
+$runtimeHostRegistryFilePath = Join-Path $configurationDirectory "client-runtime-hosts.json"
 $desktopDirectory = [Environment]::GetFolderPath(
     [Environment+SpecialFolder]::Desktop)
 $shortcutPath = Join-Path $desktopDirectory "HASE Client.lnk"
@@ -62,9 +62,9 @@ if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The guided HASE Client application is missing. Run Install-HaseClient.ps1 first."
 }
 
-$configurationHash = Get-RequiredFileHash `
-    -Path $configurationFilePath `
-    -Role "configuration"
+$registryHash = Get-RequiredFileHash `
+    -Path $runtimeHostRegistryFilePath `
+    -Role "Runtime Host registry"
 $shortcutHash = Get-RequiredFileHash `
     -Path $shortcutPath `
     -Role "desktop shortcut"
@@ -80,12 +80,12 @@ Assert-EqualPath `
     -Expected $applicationDirectory `
     -Role "shortcut working directory"
 
-$expectedArguments = '"' + $configurationFilePath + '"'
+$expectedArguments = '"' + $runtimeHostRegistryFilePath + '"'
 if (-not [string]::Equals(
         $shortcut.Arguments,
         $expectedArguments,
         [System.StringComparison]::Ordinal)) {
-    throw "The installed HASE Client shortcut arguments do not contain exactly one configuration path."
+    throw "The installed HASE Client shortcut arguments do not contain exactly one Runtime Host registry path."
 }
 
 & $publisherPath -InstallationDirectory $installationDirectory
@@ -94,17 +94,17 @@ if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The updated HASE Client executable was not found."
 }
 
-if ($configurationHash -ne (Get-RequiredFileHash `
-        -Path $configurationFilePath `
-        -Role "configuration") -or
+if ($registryHash -ne (Get-RequiredFileHash `
+        -Path $runtimeHostRegistryFilePath `
+        -Role "Runtime Host registry") -or
     $shortcutHash -ne (Get-RequiredFileHash `
         -Path $shortcutPath `
         -Role "desktop shortcut")) {
-    throw "The application update changed client configuration or shortcut custody."
+    throw "The application update changed the Runtime Host registry or shortcut custody."
 }
 
 Write-Host "HASE Client update succeeded."
 Write-Host "Installation directory: $installationDirectory"
 Write-Host "Application           : updated"
-Write-Host "Client configuration  : preserved"
+Write-Host "Runtime Host registry : preserved"
 Write-Host "Desktop shortcut      : preserved"

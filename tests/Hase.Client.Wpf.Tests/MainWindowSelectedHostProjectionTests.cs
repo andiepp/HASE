@@ -16,6 +16,20 @@ public sealed class MainWindowSelectedHostProjectionTests
     }
 
     [Fact]
+    public void NoSelection_ShouldExposeTruthfulEmptySummary()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Disconnected));
+
+        Assert.Equal("No host selected", viewModel.SessionState);
+        Assert.Equal("Not connected", viewModel.RuntimeHostId);
+        Assert.Equal("Not available", viewModel.ApiVersion);
+        Assert.Equal(0, viewModel.EndpointCount);
+    }
+
+    [Fact]
     public void ConnectedSelection_ShouldApplyAuthoritativeState()
     {
         RuntimeHostProfile profile = Profile("first", "host-01");
@@ -23,6 +37,24 @@ public sealed class MainWindowSelectedHostProjectionTests
         viewModel.SelectRuntimeHost(profile.ProfileId);
         Assert.True(viewModel.CurrentState.IsInitialized);
         Assert.Null(viewModel.PropertyReadMessage);
+    }
+
+    [Fact]
+    public void ConnectedSelection_ShouldExposeSelectedHostSummary()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(
+                profile,
+                RuntimeHostClientSessionState.Connected,
+                State("host-01")));
+
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+
+        Assert.Equal("Connected", viewModel.SessionState);
+        Assert.Equal("host-01", viewModel.RuntimeHostId);
+        Assert.Equal(RuntimeHostClientApiVersion.Current.ToString(), viewModel.ApiVersion);
     }
 
     [Fact]
@@ -50,6 +82,26 @@ public sealed class MainWindowSelectedHostProjectionTests
         viewModel.SelectRuntimeHost(second.ProfileId);
         Assert.False(viewModel.CurrentState.IsInitialized);
         Assert.Empty(viewModel.Endpoints);
+    }
+
+    [Fact]
+    public void ChangingSelection_ShouldRefreshSummaryFromSelectedHostOnly()
+    {
+        RuntimeHostProfile first = Profile("first", "host-01");
+        RuntimeHostProfile second = Profile("second", "host-02");
+        var viewModel = new MainWindowViewModel();
+        viewModel.ConfigureRuntimeHosts(new RuntimeHostProfileRegistry([first, second]));
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(first, RuntimeHostClientSessionState.Connected, State("host-01")),
+            Session(second, RuntimeHostClientSessionState.Disconnected)]));
+        viewModel.SelectRuntimeHost(first.ProfileId);
+
+        viewModel.SelectRuntimeHost(second.ProfileId);
+
+        Assert.Equal("Disconnected", viewModel.SessionState);
+        Assert.Equal("Not connected", viewModel.RuntimeHostId);
+        Assert.Equal("Not available", viewModel.ApiVersion);
+        Assert.Equal(0, viewModel.EndpointCount);
     }
 
     private static MainWindowViewModel Create(RuntimeHostProfile profile, RuntimeHostProfileSessionSnapshot session)

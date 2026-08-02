@@ -34,12 +34,17 @@ $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
 $executableFilePath = Join-Path $applicationDirectory "Hase.Client.Wpf.App.exe"
 $configurationFilePath = Join-Path $configurationDirectory "laptop-private-network.json"
+$runtimeHostRegistryFilePath = Join-Path $configurationDirectory "client-runtime-hosts.json"
 $desktopDirectory = [Environment]::GetFolderPath(
     [Environment+SpecialFolder]::Desktop)
 $shortcutPath = Join-Path $desktopDirectory "HASE Client.lnk"
 
 if (Test-Path -LiteralPath $configurationFilePath) {
     throw "A guided HASE Client configuration already exists and will not be overwritten."
+}
+
+if (Test-Path -LiteralPath $runtimeHostRegistryFilePath) {
+    throw "A guided HASE Client Runtime Host registry already exists and will not be overwritten."
 }
 
 if (Test-Path -LiteralPath $shortcutPath) {
@@ -56,6 +61,21 @@ if (-not (Test-Path -LiteralPath $configurationSourcePath -PathType Leaf)) {
     throw "The selected client configuration source file does not exist."
 }
 
+$profileId = (Read-Host "Client-local Runtime Host profile ID").Trim()
+if ($profileId -notmatch '^[a-z0-9][a-z0-9._-]{0,63}$') {
+    throw "The profile ID must begin with a lowercase letter or digit and contain only lowercase letters, digits, '.', '_', or '-'."
+}
+
+$displayName = (Read-Host "Runtime Host display name").Trim()
+if ([string]::IsNullOrWhiteSpace($displayName) -or $displayName.Length -gt 256) {
+    throw "The Runtime Host display name must contain between 1 and 256 characters."
+}
+
+$expectedRuntimeHostId = (Read-Host "Expected authoritative Runtime Host ID").Trim()
+if ([string]::IsNullOrWhiteSpace($expectedRuntimeHostId)) {
+    throw "The expected authoritative Runtime Host ID must not be empty."
+}
+
 & $publisherPath -InstallationDirectory $installationDirectory
 
 if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
@@ -69,10 +89,26 @@ try {
         -Destination $configurationFilePath
     $configurationInstalled = $true
 
+    $registryDocument = [ordered]@{
+        formatVersion = 1
+        hosts = @(
+            [ordered]@{
+                profileId = $profileId
+                displayName = $displayName
+                expectedRuntimeHostId = $expectedRuntimeHostId
+                privateNetworkConfigurationFilePath = $configurationFilePath
+                enabled = $true
+            }
+        )
+    }
+    $registryDocument |
+        ConvertTo-Json -Depth 4 |
+        Set-Content -LiteralPath $runtimeHostRegistryFilePath -Encoding utf8
+
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($shortcutPath)
     $shortcut.TargetPath = $executableFilePath
-    $shortcut.Arguments = '"' + $configurationFilePath + '"'
+    $shortcut.Arguments = '"' + $runtimeHostRegistryFilePath + '"'
     $shortcut.WorkingDirectory = $applicationDirectory
     $shortcut.IconLocation = $executableFilePath
     $shortcut.Description = "HASE Client"
@@ -92,11 +128,16 @@ catch {
         Remove-Item -LiteralPath $configurationFilePath -Force
     }
 
+    if (Test-Path -LiteralPath $runtimeHostRegistryFilePath) {
+        Remove-Item -LiteralPath $runtimeHostRegistryFilePath -Force
+    }
+
     throw
 }
 
 Write-Host "HASE Client guided installation succeeded."
 Write-Host "Installation directory: $installationDirectory"
 Write-Host "Client configuration : $configurationFilePath"
+Write-Host "Runtime Host registry: $runtimeHostRegistryFilePath"
 Write-Host "Desktop shortcut     : $shortcutPath"
-Write-Host "Startup arguments    : one client-configuration path"
+Write-Host "Startup arguments    : one Runtime Host registry path"

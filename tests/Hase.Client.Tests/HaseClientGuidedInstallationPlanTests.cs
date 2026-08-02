@@ -20,6 +20,9 @@ public sealed class HaseClientGuidedInstallationPlanTests
         Assert.Equal(
             Path.Combine(installation, "Configuration", "laptop-private-network.json"),
             plan.ConfigurationFilePath);
+        Assert.Equal(
+            Path.Combine(installation, "Configuration", "client-runtime-hosts.json"),
+            plan.RuntimeHostRegistryFilePath);
         Assert.Equal(Path.Combine(desktop, "HASE Client.lnk"), plan.ShortcutFilePath);
     }
 
@@ -30,8 +33,19 @@ public sealed class HaseClientGuidedInstallationPlanTests
 
         Assert.Equal("HASE Client", plan.Shortcut.Name);
         Assert.Equal(plan.ExecutableFilePath, plan.Shortcut.TargetFilePath);
-        Assert.Equal($"\"{plan.ConfigurationFilePath}\"", plan.Shortcut.Arguments);
+        Assert.Equal($"\"{plan.RuntimeHostRegistryFilePath}\"", plan.Shortcut.Arguments);
         Assert.Equal(plan.ApplicationDirectory, plan.Shortcut.WorkingDirectory);
+    }
+
+    [Fact]
+    public void RegistryAndPrivateNetworkConfiguration_ShouldHaveDistinctCustodyPaths()
+    {
+        HaseClientGuidedInstallationPlan plan = CreatePlan();
+
+        Assert.NotEqual(plan.ConfigurationFilePath, plan.RuntimeHostRegistryFilePath);
+        Assert.Equal(
+            plan.ConfigurationDirectory,
+            Path.GetDirectoryName(plan.RuntimeHostRegistryFilePath));
     }
 
     [Theory]
@@ -57,6 +71,7 @@ public sealed class HaseClientGuidedInstallationPlanTests
         Assert.Equal("Guided HASE Client installation plan", text);
         Assert.DoesNotContain(plan.ConfigurationSourceFilePath, text, StringComparison.Ordinal);
         Assert.DoesNotContain(plan.ConfigurationFilePath, text, StringComparison.Ordinal);
+        Assert.DoesNotContain(plan.RuntimeHostRegistryFilePath, text, StringComparison.Ordinal);
     }
 
     private static HaseClientGuidedInstallationPlan CreatePlan() =>

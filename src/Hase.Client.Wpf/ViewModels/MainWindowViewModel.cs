@@ -120,15 +120,22 @@ public sealed class MainWindowViewModel
         sessionStatus;
 
     public string SessionState =>
-        sessionStatus.State.ToString();
+        multiHostSnapshot is null
+            ? sessionStatus.State.ToString()
+            : SelectedRuntimeHostSession?.Status.State.ToString()
+                ?? "No host selected";
 
     public string RuntimeHostId =>
-        sessionStatus.RuntimeHostId?.Value
-        ?? "Not connected";
+        (multiHostSnapshot is null
+            ? sessionStatus.RuntimeHostId
+            : SelectedRuntimeHostSession?.Status.RuntimeHostId)?.Value
+            ?? "Not connected";
 
     public string ApiVersion =>
-        sessionStatus.ApiVersion?.ToString()
-        ?? "Not available";
+        (multiHostSnapshot is null
+            ? sessionStatus.ApiVersion
+            : SelectedRuntimeHostSession?.Status.ApiVersion)?.ToString()
+            ?? "Not available";
 
     public bool CanConnect =>
         sessionStatus.State is
@@ -191,6 +198,12 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private RuntimeHostProfileSessionSnapshot? SelectedRuntimeHostSession =>
+        selectedRuntimeHostProfileId is null
+            ? null
+            : multiHostSnapshot?.Sessions.Single(
+                session => session.ProfileId == selectedRuntimeHostProfileId);
+
     public DelegateCommand ConnectSelectedRuntimeHostCommand { get; }
     public DelegateCommand DisconnectSelectedRuntimeHostCommand { get; }
 
@@ -250,9 +263,7 @@ public sealed class MainWindowViewModel
     private void ApplySelectedHostState()
     {
         RuntimeHostProfileSessionSnapshot? selectedSession =
-            selectedRuntimeHostProfileId is null
-                ? null
-                : multiHostSnapshot?.Sessions.Single(session => session.ProfileId == selectedRuntimeHostProfileId);
+            SelectedRuntimeHostSession;
         bool mayPresentState = selectedSession?.Status.State is
             RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting;
 
@@ -277,6 +288,9 @@ public sealed class MainWindowViewModel
             nameof(Endpoints));
         RaisePropertyChanged(nameof(EndpointCount));
         RaisePropertyChanged(nameof(HasEndpoints));
+        RaisePropertyChanged(nameof(SessionState));
+        RaisePropertyChanged(nameof(RuntimeHostId));
+        RaisePropertyChanged(nameof(ApiVersion));
         PropertyReadMessage = selectedSession switch
         {
             null => "Select a Runtime Host to view its endpoints.",
