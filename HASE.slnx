@@ -4,6 +4,7 @@
   </Folder>
   <Project Path="src/Hase.Client/Hase.Client.csproj" />
   <Project Path="src/Hase.Client.Grpc/Hase.Client.Grpc.csproj" />
+  <Project Path="src/Hase.Client.RegistryTool/Hase.Client.RegistryTool.csproj" />
   <Project Path="src/Hase.Client.Wpf/Hase.Client.Wpf.csproj" />
   <Project Path="src/Hase.Client.Wpf.App/Hase.Client.Wpf.App.csproj" />
   <Project Path="src/Hase.CompactProtocol/Hase.CompactProtocol.csproj" Id="51084aab-9941-4d87-bb51-c78360041240" />
