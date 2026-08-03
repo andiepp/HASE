@@ -9,7 +9,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     [Fact]
     public async Task AddCompactAsync_ShouldAppendAndBackup()
     {
-        using Files files = new(); files.Write(Native("first"));
+        using Files files = new(); files.Write(Native("first"), Kel103("preserved"));
         await new DesktopRuntimeHostEndpointCompositionProfileEditor().AddCompactAsync(
             files.Profile, files.Backup,
             new DesktopRuntimeHostCompactSerialEndpointProfile(
@@ -17,6 +17,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
         Assert.Equal("first", Assert.Single(active.NativeNetworkEndpoints).ExpectedEndpointId);
         Assert.Equal("second", Assert.Single(active.CompactSerialEndpoints).ExpectedEndpointId);
+        Assert.Equal("preserved", Assert.Single(active.Kel103SerialEndpoints).ExpectedEndpointId);
         Assert.Single((await files.Load(files.Backup)).NativeNetworkEndpoints);
     }
 
@@ -37,11 +38,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     [Fact]
     public async Task RemoveCompactAsync_ShouldRemoveExactAndBackup()
     {
-        using Files files = new(); files.Write(Native("native"), Compact("compact"));
+        using Files files = new(); files.Write(Native("native"), Compact("compact"), Kel103("preserved"));
         await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveCompactAsync(
             files.Profile, files.Backup, "compact");
         Assert.Empty((await files.Load()).CompactSerialEndpoints);
         Assert.Single((await files.Load()).NativeNetworkEndpoints);
+        Assert.Equal("preserved", Assert.Single((await files.Load()).Kel103SerialEndpoints).ExpectedEndpointId);
         Assert.Single((await files.Load(files.Backup)).CompactSerialEndpoints);
     }
 
@@ -77,12 +79,13 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     [Fact]
     public async Task AddNativeAsync_ShouldAppendAndBackup()
     {
-        using Files files = new(); files.Write(Native("first"));
+        using Files files = new(); files.Write(Native("first"), Kel103("preserved"));
         await new DesktopRuntimeHostEndpointCompositionProfileEditor().AddNativeAsync(
             files.Profile, files.Backup,
             new DesktopRuntimeHostNativeNetworkEndpointProfile("second", "192.0.2.2", 5001));
         Assert.Equal(new[] { "first", "second" },
             (await files.Load()).NativeNetworkEndpoints.Select(x => x.ExpectedEndpointId));
+        Assert.Equal("preserved", Assert.Single((await files.Load()).Kel103SerialEndpoints).ExpectedEndpointId);
         Assert.Single((await files.Load(files.Backup)).NativeNetworkEndpoints);
     }
 
@@ -102,10 +105,11 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     [Fact]
     public async Task RemoveNativeAsync_ShouldRemoveExactAndBackup()
     {
-        using Files files = new(); files.Write(Native("first"), Native("second"));
+        using Files files = new(); files.Write(Native("first"), Native("second"), Kel103("preserved"));
         await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveNativeAsync(
             files.Profile, files.Backup, "second");
         Assert.Equal("first", Assert.Single((await files.Load()).NativeNetworkEndpoints).ExpectedEndpointId);
+        Assert.Equal("preserved", Assert.Single((await files.Load()).Kel103SerialEndpoints).ExpectedEndpointId);
         Assert.Equal(2, (await files.Load(files.Backup)).NativeNetworkEndpoints.Count);
     }
 
@@ -131,8 +135,79 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         Assert.Equal("preserved", File.ReadAllText(files.Backup));
     }
 
+    [Fact]
+    public async Task AddKel103Async_ShouldAppendExactProfileAndBackup()
+    {
+        using Files files = new(); files.Write(Native("native"), Compact("compact"));
+        var endpoint = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "kel", "korad-kel103", 2, "external-target", 115200);
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().AddKel103Async(
+            files.Profile, files.Backup, endpoint);
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        DesktopRuntimeHostKel103SerialEndpointProfile added =
+            Assert.Single(active.Kel103SerialEndpoints);
+        Assert.Equal("kel", added.ExpectedEndpointId);
+        Assert.Equal("korad-kel103", added.DefinitionReference.Id.Value);
+        Assert.Equal((ushort)2, added.DefinitionReference.Version);
+        Assert.Equal("external-target", added.SerialPort);
+        Assert.Equal(115200, added.BaudRate);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.CompactSerialEndpoints);
+        Assert.Empty((await files.Load(files.Backup)).Kel103SerialEndpoints);
+    }
+
+    [Fact]
+    public async Task RemoveKel103Async_ShouldRemoveExactAndPreserveOtherFamilies()
+    {
+        using Files files = new();
+        files.Write(Native("native"), Compact("compact"), Kel103("first"), Kel103("second"));
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveKel103Async(
+            files.Profile, files.Backup, "second");
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        Assert.Equal("first", Assert.Single(active.Kel103SerialEndpoints).ExpectedEndpointId);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.CompactSerialEndpoints);
+        Assert.Equal(2, (await files.Load(files.Backup)).Kel103SerialEndpoints.Count);
+    }
+
+    [Fact]
+    public async Task AddKel103Async_DuplicateAcrossKinds_ShouldPreserveActiveWithoutTargetLeak()
+    {
+        using Files files = new(); files.Write(Native("same"));
+        string before = File.ReadAllText(files.Profile);
+
+        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().AddKel103Async(
+                files.Profile, files.Backup,
+                new DesktopRuntimeHostKel103SerialEndpointProfile(
+                    "same", "korad-kel103", 2, "sensitive-external-target", 115200)));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+        Assert.DoesNotContain("sensitive-external-target", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RemoveKel103Async_Unknown_ShouldPreserveActive()
+    {
+        using Files files = new(); files.Write(Kel103("first"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveKel103Async(
+                files.Profile, files.Backup, "missing"));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
     private static object Native(string id) => new { kind = "NativeNetwork", expectedEndpointId = id, host = "192.0.2.1", port = 5000 };
     private static object Compact(string id) => new { kind = "CompactSerial", expectedEndpointId = id, vendorId = 0x2341, productId = 0x0043, baudRate = 115200, verificationTimeoutMilliseconds = 3000 };
+    private static object Kel103(string id) => new { kind = "Kel103Serial", expectedEndpointId = id, definitionId = "korad-kel103", definitionVersion = 2, serialPort = $"external-target-{id}", baudRate = 115200 };
 
     private sealed class Files : IDisposable
     {

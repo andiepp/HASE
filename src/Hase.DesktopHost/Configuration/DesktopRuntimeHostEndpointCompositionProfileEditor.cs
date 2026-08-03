@@ -12,7 +12,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         return EditAsync(profilePath, backupPath, profile =>
             new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints.Concat([endpoint])), cancellationToken);
+                profile.CompactSerialEndpoints.Concat([endpoint]),
+                profile.Kel103SerialEndpoints), cancellationToken);
     }
 
     public Task RemoveCompactAsync(string profilePath, string backupPath,
@@ -27,7 +28,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             return new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints,
                 profile.CompactSerialEndpoints.Where(endpoint =>
-                    endpoint.ExpectedEndpointId != expectedEndpointId));
+                    endpoint.ExpectedEndpointId != expectedEndpointId),
+                profile.Kel103SerialEndpoints);
         }, cancellationToken);
     }
 
@@ -39,7 +41,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         return EditAsync(profilePath, backupPath, profile =>
             new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints.Concat([endpoint]),
-                profile.CompactSerialEndpoints), cancellationToken);
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints), cancellationToken);
     }
 
     public Task RemoveNativeAsync(string profilePath, string backupPath,
@@ -54,7 +57,37 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             return new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints.Where(endpoint =>
                     endpoint.ExpectedEndpointId != expectedEndpointId),
-                profile.CompactSerialEndpoints);
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints);
+        }, cancellationToken);
+    }
+
+    public Task AddKel103Async(string profilePath, string backupPath,
+        DesktopRuntimeHostKel103SerialEndpointProfile endpoint,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        return EditAsync(profilePath, backupPath, profile =>
+            new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints.Concat([endpoint])), cancellationToken);
+    }
+
+    public Task RemoveKel103Async(string profilePath, string backupPath,
+        string expectedEndpointId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        return EditAsync(profilePath, backupPath, profile =>
+        {
+            if (!profile.Kel103SerialEndpoints.Any(endpoint =>
+                    endpoint.ExpectedEndpointId == expectedEndpointId))
+                throw new KeyNotFoundException("The KEL-103 serial endpoint profile is not registered.");
+            return new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints.Where(endpoint =>
+                    endpoint.ExpectedEndpointId != expectedEndpointId));
         }, cancellationToken);
     }
 
@@ -103,6 +136,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             vendorId = endpoint.VendorId, productId = endpoint.ProductId,
             baudRate = endpoint.BaudRate,
             verificationTimeoutMilliseconds = (int)endpoint.VerificationTimeout.TotalMilliseconds
+        })).Concat(profile.Kel103SerialEndpoints.Select(endpoint => (object)new
+        {
+            kind = "Kel103Serial", expectedEndpointId = endpoint.ExpectedEndpointId,
+            definitionId = endpoint.DefinitionReference.Id.Value,
+            definitionVersion = endpoint.DefinitionReference.Version,
+            serialPort = endpoint.SerialPort, baudRate = endpoint.BaudRate
         }));
         await using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write,
             FileShare.None, 4096, FileOptions.Asynchronous);
