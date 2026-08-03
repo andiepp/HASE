@@ -12,8 +12,16 @@ internal sealed class Kel103PublishedAttachmentSupervisor
     private readonly Func<SerialTransportOptions, CancellationToken, Task> replaceAsync;
     private readonly SerialTransportOptions serialOptions;
     private readonly IRuntimeEndpointReconnectPolicy reconnectPolicy;
+    private readonly TimeProvider timeProvider;
     private readonly Func<TimeSpan, CancellationToken, Task> delayAsync;
     private readonly SemaphoreSlim statusChanged = new(0);
+    private readonly object statisticsLock = new();
+    private long reconnectAttemptCount;
+    private long reconnectFailureCount;
+    private long successfulRecoveryCount;
+    private DateTimeOffset? lastRecoveryStartedAtUtc;
+    private DateTimeOffset? lastRecoveryCompletedAtUtc;
+    private TimeSpan? lastRecoveryDuration;
 
     public Kel103PublishedAttachmentSupervisor(
         Kel103PublishedAttachment attachment,
@@ -25,6 +33,7 @@ internal sealed class Kel103PublishedAttachmentSupervisor
             attachment.ReplaceAsync,
             serialOptions,
             reconnectPolicy,
+            timeProvider,
             CreateDelay(timeProvider))
     {
     }
@@ -34,6 +43,7 @@ internal sealed class Kel103PublishedAttachmentSupervisor
         Func<SerialTransportOptions, CancellationToken, Task> replaceAsync,
         SerialTransportOptions serialOptions,
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        TimeProvider timeProvider,
         Func<TimeSpan, CancellationToken, Task> delayAsync)
     {
         this.runtimeEndpoint = runtimeEndpoint
@@ -44,6 +54,8 @@ internal sealed class Kel103PublishedAttachmentSupervisor
             ?? throw new ArgumentNullException(nameof(serialOptions));
         this.reconnectPolicy = reconnectPolicy
             ?? throw new ArgumentNullException(nameof(reconnectPolicy));
+        this.timeProvider = timeProvider
+            ?? throw new ArgumentNullException(nameof(timeProvider));
         this.delayAsync = delayAsync
             ?? throw new ArgumentNullException(nameof(delayAsync));
     }
@@ -74,6 +86,22 @@ internal sealed class Kel103PublishedAttachmentSupervisor
         }
     }
 
+    public RuntimeEndpointConnectionStatistics GetStatistics()
+    {
+        lock (statisticsLock)
+        {
+            return new RuntimeEndpointConnectionStatistics(
+                initialConnectionAttemptCount: 0,
+                initialConnectionFailureCount: 0,
+                reconnectAttemptCount: reconnectAttemptCount,
+                reconnectFailureCount: reconnectFailureCount,
+                successfulRecoveryCount: successfulRecoveryCount,
+                lastRecoveryStartedAtUtc: lastRecoveryStartedAtUtc,
+                lastRecoveryCompletedAtUtc: lastRecoveryCompletedAtUtc,
+                lastRecoveryDuration: lastRecoveryDuration);
+        }
+    }
+
     private async Task WaitForFaultAsync(CancellationToken cancellationToken)
     {
         while (runtimeEndpoint.ConnectionStatus.State != EndpointConnectionState.Faulted)
@@ -84,6 +112,10 @@ internal sealed class Kel103PublishedAttachmentSupervisor
 
     private async Task RecoverAsync(CancellationToken cancellationToken)
     {
+        DateTimeOffset startedAtUtc = timeProvider.GetUtcNow();
+        long startedTimestamp = timeProvider.GetTimestamp();
+        RecordRecoveryStarted(startedAtUtc);
+
         int retryAttempt = 0;
         while (true)
         {
@@ -95,7 +127,13 @@ internal sealed class Kel103PublishedAttachmentSupervisor
 
             try
             {
+                RecordReconnectAttempt();
                 await replaceAsync(serialOptions, cancellationToken).ConfigureAwait(false);
+                RecordSuccessfulRecovery(
+                    timeProvider.GetUtcNow(),
+                    timeProvider.GetElapsedTime(
+                        startedTimestamp,
+                        timeProvider.GetTimestamp()));
                 return;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -104,6 +142,7 @@ internal sealed class Kel103PublishedAttachmentSupervisor
             }
             catch
             {
+                RecordReconnectFailure();
                 retryAttempt++;
             }
         }
@@ -115,5 +154,41 @@ internal sealed class Kel103PublishedAttachmentSupervisor
         ArgumentNullException.ThrowIfNull(timeProvider);
         return (delay, cancellationToken) =>
             Task.Delay(delay, timeProvider, cancellationToken);
+    }
+
+    private void RecordRecoveryStarted(DateTimeOffset startedAtUtc)
+    {
+        lock (statisticsLock)
+        {
+            lastRecoveryStartedAtUtc = startedAtUtc;
+        }
+    }
+
+    private void RecordReconnectAttempt()
+    {
+        lock (statisticsLock)
+        {
+            reconnectAttemptCount++;
+        }
+    }
+
+    private void RecordReconnectFailure()
+    {
+        lock (statisticsLock)
+        {
+            reconnectFailureCount++;
+        }
+    }
+
+    private void RecordSuccessfulRecovery(
+        DateTimeOffset completedAtUtc,
+        TimeSpan duration)
+    {
+        lock (statisticsLock)
+        {
+            successfulRecoveryCount++;
+            lastRecoveryCompletedAtUtc = completedAtUtc;
+            lastRecoveryDuration = duration;
+        }
     }
 }

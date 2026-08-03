@@ -53,7 +53,8 @@ public sealed class Kel103SupervisedAttachmentFactory
 
             var attachment = new Kel103SupervisedAttachment(
                 publishedAttachment,
-                supervisionLifetime);
+                supervisionLifetime,
+                supervisor);
             publishedAttachment = null;
             return attachment;
         }

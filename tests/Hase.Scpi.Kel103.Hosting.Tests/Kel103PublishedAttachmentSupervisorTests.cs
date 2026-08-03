@@ -34,6 +34,7 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
 
         Assert.Equal(0, replaceCount);
         Assert.Equal(0, delayCount);
+        Assert.Equal(RuntimeEndpointConnectionStatistics.Empty, supervisor.GetStatistics());
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
     }
@@ -74,6 +75,7 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
         endpoint.UpdateConnectionStatus(
             new EndpointConnectionStatus(EndpointConnectionState.Faulted));
         await recovered.Task;
+        await WaitUntilAsync(() => supervisor.GetStatistics().SuccessfulRecoveryCount == 1);
 
         Assert.Equal([0, 1, 2, 3, 4, 5], policy.Attempts);
         Assert.Equal(
@@ -81,6 +83,10 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
             delays);
         Assert.Equal(6, replacementCount);
         Assert.Equal(EndpointConnectionState.Ready, endpoint.ConnectionStatus.State);
+        RuntimeEndpointConnectionStatistics statistics = supervisor.GetStatistics();
+        Assert.Equal(6, statistics.ReconnectAttemptCount);
+        Assert.Equal(5, statistics.ReconnectFailureCount);
+        Assert.Equal(1, statistics.SuccessfulRecoveryCount);
 
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
@@ -121,8 +127,13 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
         endpoint.UpdateConnectionStatus(
             new EndpointConnectionStatus(EndpointConnectionState.Faulted));
         await secondRecovery.Task;
+        await WaitUntilAsync(() => supervisor.GetStatistics().SuccessfulRecoveryCount == 2);
 
         Assert.Equal([0, 0], policy.Attempts);
+        RuntimeEndpointConnectionStatistics statistics = supervisor.GetStatistics();
+        Assert.Equal(2, statistics.ReconnectAttemptCount);
+        Assert.Equal(0, statistics.ReconnectFailureCount);
+        Assert.Equal(2, statistics.SuccessfulRecoveryCount);
         cancellation.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
     }
@@ -203,6 +214,97 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
         Assert.Equal(1, replacementCount);
+        RuntimeEndpointConnectionStatistics statistics = supervisor.GetStatistics();
+        Assert.Equal(1, statistics.ReconnectAttemptCount);
+        Assert.Equal(1, statistics.ReconnectFailureCount);
+        Assert.Equal(0, statistics.SuccessfulRecoveryCount);
+    }
+
+    [Fact]
+    public async Task GetStatistics_RecordsCompleteRecoveryDurationAcrossFailuresAndDelay()
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        var timeProvider = new ManualTimeProvider(
+            new DateTimeOffset(2026, 8, 3, 21, 0, 0, TimeSpan.Zero));
+        var replacementCount = 0;
+        var recovered = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var supervisor = CreateSupervisor(
+            endpoint,
+            (options, token) =>
+            {
+                replacementCount++;
+                if (replacementCount == 1)
+                {
+                    timeProvider.Advance(TimeSpan.FromSeconds(2));
+                    throw new IOException("scripted replacement failure");
+                }
+
+                timeProvider.Advance(TimeSpan.FromSeconds(3));
+                endpoint.UpdateConnectionStatus(
+                    new EndpointConnectionStatus(EndpointConnectionState.Ready));
+                recovered.TrySetResult();
+                return Task.CompletedTask;
+            },
+            new DefaultRuntimeEndpointReconnectPolicy(),
+            (delay, token) =>
+            {
+                timeProvider.Advance(delay);
+                return Task.CompletedTask;
+            },
+            timeProvider);
+        using var cancellation = new CancellationTokenSource();
+        Task run = supervisor.RunAsync(cancellation.Token);
+        DateTimeOffset started = timeProvider.GetUtcNow();
+
+        endpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(EndpointConnectionState.Faulted));
+        await recovered.Task;
+        await WaitUntilAsync(() => supervisor.GetStatistics().SuccessfulRecoveryCount == 1);
+
+        RuntimeEndpointConnectionStatistics statistics = supervisor.GetStatistics();
+        Assert.Equal(2, statistics.ReconnectAttemptCount);
+        Assert.Equal(1, statistics.ReconnectFailureCount);
+        Assert.Equal(1, statistics.SuccessfulRecoveryCount);
+        Assert.Equal(started, statistics.LastRecoveryStartedAtUtc);
+        Assert.Equal(started.AddSeconds(6), statistics.LastRecoveryCompletedAtUtc);
+        Assert.Equal(TimeSpan.FromSeconds(6), statistics.LastRecoveryDuration);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+    }
+
+    [Fact]
+    public async Task GetStatistics_ActiveReplacementCancellationCountsAttemptButNotFailure()
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        var replacementStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var supervisor = CreateSupervisor(
+            endpoint,
+            async (options, token) =>
+            {
+                replacementStarted.TrySetResult();
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            },
+            new DefaultRuntimeEndpointReconnectPolicy(),
+            (delay, token) => Task.CompletedTask);
+        using var cancellation = new CancellationTokenSource();
+        Task run = supervisor.RunAsync(cancellation.Token);
+
+        endpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(EndpointConnectionState.Faulted));
+        await replacementStarted.Task;
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+
+        RuntimeEndpointConnectionStatistics statistics = supervisor.GetStatistics();
+        Assert.Equal(1, statistics.ReconnectAttemptCount);
+        Assert.Equal(0, statistics.ReconnectFailureCount);
+        Assert.Equal(0, statistics.SuccessfulRecoveryCount);
+        Assert.NotNull(statistics.LastRecoveryStartedAtUtc);
+        Assert.Null(statistics.LastRecoveryCompletedAtUtc);
+        Assert.Null(statistics.LastRecoveryDuration);
     }
 
     [Fact]
@@ -216,27 +318,37 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
 
         Assert.Throws<ArgumentNullException>(() =>
             new Kel103PublishedAttachmentSupervisor(
-                null!, replace, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), delay));
+                null!, replace, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), TimeProvider.System, delay));
         Assert.Throws<ArgumentNullException>(() =>
             new Kel103PublishedAttachmentSupervisor(
-                endpoint, null!, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), delay));
+                endpoint, null!, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), TimeProvider.System, delay));
         Assert.Throws<ArgumentNullException>(() =>
             new Kel103PublishedAttachmentSupervisor(
-                endpoint, replace, null!, new DefaultRuntimeEndpointReconnectPolicy(), delay));
+                endpoint, replace, null!, new DefaultRuntimeEndpointReconnectPolicy(), TimeProvider.System, delay));
         Assert.Throws<ArgumentNullException>(() =>
             new Kel103PublishedAttachmentSupervisor(
-                endpoint, replace, SupportedOptions(), null!, delay));
+                endpoint, replace, SupportedOptions(), null!, TimeProvider.System, delay));
         Assert.Throws<ArgumentNullException>(() =>
             new Kel103PublishedAttachmentSupervisor(
-                endpoint, replace, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), null!));
+                endpoint, replace, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), null!, delay));
+        Assert.Throws<ArgumentNullException>(() =>
+            new Kel103PublishedAttachmentSupervisor(
+                endpoint, replace, SupportedOptions(), new DefaultRuntimeEndpointReconnectPolicy(), TimeProvider.System, null!));
     }
 
     private static Kel103PublishedAttachmentSupervisor CreateSupervisor(
         RuntimeEndpoint endpoint,
         Func<SerialTransportOptions, CancellationToken, Task> replaceAsync,
         IRuntimeEndpointReconnectPolicy reconnectPolicy,
-        Func<TimeSpan, CancellationToken, Task> delayAsync) =>
-        new(endpoint, replaceAsync, SupportedOptions(), reconnectPolicy, delayAsync);
+        Func<TimeSpan, CancellationToken, Task> delayAsync,
+        TimeProvider? timeProvider = null) =>
+        new(
+            endpoint,
+            replaceAsync,
+            SupportedOptions(),
+            reconnectPolicy,
+            timeProvider ?? TimeProvider.System,
+            delayAsync);
 
     private static RuntimeEndpoint ReadyEndpoint()
     {
@@ -270,6 +382,29 @@ public sealed class Kel103PublishedAttachmentSupervisorTests
         {
             Attempts.Add(retryAttempt);
             return inner.GetDelay(retryAttempt);
+        }
+    }
+
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private DateTimeOffset utcNow;
+        private long timestamp;
+
+        public ManualTimeProvider(DateTimeOffset utcNow)
+        {
+            this.utcNow = utcNow;
+        }
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+        public override DateTimeOffset GetUtcNow() => utcNow;
+
+        public override long GetTimestamp() => timestamp;
+
+        public void Advance(TimeSpan duration)
+        {
+            utcNow = utcNow.Add(duration);
+            timestamp += duration.Ticks;
         }
     }
 }

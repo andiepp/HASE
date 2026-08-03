@@ -1,4 +1,5 @@
 using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 
 namespace Hase.Scpi.Kel103.Hosting;
@@ -10,23 +11,30 @@ public sealed class Kel103SupervisedAttachment : IAsyncDisposable
 {
     private readonly Kel103PublishedAttachment publishedAttachment;
     private readonly EndpointConnectionSupervisionLifetime supervisionLifetime;
+    private readonly Kel103PublishedAttachmentSupervisor supervisor;
     private readonly object disposalLock = new();
     private Task? disposalTask;
 
     internal Kel103SupervisedAttachment(
         Kel103PublishedAttachment publishedAttachment,
-        EndpointConnectionSupervisionLifetime supervisionLifetime)
+        EndpointConnectionSupervisionLifetime supervisionLifetime,
+        Kel103PublishedAttachmentSupervisor supervisor)
     {
         this.publishedAttachment = publishedAttachment
             ?? throw new ArgumentNullException(nameof(publishedAttachment));
         this.supervisionLifetime = supervisionLifetime
             ?? throw new ArgumentNullException(nameof(supervisionLifetime));
+        this.supervisor = supervisor
+            ?? throw new ArgumentNullException(nameof(supervisor));
     }
 
     public RuntimeEndpoint RuntimeEndpoint => publishedAttachment.RuntimeEndpoint;
 
     public IEndpointAttachmentPropertyOperations PropertyOperations =>
         publishedAttachment.PropertyOperations;
+
+    public RuntimeEndpointConnectionStatistics GetConnectionStatistics() =>
+        supervisor.GetStatistics();
 
     public ValueTask DisposeAsync()
     {

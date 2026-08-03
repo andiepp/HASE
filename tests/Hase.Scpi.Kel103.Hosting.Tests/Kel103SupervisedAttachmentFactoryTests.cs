@@ -2,6 +2,7 @@ using System.Text;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport;
 using Hase.Transport.Serial;
 
 namespace Hase.Scpi.Kel103.Hosting.Tests;
@@ -25,6 +26,9 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
         Assert.Equal(EndpointConnectionState.Ready, attachment.RuntimeEndpoint.ConnectionStatus.State);
         Assert.Equal(1, transport.OpenCount);
         Assert.Equal(4, stream.WriteCount);
+        Assert.Equal(
+            RuntimeEndpointConnectionStatistics.Empty,
+            attachment.GetConnectionStatistics());
 
         await attachment.DisposeAsync();
         Assert.Empty(context.Endpoints);
