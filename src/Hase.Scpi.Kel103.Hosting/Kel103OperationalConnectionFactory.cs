@@ -1,4 +1,6 @@
+using System.Globalization;
 using Hase.Core.Domain.Identity;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
 using Hase.Scpi.Kel103.Runtime;
 using Hase.Scpi.Serial;
@@ -43,6 +45,7 @@ public sealed class Kel103OperationalConnectionFactory
         return await OpenCoreAsync(
             () => runtimeContext.CreateEndpoint(
                 Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(endpointId)),
+            endpointId,
             serialOptions,
             cancellationToken).ConfigureAwait(false);
     }
@@ -62,17 +65,45 @@ public sealed class Kel103OperationalConnectionFactory
 
         return await OpenCoreAsync(
             () => runtimeEndpoint,
+            runtimeEndpoint.Descriptor.Id,
             serialOptions,
             cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<Kel103OperationalConnection> OpenCoreAsync(
         Func<RuntimeEndpoint> createRuntimeEndpoint,
+        EndpointId endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(serialOptions);
         ValidateSerialProfile(serialOptions);
+
+        var operation = new RuntimeDiagnosticOperation(
+            runtimeContext.Diagnostics,
+            RuntimeDiagnosticCategory.RuntimeSynchronization,
+            "InstrumentSynchronizationStarted",
+            "InstrumentSynchronizationCompleted",
+            "InstrumentSynchronizationFailed",
+            endpointId.Value,
+            attachmentGeneration: null,
+            direction: null,
+            details: SynchronizationDetails(),
+            timeProvider: timeProvider);
+
+        return await operation.RunAsync(
+            token => OpenConnectionCoreAsync(
+                createRuntimeEndpoint,
+                serialOptions,
+                token),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Kel103OperationalConnection> OpenConnectionCoreAsync(
+        Func<RuntimeEndpoint> createRuntimeEndpoint,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
 
         IAsyncDisposable? owner = null;
@@ -124,6 +155,20 @@ public sealed class Kel103OperationalConnectionFactory
             throw;
         }
     }
+
+    private static IReadOnlyDictionary<string, string> SynchronizationDetails() =>
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["DefinitionId"] =
+                Kel103ReadOnlyMeasurementDefinition.Reference.Id.Value,
+            ["DefinitionVersion"] =
+                Kel103ReadOnlyMeasurementDefinition.Reference.Version.ToString(
+                    CultureInfo.InvariantCulture),
+            ["PropertyCount"] =
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments
+                    .Sum(instrument => instrument.Interface.Properties.Count)
+                    .ToString(CultureInfo.InvariantCulture)
+        };
 
     private static void ValidateSerialProfile(SerialTransportOptions options)
     {

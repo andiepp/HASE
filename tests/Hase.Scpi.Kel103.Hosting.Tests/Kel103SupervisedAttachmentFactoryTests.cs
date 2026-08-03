@@ -82,6 +82,15 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
         Assert.Equal("1", scheduled.Details["AttemptNumber"]);
         Assert.Equal("0", scheduled.Details["RetryIndex"]);
         Assert.Equal("0", scheduled.Details["DelayMilliseconds"]);
+        RuntimeDiagnosticRecord[] synchronizationRecords = collector.GetSnapshot(
+                RuntimeDiagnosticLevel.Operational,
+                RuntimeDiagnosticCategory.RuntimeSynchronization)
+            .Where(record => record.EventName.StartsWith(
+                "InstrumentSynchronization",
+                StringComparison.Ordinal))
+            .ToArray();
+        Assert.Equal(4, synchronizationRecords.Length);
+        Assert.Equal(2, synchronizationRecords.Select(record => record.OperationId).Distinct().Count());
     }
 
     [Fact]

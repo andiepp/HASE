@@ -41,7 +41,7 @@ public sealed class RuntimeDiagnosticOperation
     {
     }
 
-    internal RuntimeDiagnosticOperation(
+    public RuntimeDiagnosticOperation(
         RuntimeDiagnosticPublisher diagnostics,
         RuntimeDiagnosticCategory category,
         string startedEventName,
