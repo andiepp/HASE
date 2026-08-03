@@ -15,6 +15,18 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
 
         Assert.Same(native, Assert.Single(profile.NativeNetworkEndpoints));
         Assert.Same(compact, Assert.Single(profile.CompactSerialEndpoints));
+        Assert.Empty(profile.Kel103SerialEndpoints);
+    }
+
+    [Fact]
+    public void Constructor_Kel103Composition_ShouldPreserveEndpoint()
+    {
+        var kel103 = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "kel-01", "korad-kel103", 2, "external-target", 115200);
+
+        var profile = new DesktopRuntimeHostEndpointCompositionProfile([], [], [kel103]);
+
+        Assert.Same(kel103, Assert.Single(profile.Kel103SerialEndpoints));
     }
 
     [Fact]
@@ -26,6 +38,54 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
 
         Assert.Throws<ArgumentException>(
             () => new DesktopRuntimeHostEndpointCompositionProfile([native], [compact]));
+    }
+
+    [Fact]
+    public void Constructor_DuplicateExpectedIdentityAcrossCompactAndKel103_ShouldReject()
+    {
+        var compact = new DesktopRuntimeHostCompactSerialEndpointProfile(
+            "endpoint-01", 0x2341, 0x0043, 115200, TimeSpan.FromSeconds(3));
+        var kel103 = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "endpoint-01", "korad-kel103", 2, "external-target", 115200);
+
+        Assert.Throws<ArgumentException>(
+            () => new DesktopRuntimeHostEndpointCompositionProfile([], [compact], [kel103]));
+    }
+
+    [Fact]
+    public void Constructor_MoreThan64EndpointsAcrossFamilies_ShouldReject()
+    {
+        DesktopRuntimeHostKel103SerialEndpointProfile[] kel103Endpoints = Enumerable.Range(1, 64)
+            .Select(index => new DesktopRuntimeHostKel103SerialEndpointProfile(
+                $"kel-{index}", "korad-kel103", 2, $"external-target-{index}", 115200))
+            .ToArray();
+        var native = new DesktopRuntimeHostNativeNetworkEndpointProfile("native-01", "device.local", 5000);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new DesktopRuntimeHostEndpointCompositionProfile([native], [], kel103Endpoints));
+    }
+
+    [Fact]
+    public void Kel103Serial_Values_ShouldNormalizeAndPreserveDefinitionReference()
+    {
+        var endpoint = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            " kel-01 ", " korad-kel103 ", 2, " external-target ", 115200);
+
+        Assert.Equal("kel-01", endpoint.ExpectedEndpointId);
+        Assert.Equal("korad-kel103", endpoint.DefinitionReference.Id.Value);
+        Assert.Equal((ushort)2, endpoint.DefinitionReference.Version);
+        Assert.Equal("external-target", endpoint.SerialPort);
+        Assert.DoesNotContain("external-target", endpoint.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(9600)]
+    [InlineData(0)]
+    public void Kel103Serial_UnsupportedBaudRate_ShouldReject(int baudRate)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new DesktopRuntimeHostKel103SerialEndpointProfile(
+                "kel-01", "korad-kel103", 2, "external-target", baudRate));
     }
 
     [Fact]
