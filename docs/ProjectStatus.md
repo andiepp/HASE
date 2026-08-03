@@ -2,33 +2,41 @@
 
 ## Current architectural objective — ADR-0044
 
-**ADR-0044 — SCPI Instrument Adapter Boundary — accepted**
+**ADR-0044 — SCPI Instrument Adapter Boundary — accepted; Increments 44A1
+through 44A3 complete**
 
-- Increment 44A1 establishes the architecture and the first physical validation
-  target.
-- The KORAD KEL-103 programmable DC electronic load is the first SCPI-style
-  instrument.
-- The first transport is USB virtual serial with physically verified 115200
-  baud, 8 data bits, no parity, and 1 stop bit.
-- The instrument accepts the read-only `*IDN?` verification query and returns
-  model, firmware, and instrument identity information.
+- Increment 44A1 establishes the architecture and the KORAD KEL-103
+  programmable DC electronic load as the first physical validation target.
+- Increment 44A2 adds a bounded Protocol Explorer characterization utility that
+  sends exactly one fixed read-only `*IDN?` query with an explicitly selected
+  terminator.
+- 31 automated tests cover request bytes, serial settings, partial reads,
+  terminators, identity recognition and redaction, timeouts, cancellation,
+  disposal, and argument parsing.
+- Physical characterization verified 115200 baud, 8 data bits, no parity, one
+  stop bit, no flow control, ASCII command and response text, CR command
+  termination, LF response termination, and no command echo.
+- One observed run returned 33 bytes, delivered its first byte after 4.3 ms, and
+  completed after 213.6 ms through the configured 200 ms post-byte idle bound.
+  These timings are observations, not production guarantees.
+- The first physical attempt exposed that Windows
+  `SerialPort.BaseStream.ReadAsync` may ignore cancellation while awaiting the
+  first byte. The corrected utility races the read against an independent timer
+  and disposes the owned port when the timer wins.
+- The corrected physical run completed normally, verified product and firmware,
+  redacted the instrument serial identity, sent no state-changing command, and
+  released the port for immediate reuse by another application.
 - Machine-specific serial-port targets and returned instrument serial identities
-  remain external deployment data and must not be committed or reproduced in
-  ordinary documentation or diagnostics.
-- SCPI remains a southbound adapter concern. Existing HASE endpoint,
-  instrument, Property, Command, attachment-generation, northbound, and
-  multi-host boundaries remain unchanged.
-- The Runtime Host exclusively owns the serial session, verification,
-  synchronization, supervision, recovery, and disposal.
-- One serialized command/query pipeline owns each attached SCPI instrument
-  session.
-- Mutating operations are never retried automatically.
-- Arbitrary operator-entered SCPI and advanced KEL-103 operating modes are
-  outside the first capability slice.
-- Increment 44A2 will characterize exact terminators, byte behavior, timing, and
-  recovery using fixed read-only probes before reusable production code or
-  state-changing physical validation is introduced.
-- Current verified baseline: 4,405 automated tests passing.
+  remain external deployment data.
+- Existing HASE endpoint, instrument, Property, Command,
+  attachment-generation, northbound, and multi-host boundaries remain
+  unchanged.
+- Current verified baseline: 4,436 automated tests passing.
+
+### Next
+
+Proceed only after explicit approval with Increment 44B1 — Reusable SCPI
+Session Contracts and Framing.
 
 ### Previous completed architectural objective
 
@@ -1212,3 +1220,4 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
+

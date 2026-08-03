@@ -1111,16 +1111,22 @@ only.
 
 ## Current objective — ADR-0044 SCPI Instrument Adapter Boundary
 
-**Status:** [Active] Architecture accepted; Increment 44A1 complete
+**Status:** [Active] Increments 44A1 through 44A3 complete
 
 ADR-0044 adds the first non-HASE southbound instrument adapter without changing
 the normalized runtime or northbound application boundaries.
 
-The first physical validation target is the KORAD KEL-103 programmable DC
-electronic load over USB virtual serial. Physical investigation confirmed
-115200 baud, 8 data bits, no parity, 1 stop bit, and a successful read-only
-`*IDN?` exchange. Machine-specific serial-port targets and returned instrument
-serial identities remain external deployment data.
+The first physical target is the KORAD KEL-103 programmable DC electronic load
+over USB virtual serial. Characterization physically verified 115200 baud,
+8 data bits, no parity, one stop bit, no flow control, ASCII text, CR command
+termination, LF response termination, no echo, bounded response collection,
+sanitized identity verification, and deterministic port release.
+
+The first physical attempt also established that Windows
+`SerialPort.BaseStream.ReadAsync` cancellation is not a sufficient timeout
+boundary. The corrected utility races the physical read against an independent
+timer and disposes the owned port if the timer wins. Automated coverage includes
+a read that deliberately ignores cancellation.
 
 The accepted boundary requires:
 
@@ -1134,22 +1140,28 @@ The accepted boundary requires:
 - publication only after authoritative verification and initial
   synchronization;
 - reuse of existing descriptor-driven Properties and Commands;
-- no SCPI-specific northbound contract;
-- no arbitrary operator-entered SCPI console; and
-- read-only protocol characterization before state-changing physical
-  validation.
+- no SCPI-specific northbound contract; and
+- no arbitrary operator-entered SCPI console.
 
-Planned increments:
+Completed and planned increments:
 
 1. 44A1 — Architecture decision — complete.
-2. 44A2 — Read-only KEL-103 serial characterization.
-3. 44A3 — Physical protocol characterization.
-4. 44B — Serialized SCPI text-session core.
+2. 44A2 — Read-only KEL-103 serial characterization utility — complete.
+3. 44A3 — Physical protocol characterization documentation — complete.
+4. 44B — Serialized SCPI text-session core — next.
 5. 44C — Versioned KEL-103 definition and mappings.
 6. 44D — Runtime attachment, supervision, and synchronization.
 7. 44E — External Runtime Host profile integration.
 8. 44F — Existing Desktop Host and Client presentation.
 9. 44G — Physical multi-host validation and closure.
+
+Current verified baseline:
+
+```text
+4,436 automated tests pass
+KEL-103 read-only identity characterization succeeds
+The serial port is released for immediate reuse
+```
 
 Initially deferred KEL-103 features include saved configuration recall, external
 triggering, LIST, OCP, OPP, battery, dynamic, pulse, and flip modes. Generic
@@ -1161,4 +1173,5 @@ definition repository also remain later work.
 - Python Automation Boundary.
 - Diagnostic Export and Offline Analysis.
 - Remote Media Feedback.
+
 

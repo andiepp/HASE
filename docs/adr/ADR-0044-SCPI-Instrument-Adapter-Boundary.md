@@ -1,6 +1,6 @@
 # ADR-0044 — SCPI Instrument Adapter Boundary
 
-- Status: Accepted — Increment 44A1 complete
+- Status: Accepted — Increments 44A1 through 44A3 complete
 - Date: 2026-08-03
 
 ## Context
@@ -29,8 +29,8 @@ instrument identity information.
 
 The documents do not state the exact command terminator, response terminator,
 echo behavior, timeout, maximum response length, or desynchronization recovery
-behavior. Those details must be characterized before production code is built
-around assumptions.
+behavior. Increments 44A2 and 44A3 therefore characterize and freeze those
+physical facts before reusable production SCPI code is introduced.
 
 ## Decision
 
@@ -152,11 +152,11 @@ session behavior or operation outcomes.
 
 ### First characterization boundary
 
-Increment 44A2 may introduce a narrowly bounded characterization utility. Its
-initial command set is compiled-in and read-only. It does not provide an
-interactive or arbitrary SCPI console.
+Increment 44A2 introduced a narrowly bounded characterization utility. Its
+command set is compiled-in and read-only. It does not provide an interactive
+or arbitrary SCPI console.
 
-The characterization must establish:
+The characterization established:
 
 - exact command terminator;
 - exact response terminator;
@@ -183,21 +183,22 @@ The characterization must establish:
 - The first implementation remains intentionally narrower than generic SCPI or
   VISA support.
 
-## Completed increment
+## Completed increments
 
 1. 44A1 — SCPI Instrument Adapter Boundary architecture and KEL-103 physical
    starting evidence.
+2. 44A2 — Read-Only KEL-103 Serial Characterization utility, automated
+   validation, and physical execution.
+3. 44A3 — KEL-103 Physical Protocol Characterization documentation.
 
 ## Planned increments
 
-1. 44A2 — Read-Only KEL-103 Serial Characterization.
-2. 44A3 — Physical Protocol Characterization.
-3. 44B — Serialized SCPI Text-Session Core.
-4. 44C — Versioned KEL-103 Definition and Mappings.
-5. 44D — Runtime Attachment, Supervision, and Synchronization.
-6. 44E — External Runtime Host Profile Integration.
-7. 44F — Existing Desktop Host and Client Presentation.
-8. 44G — Physical Multi-Host Validation and Closure.
+1. 44B — Serialized SCPI Text-Session Core.
+2. 44C — Versioned KEL-103 Definition and Mappings.
+3. 44D — Runtime Attachment, Supervision, and Synchronization.
+4. 44E — External Runtime Host Profile Integration.
+5. 44F — Existing Desktop Host and Client Presentation.
+6. 44G — Physical Multi-Host Validation and Closure.
 
 ## Deferred
 
@@ -221,12 +222,26 @@ The characterization must establish:
 
 ## Validation state
 
-- ADR-0044 starts from the clean ADR-0043 closure baseline.
-- 4,405 automated tests pass at that baseline.
-- The KEL-103 USB virtual-serial connection was physically established using
-  115200 baud, 8 data bits, no parity, and 1 stop bit.
-- The read-only `*IDN?` query physically succeeded and returned the expected
-  KEL-103 product family and firmware information.
-- No state-changing instrument operation was performed for Increment 44A1.
-- No production source or remote API contract is changed by Increment 44A1.
-
+- ADR-0044 starts from the clean ADR-0043 closure baseline of 4,405 automated
+  tests.
+- Increment 44A2 adds 31 automated tests; the current verified baseline is
+  4,436 passing tests.
+- The KEL-103 USB virtual-serial connection is physically verified at 115200
+  baud, 8 data bits, no parity, one stop bit, and no flow control.
+- The read-only `*IDN?` command is ASCII and is accepted with a CR terminator.
+- The physical response is ASCII, ends with LF, and does not echo the command.
+- One observed response contained 33 bytes. Its first byte arrived after 4.3 ms,
+  and collection completed after 213.6 ms using the configured 200 ms
+  post-first-byte idle interval. These timings characterize one run and are not
+  production guarantees.
+- The returned product family and firmware were recognized while the instrument
+  serial identity was redacted.
+- The initial physical attempt established that Windows
+  `SerialPort.BaseStream.ReadAsync` may remain blocked despite cancellation.
+- The corrected utility uses an explicit read-versus-timer race, disposes the
+  owned serial port when the timer wins, and has automated coverage for a read
+  that ignores cancellation.
+- The corrected physical run completed normally, sent no state-changing
+  command, and released the port for immediate reuse.
+- Increments 44A1 through 44A3 do not change the runtime, remote API, Desktop
+  Host, or Client contracts.
