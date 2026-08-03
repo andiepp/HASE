@@ -14,6 +14,7 @@ using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Runtime.Transport.Discovery;
+using Hase.Scpi.Kel103;
 using Hase.Simulation.Runtime.ByteBuffer;
 using Hase.Transport.Discovery;
 using Hase.Transport.Tcp;
@@ -262,6 +263,27 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 "The production runtime host is already started.");
         }
 
+        DesktopRuntimeHostProductionConfigurationPlan productionPlan =
+            DesktopRuntimeHostProductionConfigurationPlan.Create(
+                configuration,
+                configuration.InstallationProfile is null
+                    ? GetRuntimeIdentityFilePath()
+                    : configuration.InstallationProfile.IdentityFilePath,
+                RuntimeHostId);
+        DesktopRuntimeHostEndpointCompositionProfile endpointComposition =
+            productionPlan.EndpointComposition;
+        IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> kel103Plans =
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
+                endpointComposition.Kel103SerialEndpoints,
+                new Kel103DefinitionRepository(),
+                cancellationToken);
+
+        if (kel103Plans.Count > 0)
+        {
+            throw new NotSupportedException(
+                "Configured KEL-103 endpoint attachment is not enabled by the production runtime host yet.");
+        }
+
         try
         {
             var session =
@@ -303,16 +325,6 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             CompactEndpointHealthProbeOptions.Default,
                             diagnostics:
                                 session.Publisher);
-
-            DesktopRuntimeHostProductionConfigurationPlan productionPlan =
-                DesktopRuntimeHostProductionConfigurationPlan.Create(
-                    configuration,
-                    configuration.InstallationProfile is null
-                        ? GetRuntimeIdentityFilePath()
-                        : configuration.InstallationProfile.IdentityFilePath,
-                    RuntimeHostId);
-            DesktopRuntimeHostEndpointCompositionProfile endpointComposition =
-                productionPlan.EndpointComposition;
 
             composition =
                 await RuntimeHostNorthboundSnapshotComposition

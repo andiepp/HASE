@@ -127,6 +127,86 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
         Assert.DoesNotContain(serialTarget, plan.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task ResolveAllAsync_ValidProfiles_ShouldPreserveProfileOrder()
+    {
+        var repository = new RecordingRepository(
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition);
+
+        IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> plans =
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
+                [Profile("first", "first-target"), Profile("second", "second-target")],
+                repository);
+
+        Assert.Equal(
+            new[] { "first", "second" },
+            plans.Select(plan => plan.ExpectedEndpointId.Value));
+    }
+
+    [Fact]
+    public async Task ResolveAllAsync_EmptyComposition_ShouldNotAccessRepository()
+    {
+        var repository = new RecordingRepository(
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition);
+
+        IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> plans =
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
+                [],
+                repository);
+
+        Assert.Empty(plans);
+        Assert.Null(repository.Reference);
+    }
+
+    [Fact]
+    public async Task ResolveAllAsync_InvalidProfile_ShouldStopBeforeLaterProfiles()
+    {
+        var repository = new CountingRepository();
+        var invalid = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "invalid",
+            Kel103IdentityDefinition.Reference.Id.Value,
+            Kel103IdentityDefinition.Reference.Version,
+            "invalid-target",
+            115200);
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
+                [Profile("first", "first-target"), invalid, Profile("third", "third-target")],
+                repository));
+
+        Assert.Equal(1, repository.CallCount);
+    }
+
+    [Fact]
+    public async Task ProductionStart_ValidKel103_ShouldGateBeforeRuntimeStateWithoutTargetLeak()
+    {
+        const string serialTarget = "sensitive-external-target";
+        var installation = new DesktopRuntimeHostInstallationProfile(
+            AbsolutePath("identity.json"),
+            AbsolutePath("private-network.json"),
+            AbsolutePath("endpoints.json"));
+        var configuration = new DesktopRuntimeHostStartupConfiguration(
+            installation.PrivateNetworkConfigurationFilePath,
+            Esp32Host: null,
+            DeploymentOptions: null!)
+        {
+            InstallationProfile = installation,
+            EndpointCompositionProfile = new DesktopRuntimeHostEndpointCompositionProfile(
+                [],
+                [],
+                [Profile("kel-01", serialTarget)])
+        };
+        var backend = new ProductionPrivateNetworkRuntimeHostBackend(configuration);
+
+        NotSupportedException exception = await Assert.ThrowsAsync<NotSupportedException>(
+            () => backend.StartAsync(CancellationToken.None));
+
+        Assert.DoesNotContain(serialTarget, exception.ToString(), StringComparison.Ordinal);
+        Assert.Empty(backend.Capture());
+        Assert.Empty(backend.CaptureDiagnostics());
+        await backend.StopAsync(CancellationToken.None);
+    }
+
     private static DesktopRuntimeHostKel103SerialEndpointProfile Profile(
         string endpointId,
         string serialTarget) =>
@@ -136,6 +216,9 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
             Kel103ReadOnlyMeasurementDefinition.Reference.Version,
             serialTarget,
             115200);
+
+    private static string AbsolutePath(string fileName) =>
+        Path.Combine(Path.GetTempPath(), "hase-45h2", fileName);
 
     private sealed class RecordingRepository(
         EndpointDescriptorDefinition? definition) : IEndpointDescriptorRepository
@@ -158,5 +241,19 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
             CancellationToken cancellationToken = default) =>
             ValueTask.FromCanceled<EndpointDescriptorDefinition?>(
                 new CancellationToken(canceled: true));
+    }
+
+    private sealed class CountingRepository : IEndpointDescriptorRepository
+    {
+        public int CallCount { get; private set; }
+
+        public ValueTask<EndpointDescriptorDefinition?> FindAsync(
+            DescriptorReference reference,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            return ValueTask.FromResult<EndpointDescriptorDefinition?>(
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition);
+        }
     }
 }

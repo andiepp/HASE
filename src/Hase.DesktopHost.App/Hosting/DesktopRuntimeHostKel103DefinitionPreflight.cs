@@ -8,6 +8,31 @@ namespace Hase.DesktopHost.App.Hosting;
 
 public static class DesktopRuntimeHostKel103DefinitionPreflight
 {
+    public static async ValueTask<IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan>>
+        ResolveAllAsync(
+            IEnumerable<DesktopRuntimeHostKel103SerialEndpointProfile> profiles,
+            IEndpointDescriptorRepository definitionRepository,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(profiles);
+        ArgumentNullException.ThrowIfNull(definitionRepository);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var plans = new List<DesktopRuntimeHostKel103EndpointPlan>();
+
+        foreach (DesktopRuntimeHostKel103SerialEndpointProfile profile in profiles)
+        {
+            plans.Add(
+                await ResolveAsync(
+                        profile,
+                        definitionRepository,
+                        cancellationToken)
+                    .ConfigureAwait(false));
+        }
+
+        return plans.AsReadOnly();
+    }
+
     public static async ValueTask<DesktopRuntimeHostKel103EndpointPlan> ResolveAsync(
         DesktopRuntimeHostKel103SerialEndpointProfile profile,
         IEndpointDescriptorRepository definitionRepository,
