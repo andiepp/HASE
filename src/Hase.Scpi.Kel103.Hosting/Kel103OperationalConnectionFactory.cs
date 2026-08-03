@@ -70,7 +70,7 @@ public sealed class Kel103OperationalConnectionFactory
 
             var connection = new Kel103OperationalConnection(
                 runtimeAdapter,
-                new Kel103EndpointAttachmentPropertyOperations(runtimeAdapter));
+                new Kel103EndpointAttachmentPropertyOperations(runtimeAdapter, timeProvider));
             owner = null;
             return connection;
         }

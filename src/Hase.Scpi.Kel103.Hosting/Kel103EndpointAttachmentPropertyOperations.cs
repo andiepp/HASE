@@ -1,4 +1,5 @@
 using Hase.Core.Domain.Identity;
+using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103.Runtime;
@@ -9,16 +10,39 @@ public sealed class Kel103EndpointAttachmentPropertyOperations
     : IEndpointAttachmentPropertyOperations
 {
     private readonly Func<InstrumentId, PropertyId, CancellationToken, Task<RuntimeProperty>> readAsync;
+    private readonly Func<bool> isSessionFaulted;
+    private readonly RuntimeEndpoint? runtimeEndpoint;
+    private readonly TimeProvider timeProvider;
 
-    public Kel103EndpointAttachmentPropertyOperations(Kel103RuntimeEndpointAdapter runtimeAdapter)
-        : this((runtimeAdapter ?? throw new ArgumentNullException(nameof(runtimeAdapter))).ReadAsync)
+    public Kel103EndpointAttachmentPropertyOperations(
+        Kel103RuntimeEndpointAdapter runtimeAdapter,
+        TimeProvider? timeProvider = null)
+        : this(
+            (runtimeAdapter ?? throw new ArgumentNullException(nameof(runtimeAdapter))).ReadAsync,
+            () => runtimeAdapter.IsFaulted,
+            runtimeAdapter.RuntimeEndpoint,
+            timeProvider ?? TimeProvider.System)
     {
     }
 
     internal Kel103EndpointAttachmentPropertyOperations(
         Func<InstrumentId, PropertyId, CancellationToken, Task<RuntimeProperty>> readAsync)
+        : this(readAsync, static () => false, null, TimeProvider.System)
+    {
+    }
+
+    internal Kel103EndpointAttachmentPropertyOperations(
+        Func<InstrumentId, PropertyId, CancellationToken, Task<RuntimeProperty>> readAsync,
+        Func<bool> isSessionFaulted,
+        RuntimeEndpoint? runtimeEndpoint,
+        TimeProvider timeProvider)
     {
         this.readAsync = readAsync ?? throw new ArgumentNullException(nameof(readAsync));
+        this.isSessionFaulted = isSessionFaulted
+            ?? throw new ArgumentNullException(nameof(isSessionFaulted));
+        this.runtimeEndpoint = runtimeEndpoint;
+        this.timeProvider = timeProvider
+            ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     public async Task<EndpointAttachmentPropertyOperationResult> ReadAsync(
@@ -43,6 +67,7 @@ public sealed class Kel103EndpointAttachmentPropertyOperations
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            ProjectSessionFault();
             throw;
         }
         catch (KeyNotFoundException)
@@ -51,18 +76,22 @@ public sealed class Kel103EndpointAttachmentPropertyOperations
         }
         catch (TimeoutException)
         {
+            ProjectSessionFault();
             return TimedOut();
         }
         catch (InvalidDataException)
         {
+            ProjectSessionFault();
             return Failure();
         }
         catch (InvalidOperationException)
         {
+            ProjectSessionFault();
             return Unavailable();
         }
         catch (IOException)
         {
+            ProjectSessionFault();
             return Unavailable();
         }
     }
@@ -96,4 +125,20 @@ public sealed class Kel103EndpointAttachmentPropertyOperations
         EndpointAttachmentPropertyOperationResult.Failed(
             EndpointAttachmentPropertyOperationStatus.Unavailable,
             "The KEL-103 attachment cannot currently perform the Property read.");
+
+    private void ProjectSessionFault()
+    {
+        if (runtimeEndpoint is null
+            || !isSessionFaulted()
+            || runtimeEndpoint.ConnectionStatus.State == EndpointConnectionState.Faulted)
+        {
+            return;
+        }
+
+        runtimeEndpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Faulted,
+                timeProvider.GetUtcNow(),
+                "The KEL-103 communication session is faulted."));
+    }
 }
