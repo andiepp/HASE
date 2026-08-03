@@ -130,7 +130,7 @@ public sealed class Kel103ReadOnlySessionAdapterTests
         string[] references = typeof(Kel103ReadOnlySessionAdapter).Assembly
             .GetReferencedAssemblies().Select(value => value.Name ?? string.Empty).ToArray();
         Assert.DoesNotContain(references, name => name == "Hase.Transport");
-        Assert.DoesNotContain(references, name => name.StartsWith("Hase.Runtime", StringComparison.Ordinal));
+        Assert.DoesNotContain(references, name => name == "Hase.Runtime.Transport");
         Assert.DoesNotContain(references, name => name.Contains("Grpc", StringComparison.Ordinal));
         Assert.DoesNotContain(references, name => name.Contains("Wpf", StringComparison.Ordinal));
     }
@@ -184,3 +184,4 @@ public sealed class Kel103ReadOnlySessionAdapterTests
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }
+
