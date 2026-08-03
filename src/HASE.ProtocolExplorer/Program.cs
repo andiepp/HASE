@@ -35,6 +35,7 @@ internal static class Program
                     new ReadEndpointDescriptorResponseScenario(),
                     new NetworkDiscoveryScenario(),
                     new UsbSerialCandidatesScenario(),
+                    new Kel103ReadOnlyCharacterizationScenario(),
                     new CapabilityC001Scenario(host),
                     new CapabilityC002Scenario(host),
                     new CapabilityC003Scenario(),
@@ -207,6 +208,8 @@ internal static class Program
         Console.WriteLine(
             "  usb-serial-candidates");
         Console.WriteLine(
+            "  kel103-characterize <COM port> <cr|lf|crlf> [baud rate]");
+        Console.WriteLine(
             "  provision-client-enrollment "
             + "<public certificate file> <enrollment file> "
             + "<principal id> <trust policy id>");
@@ -217,3 +220,4 @@ internal static class Program
             "  private-network-client <laptop configuration file>");
     }
 }
+
