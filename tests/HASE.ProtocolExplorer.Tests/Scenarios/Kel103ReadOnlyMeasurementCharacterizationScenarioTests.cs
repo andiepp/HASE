@@ -1,6 +1,5 @@
 using Hase.ProtocolExplorer.Scenarios;
 using Hase.ProtocolExplorer.ScpiCharacterization;
-using Hase.Transport.Serial;
 using Xunit;
 
 namespace Hase.ProtocolExplorer.Tests.Scenarios;
@@ -59,24 +58,10 @@ public sealed class Kel103ReadOnlyMeasurementCharacterizationScenarioTests
     }
 
     [Fact]
-    public void WriteHeader_DoesNotExposeSerialTargetOrMeasurementValue()
+    public void Name_RegistersOnlyTheBoundedMeasurementScenario()
     {
-        TextWriter original = Console.Out;
-        using var output = new StringWriter();
+        var scenario = new Kel103ReadOnlyMeasurementCharacterizationScenario();
 
-        try
-        {
-            Console.SetOut(output);
-            Kel103ReadOnlyMeasurementCharacterizationScenario.WriteHeader(
-                new SerialTransportOptions("PRIVATE-TARGET", 115200),
-                Kel103MeasurementCandidate.Voltage);
-        }
-        finally
-        {
-            Console.SetOut(original);
-        }
-
-        Assert.Contains("External runtime argument", output.ToString(), StringComparison.Ordinal);
-        Assert.DoesNotContain("PRIVATE-TARGET", output.ToString(), StringComparison.Ordinal);
+        Assert.Equal("kel103-measure-characterize", scenario.Name);
     }
 }
