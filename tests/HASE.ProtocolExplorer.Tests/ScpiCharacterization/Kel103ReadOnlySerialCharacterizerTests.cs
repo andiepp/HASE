@@ -9,17 +9,8 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
 {
     [Theory]
     [InlineData(
-        "\r",
-        1)]
-    [InlineData(
         "\n",
         2)]
-    [InlineData(
-        "\r\n",
-        3)]
-    [InlineData(
-        "",
-        0)]
     public async Task CharacterizeAsync_RecognizesKEL103AndResponseTerminator(
         string responseTerminator,
         int expectedResponseTerminatorValue)
@@ -91,7 +82,7 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
     }
 
     [Fact]
-    public async Task CharacterizeAsync_DetectsCommandEcho()
+    public async Task CharacterizeAsync_RejectsCommandEchoAndTrailingFrame()
     {
         var stream =
             new FakeSerialByteStream(
@@ -105,13 +96,32 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
                 new FakeSerialByteStreamFactory(
                     stream));
 
-        Kel103CharacterizationResult result =
-            await characterizer.CharacterizeAsync(
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            characterizer.CharacterizeAsync(
                 CreateTransportOptions(),
-                CreateFastOptions());
+                CreateFastOptions()));
+    }
 
-        Assert.True(
-            result.CommandEchoDetected);
+    [Theory]
+    [InlineData("\r")]
+    [InlineData("\r\n")]
+    [InlineData("")]
+    public async Task CharacterizeAsync_RejectsResponseWithoutSingleLineFeedTerminator(
+        string responseTerminator)
+    {
+        var stream = new FakeSerialByteStream(
+            [Encoding.ASCII.GetBytes(
+                $"RND 320-KEL103 V3.30 SN:TEST{responseTerminator}")],
+            endAfterChunks: true);
+        var characterizer = new Kel103ReadOnlySerialCharacterizer(
+            new FakeSerialByteStreamFactory(stream));
+
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            characterizer.CharacterizeAsync(
+                CreateTransportOptions(),
+                CreateFastOptions()));
+
+        Assert.True(stream.Disposed);
     }
 
     [Fact]
@@ -193,7 +203,8 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
             new FakeSerialByteStream(
                 [
                     Encoding.ASCII.GetBytes(
-                        "KEL103!!")
+                        "KEL103!!"),
+                    "\n"u8.ToArray()
                 ]);
 
         var characterizer =
@@ -251,7 +262,7 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
             new FakeSerialByteStream(
                 [
                     Encoding.ASCII.GetBytes(
-                        "OTHER INSTRUMENT V1.0 SN:TEST\r")
+                        "OTHER INSTRUMENT V1.0 SN:TEST\n")
                 ],
                 endAfterChunks: true);
 
@@ -326,7 +337,7 @@ public sealed class Kel103ReadOnlySerialCharacterizerTests
         return new FakeSerialByteStream(
             [
                 Encoding.ASCII.GetBytes(
-                    "RND 320-KEL103 V3.30 SN:TEST\r")
+                    "RND 320-KEL103 V3.30 SN:TEST\n")
             ]);
     }
 

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Hase.Scpi;
 using Hase.Transport.Serial;
 
 namespace Hase.ProtocolExplorer.ScpiCharacterization;
@@ -33,36 +34,67 @@ internal sealed class Kel103ReadOnlySerialCharacterizer
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        await using ISerialByteStream byteStream =
-            await _byteStreamFactory.OpenAsync(
+        var adapterFactory =
+            new Kel103SerialScpiByteStreamFactory(
+                _byteStreamFactory);
+
+        IScpiByteStream byteStream =
+            await adapterFactory.OpenAsync(
                 transportOptions,
                 cancellationToken);
 
-        byte[] request =
-            CreateRequest(
-                characterizationOptions.CommandTerminator);
+        var adapter =
+            (Kel103SerialScpiByteStream)byteStream;
 
-        await byteStream.WriteAsync(
-            request,
-            cancellationToken);
+        var framingOptions =
+            new ScpiTextFramingOptions(
+                MapCommandTerminator(
+                    characterizationOptions.CommandTerminator),
+                ScpiResponseTerminator.LineFeed,
+                characterizationOptions.TotalResponseTimeout,
+                characterizationOptions.MaximumResponseBytes);
+
+        await using var session =
+            new ScpiTextSession(
+                adapter,
+                framingOptions);
 
         var stopwatch =
             Stopwatch.StartNew();
 
-        BoundedResponse boundedResponse =
-            await ReadBoundedResponseAsync(
-                byteStream,
-                characterizationOptions,
-                stopwatch,
+        string responseText =
+            await session.QueryAsync(
+                IdentificationQuery,
                 cancellationToken);
 
         stopwatch.Stop();
 
+        byte[] response =
+            Encoding.ASCII.GetBytes(
+                responseText
+                + "\n");
+
         return CreateResult(
-            boundedResponse.Bytes,
-            boundedResponse.TimeToFirstByte,
+            response,
+            adapter.TimeToFirstByte
+                ?? TimeSpan.Zero,
             stopwatch.Elapsed);
     }
+
+    private static ScpiCommandTerminator MapCommandTerminator(
+        Kel103CommandTerminator commandTerminator) =>
+        commandTerminator switch
+        {
+            Kel103CommandTerminator.CarriageReturn =>
+                ScpiCommandTerminator.CarriageReturn,
+            Kel103CommandTerminator.LineFeed =>
+                ScpiCommandTerminator.LineFeed,
+            Kel103CommandTerminator.CarriageReturnLineFeed =>
+                ScpiCommandTerminator.CarriageReturnLineFeed,
+            _ =>
+                throw new ArgumentOutOfRangeException(
+                    nameof(commandTerminator))
+        };
 
     internal static byte[] CreateRequest(
         Kel103CommandTerminator commandTerminator)
