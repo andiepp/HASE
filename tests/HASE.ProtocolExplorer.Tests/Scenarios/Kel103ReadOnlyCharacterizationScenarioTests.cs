@@ -1,6 +1,7 @@
 using Xunit;
 using Hase.ProtocolExplorer.Scenarios;
 using Hase.ProtocolExplorer.ScpiCharacterization;
+using Hase.Transport.Serial;
 
 namespace Hase.ProtocolExplorer.Tests.Scenarios;
 
@@ -44,10 +45,7 @@ public sealed class Kel103ReadOnlyCharacterizationScenarioTests
     [InlineData(
         "115200",
         115200)]
-    [InlineData(
-        "9600",
-        9600)]
-    public void ParseBaudRate_AcceptsPositiveInvariantInteger(
+    public void ParseBaudRate_AcceptsCharacterizedRate(
         string value,
         int expected)
     {
@@ -62,11 +60,34 @@ public sealed class Kel103ReadOnlyCharacterizationScenarioTests
     [InlineData("0")]
     [InlineData("-1")]
     [InlineData("115,200")]
+    [InlineData("9600")]
     public void ParseBaudRate_RejectsInvalidValue(
         string value)
     {
         Assert.Throws<ArgumentException>(() =>
             Kel103ReadOnlyCharacterizationScenario.ParseBaudRate(
                 value));
+    }
+
+    [Fact]
+    public void WriteHeader_DescribesDeterministicLineFeedFraming()
+    {
+        var original = Console.Out;
+        using var output = new StringWriter();
+        try
+        {
+            Console.SetOut(output);
+            Kel103ReadOnlyCharacterizationScenario.WriteHeader(
+                new SerialTransportOptions("TEST-PORT", 115200),
+                new Kel103CharacterizationOptions(Kel103CommandTerminator.CarriageReturn));
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.Contains("Response terminator   : lf", output.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Post-byte idle", output.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("TEST-PORT", output.ToString(), StringComparison.Ordinal);
     }
 }

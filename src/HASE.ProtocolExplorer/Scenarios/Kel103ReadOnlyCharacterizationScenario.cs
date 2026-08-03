@@ -134,17 +134,17 @@ internal sealed class Kel103ReadOnlyCharacterizationScenario
                 NumberStyles.None,
                 CultureInfo.InvariantCulture,
                 out int baudRate)
-            || baudRate <= 0)
+            || baudRate != DefaultBaudRate)
         {
             throw new ArgumentException(
-                $"'{value}' is not a valid positive baud rate.",
+                $"'{value}' is not the characterized KEL-103 baud rate. Use {DefaultBaudRate}.",
                 nameof(value));
         }
 
         return baudRate;
     }
 
-    private static void WriteHeader(
+    internal static void WriteHeader(
         SerialTransportOptions transportOptions,
         Kel103CharacterizationOptions characterizationOptions)
     {
@@ -185,7 +185,7 @@ internal sealed class Kel103ReadOnlyCharacterizationScenario
             $"Total timeout         : {characterizationOptions.TotalResponseTimeout.TotalMilliseconds:F0} ms");
 
         Console.WriteLine(
-            $"Post-byte idle        : {characterizationOptions.PostFirstByteIdleInterval.TotalMilliseconds:F0} ms");
+            "Response terminator   : lf");
 
         Console.WriteLine(
             $"Maximum response      : {characterizationOptions.MaximumResponseBytes} bytes");
