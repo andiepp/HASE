@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Scpi\Hase.Scpi.csproj" />
+    <ProjectReference Include="..\Hase.Scpi.Kel103\Hase.Scpi.Kel103.csproj" />
     <ProjectReference Include="..\Hase.Scpi.Serial\Hase.Scpi.Serial.csproj" />
     <ProjectReference Include="..\Hase.Simulation.Runtime\Hase.Simulation.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Simulation\Hase.Simulation.csproj" />
