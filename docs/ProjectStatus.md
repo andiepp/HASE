@@ -1,6 +1,41 @@
 # Project Status
 
-## Current architectural update — ADR-0043
+## Current architectural objective — ADR-0044
+
+**ADR-0044 — SCPI Instrument Adapter Boundary — accepted**
+
+- Increment 44A1 establishes the architecture and the first physical validation
+  target.
+- The KORAD KEL-103 programmable DC electronic load is the first SCPI-style
+  instrument.
+- The first transport is USB virtual serial with physically verified 115200
+  baud, 8 data bits, no parity, and 1 stop bit.
+- The instrument accepts the read-only `*IDN?` verification query and returns
+  model, firmware, and instrument identity information.
+- Machine-specific serial-port targets and returned instrument serial identities
+  remain external deployment data and must not be committed or reproduced in
+  ordinary documentation or diagnostics.
+- SCPI remains a southbound adapter concern. Existing HASE endpoint,
+  instrument, Property, Command, attachment-generation, northbound, and
+  multi-host boundaries remain unchanged.
+- The Runtime Host exclusively owns the serial session, verification,
+  synchronization, supervision, recovery, and disposal.
+- One serialized command/query pipeline owns each attached SCPI instrument
+  session.
+- Mutating operations are never retried automatically.
+- Arbitrary operator-entered SCPI and advanced KEL-103 operating modes are
+  outside the first capability slice.
+- Increment 44A2 will characterize exact terminators, byte behavior, timing, and
+  recovery using fixed read-only probes before reusable production code or
+  state-changing physical validation is introduced.
+- Current verified baseline: 4,405 automated tests passing.
+
+### Previous completed architectural objective
+
+ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host Client
+Topology — complete through Increments 43A to 43H at 4,405 passing tests.
+
+### ADR-0043 completion detail
 
 **ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
 Client Topology — complete**
@@ -47,7 +82,8 @@ Client Topology — complete**
 
 ### Next
 
-Select the next architectural objective after ADR-0043 closure.
+Proceed only after explicit approval with Increment 44A2 — Read-Only KEL-103
+Serial Characterization.
 
 ---
 
