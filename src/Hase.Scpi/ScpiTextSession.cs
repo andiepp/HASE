@@ -7,8 +7,9 @@ public sealed class ScpiTextSession : IScpiTextSession
     private readonly ScpiTextRequestFormatter formatter;
     private readonly SemaphoreSlim exchangeGate = new(1, 1);
     private readonly CancellationTokenSource lifetimeCancellation = new();
+    private readonly object disposalLock = new();
     private int state = (int)ScpiTextSessionState.Open;
-    private int disposeStarted;
+    private Task? disposalTask;
 
     public ScpiTextSession(IScpiByteStream stream, ScpiTextFramingOptions options)
     {
@@ -28,7 +29,7 @@ public sealed class ScpiTextSession : IScpiTextSession
         var request = formatter.Format(command);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var timeoutCancellation = new CancellationTokenSource(options.TotalExchangeTimeout);
+        using var timeoutCancellation = new CancellationTokenSource();
         using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             lifetimeCancellation.Token,
@@ -41,6 +42,7 @@ public sealed class ScpiTextSession : IScpiTextSession
             await exchangeGate.WaitAsync(operationCancellation.Token).ConfigureAwait(false);
             gateEntered = true;
             EnsureOpen();
+            timeoutCancellation.CancelAfter(options.TotalExchangeTimeout);
 
             writeStarted = true;
             await stream
@@ -115,7 +117,7 @@ public sealed class ScpiTextSession : IScpiTextSession
         var request = formatter.Format(query);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var timeoutCancellation = new CancellationTokenSource(options.TotalExchangeTimeout);
+        using var timeoutCancellation = new CancellationTokenSource();
         using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             lifetimeCancellation.Token,
@@ -127,6 +129,7 @@ public sealed class ScpiTextSession : IScpiTextSession
             await exchangeGate.WaitAsync(operationCancellation.Token).ConfigureAwait(false);
             gateEntered = true;
             EnsureOpen();
+            timeoutCancellation.CancelAfter(options.TotalExchangeTimeout);
 
             await stream
                 .WriteAsync(request, operationCancellation.Token)
@@ -192,13 +195,17 @@ public sealed class ScpiTextSession : IScpiTextSession
         }
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        if (Interlocked.Exchange(ref disposeStarted, 1) != 0)
+        lock (disposalLock)
         {
-            return;
+            disposalTask ??= DisposeCoreAsync();
+            return new ValueTask(disposalTask);
         }
+    }
 
+    private async Task DisposeCoreAsync()
+    {
         Interlocked.Exchange(ref state, (int)ScpiTextSessionState.Disposed);
         await lifetimeCancellation.CancelAsync().ConfigureAwait(false);
 
