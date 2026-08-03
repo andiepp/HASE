@@ -166,15 +166,150 @@ public sealed class ScpiTextSessionTests
     }
 
     [Fact]
-    public async Task SendCommandAsync_RemainsUnsupportedWithoutUsingOrFaultingSession()
+    public async Task SendCommandAsync_WritesFormattedCommandWithoutReading()
+    {
+        var stream = new ScriptedScpiByteStream(read: (_, _) =>
+            ValueTask.FromException<int>(new InvalidOperationException("A command must not read.")));
+        await using var session = CreateSession(stream);
+
+        await session.SendCommandAsync("OUTPUT ON");
+
+        Assert.Equal("OUTPUT ON\r", Encoding.ASCII.GetString(Assert.Single(stream.Writes)));
+        Assert.Equal(ScpiTextSessionState.Open, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_RejectsInvalidCommandWithoutUsingOrFaultingSession()
     {
         var stream = new ScriptedScpiByteStream();
         await using var session = CreateSession(stream);
 
-        await Assert.ThrowsAsync<NotSupportedException>(() => session.SendCommandAsync("OUTPUT ON"));
+        await Assert.ThrowsAsync<ArgumentException>(() => session.SendCommandAsync("OUTPUT ON\nNEXT"));
 
         Assert.Empty(stream.Writes);
         Assert.Equal(ScpiTextSessionState.Open, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_PreCanceledCommandDoesNotUseOrFaultSession()
+    {
+        var stream = new ScriptedScpiByteStream();
+        await using var session = CreateSession(stream);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            session.SendCommandAsync("OUTPUT ON", cancellation.Token));
+
+        Assert.Empty(stream.Writes);
+        Assert.Equal(ScpiTextSessionState.Open, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_WriteFailureReportsUncertainOutcomeAndFaultsSession()
+    {
+        var failure = new IOException("write failed");
+        var stream = new ScriptedScpiByteStream(write: (_, _) => ValueTask.FromException(failure));
+        await using var session = CreateSession(stream);
+
+        var actual = await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+            session.SendCommandAsync("OUTPUT ON"));
+
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.Same(failure, actual.InnerException);
+        Assert.Equal(ScpiTextSessionState.Faulted, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_TimeoutReportsUncertainOutcomeAndFaultsSession()
+    {
+        var neverCompletes = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stream = new ScriptedScpiByteStream(write: (_, _) => new ValueTask(neverCompletes.Task));
+        await using var session = CreateSession(stream, timeout: TimeSpan.FromMilliseconds(100));
+
+        var actual = await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+            session.SendCommandAsync("OUTPUT ON"));
+
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.IsType<TimeoutException>(actual.InnerException);
+        Assert.Equal(ScpiTextSessionState.Faulted, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_CancellationDuringWriteReportsUncertainOutcomeAndFaultsSession()
+    {
+        var writeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stream = new ScriptedScpiByteStream(write: async (_, cancellationToken) =>
+        {
+            writeStarted.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        });
+        await using var session = CreateSession(stream, timeout: TimeSpan.FromSeconds(5));
+        using var cancellation = new CancellationTokenSource();
+
+        var command = session.SendCommandAsync("OUTPUT ON", cancellation.Token);
+        await writeStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        cancellation.Cancel();
+        var actual = await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() => command);
+
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.IsAssignableFrom<OperationCanceledException>(actual.InnerException);
+        Assert.Equal(ScpiTextSessionState.Faulted, session.State);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_SerializesBehindActiveQuery()
+    {
+        var queryReadStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseQueryRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var stream = new ScriptedScpiByteStream(read: async (buffer, cancellationToken) =>
+        {
+            queryReadStarted.SetResult();
+            await releaseQueryRead.Task.WaitAsync(cancellationToken);
+            "OK\n"u8.CopyTo(buffer.Span);
+            return 3;
+        });
+        await using var session = CreateSession(stream, timeout: TimeSpan.FromSeconds(5));
+
+        var query = session.QueryAsync("READ?");
+        await queryReadStarted.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var command = session.SendCommandAsync("OUTPUT ON");
+
+        Assert.Single(stream.Writes);
+        releaseQueryRead.SetResult();
+        Assert.Equal("OK", await query);
+        await command;
+
+        Assert.Equal(2, stream.Writes.Count);
+        Assert.Equal("OUTPUT ON\r", Encoding.ASCII.GetString(stream.Writes[1]));
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_FaultedSessionRejectsFurtherCommandsWithoutRetry()
+    {
+        var stream = new ScriptedScpiByteStream(write: (_, _) =>
+            ValueTask.FromException(new IOException("write failed")));
+        await using var session = CreateSession(stream);
+        await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+            session.SendCommandAsync("OUTPUT ON"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            session.SendCommandAsync("OUTPUT ON"));
+
+        Assert.Single(stream.Writes);
+    }
+
+    [Fact]
+    public async Task SendCommandAsync_DisposedSessionRejectsCommand()
+    {
+        var stream = new ScriptedScpiByteStream();
+        var session = CreateSession(stream);
+        await session.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            session.SendCommandAsync("OUTPUT ON"));
+
+        Assert.Empty(stream.Writes);
     }
 
     [Fact]

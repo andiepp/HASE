@@ -22,11 +22,91 @@ public sealed class ScpiTextSession : IScpiTextSession
 
     public ScpiTextSessionState State => (ScpiTextSessionState)Volatile.Read(ref state);
 
-    public Task SendCommandAsync(string command, CancellationToken cancellationToken = default)
+    public async Task SendCommandAsync(string command, CancellationToken cancellationToken = default)
     {
         EnsureOpen();
+        var request = formatter.Format(command);
         cancellationToken.ThrowIfCancellationRequested();
-        throw new NotSupportedException("State-changing SCPI commands are not supported by this session increment.");
+
+        using var timeoutCancellation = new CancellationTokenSource(options.TotalExchangeTimeout);
+        using var operationCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken,
+            lifetimeCancellation.Token,
+            timeoutCancellation.Token);
+
+        var gateEntered = false;
+        var writeStarted = false;
+        try
+        {
+            await exchangeGate.WaitAsync(operationCancellation.Token).ConfigureAwait(false);
+            gateEntered = true;
+            EnsureOpen();
+
+            writeStarted = true;
+            await stream
+                .WriteAsync(request, operationCancellation.Token)
+                .AsTask()
+                .WaitAsync(operationCancellation.Token)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
+        {
+            if (writeStarted)
+            {
+                throw CreateCommandFailure(
+                    "The SCPI command outcome is uncertain because the session was disposed during transmission.",
+                    true,
+                    new ObjectDisposedException(
+                        nameof(ScpiTextSession),
+                        "The SCPI text session was disposed during command transmission."));
+            }
+
+            throw new ObjectDisposedException(
+                nameof(ScpiTextSession),
+                "The SCPI text session was disposed before command transmission began.");
+        }
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
+        {
+            if (writeStarted)
+            {
+                throw CreateCommandFailure(
+                    "The SCPI command outcome is uncertain because cancellation occurred during transmission.",
+                    true,
+                    exception);
+            }
+
+            throw;
+        }
+        catch (OperationCanceledException exception) when (timeoutCancellation.IsCancellationRequested)
+        {
+            var timeout = new TimeoutException("The SCPI command exceeded its total transmission timeout.", exception);
+            if (writeStarted)
+            {
+                throw CreateCommandFailure(
+                    "The SCPI command outcome is uncertain because transmission timed out after it began.",
+                    true,
+                    timeout);
+            }
+
+            throw new ScpiCommandTransmissionException(
+                "The SCPI command was not transmitted before its timeout expired.",
+                false,
+                timeout);
+        }
+        catch (Exception exception) when (writeStarted)
+        {
+            throw CreateCommandFailure(
+                "The SCPI command outcome is uncertain because transmission failed after it began.",
+                true,
+                exception);
+        }
+        finally
+        {
+            if (gateEntered)
+            {
+                exchangeGate.Release();
+            }
+        }
     }
 
     public async Task<string> QueryAsync(string query, CancellationToken cancellationToken = default)
@@ -132,6 +212,15 @@ public sealed class ScpiTextSession : IScpiTextSession
             exchangeGate.Release();
             lifetimeCancellation.Dispose();
         }
+    }
+
+    private ScpiCommandTransmissionException CreateCommandFailure(
+        string message,
+        bool executionMayHaveOccurred,
+        Exception innerException)
+    {
+        TransitionToFaulted();
+        return new ScpiCommandTransmissionException(message, executionMayHaveOccurred, innerException);
     }
 
     private void EnsureOpen()
