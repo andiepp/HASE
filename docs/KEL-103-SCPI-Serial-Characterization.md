@@ -1,7 +1,7 @@
 # KEL-103 SCPI Serial Characterization
 
 - Related decision: ADR-0044 — SCPI Instrument Adapter Boundary
-- Increment: 44A3 — Physical Protocol Characterization
+- Increment: 44B5C — SCPI Session Migration Closure
 - Date: 2026-08-03
 - Status: Complete
 
@@ -51,7 +51,7 @@ The HASE characterization used:
 | Query | `*IDN?` |
 | Selected command terminator | CR |
 | Total response timeout | 3 seconds |
-| Post-first-byte idle interval | 200 ms |
+| Response terminator | LF |
 | Maximum response size | 512 bytes |
 
 ## Initial timeout finding
@@ -76,8 +76,9 @@ The characterization utility was corrected to:
    exchange.
 
 Automated coverage includes a fake read that deliberately ignores cancellation.
-The corrected solution passed all 4,436 automated tests before the physical
-probe was repeated.
+The original corrected utility passed all 4,436 automated tests before the
+physical probe was repeated. The later production migration replaced idle
+collection with deterministic LF framing through `ScpiTextSession`.
 
 ## Successful physical result
 
@@ -102,6 +103,21 @@ guarantees and must not become hard-coded production expectations.
 
 The total duration is consistent with a prompt response followed by the
 configured 200 ms idle interval used to establish that no further byte arrived.
+
+## Migrated SCPI-session validation
+
+The final read-only path uses the transport-independent serialized SCPI session
+over the KEL-specific serial byte-stream adapter. It requires one LF-terminated
+ASCII frame, rejects echo or trailing data, applies the three-second exchange
+timeout and 512-byte bound, and captures first-byte timing in the adapter.
+
+The migrated physical run returned 33 bytes, reached its first byte after
+10.2 ms, and completed after 18.7 ms. Product and firmware verification
+succeeded, no command echo was detected, the instrument serial remained
+redacted, the process exited normally, and an independent terminal application
+immediately reopened the port. These timings are observations only.
+
+The validated closure baseline is 4,515 automated tests.
 
 ## Frozen physical facts
 
@@ -165,4 +181,3 @@ This report does not validate:
 - multi-host operation.
 
 Each requires a later explicitly approved increment.
-

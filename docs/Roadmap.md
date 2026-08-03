@@ -424,7 +424,7 @@ Implemented:
 Physical validation confirmed basic delivery:
 
 ```text
-Candidate port         : COM10
+Candidate port         : External runtime-selected port
 VID                    : 0x2341
 PID                    : 0x0043
 Product                : Arduino Uno
@@ -457,7 +457,7 @@ USB unplug/replug regression confirmed:
 ```text
 Ready -> Faulted
 Faulted -> Connecting
-Connecting -> Faulted  (COM10 unavailable)
+Connecting -> Faulted  (selected port unavailable)
 ...
 Connecting -> Synchronizing
 Synchronizing -> Ready
@@ -1111,7 +1111,8 @@ only.
 
 ## Current objective — ADR-0044 SCPI Instrument Adapter Boundary
 
-**Status:** [Active] Increments 44A1 through 44A3 complete
+**Status:** [Completed boundary] SCPI session and read-only KEL-103
+characterization migration complete through 44B5C
 
 ADR-0044 adds the first non-HASE southbound instrument adapter without changing
 the normalized runtime or northbound application boundaries.
@@ -1148,7 +1149,8 @@ Completed and planned increments:
 1. 44A1 — Architecture decision — complete.
 2. 44A2 — Read-only KEL-103 serial characterization utility — complete.
 3. 44A3 — Physical protocol characterization documentation — complete.
-4. 44B — Serialized SCPI text-session core — next.
+4. 44B — Serialized SCPI text-session core and KEL-103 characterization
+   migration — complete.
 5. 44C — Versioned KEL-103 definition and mappings.
 6. 44D — Runtime attachment, supervision, and synchronization.
 7. 44E — External Runtime Host profile integration.
@@ -1158,8 +1160,8 @@ Completed and planned increments:
 Current verified baseline:
 
 ```text
-4,436 automated tests pass
-KEL-103 read-only identity characterization succeeds
+4,515 automated tests pass
+KEL-103 read-only identity characterization succeeds through ScpiTextSession
 The serial port is released for immediate reuse
 ```
 
@@ -1173,5 +1175,3 @@ definition repository also remain later work.
 - Python Automation Boundary.
 - Diagnostic Export and Offline Analysis.
 - Remote Media Feedback.
-
-

@@ -1,6 +1,6 @@
 # ADR-0044 — SCPI Instrument Adapter Boundary
 
-- Status: Accepted — Increments 44A1 through 44A3 complete
+- Status: Accepted — SCPI session and KEL-103 characterization migration complete through 44B5C
 - Date: 2026-08-03
 
 ## Context
@@ -190,15 +190,23 @@ The characterization established:
 2. 44A2 — Read-Only KEL-103 Serial Characterization utility, automated
    validation, and physical execution.
 3. 44A3 — KEL-103 Physical Protocol Characterization documentation.
+4. 44B1 — Dependency-free SCPI contracts and deterministic text framing.
+5. 44B2 — Serialized query session over an injected byte stream.
+6. 44B3 — State-changing commands with explicit uncertain-outcome semantics.
+7. 44B4 — Cancellation, desynchronization, and concurrent-disposal hardening.
+8. 44B5A — KEL-103 serial `IScpiByteStream` adapter.
+9. 44B5B1 — KEL-specific first-byte timing observation.
+10. 44B5B2A — Read-only characterizer migration to `ScpiTextSession`.
+11. 44B5B2B — Deterministic LF scenario contract and physical validation.
+12. 44B5C — Documentation and architectural closure.
 
 ## Planned increments
 
-1. 44B — Serialized SCPI Text-Session Core.
-2. 44C — Versioned KEL-103 Definition and Mappings.
-3. 44D — Runtime Attachment, Supervision, and Synchronization.
-4. 44E — External Runtime Host Profile Integration.
-5. 44F — Existing Desktop Host and Client Presentation.
-6. 44G — Physical Multi-Host Validation and Closure.
+1. 44C — Versioned KEL-103 Definition and safe capability mappings.
+2. 44D — Runtime attachment, supervision, and synchronization.
+3. 44E — External Runtime Host profile integration.
+4. 44F — Existing Desktop Host and Client presentation.
+5. 44G — Physical multi-host validation and closure.
 
 ## Deferred
 
@@ -245,3 +253,17 @@ The characterization established:
   command, and released the port for immediate reuse.
 - Increments 44A1 through 44A3 do not change the runtime, remote API, Desktop
   Host, or Client contracts.
+- The completed SCPI boundary has no dependency on serial transport, KEL-103,
+  Runtime Host, gRPC, or Client projects. It formats printable ASCII requests,
+  frames one explicitly terminated response, serializes exchanges, bounds each
+  active exchange, faults after desynchronizing failures, and never retries a
+  state-changing command automatically.
+- The KEL-103 adapter remains in Protocol Explorer infrastructure and validates
+  the physically established 115200/8-N-1/no-flow profile before opening.
+- The migrated physical `*IDN?` run returned 33 bytes, reported LF termination,
+  no echo, verified product and firmware, redacted the serial identity, reached
+  its first byte after 10.2 ms, and completed after 18.7 ms. Timings are
+  observations rather than guarantees.
+- The migrated process exited normally and an independent terminal application
+  immediately reopened the released port.
+- The closure baseline is 4,515 passing automated tests.

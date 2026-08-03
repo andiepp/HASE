@@ -2,8 +2,8 @@
 
 ## Current architectural objective — ADR-0044
 
-**ADR-0044 — SCPI Instrument Adapter Boundary — accepted; Increments 44A1
-through 44A3 complete**
+**ADR-0044 — SCPI Instrument Adapter Boundary — accepted; SCPI session and
+KEL-103 characterization migration complete through 44B5C**
 
 - Increment 44A1 establishes the architecture and the KORAD KEL-103
   programmable DC electronic load as the first physical validation target.
@@ -31,12 +31,19 @@ through 44A3 complete**
 - Existing HASE endpoint, instrument, Property, Command,
   attachment-generation, northbound, and multi-host boundaries remain
   unchanged.
-- Current verified baseline: 4,436 automated tests passing.
+- The dependency-free SCPI core now provides deterministic ASCII framing,
+  serialized queries and commands, uncertain command outcomes, bounded active
+  exchanges, desynchronization faulting, and deterministic shared disposal.
+- Protocol Explorer adapts the validated KEL-103 serial profile to the generic
+  byte-stream boundary without moving device-specific behavior into `Hase.Scpi`.
+- The migrated physical run verified LF framing, no echo, product and firmware,
+  redaction, normal exit, and immediate independent port reopening.
+- Current verified baseline: 4,515 automated tests passing.
 
 ### Next
 
-Proceed only after explicit approval with Increment 44B1 — Reusable SCPI
-Session Contracts and Framing.
+ADR-0044 runtime publication work remains deferred. The next architectural
+objective requires a separate explicit decision.
 
 ### Previous completed architectural objective
 
@@ -734,7 +741,7 @@ physical temperature Property. The published attachment generation scopes both
 the cached query and authoritative read. Orderly host detachment ends in
 `Disconnected`.
 
-The verified IPv4 address during physical discovery was `192.168.0.223`. The
+The verified IPv4 address during physical discovery remained external deployment data. The
 address is dynamically discovered reachability information, not authoritative
 identity.
 
@@ -806,13 +813,13 @@ after recovery, proving no replay. A new D7 press then produced occurrence two.
 
 ### C-025 USB-unplug/replug recovery
 
-Physical USB removal produced unavailable-port reconnect failures until COM10
+Physical USB removal produced unavailable-port reconnect failures until the selected port
 returned:
 
 ```text
 Ready -> Faulted
 Faulted -> Connecting
-Connecting -> Faulted  (COM10 unavailable)
+Connecting -> Faulted  (selected port unavailable)
 ...
 Connecting -> Synchronizing
 Synchronizing -> Ready
@@ -1131,9 +1138,59 @@ ADR-0036 preserves ByteArray Property observations without client disconnection
 
 ---
 
+# Completed Objectives after ADR-0037
+
+## ADR-0038 — Descriptor-Driven Command Argument Editing
+
+Both Desktop Host and Client use shared descriptor-driven Boolean, numeric,
+string, and byte-array Command argument editors. Local validation precedes
+execution, typed arguments retain their normalized values across the remote
+boundary, and state-changing Commands are never retried automatically.
+
+## ADR-0039 — Descriptor-Driven Event Presentation
+
+Desktop Host and Client present transient Events with exact Runtime Host,
+endpoint, instrument, path, value, and timestamp attribution. Events remain
+current-connection observations with no offline queue or replay.
+
+## ADR-0040 through ADR-0042 — Structured Diagnostics
+
+The Runtime Host gained structured operational, protocol, and byte diagnostics,
+followed by separate Desktop Host and Client diagnostics windows. Both windows
+support pause/resume presentation without pausing capture, bounded retention,
+filtering, structured protocol-byte interpretation, and orderly disposal.
+Client diagnostics remain scoped to the originating Runtime Host profile.
+
+## ADR-0043 — Repeatable Multi-Host Deployment
+
+Release publication, installation identity, external configuration, certificate
+custody, desktop shortcuts, Runtime Host enrollment, endpoint onboarding, and
+multi-host Client profiles are repeatable and update-safe. Physical validation
+ran two Runtime Hosts simultaneously from one Client. Inventory, Properties,
+Commands, Events, diagnostics, and reconnect behavior remained independently
+host-scoped. ADR-0043 closed at 4,405 tests.
+
+## ADR-0044 — SCPI Instrument Adapter Boundary
+
+HASE now has a dependency-free serialized SCPI text-session boundary with
+explicit ASCII framing, bounded exchanges, one ordered operation at a time,
+fault-on-desynchronization behavior, deterministic concurrent disposal, and
+explicit uncertain outcomes for state-changing Commands. The generic SCPI
+project has no serial, KEL-103, Runtime Host, gRPC, or Client dependency.
+
+Protocol Explorer adapts the physically characterized KEL-103 serial profile to
+`IScpiByteStream`. The read-only `*IDN?` characterization now executes through
+`ScpiTextSession`, requires one LF-terminated response, rejects echo and
+trailing frames, preserves identity redaction and timing diagnostics, closes
+normally, and releases the port for independent reuse. ADR-0044 closes its
+session and characterization boundary at 4,515 tests. Runtime publication and
+device capability mappings remain deferred to a later explicit decision.
+
+---
+
 # Architecture Decision Records
 
-ADR-0001 through ADR-0036 are accepted.
+ADR-0001 through ADR-0044 are accepted.
 
 Relevant recent decisions:
 
@@ -1160,6 +1217,14 @@ Relevant recent decisions:
 - ADR-0035 - Interactive Operator Console.
 - ADR-0036 - ByteArray Values and Typed Command Arguments.
 - ADR-0037 - Descriptor-Driven Property Editing.
+- ADR-0038 - Descriptor-Driven Command Argument Editing.
+- ADR-0039 - Descriptor-Driven Event Presentation.
+- ADR-0040 - Structured Runtime Diagnostics and Tracing.
+- ADR-0041 - Desktop Diagnostics Window and Presentation Pause.
+- ADR-0042 - Laptop Client Diagnostics Window and Presentation Pause.
+- ADR-0043 - Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
+  Client Topology.
+- ADR-0044 - SCPI Instrument Adapter Boundary.
 
 ---
 
@@ -1185,17 +1250,24 @@ The current implementation intentionally excludes:
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery.
+- SCPI instrument publication through the Runtime Host;
+- a versioned KEL-103 endpoint definition and safe capability mappings;
+- Python automation;
+- diagnostic export and offline analysis;
+- remote media feedback.
 
 ---
 
 # Immediate Next Steps
 
-1. Keep the ADR-0032 non-loopback profile classified as controlled validation;
+1. Select the next architectural objective explicitly; ADR-0044 runtime
+   publication is not implied by completion of its session boundary.
+2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.
-2. Preserve the completed private-network snapshot, Property, Command,
+3. Preserve the completed private-network snapshot, Property, Command,
    observation, restoration, and orderly-shutdown baselines.
-3. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
+4. Keep Linux USB serial discovery, IPv6 discovery, BLE, formal compact profiles,
    persistent Event history, remote lifecycle administration, and Tailscale
    runtime-host discovery as separately approved backlog.
 
@@ -1220,4 +1292,3 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
-
