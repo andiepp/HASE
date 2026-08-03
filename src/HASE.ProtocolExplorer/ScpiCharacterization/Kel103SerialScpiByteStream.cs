@@ -1,80 +1,51 @@
 using Hase.Scpi;
+using Hase.Scpi.Serial;
 using Hase.Transport.Serial;
 
 namespace Hase.ProtocolExplorer.ScpiCharacterization;
 
 internal sealed class Kel103SerialScpiByteStream : IScpiByteStream
 {
-    private readonly ISerialByteStream serialByteStream;
-    private readonly TimeProvider timeProvider;
-    private readonly object timingLock = new();
-    private long? writeStartedTimestamp;
-    private TimeSpan? timeToFirstByte;
+    private readonly SerialScpiByteStream serialScpiByteStream;
 
     public Kel103SerialScpiByteStream(ISerialByteStream serialByteStream)
-        : this(serialByteStream, TimeProvider.System)
+        : this(new SerialScpiByteStream(serialByteStream), initializeFromGenericStream: true)
     {
     }
 
     internal Kel103SerialScpiByteStream(
         ISerialByteStream serialByteStream,
         TimeProvider timeProvider)
+        : this(
+            new SerialScpiByteStream(serialByteStream, timeProvider),
+            initializeFromGenericStream: true)
     {
-        this.serialByteStream = serialByteStream
-            ?? throw new ArgumentNullException(nameof(serialByteStream));
-        this.timeProvider = timeProvider
-            ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
-    public TimeSpan? TimeToFirstByte
+    private Kel103SerialScpiByteStream(
+        SerialScpiByteStream serialScpiByteStream,
+        bool initializeFromGenericStream)
     {
-        get
-        {
-            lock (timingLock)
-            {
-                return timeToFirstByte;
-            }
-        }
+        _ = initializeFromGenericStream;
+        this.serialScpiByteStream = serialScpiByteStream
+            ?? throw new ArgumentNullException(nameof(serialScpiByteStream));
     }
+
+    internal static Kel103SerialScpiByteStream FromGenericStream(
+        SerialScpiByteStream serialScpiByteStream) =>
+        new(serialScpiByteStream, initializeFromGenericStream: true);
+
+    public TimeSpan? TimeToFirstByte => serialScpiByteStream.TimeToFirstByte;
 
     public ValueTask WriteAsync(
         ReadOnlyMemory<byte> bytes,
         CancellationToken cancellationToken = default) =>
-        WriteCoreAsync(bytes, cancellationToken);
+        serialScpiByteStream.WriteAsync(bytes, cancellationToken);
 
-    public async ValueTask<int> ReadAsync(
+    public ValueTask<int> ReadAsync(
         Memory<byte> buffer,
-        CancellationToken cancellationToken = default)
-    {
-        var bytesRead = await serialByteStream
-            .ReadAsync(buffer, cancellationToken)
-            .ConfigureAwait(false);
+        CancellationToken cancellationToken = default) =>
+        serialScpiByteStream.ReadAsync(buffer, cancellationToken);
 
-        if (bytesRead > 0)
-        {
-            lock (timingLock)
-            {
-                if (timeToFirstByte is null && writeStartedTimestamp is long started)
-                {
-                    timeToFirstByte = timeProvider.GetElapsedTime(started);
-                }
-            }
-        }
-
-        return bytesRead;
-    }
-
-    public ValueTask DisposeAsync() => serialByteStream.DisposeAsync();
-
-    private ValueTask WriteCoreAsync(
-        ReadOnlyMemory<byte> bytes,
-        CancellationToken cancellationToken)
-    {
-        lock (timingLock)
-        {
-            writeStartedTimestamp ??= timeProvider.GetTimestamp();
-        }
-
-        return serialByteStream.WriteAsync(bytes, cancellationToken);
-    }
+    public ValueTask DisposeAsync() => serialScpiByteStream.DisposeAsync();
 }

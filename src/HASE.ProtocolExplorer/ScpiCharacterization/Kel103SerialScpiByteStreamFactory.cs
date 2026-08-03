@@ -1,4 +1,5 @@
 using Hase.Scpi;
+using Hase.Scpi.Serial;
 using Hase.Transport.Serial;
 
 namespace Hase.ProtocolExplorer.ScpiCharacterization;
@@ -6,12 +7,13 @@ namespace Hase.ProtocolExplorer.ScpiCharacterization;
 internal sealed class Kel103SerialScpiByteStreamFactory
 {
     private const int RequiredBaudRate = 115200;
-    private readonly ISerialByteStreamFactory serialByteStreamFactory;
+    private readonly SerialScpiByteStreamFactory serialScpiByteStreamFactory;
 
     public Kel103SerialScpiByteStreamFactory(ISerialByteStreamFactory serialByteStreamFactory)
     {
-        this.serialByteStreamFactory = serialByteStreamFactory
-            ?? throw new ArgumentNullException(nameof(serialByteStreamFactory));
+        serialScpiByteStreamFactory = new SerialScpiByteStreamFactory(
+            serialByteStreamFactory
+                ?? throw new ArgumentNullException(nameof(serialByteStreamFactory)));
     }
 
     public async ValueTask<IScpiByteStream> OpenAsync(
@@ -20,13 +22,12 @@ internal sealed class Kel103SerialScpiByteStreamFactory
     {
         ArgumentNullException.ThrowIfNull(options);
         ValidateCharacterizedSettings(options);
-        cancellationToken.ThrowIfCancellationRequested();
 
-        ISerialByteStream serialByteStream = await serialByteStreamFactory
+        SerialScpiByteStream serialScpiByteStream = await serialScpiByteStreamFactory
             .OpenAsync(options, cancellationToken)
             .ConfigureAwait(false);
 
-        return new Kel103SerialScpiByteStream(serialByteStream);
+        return Kel103SerialScpiByteStream.FromGenericStream(serialScpiByteStream);
     }
 
     private static void ValidateCharacterizedSettings(SerialTransportOptions options)
