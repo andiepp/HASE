@@ -1,0 +1,174 @@
+using Hase.Core.Domain.Identity;
+using Hase.Runtime.Connections;
+using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport.Attachment;
+using Hase.Transport.Serial;
+
+namespace Hase.Scpi.Kel103.Hosting;
+
+internal sealed class Kel103PublishedConnectionSlot
+    : IEndpointAttachmentPropertyOperations,
+      IAsyncDisposable
+{
+    private readonly RuntimeEndpoint runtimeEndpoint;
+    private readonly Kel103OperationalConnectionFactory connectionFactory;
+    private readonly TimeProvider timeProvider;
+    private readonly SemaphoreSlim operationGate = new(1, 1);
+    private Kel103OperationalConnection? connection;
+    private bool disposed;
+
+    public Kel103PublishedConnectionSlot(
+        Kel103OperationalConnection connection,
+        Kel103OperationalConnectionFactory connectionFactory,
+        TimeProvider timeProvider)
+    {
+        this.connection = connection
+            ?? throw new ArgumentNullException(nameof(connection));
+        this.connectionFactory = connectionFactory
+            ?? throw new ArgumentNullException(nameof(connectionFactory));
+        this.timeProvider = timeProvider
+            ?? throw new ArgumentNullException(nameof(timeProvider));
+        runtimeEndpoint = connection.RuntimeEndpoint;
+    }
+
+    public RuntimeEndpoint RuntimeEndpoint => runtimeEndpoint;
+
+    public async Task<EndpointAttachmentPropertyOperationResult> ReadAsync(
+        InstrumentId instrumentId,
+        PropertyId propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instrumentId);
+        ArgumentNullException.ThrowIfNull(propertyId);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (disposed || connection is null)
+            {
+                return Unavailable();
+            }
+
+            return await connection.PropertyOperations
+                .ReadAsync(instrumentId, propertyId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    public Task<EndpointAttachmentPropertyOperationResult> WriteAsync(
+        InstrumentId instrumentId,
+        PropertyId propertyId,
+        object? requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instrumentId);
+        ArgumentNullException.ThrowIfNull(propertyId);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(
+            EndpointAttachmentPropertyOperationResult.Failed(
+                EndpointAttachmentPropertyOperationStatus.NotSupported));
+    }
+
+    public async Task ReplaceAsync(
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(serialOptions);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            if (runtimeEndpoint.ConnectionStatus.State != EndpointConnectionState.Faulted)
+            {
+                throw new InvalidOperationException(
+                    "KEL-103 connection replacement requires a faulted endpoint.");
+            }
+
+            Kel103OperationalConnection? previous = connection;
+            connection = null;
+            if (previous is not null)
+            {
+                try
+                {
+                    await previous.DisposeAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    ProjectFault();
+                    throw;
+                }
+            }
+
+            runtimeEndpoint.UpdateConnectionStatus(
+                new EndpointConnectionStatus(
+                    EndpointConnectionState.Reconnecting,
+                    timeProvider.GetUtcNow()));
+
+            try
+            {
+                Kel103OperationalConnection replacement = await connectionFactory
+                    .OpenForEndpointAsync(runtimeEndpoint, serialOptions, cancellationToken)
+                    .ConfigureAwait(false);
+                connection = replacement;
+                runtimeEndpoint.UpdateConnectionStatus(
+                    new EndpointConnectionStatus(
+                        EndpointConnectionState.Ready,
+                        timeProvider.GetUtcNow()));
+            }
+            catch
+            {
+                ProjectFault();
+                throw;
+            }
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await operationGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            Kel103OperationalConnection? ownedConnection = connection;
+            connection = null;
+            if (ownedConnection is not null)
+            {
+                await ownedConnection.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    private void ProjectFault()
+    {
+        runtimeEndpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Faulted,
+                timeProvider.GetUtcNow(),
+                "The KEL-103 connection replacement failed."));
+    }
+
+    private static EndpointAttachmentPropertyOperationResult Unavailable() =>
+        EndpointAttachmentPropertyOperationResult.Failed(
+            EndpointAttachmentPropertyOperationStatus.Unavailable,
+            "The KEL-103 attachment does not own an active connection.");
+}

@@ -40,6 +40,37 @@ public sealed class Kel103OperationalConnectionFactory
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpointId);
+        return await OpenCoreAsync(
+            () => runtimeContext.CreateEndpoint(
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(endpointId)),
+            serialOptions,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task<Kel103OperationalConnection> OpenForEndpointAsync(
+        RuntimeEndpoint runtimeEndpoint,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeEndpoint);
+        if (!ReferenceEquals(runtimeEndpoint.Context, runtimeContext))
+        {
+            throw new ArgumentException(
+                "The runtime endpoint belongs to a different runtime context.",
+                nameof(runtimeEndpoint));
+        }
+
+        return await OpenCoreAsync(
+            () => runtimeEndpoint,
+            serialOptions,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Kel103OperationalConnection> OpenCoreAsync(
+        Func<RuntimeEndpoint> createRuntimeEndpoint,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(serialOptions);
         ValidateSerialProfile(serialOptions);
         cancellationToken.ThrowIfCancellationRequested();
@@ -58,8 +89,7 @@ public sealed class Kel103OperationalConnectionFactory
             var sessionAdapter = new Kel103ReadOnlySessionAdapter(textSession, timeProvider);
             owner = sessionAdapter;
 
-            RuntimeEndpoint runtimeEndpoint = runtimeContext.CreateEndpoint(
-                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(endpointId));
+            RuntimeEndpoint runtimeEndpoint = createRuntimeEndpoint();
             var runtimeAdapter = new Kel103RuntimeEndpointAdapter(
                 sessionAdapter,
                 runtimeEndpoint,

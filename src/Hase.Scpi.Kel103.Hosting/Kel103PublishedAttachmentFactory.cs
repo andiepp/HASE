@@ -12,6 +12,7 @@ public sealed class Kel103PublishedAttachmentFactory
 {
     private readonly RuntimeContext runtimeContext;
     private readonly Kel103OperationalConnectionFactory operationalConnectionFactory;
+    private readonly TimeProvider timeProvider;
 
     public Kel103PublishedAttachmentFactory(
         RuntimeContext runtimeContext,
@@ -25,6 +26,7 @@ public sealed class Kel103PublishedAttachmentFactory
             serialByteStreamFactory
                 ?? throw new ArgumentNullException(nameof(serialByteStreamFactory)),
             timeProvider);
+        this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<Kel103PublishedAttachment> OpenAsync(
@@ -44,7 +46,11 @@ public sealed class Kel103PublishedAttachmentFactory
                 new EndpointConnectionStatus(EndpointConnectionState.Ready));
             runtimeContext.PublishEndpoint(connection.RuntimeEndpoint);
 
-            var attachment = new Kel103PublishedAttachment(runtimeContext, connection);
+            var connectionSlot = new Kel103PublishedConnectionSlot(
+                connection,
+                operationalConnectionFactory,
+                timeProvider);
+            var attachment = new Kel103PublishedAttachment(runtimeContext, connectionSlot);
             connection = null;
             return attachment;
         }

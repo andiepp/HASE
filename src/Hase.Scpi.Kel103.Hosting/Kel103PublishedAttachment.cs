@@ -1,6 +1,7 @@
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
+using Hase.Transport.Serial;
 
 namespace Hase.Scpi.Kel103.Hosting;
 
@@ -10,24 +11,29 @@ namespace Hase.Scpi.Kel103.Hosting;
 public sealed class Kel103PublishedAttachment : IAsyncDisposable
 {
     private readonly RuntimeContext runtimeContext;
-    private readonly Kel103OperationalConnection operationalConnection;
+    private readonly Kel103PublishedConnectionSlot connectionSlot;
     private readonly object disposalLock = new();
     private Task? disposalTask;
 
     internal Kel103PublishedAttachment(
         RuntimeContext runtimeContext,
-        Kel103OperationalConnection operationalConnection)
+        Kel103PublishedConnectionSlot connectionSlot)
     {
         this.runtimeContext = runtimeContext
             ?? throw new ArgumentNullException(nameof(runtimeContext));
-        this.operationalConnection = operationalConnection
-            ?? throw new ArgumentNullException(nameof(operationalConnection));
+        this.connectionSlot = connectionSlot
+            ?? throw new ArgumentNullException(nameof(connectionSlot));
     }
 
-    public RuntimeEndpoint RuntimeEndpoint => operationalConnection.RuntimeEndpoint;
+    public RuntimeEndpoint RuntimeEndpoint => connectionSlot.RuntimeEndpoint;
 
     public IEndpointAttachmentPropertyOperations PropertyOperations =>
-        operationalConnection.PropertyOperations;
+        connectionSlot;
+
+    public Task ReplaceAsync(
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default) =>
+        connectionSlot.ReplaceAsync(serialOptions, cancellationToken);
 
     public ValueTask DisposeAsync()
     {
@@ -44,6 +50,15 @@ public sealed class Kel103PublishedAttachment : IAsyncDisposable
 
         try
         {
+            await connectionSlot.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            (failures ??= []).Add(exception);
+        }
+
+        try
+        {
             RuntimeEndpoint.UpdateConnectionStatus(
                 new EndpointConnectionStatus(EndpointConnectionState.Disconnected));
         }
@@ -55,15 +70,6 @@ public sealed class Kel103PublishedAttachment : IAsyncDisposable
         try
         {
             runtimeContext.RemoveEndpoint(RuntimeEndpoint);
-        }
-        catch (Exception exception)
-        {
-            (failures ??= []).Add(exception);
-        }
-
-        try
-        {
-            await operationalConnection.DisposeAsync().ConfigureAwait(false);
         }
         catch (Exception exception)
         {
