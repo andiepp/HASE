@@ -45,7 +45,9 @@ public sealed class Kel103SupervisedAttachmentFactory
             var supervisor = new Kel103PublishedAttachmentSupervisor(
                 publishedAttachment,
                 serialOptions,
-                reconnectPolicy,
+                CreateRecoveryPolicy(
+                    publishedAttachment.RuntimeEndpoint,
+                    reconnectPolicy),
                 timeProvider);
             var supervisionLifetime = new EndpointConnectionSupervisionLifetime(
                 supervisor.RunAsync);
@@ -77,5 +79,17 @@ public sealed class Kel103SupervisedAttachmentFactory
 
             throw;
         }
+    }
+
+    internal static IRuntimeEndpointReconnectPolicy CreateRecoveryPolicy(
+        RuntimeEndpoint runtimeEndpoint,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeEndpoint);
+        ArgumentNullException.ThrowIfNull(reconnectPolicy);
+        return new RuntimeEndpointReconnectDiagnosticPolicy(
+            reconnectPolicy,
+            runtimeEndpoint.Context.Diagnostics,
+            runtimeEndpoint.Descriptor.Id.Value);
     }
 }

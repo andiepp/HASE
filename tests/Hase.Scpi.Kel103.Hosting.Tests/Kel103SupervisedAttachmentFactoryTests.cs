@@ -1,6 +1,7 @@
 using System.Text;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Connections;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
 using Hase.Transport.Serial;
@@ -12,7 +13,8 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
     [Fact]
     public async Task OpenAsync_ReadyAttachmentPerformsNoBackgroundScpiTraffic()
     {
-        var context = new RuntimeContext();
+        var collector = new BoundedRuntimeDiagnosticCollector(20);
+        var context = new RuntimeContext(new RuntimeDiagnosticPublisher(collector));
         var stream = SuccessfulStream("9.0000V\n");
         var transport = new SequenceFactory(stream);
         var factory = new Kel103SupervisedAttachmentFactory(context, transport);
@@ -29,6 +31,9 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
         Assert.Equal(
             RuntimeEndpointConnectionStatistics.Empty,
             attachment.GetConnectionStatistics());
+        Assert.DoesNotContain(
+            collector.GetSnapshot(),
+            record => record.EventName == "RecoveryScheduled");
 
         await attachment.DisposeAsync();
         Assert.Empty(context.Endpoints);
@@ -38,7 +43,8 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
     [Fact]
     public async Task FaultedAttachment_IsRecoveredWithoutReplacingPublishedEndpoint()
     {
-        var context = new RuntimeContext();
+        var collector = new BoundedRuntimeDiagnosticCollector(30);
+        var context = new RuntimeContext(new RuntimeDiagnosticPublisher(collector));
         var initial = SuccessfulStream("9.0000V\n");
         var replacement = SuccessfulStream("10.0000V\n");
         var transport = new SequenceFactory(initial, replacement);
@@ -66,6 +72,16 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
             Assert.IsType<decimal>(endpoint.Instruments.Single().Properties.Single(
                 property => property.Descriptor.Id == new PropertyId("measured-voltage"))
                 .CurrentValue!.Value));
+        RuntimeDiagnosticRecord scheduled = Assert.Single(
+            collector.GetSnapshot(
+                RuntimeDiagnosticLevel.Operational,
+                RuntimeDiagnosticCategory.RuntimeRecovery)
+            .Where(record => record.EventName == "RecoveryScheduled"));
+        Assert.Equal("kel-test-01", scheduled.EndpointId);
+        Assert.Null(scheduled.AttachmentGeneration);
+        Assert.Equal("1", scheduled.Details["AttemptNumber"]);
+        Assert.Equal("0", scheduled.Details["RetryIndex"]);
+        Assert.Equal("0", scheduled.Details["DelayMilliseconds"]);
     }
 
     [Fact]
