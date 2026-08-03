@@ -1,6 +1,39 @@
 # Project Status
 
-## Current architectural objective — ADR-0044
+## Current architectural objective — ADR-0045
+
+**ADR-0045 — Runtime-Hosted SCPI Instrument Publication — accepted; Increment
+45A decision and read-only safety boundary approved**
+
+- ADR-0045 starts from the clean ADR-0044 closure baseline of 4,515 tests.
+- `Hase.Scpi` remains transport-independent and no SCPI contract crosses the
+  normalized runtime, gRPC, Desktop Host, or Client boundaries.
+- Runtime Host publication begins with explicit external configuration,
+  configured endpoint identity, versioned KEL-103 definition, read-only
+  verification, complete initial synchronization, and readiness-gated
+  publication.
+- Only product identity and firmware are currently physically verified.
+  Measurement Properties require separate read-only characterization.
+- The initial scope exposes no writable Property and no Command.
+- Runtime Host ownership includes session creation, serialization, supervision,
+  replacement, reverification, resynchronization, and disposal.
+- Operational diagnostics are sanitized; SCPI Protocol and Bytes diagnostics
+  remain deferred.
+
+### Next
+
+Proceed only after explicit approval with Increment 45B — Reusable
+Serial-to-SCPI Bridge.
+
+### Previous completed architectural objective
+
+ADR-0044 — SCPI Instrument Adapter Boundary — closed at 4,515 tests after
+read-only KEL-103 characterization migrated to `ScpiTextSession` and physical
+port-release validation.
+
+---
+
+## Completed architectural objective — ADR-0044
 
 **ADR-0044 — SCPI Instrument Adapter Boundary — accepted; SCPI session and
 KEL-103 characterization migration complete through 44B5C**
@@ -40,10 +73,9 @@ KEL-103 characterization migration complete through 44B5C**
   redaction, normal exit, and immediate independent port reopening.
 - Current verified baseline: 4,515 automated tests passing.
 
-### Next
+### ADR-0044 closure
 
-ADR-0044 runtime publication work remains deferred. The next architectural
-objective requires a separate explicit decision.
+Runtime publication continues separately under ADR-0045.
 
 ### Previous completed architectural objective
 

@@ -1170,6 +1170,41 @@ triggering, LIST, OCP, OPP, battery, dynamic, pulse, and flip modes. Generic
 VISA, USBTMC, GPIB, automatic instrument discovery, and a public instrument-
 definition repository also remain later work.
 
+## Current objective — ADR-0045 Runtime-Hosted SCPI Instrument Publication
+
+**Status:** [Active] Increment 45A decision and read-only safety boundary
+accepted
+
+ADR-0045 publishes explicitly configured SCPI instruments through the existing
+normalized endpoint, instrument, Property, attachment-generation, diagnostics,
+Runtime Host, and Client boundaries. `Hase.Scpi` remains transport independent.
+
+The first KEL-103 slice is read-only. Product identity and firmware are the only
+currently verified Properties. Candidate measurements require isolated physical
+characterization before descriptor publication. No writable Property, Command,
+automatic discovery, arbitrary SCPI console, or raw SCPI diagnostics are in the
+initial scope.
+
+Planned increments:
+
+1. 45A — Decision and read-only safety boundary — complete.
+2. 45B — Reusable serial-to-SCPI bridge.
+3. 45C — Versioned KEL-103 identity definition.
+4. 45D — Read-only measurement characterization.
+5. 45E — Normalized KEL-103 runtime adapter.
+6. 45F — Attachment, supervision, and synchronization.
+7. 45G — External Runtime Host profile integration.
+8. 45H — Desktop Host and Client presentation validation.
+9. 45I — Physical recovery and multi-host validation.
+10. 45J — Documentation and closure.
+
+Current baseline:
+
+```text
+4,515 automated tests pass
+Runtime Hosts and Client stopped
+```
+
 ## Agreed later objectives
 
 - Python Automation Boundary.
