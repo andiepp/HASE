@@ -15,6 +15,7 @@ public sealed record Kel103SetpointMapping
         DescriptorPath propertyPath,
         string query,
         string unitSymbol,
+        Kel103OperatingMode associatedMode,
         decimal minimum,
         decimal maximum)
     {
@@ -23,6 +24,7 @@ public sealed record Kel103SetpointMapping
         PropertyPath = propertyPath;
         Query = query;
         UnitSymbol = unitSymbol;
+        AssociatedMode = associatedMode;
         Minimum = minimum;
         Maximum = maximum;
     }
@@ -33,6 +35,7 @@ public sealed record Kel103SetpointMapping
         DescriptorPath.Parse("Target.Voltage"),
         ":VOLTage?",
         "V",
+        Kel103OperatingMode.ConstantVoltage,
         0.1m,
         120.0m);
 
@@ -42,6 +45,7 @@ public sealed record Kel103SetpointMapping
         DescriptorPath.Parse("Target.Current"),
         ":CURRent?",
         "A",
+        Kel103OperatingMode.ConstantCurrent,
         0.0m,
         30.0m);
 
@@ -51,6 +55,7 @@ public sealed record Kel103SetpointMapping
         DescriptorPath.Parse("Target.Resistance"),
         ":RESistance?",
         "OHM",
+        Kel103OperatingMode.ConstantResistance,
         0.05m,
         7500.0m);
 
@@ -60,6 +65,7 @@ public sealed record Kel103SetpointMapping
         DescriptorPath.Parse("Target.Power"),
         ":POWer?",
         "W",
+        Kel103OperatingMode.ConstantPower,
         0.0m,
         300.0m);
 
@@ -76,9 +82,35 @@ public sealed record Kel103SetpointMapping
 
     public string UnitSymbol { get; }
 
+    public Kel103OperatingMode AssociatedMode { get; }
+
     public decimal Minimum { get; }
 
     public decimal Maximum { get; }
+
+    public string FormatSetterCommand(decimal value)
+    {
+        if (value < Minimum || value > Maximum)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "The KEL-103 setpoint value is outside the characterized range.");
+        }
+
+        string normalizedValue = value.ToString(
+            "0.############################",
+            CultureInfo.InvariantCulture);
+        return Setpoint switch
+        {
+            Kel103Setpoint.Voltage => $":VOLTage {normalizedValue}V",
+            Kel103Setpoint.Current => $":CURRent {normalizedValue}A",
+            Kel103Setpoint.Resistance => $":RESistance {normalizedValue}OHM",
+            Kel103Setpoint.Power => $":POWer {normalizedValue}W",
+            _ => throw new InvalidOperationException(
+                "The KEL-103 setpoint mapping has an unsupported target.")
+        };
+    }
 
     public decimal ParseResponse(string response)
     {

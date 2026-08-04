@@ -31,6 +31,99 @@ public sealed class Kel103SetpointMappingTests
     }
 
     [Theory]
+    [InlineData(0, Kel103OperatingMode.ConstantVoltage)]
+    [InlineData(1, Kel103OperatingMode.ConstantCurrent)]
+    [InlineData(2, Kel103OperatingMode.ConstantResistance)]
+    [InlineData(3, Kel103OperatingMode.ConstantPower)]
+    public void Mapping_HasExactCharacterizedAssociatedMode(
+        int index,
+        Kel103OperatingMode expected)
+    {
+        Assert.Equal(expected, Kel103SetpointMapping.All[index].AssociatedMode);
+    }
+
+    [Theory]
+    [InlineData(0, "0.1", ":VOLTage 0.1V")]
+    [InlineData(0, "1.2500", ":VOLTage 1.25V")]
+    [InlineData(0, "120.0", ":VOLTage 120V")]
+    [InlineData(1, "0.0", ":CURRent 0A")]
+    [InlineData(1, "0.1000", ":CURRent 0.1A")]
+    [InlineData(1, "30.0", ":CURRent 30A")]
+    [InlineData(2, "0.05", ":RESistance 0.05OHM")]
+    [InlineData(2, "100.000", ":RESistance 100OHM")]
+    [InlineData(2, "7500.0", ":RESistance 7500OHM")]
+    [InlineData(3, "0.0", ":POWer 0W")]
+    [InlineData(3, "0.1250", ":POWer 0.125W")]
+    [InlineData(3, "300.0", ":POWer 300W")]
+    public void FormatSetterCommand_UsesExactInvariantCommandText(
+        int index,
+        string value,
+        string expected)
+    {
+        Assert.Equal(
+            expected,
+            Kel103SetpointMapping.All[index].FormatSetterCommand(
+                decimal.Parse(value, CultureInfo.InvariantCulture)));
+    }
+
+    [Theory]
+    [InlineData(0, "0.0999")]
+    [InlineData(0, "120.01")]
+    [InlineData(1, "-0.0001")]
+    [InlineData(1, "30.001")]
+    [InlineData(2, "0.0499")]
+    [InlineData(2, "7500.1")]
+    [InlineData(3, "-0.0001")]
+    [InlineData(3, "300.01")]
+    public void FormatSetterCommand_RejectsValuesOutsideCharacterizedRange(
+        int index,
+        string value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Kel103SetpointMapping.All[index].FormatSetterCommand(
+                decimal.Parse(value, CultureInfo.InvariantCulture)));
+    }
+
+    [Fact]
+    public void FormatSetterCommand_IsInvariantUnderCommaDecimalCulture()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+            Assert.Equal(
+                ":VOLTage 1.25V",
+                Kel103SetpointMapping.Voltage.FormatSetterCommand(1.25m));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Fact]
+    public void FormatSetterCommand_NeverEmitsDeferredSyntax()
+    {
+        string[] commands =
+        [
+            Kel103SetpointMapping.Voltage.FormatSetterCommand(1.25m),
+            Kel103SetpointMapping.Current.FormatSetterCommand(0.1m),
+            Kel103SetpointMapping.Resistance.FormatSetterCommand(100m),
+            Kel103SetpointMapping.Power.FormatSetterCommand(0.125m)
+        ];
+
+        Assert.All(commands, command =>
+        {
+            string valueAndUnit = command[(command.IndexOf(' ') + 1)..];
+            Assert.DoesNotContain("MIN", command, StringComparison.Ordinal);
+            Assert.DoesNotContain("MAX", command, StringComparison.Ordinal);
+            Assert.DoesNotContain(',', valueAndUnit);
+            Assert.DoesNotContain('E', valueAndUnit);
+            Assert.DoesNotContain('e', valueAndUnit);
+        });
+    }
+
+    [Theory]
     [InlineData(0, "0.1000V", "0.1000")]
     [InlineData(0, "120.00V", "120.00")]
     [InlineData(1, "0.0000A", "0.0000")]
