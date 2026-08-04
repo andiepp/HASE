@@ -3,7 +3,7 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46B read-only state characterization complete at 4,854 tests**
+Increment 46C read-only limit characterization complete at 4,905 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -27,11 +27,16 @@ Increment 46B read-only state characterization complete at 4,854 tests**
 - All characterization queries were identity-gated and read-only. Final state
   was restored to CC and OFF with original setpoints unchanged, and independent
   port reopening succeeded.
+- Physical limit characterization established the separate `LOW?` and `UPP?`
+  paths and exact voltage, current, resistance, and power bounds.
+- The rejected `:VOLTage? MIN` candidate timed out without retry or mutation;
+  `MIN` and `MAX` remain excluded setter tokens rather than limit-query
+  parameters.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46C — Read-Only Upper/Lower
-Limit Characterization.
+Proceed only after explicit approval with Increment 46D — Input-OFF
+Mode-Selection Characterization and Restoration.
 
 ---
 

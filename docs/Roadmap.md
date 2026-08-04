@@ -1210,7 +1210,7 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46B read-only state characterization complete
+**Status:** [Active] Increment 46C read-only limit characterization complete
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1228,7 +1228,8 @@ Completed and planned increments:
 1. 46A — Decision, safety model, and characterization plan — complete.
 2. 46B — Read-only mode, input-state, and setpoint characterization — complete
    at 4,854 tests.
-3. 46C — Read-only upper/lower-limit characterization.
+3. 46C — Read-only upper/lower-limit characterization — complete at 4,905
+   tests.
 4. 46D — Input-OFF mode-selection characterization and restoration.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
 6. 46F — Versioned state and controlled-capability definitions.
@@ -1246,11 +1247,19 @@ changes occurred with the external supply output off, followed by authoritative
 restoration to CC and OFF, unchanged setpoints, normal session closure, and
 independent port reopening.
 
+Increment 46C established separate fixed `LOW?` and `UPP?` query paths and
+physically reported ranges of 0.1000–120.00 V, 0.0000–30.000 A,
+0.0500–7500.0 OHM, and 0.0000–300.00 W. A prior `:VOLTage? MIN` candidate
+timed out without retry or mutation and was rejected. Final authoritative
+queries confirmed CC, OFF, and unchanged targets before independent port
+reopening.
+
 Current baseline:
 
 ```text
-4,772 automated tests pass
-ADR-0045 Runtime Host publication and recovery remain the authoritative base
+4,905 automated tests pass
+ADR-0045 Runtime Host publication and recovery remain the production base
+ADR-0046 read-only state and limit characterization complete through 46C
 Runtime Hosts and Client stopped
 ```
 

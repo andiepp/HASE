@@ -263,6 +263,38 @@ mode restored to CC, original setpoints unchanged, external supply output off,
 and successful independent reopening for a redacted identity-only query. The
 validated automated baseline is 4,854 tests passing.
 
+## ADR-0046 read-only setpoint-limit characterization
+
+The first candidate treated `MIN` as a parameter to the ordinary target query.
+The fixed `:VOLTage? MIN` request received no framed response and reached the
+three-second exchange timeout. The session was disposed, no retry or alternative
+request was transmitted during that run, and authoritative follow-up confirmed
+that mode, input state, and all four targets were unchanged.
+
+The supported KEL-103 model uses separate `LOW` and `UPP` query paths. A bounded
+Protocol Explorer scenario reverified identity and then sent exactly one
+selected fixed read-only limit query. The physically established results are:
+
+| Target | Lower query | Lower result | Upper query | Upper result |
+| --- | --- | ---: | --- | ---: |
+| Voltage | `:VOLT:LOW?` | 0.1000 V | `:VOLT:UPP?` | 120.00 V |
+| Current | `:CURR:LOW?` | 0.0000 A | `:CURR:UPP?` | 30.000 A |
+| Resistance | `:RES:LOW?` | 0.0500 OHM | `:RES:UPP?` | 7500.0 OHM |
+| Power | `:POW:LOW?` | 0.0000 W | `:POW:UPP?` | 300.00 W |
+
+All eight supported responses used invariant decimal text and the same exact
+units as their ordinary targets. Returned precision varied by target and bound;
+lexical precision is therefore an observed wire-format property rather than a
+single universal target precision. Every supported limit query completed in
+under five milliseconds during this validation. Timings remain observations,
+not protocol guarantees.
+
+The load input and external supply output remained off throughout. Final
+identity-gated ordinary queries confirmed CC mode, input off, and all four
+original targets unchanged. Every session closed normally, and the port was
+independently reopened for a redacted identity-only query. The validated
+automated baseline is 4,905 tests passing.
+
 ## Exclusions
 
 This report does not validate:

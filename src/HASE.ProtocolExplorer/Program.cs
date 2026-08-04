@@ -38,6 +38,7 @@ internal static class Program
                     new Kel103ReadOnlyCharacterizationScenario(),
                     new Kel103ReadOnlyMeasurementCharacterizationScenario(),
                     new Kel103ReadOnlyStateCharacterizationScenario(),
+                    new Kel103ReadOnlyLimitCharacterizationScenario(),
                     new CapabilityC001Scenario(host),
                     new CapabilityC002Scenario(host),
                     new CapabilityC003Scenario(),
@@ -216,6 +217,8 @@ internal static class Program
         Console.WriteLine(
             "  kel103-state-characterize <COM port> <mode|input-state|target-voltage|target-current|target-resistance|target-power> cr 115200");
         Console.WriteLine(
+            "  kel103-limit-characterize <COM port> <target-voltage|target-current|target-resistance|target-power> <lower|upper> cr 115200");
+        Console.WriteLine(
             "  provision-client-enrollment "
             + "<public certificate file> <enrollment file> "
             + "<principal id> <trust policy id>");
@@ -226,4 +229,3 @@ internal static class Program
             "  private-network-client <laptop configuration file>");
     }
 }
-

@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46B read-only characterization complete
+- Status: Accepted — Increment 46C read-only limit characterization complete
 - Date: 2026-08-04
 
 ## Context
@@ -203,7 +203,8 @@ Protocol and Bytes diagnostics remain deferred.
 1. 46A — Decision, safety model, and characterization plan.
 2. 46B — Read-only mode, input-state, and setpoint characterization — complete
    at 4,854 tests.
-3. 46C — Read-only upper/lower-limit characterization.
+3. 46C — Read-only upper/lower-limit characterization — complete at 4,905
+   tests.
 4. 46D — Input-OFF mode-selection characterization and restoration.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
 6. 46F — Versioned state and controlled-capability definitions.
@@ -257,3 +258,24 @@ No actual target value, serial target, instrument serial identity, or deployment
 security value is retained in the characterization record. Increment 46B closes
 at 4,854 automated tests passing in Visual Studio 2026 Release configuration on
 .NET 10.
+
+## Increment 46C characterized result
+
+The first read-only limit candidate, `:VOLTage? MIN`, received no framed
+response and reached the bounded exchange timeout. It was not retried, no
+alternative was transmitted in that run, the session was disposed, and
+authoritative follow-up found no state mutation. `MIN` and `MAX` remain excluded
+setter tokens rather than supported limit-query parameters.
+
+Physical validation established separate case-sensitive `LOW?` and `UPP?`
+paths. The instrument reported ranges of 0.1000–120.00 V,
+0.0000–30.000 A, 0.0500–7500.0 OHM, and 0.0000–300.00 W. Responses used
+invariant numeric text and exact units `V`, `A`, `OHM`, and `W`, with differing
+lexical precision across targets and bounds.
+
+Every supported query reverified identity, sent exactly one fixed read-only
+limit request, completed inside the bound, and closed normally. Final ordinary
+queries confirmed CC mode, input off, and unchanged original targets. The port
+then reopened independently for a redacted identity-only query. Increment 46C
+closes at 4,905 automated tests passing in Visual Studio 2026 Release
+configuration on .NET 10.
