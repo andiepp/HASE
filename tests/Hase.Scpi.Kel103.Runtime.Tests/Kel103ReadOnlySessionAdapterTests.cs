@@ -50,6 +50,167 @@ public sealed class Kel103ReadOnlySessionAdapterTests
     }
 
     [Fact]
+    public async Task SynchronizeOperatingState_QueriesExactOrderAndReturnsOneTimestamp()
+    {
+        var session = new FakeSession(
+            "RND 320-KEL103 V3.30 SN:REDACTED",
+            "9.8864V",
+            "0.1000A",
+            "0.9893W",
+            "CR",
+            "OFF",
+            "10.000V",
+            "0.1000A",
+            "100.00OHM",
+            "1.000W");
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero));
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103OperatingStateSynchronizationSnapshot result =
+            await adapter.VerifyAndSynchronizeOperatingStateAsync();
+
+        Assert.Equal(
+            new[]
+            {
+                "*IDN?",
+                ":MEASure:VOLTage?",
+                ":MEASure:CURRent?",
+                ":MEASure:POWer?",
+                ":FUNCtion?",
+                ":INPut?",
+                ":VOLTage?",
+                ":CURRent?",
+                ":RESistance?",
+                ":POWer?"
+            },
+            session.Queries);
+        Assert.Equal("KEL-103", result.Identity.ProductIdentity);
+        Assert.Equal(9.8864m, result.Voltage);
+        Assert.Equal(0.1000m, result.Current);
+        Assert.Equal(0.9893m, result.Power);
+        Assert.Equal(Kel103OperatingMode.ConstantResistance, result.OperatingMode);
+        Assert.False(result.InputEnabled);
+        Assert.Equal(10.000m, result.TargetVoltage);
+        Assert.Equal(0.1000m, result.TargetCurrent);
+        Assert.Equal(100.00m, result.TargetResistance);
+        Assert.Equal(1.000m, result.TargetPower);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+    }
+
+    [Fact]
+    public async Task ReadOperatingMode_UsesExactQueryAndReturnsTimestamp()
+    {
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession("SHORt");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103OperatingModeObservation result = await adapter.ReadOperatingModeAsync();
+
+        Assert.Equal(Kel103OperatingMode.ShortCircuit, result.Mode);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(new[] { ":FUNCtion?" }, session.Queries);
+    }
+
+    [Fact]
+    public async Task ReadInputState_UsesExactQueryAndReturnsTimestamp()
+    {
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession("ON");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103InputStateObservation result = await adapter.ReadInputStateAsync();
+
+        Assert.True(result.InputEnabled);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+    }
+
+    [Theory]
+    [InlineData(0, "1.25V", "1.25")]
+    [InlineData(1, "0.10A", "0.10")]
+    [InlineData(2, "100.0OHM", "100.0")]
+    [InlineData(3, "0.125W", "0.125")]
+    public async Task ReadSetpoint_UsesSelectedProductionMapping(
+        int index,
+        string response,
+        string expected)
+    {
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession(response);
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103SetpointObservation result = await adapter.ReadSetpointAsync(
+            Kel103SetpointMapping.All[index]);
+
+        Assert.Equal((Kel103Setpoint)index, result.Setpoint);
+        Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), result.Value);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(Kel103SetpointMapping.All[index].Query, Assert.Single(session.Queries));
+    }
+
+    [Fact]
+    public async Task InvalidOperatingState_FaultsAndPreventsLaterQuery()
+    {
+        var session = new FakeSession("WRONG");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => adapter.ReadOperatingModeAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => adapter.ReadInputStateAsync());
+
+        Assert.True(adapter.IsFaulted);
+        Assert.Equal(new[] { ":FUNCtion?" }, session.Queries);
+    }
+
+    [Fact]
+    public async Task PreCanceledOperatingStateSynchronization_SendsNoQuery()
+    {
+        var session = new FakeSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            adapter.VerifyAndSynchronizeOperatingStateAsync(cancellation.Token));
+
+        Assert.Empty(session.Queries);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task OperatingStateSynchronization_DoesNotInterleaveWithConcurrentRead()
+    {
+        var session = new OperatingStateBlockingSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Task<Kel103OperatingStateSynchronizationSnapshot> synchronization =
+            adapter.VerifyAndSynchronizeOperatingStateAsync();
+        await session.FirstQueryStarted.Task;
+        Task<Kel103InputStateObservation> concurrentRead = adapter.ReadInputStateAsync();
+
+        Assert.Equal(new[] { "*IDN?" }, session.Queries);
+        session.ReleaseFirstQuery.SetResult();
+        await synchronization;
+        await concurrentRead;
+
+        Assert.Equal(
+            new[]
+            {
+                "*IDN?",
+                ":MEASure:VOLTage?",
+                ":MEASure:CURRent?",
+                ":MEASure:POWer?",
+                ":FUNCtion?",
+                ":INPut?",
+                ":VOLTage?",
+                ":CURRent?",
+                ":RESistance?",
+                ":POWer?",
+                ":INPut?"
+            },
+            session.Queries);
+    }
+
+    [Fact]
     public async Task InvalidMeasurement_FaultsAndPreventsLaterQuery()
     {
         var session = new FakeSession("1.0A");
@@ -122,6 +283,7 @@ public sealed class Kel103ReadOnlySessionAdapterTests
         var session = new FakeSession();
         await using var adapter = new Kel103ReadOnlySessionAdapter(session);
         await Assert.ThrowsAsync<ArgumentNullException>(() => adapter.ReadMeasurementAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => adapter.ReadSetpointAsync(null!));
     }
 
     [Fact]
@@ -183,5 +345,53 @@ public sealed class Kel103ReadOnlySessionAdapterTests
             throw new NotSupportedException();
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
-}
 
+    private sealed class OperatingStateBlockingSession : IScpiTextSession
+    {
+        private readonly Queue<string> responses = new(
+        [
+            "RND 320-KEL103 V3.30 SN:REDACTED",
+            "1V",
+            "0.1A",
+            "0.1W",
+            "CC",
+            "OFF",
+            "1V",
+            "0.1A",
+            "1OHM",
+            "0.1W",
+            "OFF"
+        ]);
+
+        public TaskCompletionSource FirstQueryStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseFirstQuery { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public List<string> Queries { get; } = [];
+
+        public ScpiTextSessionState State => ScpiTextSessionState.Open;
+
+        public async Task<string> QueryAsync(
+            string query,
+            CancellationToken cancellationToken = default)
+        {
+            Queries.Add(query);
+            if (Queries.Count == 1)
+            {
+                FirstQueryStarted.SetResult();
+                await ReleaseFirstQuery.Task.WaitAsync(cancellationToken);
+            }
+
+            return responses.Dequeue();
+        }
+
+        public Task SendCommandAsync(
+            string command,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+}
