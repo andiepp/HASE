@@ -42,10 +42,12 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
         ArgumentNullException.ThrowIfNull(definitionRepository);
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (profile.DefinitionReference != Kel103ReadOnlyMeasurementDefinition.Reference)
+        if (profile.DefinitionReference != Kel103ReadOnlyMeasurementDefinition.Reference
+            && profile.DefinitionReference != Kel103OperatingStateDefinition.Reference
+            && profile.DefinitionReference != Kel103ControlledSetpointDefinition.Reference)
         {
             throw new InvalidDataException(
-                "The configured KEL-103 definition is not the supported read-only measurement definition.");
+                "The configured KEL-103 definition is not supported.");
         }
 
         EndpointDescriptorDefinition? definition = await definitionRepository
@@ -56,6 +58,18 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
         {
             throw new InvalidDataException(
                 "The configured KEL-103 definition is unavailable.");
+        }
+
+        EndpointDescriptorDefinition expectedDefinition =
+            profile.DefinitionReference == Kel103ReadOnlyMeasurementDefinition.Reference
+                ? Kel103ReadOnlyMeasurementDefinition.EndpointDefinition
+                : profile.DefinitionReference == Kel103OperatingStateDefinition.Reference
+                    ? Kel103OperatingStateDefinition.EndpointDefinition
+                    : Kel103ControlledSetpointDefinition.EndpointDefinition;
+        if (!ReferenceEquals(definition, expectedDefinition))
+        {
+            throw new InvalidDataException(
+                "The configured KEL-103 definition does not match its exact reference.");
         }
 
         return new DesktopRuntimeHostKel103EndpointPlan(

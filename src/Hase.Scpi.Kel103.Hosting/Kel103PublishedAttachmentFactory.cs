@@ -1,3 +1,4 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
@@ -33,12 +34,23 @@ public sealed class Kel103PublishedAttachmentFactory
         EndpointId endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default)
+        => await OpenAsync(
+            endpointId,
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+            serialOptions,
+            cancellationToken).ConfigureAwait(false);
+
+    public async Task<Kel103PublishedAttachment> OpenAsync(
+        EndpointId endpointId,
+        EndpointDescriptorDefinition definition,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
     {
         Kel103OperationalConnection? connection = null;
         try
         {
             connection = await operationalConnectionFactory
-                .OpenAsync(endpointId, serialOptions, cancellationToken)
+                .OpenAsync(endpointId, definition, serialOptions, cancellationToken)
                 .ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();

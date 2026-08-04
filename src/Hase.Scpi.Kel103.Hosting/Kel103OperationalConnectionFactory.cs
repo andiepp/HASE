@@ -1,4 +1,5 @@
 using System.Globalization;
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Runtime;
@@ -40,12 +41,27 @@ public sealed class Kel103OperationalConnectionFactory
         EndpointId endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default)
+        => await OpenAsync(
+            endpointId,
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+            serialOptions,
+            cancellationToken).ConfigureAwait(false);
+
+    public async Task<Kel103OperationalConnection> OpenAsync(
+        EndpointId endpointId,
+        EndpointDescriptorDefinition definition,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpointId);
+        ArgumentNullException.ThrowIfNull(definition);
+        DescriptorReference reference = SupportedReference(definition);
         return await OpenCoreAsync(
             () => runtimeContext.CreateEndpoint(
-                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(endpointId)),
+                definition.Materialize(endpointId)),
             endpointId,
+            reference,
+            definition,
             serialOptions,
             cancellationToken).ConfigureAwait(false);
     }
@@ -66,6 +82,8 @@ public sealed class Kel103OperationalConnectionFactory
         return await OpenCoreAsync(
             () => runtimeEndpoint,
             runtimeEndpoint.Descriptor.Id,
+            RuntimeReference(runtimeEndpoint),
+            RuntimeDefinition(runtimeEndpoint),
             serialOptions,
             cancellationToken).ConfigureAwait(false);
     }
@@ -73,6 +91,8 @@ public sealed class Kel103OperationalConnectionFactory
     private async Task<Kel103OperationalConnection> OpenCoreAsync(
         Func<RuntimeEndpoint> createRuntimeEndpoint,
         EndpointId endpointId,
+        DescriptorReference reference,
+        EndpointDescriptorDefinition definition,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken)
     {
@@ -88,7 +108,7 @@ public sealed class Kel103OperationalConnectionFactory
             endpointId.Value,
             attachmentGeneration: null,
             direction: null,
-            details: SynchronizationDetails(),
+            details: SynchronizationDetails(reference, definition),
             timeProvider: timeProvider);
 
         return await operation.RunAsync(
@@ -156,19 +176,59 @@ public sealed class Kel103OperationalConnectionFactory
         }
     }
 
-    private static IReadOnlyDictionary<string, string> SynchronizationDetails() =>
+    private static IReadOnlyDictionary<string, string> SynchronizationDetails(
+        DescriptorReference reference,
+        EndpointDescriptorDefinition definition) =>
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["DefinitionId"] =
-                Kel103ReadOnlyMeasurementDefinition.Reference.Id.Value,
+            ["DefinitionId"] = reference.Id.Value,
             ["DefinitionVersion"] =
-                Kel103ReadOnlyMeasurementDefinition.Reference.Version.ToString(
-                    CultureInfo.InvariantCulture),
+                reference.Version.ToString(CultureInfo.InvariantCulture),
             ["PropertyCount"] =
-                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments
+                definition.Instruments
                     .Sum(instrument => instrument.Interface.Properties.Count)
                     .ToString(CultureInfo.InvariantCulture)
         };
+
+    private static DescriptorReference SupportedReference(
+        EndpointDescriptorDefinition definition)
+    {
+        if (ReferenceEquals(definition, Kel103ReadOnlyMeasurementDefinition.EndpointDefinition))
+        {
+            return Kel103ReadOnlyMeasurementDefinition.Reference;
+        }
+
+        if (ReferenceEquals(definition, Kel103OperatingStateDefinition.EndpointDefinition))
+        {
+            return Kel103OperatingStateDefinition.Reference;
+        }
+
+        if (ReferenceEquals(definition, Kel103ControlledSetpointDefinition.EndpointDefinition))
+        {
+            return Kel103ControlledSetpointDefinition.Reference;
+        }
+
+        throw new InvalidDataException(
+            "The supplied endpoint definition is not an exact supported KEL-103 definition.");
+    }
+
+    private static DescriptorReference RuntimeReference(RuntimeEndpoint endpoint) =>
+        endpoint.Instruments.Single().Commands.Count > 0
+            ? Kel103ControlledSetpointDefinition.Reference
+            : endpoint.Instruments.Single().Properties.Count >
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()
+                    .Interface.Properties.Count
+                ? Kel103OperatingStateDefinition.Reference
+                : Kel103ReadOnlyMeasurementDefinition.Reference;
+
+    private static EndpointDescriptorDefinition RuntimeDefinition(RuntimeEndpoint endpoint) =>
+        endpoint.Instruments.Single().Commands.Count > 0
+            ? Kel103ControlledSetpointDefinition.EndpointDefinition
+            : endpoint.Instruments.Single().Properties.Count >
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()
+                    .Interface.Properties.Count
+                ? Kel103OperatingStateDefinition.EndpointDefinition
+                : Kel103ReadOnlyMeasurementDefinition.EndpointDefinition;
 
     private static void ValidateSerialProfile(SerialTransportOptions options)
     {

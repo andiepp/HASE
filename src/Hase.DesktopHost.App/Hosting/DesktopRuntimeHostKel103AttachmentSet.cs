@@ -1,7 +1,9 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
+using Hase.Scpi.Kel103;
 using Hase.Scpi.Kel103.Hosting;
 using Hase.Transport.Serial;
 
@@ -11,6 +13,7 @@ public interface IDesktopRuntimeHostKel103AttachmentFactory
 {
     Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
         EndpointId endpointId,
+        EndpointDescriptorDefinition definition,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default);
 }
@@ -42,6 +45,22 @@ public sealed class DesktopRuntimeHostKel103AttachmentFactory
     {
         Kel103SupervisedAttachment attachment = await factory.OpenAsync(
                 endpointId,
+                serialOptions,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return new DesktopRuntimeHostKel103Attachment(attachment);
+    }
+
+    public async Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
+        EndpointId endpointId,
+        EndpointDescriptorDefinition definition,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
+    {
+        Kel103SupervisedAttachment attachment = await factory.OpenAsync(
+                endpointId,
+                definition,
                 serialOptions,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -97,7 +116,8 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
         for (int index = 0; index < profiles.Count; index++)
         {
             if (new EndpointId(profiles[index].ExpectedEndpointId)
-                != plans[index].ExpectedEndpointId)
+                    != plans[index].ExpectedEndpointId
+                || !DefinitionMatches(profiles[index], plans[index].Definition))
             {
                 throw new ArgumentException(
                     "A KEL-103 profile does not match its preflight plan.",
@@ -118,6 +138,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
                 IDesktopRuntimeHostKel103Attachment attachment = await attachmentFactory
                     .OpenAsync(
                         plans[index].ExpectedEndpointId,
+                        plans[index].Definition,
                         serialOptions,
                         cancellationToken)
                     .ConfigureAwait(false);
@@ -159,6 +180,18 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
 
     public override string ToString() =>
         $"Desktop Runtime Host KEL-103 attachment set ({Count} attachments)";
+
+    private static bool DefinitionMatches(
+        DesktopRuntimeHostKel103SerialEndpointProfile profile,
+        EndpointDescriptorDefinition definition) =>
+        profile.DefinitionReference == Kel103ReadOnlyMeasurementDefinition.Reference
+            ? ReferenceEquals(definition, Kel103ReadOnlyMeasurementDefinition.EndpointDefinition)
+            : profile.DefinitionReference == Kel103OperatingStateDefinition.Reference
+                ? ReferenceEquals(definition, Kel103OperatingStateDefinition.EndpointDefinition)
+                : profile.DefinitionReference == Kel103ControlledSetpointDefinition.Reference
+                    && ReferenceEquals(
+                        definition,
+                        Kel103ControlledSetpointDefinition.EndpointDefinition);
 
     private async Task DisposeCoreAsync()
     {

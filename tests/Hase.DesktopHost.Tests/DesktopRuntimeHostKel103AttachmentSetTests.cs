@@ -1,3 +1,4 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
@@ -53,6 +54,33 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
     }
 
     [Fact]
+    public async Task OpenAsync_ForwardsExactVersionFourPlanDefinition()
+    {
+        var factory = new RecordingFactory();
+        DesktopRuntimeHostKel103SerialEndpointProfile profile =
+            new(
+                "controlled",
+                Kel103ControlledSetpointDefinition.Reference.Id.Value,
+                Kel103ControlledSetpointDefinition.Reference.Version,
+                "external-target",
+                115200);
+        var plan = new DesktopRuntimeHostKel103EndpointPlan(
+            new EndpointId(profile.ExpectedEndpointId),
+            Kel103ControlledSetpointDefinition.EndpointDefinition);
+
+        await using DesktopRuntimeHostKel103AttachmentSet set =
+            await DesktopRuntimeHostKel103AttachmentSet.OpenAsync(
+                [profile],
+                [plan],
+                factory);
+
+        Assert.Equal(1, set.Count);
+        Assert.Same(
+            Kel103ControlledSetpointDefinition.EndpointDefinition,
+            Assert.Single(factory.Definitions));
+    }
+
+    [Fact]
     public async Task OpenAsync_DifferentProfileAndPlanCounts_ShouldRejectBeforeOpen()
     {
         var factory = new RecordingFactory();
@@ -75,6 +103,25 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
             DesktopRuntimeHostKel103AttachmentSet.OpenAsync(
                 [Profile("first", "target-one")],
                 [Plan(Profile("second", "target-two"))],
+                factory));
+
+        Assert.Empty(factory.Operations);
+    }
+
+    [Fact]
+    public async Task OpenAsync_MismatchedProfileAndPlanDefinitionRejectsBeforeOpen()
+    {
+        var factory = new RecordingFactory();
+        DesktopRuntimeHostKel103SerialEndpointProfile profile =
+            Profile("first", "external-target");
+        var plan = new DesktopRuntimeHostKel103EndpointPlan(
+            new EndpointId(profile.ExpectedEndpointId),
+            Kel103ControlledSetpointDefinition.EndpointDefinition);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            DesktopRuntimeHostKel103AttachmentSet.OpenAsync(
+                [profile],
+                [plan],
                 factory));
 
         Assert.Empty(factory.Operations);
@@ -225,15 +272,35 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
 
         public List<string> Operations { get; } = [];
         public List<SerialTransportOptions> Options { get; } = [];
+        public List<EndpointDescriptorDefinition> Definitions { get; } = [];
 
         public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
             SerialTransportOptions serialOptions,
             CancellationToken cancellationToken = default)
+            => OpenCoreAsync(
+                endpointId,
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+                serialOptions,
+                cancellationToken);
+
+        public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
+            EndpointId endpointId,
+            EndpointDescriptorDefinition definition,
+            SerialTransportOptions serialOptions,
+            CancellationToken cancellationToken = default)
+            => OpenCoreAsync(endpointId, definition, serialOptions, cancellationToken);
+
+        private Task<IDesktopRuntimeHostKel103Attachment> OpenCoreAsync(
+            EndpointId endpointId,
+            EndpointDescriptorDefinition definition,
+            SerialTransportOptions serialOptions,
+            CancellationToken cancellationToken)
         {
             openCount++;
             Operations.Add($"open:{endpointId.Value}");
             Options.Add(serialOptions);
+            Definitions.Add(definition);
 
             if (openCount == cancelOnOpenNumber)
             {

@@ -1,5 +1,7 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Transport.Attachment;
+using Hase.Scpi.Kel103;
 using Hase.Transport.Serial;
 
 namespace Hase.DesktopHost.App.Hosting;
@@ -10,15 +12,29 @@ public sealed class DesktopRuntimeHostKel103ConnectionDefinition
     public DesktopRuntimeHostKel103ConnectionDefinition(
         EndpointId expectedEndpointId,
         SerialTransportOptions serialOptions)
+        : this(
+            expectedEndpointId,
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+            serialOptions)
+    {
+    }
+
+    public DesktopRuntimeHostKel103ConnectionDefinition(
+        EndpointId expectedEndpointId,
+        EndpointDescriptorDefinition definition,
+        SerialTransportOptions serialOptions)
     {
         ExpectedEndpointId = expectedEndpointId
             ?? throw new ArgumentNullException(nameof(expectedEndpointId));
+        Definition = definition
+            ?? throw new ArgumentNullException(nameof(definition));
         SerialOptions = serialOptions
             ?? throw new ArgumentNullException(nameof(serialOptions));
     }
 
     public EndpointConnectionOrigin Origin => EndpointConnectionOrigin.Configured;
     public EndpointId ExpectedEndpointId { get; }
+    public EndpointDescriptorDefinition Definition { get; }
     public SerialTransportOptions SerialOptions { get; }
 
     public override string ToString() =>
@@ -64,6 +80,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentService
         {
             attachment = await attachmentFactory.OpenAsync(
                     connection.ExpectedEndpointId,
+                    connection.Definition,
                     connection.SerialOptions,
                     cancellationToken)
                 .ConfigureAwait(false);

@@ -649,6 +649,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         var request = new EndpointAttachmentRequest(
             new DesktopRuntimeHostKel103ConnectionDefinition(
                 plan.ExpectedEndpointId,
+                plan.Definition,
                 new SerialTransportOptions(
                     endpoint.SerialPort,
                     endpoint.BaudRate)),

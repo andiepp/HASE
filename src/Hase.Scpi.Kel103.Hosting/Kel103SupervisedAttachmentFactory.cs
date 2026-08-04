@@ -1,3 +1,4 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
@@ -35,9 +36,20 @@ public sealed class Kel103SupervisedAttachmentFactory
         EndpointId endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default)
+        => await OpenAsync(
+            endpointId,
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+            serialOptions,
+            cancellationToken).ConfigureAwait(false);
+
+    public async Task<Kel103SupervisedAttachment> OpenAsync(
+        EndpointId endpointId,
+        EndpointDescriptorDefinition definition,
+        SerialTransportOptions serialOptions,
+        CancellationToken cancellationToken = default)
     {
         Kel103PublishedAttachment? publishedAttachment = await publishedAttachmentFactory
-            .OpenAsync(endpointId, serialOptions, cancellationToken)
+            .OpenAsync(endpointId, definition, serialOptions, cancellationToken)
             .ConfigureAwait(false);
 
         try

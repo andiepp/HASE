@@ -29,6 +29,52 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
         Assert.Equal(Kel103ReadOnlyMeasurementDefinition.Reference, repository.Reference);
     }
 
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public async Task ResolveAsync_ExactLaterVersionReturnsRepositoryDefinition(ushort version)
+    {
+        DescriptorReference reference = version == 3
+            ? Kel103OperatingStateDefinition.Reference
+            : Kel103ControlledSetpointDefinition.Reference;
+        EndpointDescriptorDefinition definition = version == 3
+            ? Kel103OperatingStateDefinition.EndpointDefinition
+            : Kel103ControlledSetpointDefinition.EndpointDefinition;
+        var repository = new RecordingRepository(definition);
+        var profile = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "kel-01",
+            reference.Id.Value,
+            reference.Version,
+            "external-target",
+            115200);
+
+        DesktopRuntimeHostKel103EndpointPlan plan =
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAsync(
+                profile,
+                repository);
+
+        Assert.Same(definition, plan.Definition);
+        Assert.Equal(reference, repository.Reference);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_DefinitionReferenceMismatchRejects()
+    {
+        var repository = new RecordingRepository(
+            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition);
+        var profile = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "kel-01",
+            Kel103ControlledSetpointDefinition.Reference.Id.Value,
+            Kel103ControlledSetpointDefinition.Reference.Version,
+            "external-target",
+            115200);
+
+        await Assert.ThrowsAsync<InvalidDataException>(async () =>
+            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAsync(
+                profile,
+                repository));
+    }
+
     [Fact]
     public async Task ResolveAsync_IdentityOnlyVersionOne_ShouldRejectBeforeRepositoryAccess()
     {
@@ -51,7 +97,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
 
     [Theory]
     [InlineData("unknown-definition", 2)]
-    [InlineData("kel103-identity", 3)]
+    [InlineData("kel103-identity", 5)]
     public async Task ResolveAsync_UnsupportedReference_ShouldReject(
         string definitionId,
         ushort definitionVersion)
@@ -305,6 +351,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
     {
         public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
+            EndpointDescriptorDefinition definition,
             SerialTransportOptions serialOptions,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException(
@@ -319,11 +366,12 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
 
         public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
+            EndpointDescriptorDefinition definition,
             SerialTransportOptions serialOptions,
             CancellationToken cancellationToken = default)
         {
             RuntimeEndpoint endpoint = runtimeContext.CreateEndpoint(
-                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(endpointId));
+                definition.Materialize(endpointId));
             runtimeContext.PublishEndpoint(endpoint);
             return Task.FromResult<IDesktopRuntimeHostKel103Attachment>(
                 new PublishingAttachment(

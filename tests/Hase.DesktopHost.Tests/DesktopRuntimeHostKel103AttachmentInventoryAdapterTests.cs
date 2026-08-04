@@ -1,3 +1,4 @@
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.Runtime.Runtime;
@@ -19,6 +20,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
 
         Assert.Equal(EndpointConnectionOrigin.Configured, definition.Origin);
         Assert.Equal(new EndpointId("kel-01"), definition.ExpectedEndpointId);
+        Assert.Same(Kel103ReadOnlyMeasurementDefinition.EndpointDefinition, definition.Definition);
         Assert.Equal(sensitiveTarget, definition.SerialOptions.PortName);
         Assert.DoesNotContain(sensitiveTarget, definition.ToString(), StringComparison.Ordinal);
     }
@@ -42,6 +44,26 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         await session.ShutdownAsync();
         Assert.Empty(context.Endpoints);
         Assert.Equal(1, factory.DisposeCount);
+    }
+
+    [Fact]
+    public async Task AttachAsync_VersionFourDefinitionReachesFactoryAndEndpoint()
+    {
+        var context = new RuntimeContext();
+        var factory = new RecordingFactory(context);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+        var request = new EndpointAttachmentRequest(
+            new DesktopRuntimeHostKel103ConnectionDefinition(
+                new EndpointId("kel-01"),
+                Kel103ControlledSetpointDefinition.EndpointDefinition,
+                new SerialTransportOptions("external-target", 115200)),
+            HostRepositoryDescriptorSource.Instance);
+
+        await using IEndpointAttachmentSession session = await service.AttachAsync(request);
+
+        Assert.Same(Kel103ControlledSetpointDefinition.EndpointDefinition, factory.Definition);
+        Assert.Equal(11, session.RuntimeEndpoint.Instruments.Single().Properties.Count);
+        Assert.Equal(5, session.RuntimeEndpoint.Instruments.Single().Commands.Count);
     }
 
     [Fact]
@@ -196,14 +218,27 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
     {
         public int OpenCount { get; private set; }
         public int DisposeCount { get; private set; }
+        public EndpointDescriptorDefinition? Definition { get; private set; }
         public RecordingPropertyOperations PropertyOperations { get; } = new();
 
         public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
             SerialTransportOptions serialOptions,
             CancellationToken cancellationToken = default)
+            => OpenAsync(
+                endpointId,
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+                serialOptions,
+                cancellationToken);
+
+        public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
+            EndpointId endpointId,
+            EndpointDescriptorDefinition definition,
+            SerialTransportOptions serialOptions,
+            CancellationToken cancellationToken = default)
         {
             OpenCount++;
+            Definition = definition;
 
             if (cancelOpen)
             {
@@ -214,8 +249,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
 
             var actualEndpointId = new EndpointId(returnedEndpointId ?? endpointId.Value);
             RuntimeEndpoint endpoint = context.CreateEndpoint(
-                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(
-                    actualEndpointId));
+                definition.Materialize(actualEndpointId));
             context.PublishEndpoint(endpoint);
 
             return Task.FromResult<IDesktopRuntimeHostKel103Attachment>(
