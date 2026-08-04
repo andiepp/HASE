@@ -1,6 +1,8 @@
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
+using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
 using Hase.Transport.Serial;
 
@@ -224,7 +226,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
         public List<string> Operations { get; } = [];
         public List<SerialTransportOptions> Options { get; } = [];
 
-        public Task<IAsyncDisposable> OpenAsync(
+        public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
             SerialTransportOptions serialOptions,
             CancellationToken cancellationToken = default)
@@ -246,7 +248,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
                     $"Opening {sensitiveTarget} failed.");
             }
 
-            return Task.FromResult<IAsyncDisposable>(
+            return Task.FromResult<IDesktopRuntimeHostKel103Attachment>(
                 new RecordingAttachment(
                     endpointId.Value,
                     Operations,
@@ -259,8 +261,16 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
         string endpointId,
         List<string> operations,
         bool failDisposal,
-        string sensitiveTarget) : IAsyncDisposable
+        string sensitiveTarget) : IDesktopRuntimeHostKel103Attachment
     {
+        public RuntimeEndpoint RuntimeEndpoint { get; } =
+            new RuntimeContext().CreateEndpoint(
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(
+                    new EndpointId(endpointId)));
+
+        public IEndpointAttachmentPropertyOperations PropertyOperations { get; } =
+            new ThrowingPropertyOperations();
+
         public ValueTask DisposeAsync()
         {
             operations.Add($"dispose:{endpointId}");
@@ -273,5 +283,22 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
 
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class ThrowingPropertyOperations
+        : IEndpointAttachmentPropertyOperations
+    {
+        public Task<EndpointAttachmentPropertyOperationResult> ReadAsync(
+            InstrumentId instrumentId,
+            PropertyId propertyId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<EndpointAttachmentPropertyOperationResult> WriteAsync(
+            InstrumentId instrumentId,
+            PropertyId propertyId,
+            object? requestedValue,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

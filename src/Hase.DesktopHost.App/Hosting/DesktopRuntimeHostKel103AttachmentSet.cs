@@ -1,6 +1,7 @@
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Runtime;
+using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103.Hosting;
 using Hase.Transport.Serial;
 
@@ -8,10 +9,16 @@ namespace Hase.DesktopHost.App.Hosting;
 
 public interface IDesktopRuntimeHostKel103AttachmentFactory
 {
-    Task<IAsyncDisposable> OpenAsync(
+    Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
         EndpointId endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default);
+}
+
+public interface IDesktopRuntimeHostKel103Attachment : IAsyncDisposable
+{
+    RuntimeEndpoint RuntimeEndpoint { get; }
+    IEndpointAttachmentPropertyOperations PropertyOperations { get; }
 }
 
 public sealed class DesktopRuntimeHostKel103AttachmentFactory
@@ -28,25 +35,41 @@ public sealed class DesktopRuntimeHostKel103AttachmentFactory
             serialByteStreamFactory);
     }
 
-    public async Task<IAsyncDisposable> OpenAsync(
+    public async Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
         EndpointId endpointId,
         SerialTransportOptions serialOptions,
-        CancellationToken cancellationToken = default) =>
-        await factory.OpenAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Kel103SupervisedAttachment attachment = await factory.OpenAsync(
                 endpointId,
                 serialOptions,
                 cancellationToken)
             .ConfigureAwait(false);
+
+        return new DesktopRuntimeHostKel103Attachment(attachment);
+    }
+
+    private sealed class DesktopRuntimeHostKel103Attachment(
+        Kel103SupervisedAttachment attachment)
+        : IDesktopRuntimeHostKel103Attachment
+    {
+        public RuntimeEndpoint RuntimeEndpoint => attachment.RuntimeEndpoint;
+
+        public IEndpointAttachmentPropertyOperations PropertyOperations =>
+            attachment.PropertyOperations;
+
+        public ValueTask DisposeAsync() => attachment.DisposeAsync();
+    }
 }
 
 public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
 {
-    private readonly IReadOnlyList<IAsyncDisposable> attachments;
+    private readonly IReadOnlyList<IDesktopRuntimeHostKel103Attachment> attachments;
     private readonly object disposalLock = new();
     private Task? disposalTask;
 
     private DesktopRuntimeHostKel103AttachmentSet(
-        IReadOnlyList<IAsyncDisposable> attachments)
+        IReadOnlyList<IDesktopRuntimeHostKel103Attachment> attachments)
     {
         this.attachments = attachments;
     }
@@ -82,7 +105,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
             }
         }
 
-        var opened = new List<IAsyncDisposable>(profiles.Count);
+        var opened = new List<IDesktopRuntimeHostKel103Attachment>(profiles.Count);
 
         try
         {
@@ -92,7 +115,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
                 var serialOptions = new SerialTransportOptions(
                     profile.SerialPort,
                     profile.BaudRate);
-                IAsyncDisposable attachment = await attachmentFactory
+                IDesktopRuntimeHostKel103Attachment attachment = await attachmentFactory
                     .OpenAsync(
                         plans[index].ExpectedEndpointId,
                         serialOptions,
@@ -156,7 +179,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
     }
 
     private static async Task<IReadOnlyList<Exception>> DisposeReverseAsync(
-        IReadOnlyList<IAsyncDisposable> ownedAttachments)
+        IReadOnlyList<IDesktopRuntimeHostKel103Attachment> ownedAttachments)
     {
         var failures = new List<Exception>();
 

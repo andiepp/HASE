@@ -20,6 +20,9 @@ public sealed class EndpointAttachmentServiceRouter
     private readonly IEndpointAttachmentService?
         _inProcessService;
 
+    private readonly IEndpointAttachmentService?
+        _additionalService;
+
     /// <summary>
     /// Initializes the transport-specific attachment routes.
     /// </summary>
@@ -27,6 +30,23 @@ public sealed class EndpointAttachmentServiceRouter
         IEndpointAttachmentService nativeNetworkService,
         IEndpointAttachmentService compactSerialService,
         IEndpointAttachmentService? inProcessService = null)
+        : this(
+            nativeNetworkService,
+            compactSerialService,
+            inProcessService,
+            additionalService: null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes the established routes plus one optional service for an
+    /// additional connection-definition family.
+    /// </summary>
+    public EndpointAttachmentServiceRouter(
+        IEndpointAttachmentService nativeNetworkService,
+        IEndpointAttachmentService compactSerialService,
+        IEndpointAttachmentService? inProcessService,
+        IEndpointAttachmentService? additionalService)
     {
         _nativeNetworkService =
             nativeNetworkService
@@ -40,6 +60,9 @@ public sealed class EndpointAttachmentServiceRouter
 
         _inProcessService =
             inProcessService;
+
+        _additionalService =
+            additionalService;
     }
 
     /// <inheritdoc />
@@ -70,6 +93,11 @@ public sealed class EndpointAttachmentServiceRouter
                     request,
                     cancellationToken),
 
+            _ when _additionalService is not null =>
+                _additionalService.AttachAsync(
+                    request,
+                    cancellationToken),
+
             _ =>
                 throw new NotSupportedException(
                     "No endpoint attachment service is registered for "
@@ -77,4 +105,3 @@ public sealed class EndpointAttachmentServiceRouter
         };
     }
 }
-

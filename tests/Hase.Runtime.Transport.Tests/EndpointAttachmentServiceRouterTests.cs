@@ -136,6 +136,29 @@ public sealed class EndpointAttachmentServiceRouterTests
     }
 
     [Fact]
+    public async Task AttachAsync_UnsupportedRequestWithAdditionalRoute_ShouldUseAdditionalRoute()
+    {
+        var nativeService = new RecordingAttachmentService();
+        var compactService = new RecordingAttachmentService();
+        var additionalService = new RecordingAttachmentService();
+        var router = new EndpointAttachmentServiceRouter(
+            nativeService,
+            compactService,
+            inProcessService: null,
+            additionalService: additionalService);
+        var request = new EndpointAttachmentRequest(
+            new UnsupportedConnectionDefinition(),
+            EndpointProvidedDescriptorSource.Instance);
+
+        await Assert.ThrowsAsync<ExpectedRouteException>(
+            () => router.AttachAsync(request));
+
+        Assert.Null(nativeService.LastRequest);
+        Assert.Null(compactService.LastRequest);
+        Assert.Same(request, additionalService.LastRequest);
+    }
+
+    [Fact]
     public void Constructor_NullNativeService_ShouldThrow()
     {
         Assert.Throws<ArgumentNullException>(
