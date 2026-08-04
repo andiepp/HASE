@@ -27,4 +27,15 @@ public static class Kel103OperatingModeMapping
                 "The operating-mode response does not match the supported KEL-103 format.")
         };
     }
+
+    public static string ToNormalizedValue(Kel103OperatingMode mode) =>
+        mode switch
+        {
+            Kel103OperatingMode.ConstantCurrent => "CC",
+            Kel103OperatingMode.ConstantVoltage => "CV",
+            Kel103OperatingMode.ConstantResistance => "CR",
+            Kel103OperatingMode.ConstantPower => "CW",
+            Kel103OperatingMode.ShortCircuit => "SHORT",
+            _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null)
+        };
 }

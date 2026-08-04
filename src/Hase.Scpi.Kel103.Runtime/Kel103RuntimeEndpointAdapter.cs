@@ -11,6 +11,7 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
     private readonly RuntimeEndpoint runtimeEndpoint;
     private readonly RuntimeInstrument runtimeInstrument;
     private readonly IReadOnlyDictionary<PropertyId, RuntimeProperty> properties;
+    private readonly bool supportsOperatingState;
     private readonly TimeProvider timeProvider;
 
     public Kel103RuntimeEndpointAdapter(
@@ -24,7 +25,7 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
             ?? throw new ArgumentNullException(nameof(runtimeEndpoint));
         this.timeProvider = timeProvider ?? TimeProvider.System;
 
-        runtimeInstrument = ValidateEndpoint(runtimeEndpoint);
+        (runtimeInstrument, supportsOperatingState) = ValidateEndpoint(runtimeEndpoint);
         properties = runtimeInstrument.Properties.ToDictionary(
             property => property.Descriptor.Id);
     }
@@ -36,6 +37,11 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
     public async Task<RuntimeEndpoint> SynchronizeAsync(
         CancellationToken cancellationToken = default)
     {
+        if (supportsOperatingState)
+        {
+            return await SynchronizeOperatingStateAsync(cancellationToken).ConfigureAwait(false);
+        }
+
         Kel103SynchronizationSnapshot snapshot = await sessionAdapter
             .VerifyAndSynchronizeAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -84,7 +90,7 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 : identity.FirmwareVersion;
             value = CreateValue(identityValue, timeProvider.GetUtcNow());
         }
-        else
+        else if (Kel103MeasurementMapping.All.Any(mapping => mapping.PropertyId == propertyId))
         {
             Kel103MeasurementMapping mapping = Kel103MeasurementMapping.All.Single(
                 candidate => candidate.PropertyId == propertyId);
@@ -93,6 +99,36 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 .ConfigureAwait(false);
             value = CreateValue(observation.Value, observation.TimestampUtc);
         }
+        else if (supportsOperatingState && propertyId == Kel103OperatingModeMapping.PropertyId)
+        {
+            Kel103OperatingModeObservation observation = await sessionAdapter
+                .ReadOperatingModeAsync(cancellationToken)
+                .ConfigureAwait(false);
+            value = CreateValue(
+                Kel103OperatingModeMapping.ToNormalizedValue(observation.Mode),
+                observation.TimestampUtc);
+        }
+        else if (supportsOperatingState && propertyId == Kel103InputStateMapping.PropertyId)
+        {
+            Kel103InputStateObservation observation = await sessionAdapter
+                .ReadInputStateAsync(cancellationToken)
+                .ConfigureAwait(false);
+            value = CreateValue(observation.InputEnabled, observation.TimestampUtc);
+        }
+        else if (supportsOperatingState)
+        {
+            Kel103SetpointMapping mapping = Kel103SetpointMapping.All.Single(
+                candidate => candidate.PropertyId == propertyId);
+            Kel103SetpointObservation observation = await sessionAdapter
+                .ReadSetpointAsync(mapping, cancellationToken)
+                .ConfigureAwait(false);
+            value = CreateValue(observation.Value, observation.TimestampUtc);
+        }
+        else
+        {
+            throw new KeyNotFoundException(
+                "The requested KEL-103 runtime Property is not supported.");
+        }
 
         property.UpdateValue(value);
         return property;
@@ -100,19 +136,72 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
 
     public ValueTask DisposeAsync() => sessionAdapter.DisposeAsync();
 
-    private static RuntimeInstrument ValidateEndpoint(RuntimeEndpoint endpoint)
+    private async Task<RuntimeEndpoint> SynchronizeOperatingStateAsync(
+        CancellationToken cancellationToken)
+    {
+        Kel103OperatingStateSynchronizationSnapshot snapshot = await sessionAdapter
+            .VerifyAndSynchronizeOperatingStateAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var values = new Dictionary<PropertyId, PropertyValue>
+        {
+            [new PropertyId("product-identity")] = CreateValue(snapshot.Identity.ProductIdentity, snapshot.TimestampUtc),
+            [new PropertyId("firmware-version")] = CreateValue(snapshot.Identity.FirmwareVersion, snapshot.TimestampUtc),
+            [Kel103MeasurementMapping.Voltage.PropertyId] = CreateValue(snapshot.Voltage, snapshot.TimestampUtc),
+            [Kel103MeasurementMapping.Current.PropertyId] = CreateValue(snapshot.Current, snapshot.TimestampUtc),
+            [Kel103MeasurementMapping.Power.PropertyId] = CreateValue(snapshot.Power, snapshot.TimestampUtc),
+            [Kel103OperatingModeMapping.PropertyId] = CreateValue(
+                Kel103OperatingModeMapping.ToNormalizedValue(snapshot.OperatingMode),
+                snapshot.TimestampUtc),
+            [Kel103InputStateMapping.PropertyId] = CreateValue(snapshot.InputEnabled, snapshot.TimestampUtc),
+            [Kel103SetpointMapping.Voltage.PropertyId] = CreateValue(snapshot.TargetVoltage, snapshot.TimestampUtc),
+            [Kel103SetpointMapping.Current.PropertyId] = CreateValue(snapshot.TargetCurrent, snapshot.TimestampUtc),
+            [Kel103SetpointMapping.Resistance.PropertyId] = CreateValue(snapshot.TargetResistance, snapshot.TimestampUtc),
+            [Kel103SetpointMapping.Power.PropertyId] = CreateValue(snapshot.TargetPower, snapshot.TimestampUtc)
+        };
+
+        foreach (RuntimeProperty property in runtimeInstrument.Properties)
+        {
+            property.UpdateValue(values[property.Descriptor.Id]);
+        }
+
+        return runtimeEndpoint;
+    }
+
+    private static (RuntimeInstrument Instrument, bool SupportsOperatingState)
+        ValidateEndpoint(RuntimeEndpoint endpoint)
     {
         RuntimeInstrument instrument = endpoint.Instruments.Count == 1
             ? endpoint.Instruments[0]
             : throw Incompatible();
-        var expected = Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single();
 
+        if (IsCompatible(
+                instrument,
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()))
+        {
+            return (instrument, false);
+        }
+
+        if (IsCompatible(
+                instrument,
+                Kel103OperatingStateDefinition.EndpointDefinition.Instruments.Single()))
+        {
+            return (instrument, true);
+        }
+
+        throw Incompatible();
+    }
+
+    private static bool IsCompatible(
+        RuntimeInstrument instrument,
+        Hase.Core.Domain.Instruments.InstrumentDescriptor expected)
+    {
         if (instrument.Descriptor.Id != expected.Id
             || instrument.Properties.Count != expected.Interface.Properties.Count
-            || instrument.Commands.Count != 0
-            || instrument.Events.Count != 0)
+            || instrument.Commands.Count != expected.Interface.Commands.Count
+            || instrument.Events.Count != expected.Interface.Events.Count)
         {
-            throw Incompatible();
+            return false;
         }
 
         for (int index = 0; index < instrument.Properties.Count; index++)
@@ -121,10 +210,10 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
             PropertyDescriptor required = expected.Interface.Properties[index];
             if (actual.Id != required.Id
                 || actual.Path != required.Path
-                || actual.AccessMode != PropertyAccessMode.Read
+                || actual.AccessMode != required.AccessMode
                 || actual.Data.GetType() != required.Data.GetType())
             {
-                throw Incompatible();
+                return false;
             }
 
             if (required.Data is NumericDataDescriptor requiredNumeric)
@@ -132,19 +221,21 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 var actualNumeric = (NumericDataDescriptor)actual.Data;
                 if (actualNumeric.Quantity.Id != requiredNumeric.Quantity.Id
                     || actualNumeric.NativeUnit.Id != requiredNumeric.NativeUnit.Id
-                    || actualNumeric.NativeUnit.Symbol != requiredNumeric.NativeUnit.Symbol)
+                    || actualNumeric.NativeUnit.Symbol != requiredNumeric.NativeUnit.Symbol
+                    || actualNumeric.Range != requiredNumeric.Range
+                    || actualNumeric.Resolution != requiredNumeric.Resolution)
                 {
-                    throw Incompatible();
+                    return false;
                 }
             }
         }
 
-        return instrument;
+        return true;
     }
 
     private static PropertyValue CreateValue(object value, DateTimeOffset timestampUtc) =>
         new(value, timestampUtc, PropertyQuality.Good);
 
     private static InvalidDataException Incompatible() =>
-        new("The staged runtime endpoint is not compatible with the KEL-103 version-2 definition.");
+        new("The staged runtime endpoint is not compatible with a supported KEL-103 definition.");
 }

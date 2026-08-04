@@ -42,4 +42,24 @@ public sealed class Kel103OperatingModeMappingTests
         Assert.Throws<ArgumentNullException>(() =>
             Kel103OperatingModeMapping.ParseResponse(null!));
     }
+
+    [Theory]
+    [InlineData(Kel103OperatingMode.ConstantCurrent, "CC")]
+    [InlineData(Kel103OperatingMode.ConstantVoltage, "CV")]
+    [InlineData(Kel103OperatingMode.ConstantResistance, "CR")]
+    [InlineData(Kel103OperatingMode.ConstantPower, "CW")]
+    [InlineData(Kel103OperatingMode.ShortCircuit, "SHORT")]
+    public void ToNormalizedValue_ReturnsStableRuntimeDisplay(
+        Kel103OperatingMode mode,
+        string expected)
+    {
+        Assert.Equal(expected, Kel103OperatingModeMapping.ToNormalizedValue(mode));
+    }
+
+    [Fact]
+    public void ToNormalizedValue_RejectsUnknownMode()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Kel103OperatingModeMapping.ToNormalizedValue((Kel103OperatingMode)99));
+    }
 }
