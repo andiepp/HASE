@@ -83,6 +83,91 @@ public sealed class Kel103EndpointAttachmentPropertyOperationsTests
     }
 
     [Fact]
+    public async Task Write_ForwardsRequestAndReturnsExactConfirmedValue()
+    {
+        RuntimeProperty property = FindProperty("target-current");
+        var confirmed = new PropertyValue(0.25m, DateTimeOffset.UnixEpoch);
+        property.UpdateValue(confirmed);
+        InstrumentId? observedInstrument = null;
+        PropertyId? observedProperty = null;
+        object? observedValue = null;
+        var operations = CreateWritableOperations(
+            (instrument, requestedProperty, value, token) =>
+            {
+                observedInstrument = instrument;
+                observedProperty = requestedProperty;
+                observedValue = value;
+                return Task.FromResult(property);
+            });
+
+        EndpointAttachmentPropertyOperationResult result = await operations.WriteAsync(
+            InstrumentId(),
+            new PropertyId("target-current"),
+            0.25m);
+
+        Assert.True(result.IsSuccess);
+        Assert.Same(confirmed, result.ConfirmedValue);
+        Assert.Equal(InstrumentId(), observedInstrument);
+        Assert.Equal(new PropertyId("target-current"), observedProperty);
+        Assert.Equal(0.25m, observedValue);
+        Assert.Null(result.Diagnostic);
+    }
+
+    [Theory]
+    [InlineData(0, EndpointAttachmentPropertyOperationStatus.NotSupported)]
+    [InlineData(1, EndpointAttachmentPropertyOperationStatus.Failure)]
+    [InlineData(2, EndpointAttachmentPropertyOperationStatus.TimedOut)]
+    [InlineData(3, EndpointAttachmentPropertyOperationStatus.Failure)]
+    [InlineData(4, EndpointAttachmentPropertyOperationStatus.Unavailable)]
+    [InlineData(5, EndpointAttachmentPropertyOperationStatus.Unavailable)]
+    public async Task Write_MapsSafeFailureOutcomes(
+        int failure,
+        EndpointAttachmentPropertyOperationStatus expected)
+    {
+        const string sensitive = "sensitive write detail";
+        Exception exception = failure switch
+        {
+            0 => new KeyNotFoundException(sensitive),
+            1 => new ArgumentOutOfRangeException("requestedValue", sensitive),
+            2 => new TimeoutException(sensitive),
+            3 => new InvalidDataException(sensitive),
+            4 => new InvalidOperationException(sensitive),
+            _ => new IOException(sensitive)
+        };
+        var operations = CreateWritableOperations(
+            (instrument, property, value, token) =>
+                Task.FromException<RuntimeProperty>(exception));
+
+        EndpointAttachmentPropertyOperationResult result = await operations.WriteAsync(
+            InstrumentId(),
+            new PropertyId("target-current"),
+            0.25m);
+
+        Assert.Equal(expected, result.Status);
+        Assert.Null(result.ConfirmedValue);
+        Assert.DoesNotContain(
+            sensitive,
+            result.Diagnostic ?? string.Empty,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Write_WithoutConfirmedValueReturnsFailure()
+    {
+        RuntimeProperty property = FindProperty("target-current");
+        var operations = CreateWritableOperations(
+            (instrument, requestedProperty, value, token) => Task.FromResult(property));
+
+        EndpointAttachmentPropertyOperationResult result = await operations.WriteAsync(
+            InstrumentId(),
+            property.Descriptor.Id,
+            0.25m);
+
+        Assert.Equal(EndpointAttachmentPropertyOperationStatus.Failure, result.Status);
+        Assert.Null(result.ConfirmedValue);
+    }
+
+    [Fact]
     public async Task CallerCancellation_PropagatesWithoutCallingAdapter()
     {
         var called = false;
@@ -108,8 +193,23 @@ public sealed class Kel103EndpointAttachmentPropertyOperationsTests
                 (Func<InstrumentId, PropertyId, CancellationToken, Task<RuntimeProperty>>)null!));
         var operations = new Kel103EndpointAttachmentPropertyOperations(
             (instrument, property, token) => Task.FromResult(FindProperty("measured-voltage")));
+        Assert.Throws<ArgumentNullException>(() =>
+            new Kel103EndpointAttachmentPropertyOperations(
+                (instrument, property, token) => Task.FromResult(FindProperty("measured-voltage")),
+                null!,
+                static () => false,
+                null,
+                TimeProvider.System));
         await Assert.ThrowsAsync<ArgumentNullException>(() => operations.ReadAsync(null!, new PropertyId("p")));
         await Assert.ThrowsAsync<ArgumentNullException>(() => operations.ReadAsync(InstrumentId(), null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => operations.WriteAsync(
+            null!,
+            new PropertyId("p"),
+            0.25m));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => operations.WriteAsync(
+            InstrumentId(),
+            null!,
+            0.25m));
     }
 
     [Fact]
@@ -177,6 +277,96 @@ public sealed class Kel103EndpointAttachmentPropertyOperationsTests
             new PropertyId("measured-voltage"));
 
         Assert.Equal(EndpointAttachmentPropertyOperationStatus.TimedOut, result.Status);
+        Assert.Equal(EndpointConnectionState.Ready, endpoint.ConnectionStatus.State);
+    }
+
+    [Fact]
+    public async Task InputOnWrite_WithUsableSessionDoesNotChangeReadyState()
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        var operations = new Kel103EndpointAttachmentPropertyOperations(
+            (instrument, property, token) => Task.FromResult(FindProperty("target-current")),
+            (instrument, property, value, token) =>
+                Task.FromException<RuntimeProperty>(new InvalidOperationException()),
+            static () => false,
+            endpoint,
+            new FixedTimeProvider());
+
+        EndpointAttachmentPropertyOperationResult result = await operations.WriteAsync(
+            InstrumentId(),
+            new PropertyId("target-current"),
+            0.25m);
+
+        Assert.Equal(EndpointAttachmentPropertyOperationStatus.Unavailable, result.Status);
+        Assert.Equal(EndpointConnectionState.Ready, endpoint.ConnectionStatus.State);
+    }
+
+    [Theory]
+    [InlineData(0, EndpointAttachmentPropertyOperationStatus.TimedOut)]
+    [InlineData(1, EndpointAttachmentPropertyOperationStatus.Failure)]
+    [InlineData(2, EndpointAttachmentPropertyOperationStatus.Unavailable)]
+    [InlineData(3, EndpointAttachmentPropertyOperationStatus.Unavailable)]
+    public async Task FaultedSession_WriteProjectsSanitizedFaultAndPreservesOperationResult(
+        int failure,
+        EndpointAttachmentPropertyOperationStatus expectedStatus)
+    {
+        const string sensitive = "sensitive write transport detail";
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        Exception exception = failure switch
+        {
+            0 => new TimeoutException(sensitive),
+            1 => new InvalidDataException(sensitive),
+            2 => new InvalidOperationException(sensitive),
+            _ => new IOException(sensitive)
+        };
+        var operations = new Kel103EndpointAttachmentPropertyOperations(
+            (instrument, property, token) => Task.FromResult(FindProperty("target-current")),
+            (instrument, property, value, token) =>
+                Task.FromException<RuntimeProperty>(exception),
+            static () => true,
+            endpoint,
+            new FixedTimeProvider());
+
+        EndpointAttachmentPropertyOperationResult result = await operations.WriteAsync(
+            InstrumentId(),
+            new PropertyId("target-current"),
+            0.25m);
+
+        Assert.Equal(expectedStatus, result.Status);
+        Assert.Equal(EndpointConnectionState.Faulted, endpoint.ConnectionStatus.State);
+        Assert.Equal(FixedTimeProvider.Timestamp, endpoint.ConnectionStatus.ChangedAtUtc);
+        Assert.Equal("The KEL-103 communication session is faulted.", endpoint.ConnectionStatus.Detail);
+        Assert.DoesNotContain(
+            sensitive,
+            endpoint.ConnectionStatus.Detail ?? string.Empty,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task PreCanceledWrite_DoesNotCallAdapterOrProjectFault()
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        var called = false;
+        var operations = new Kel103EndpointAttachmentPropertyOperations(
+            (instrument, property, token) => Task.FromResult(FindProperty("target-current")),
+            (instrument, property, value, token) =>
+            {
+                called = true;
+                return Task.FromResult(FindProperty("target-current"));
+            },
+            static () => true,
+            endpoint,
+            new FixedTimeProvider());
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => operations.WriteAsync(
+            InstrumentId(),
+            new PropertyId("target-current"),
+            0.25m,
+            cancellation.Token));
+
+        Assert.False(called);
         Assert.Equal(EndpointConnectionState.Ready, endpoint.ConnectionStatus.State);
     }
 
@@ -255,10 +445,20 @@ public sealed class Kel103EndpointAttachmentPropertyOperationsTests
 
     private static InstrumentId InstrumentId() => new("electronic-load-01");
 
+    private static Kel103EndpointAttachmentPropertyOperations CreateWritableOperations(
+        Func<InstrumentId, PropertyId, object?, CancellationToken, Task<RuntimeProperty>> writeAsync) =>
+        new(
+            (instrument, property, token) => Task.FromResult(FindProperty("target-current")),
+            writeAsync,
+            static () => false,
+            null,
+            TimeProvider.System);
+
     private static RuntimeProperty FindProperty(string id)
     {
         RuntimeEndpoint endpoint = new RuntimeContext().CreateEndpoint(
-            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Materialize(new EndpointId("test-endpoint")));
+            Kel103ControlledSetpointDefinition.EndpointDefinition.Materialize(
+                new EndpointId("test-endpoint")));
         return endpoint.Instruments.Single().Properties.Single(property => property.Descriptor.Id == new PropertyId(id));
     }
 
