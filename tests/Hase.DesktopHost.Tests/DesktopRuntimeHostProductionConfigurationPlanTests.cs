@@ -70,6 +70,36 @@ public sealed class DesktopRuntimeHostProductionConfigurationPlanTests
     }
 
     [Fact]
+    public void Create_Kel103Endpoint_ShouldIncludeItInExpectedCount()
+    {
+        var installation = new DesktopRuntimeHostInstallationProfile(
+            AbsolutePath("installation.id"),
+            AbsolutePath("desktop-private-network.json"),
+            AbsolutePath("desktop-runtime-endpoints.json"));
+        var endpoints = new DesktopRuntimeHostEndpointCompositionProfile(
+            [],
+            [],
+            [new DesktopRuntimeHostKel103SerialEndpointProfile(
+                "kel-01", "kel103-identity", 2, "external-target", 115200)]);
+        var startup = new DesktopRuntimeHostStartupConfiguration(
+            installation.PrivateNetworkConfigurationFilePath,
+            "ignored.local",
+            null!)
+        {
+            InstallationProfile = installation,
+            EndpointCompositionProfile = endpoints
+        };
+
+        DesktopRuntimeHostProductionConfigurationPlan plan =
+            DesktopRuntimeHostProductionConfigurationPlan.Create(
+                startup,
+                AbsolutePath("legacy.id"),
+                new RuntimeHostId("legacy-host"));
+
+        Assert.Equal(1, plan.ExpectedPublishedEndpointCount);
+    }
+
+    [Fact]
     public void Create_LegacyStartup_ShouldPreserveHistoricalPhysicalDefaults()
     {
         string legacyIdentityPath = AbsolutePath("legacy.id");

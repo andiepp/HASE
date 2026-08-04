@@ -205,6 +205,38 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         Assert.False(File.Exists(files.Backup));
     }
 
+    [Fact]
+    public async Task RemoveKel103Async_WrongKind_ShouldPreserveActive()
+    {
+        using Files files = new(); files.Write(Compact("compact"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveKel103Async(
+                files.Profile, files.Backup, "compact"));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task AddKel103Async_InvalidTarget_ShouldPreserveActiveWithoutTargetLeak()
+    {
+        using Files files = new(); files.Write(Native("native"));
+        string before = File.ReadAllText(files.Profile);
+
+        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().AddKel103Async(
+                files.Profile, files.Backup,
+                new DesktopRuntimeHostKel103SerialEndpointProfile(
+                    "kel", "korad-kel103", 2, "   ", 115200)));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+        Assert.Equal("serialPort", exception.ParamName);
+        Assert.DoesNotContain("   ", exception.Message, StringComparison.Ordinal);
+    }
+
     private static object Native(string id) => new { kind = "NativeNetwork", expectedEndpointId = id, host = "192.0.2.1", port = 5000 };
     private static object Compact(string id) => new { kind = "CompactSerial", expectedEndpointId = id, vendorId = 0x2341, productId = 0x0043, baudRate = 115200, verificationTimeoutMilliseconds = 3000 };
     private static object Kel103(string id) => new { kind = "Kel103Serial", expectedEndpointId = id, definitionId = "korad-kel103", definitionVersion = 2, serialPort = $"external-target-{id}", baudRate = 115200 };

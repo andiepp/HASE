@@ -11,12 +11,14 @@ using Hase.Runtime.Connections;
 using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Remote.Grpc.Hosting;
+using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Runtime.Transport.Discovery;
 using Hase.Scpi.Kel103;
 using Hase.Simulation.Runtime.ByteBuffer;
 using Hase.Transport.Discovery;
+using Hase.Transport.Serial;
 using Hase.Transport.Tcp;
 
 namespace Hase.DesktopHost.App.Hosting;
@@ -34,6 +36,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         new("hase-desktop-runtime-host");
 
     private readonly DesktopRuntimeHostStartupConfiguration configuration;
+    private readonly Func<RuntimeContext, IEndpointAttachmentService>
+        kel103AttachmentServiceProvider;
 
     private RuntimeEndpointAttachmentHost? attachmentHost;
     private RuntimeHostNorthboundSnapshotComposition? composition;
@@ -43,10 +47,27 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration)
+        : this(
+            configuration,
+            runtimeContext =>
+                new DesktopRuntimeHostKel103AttachmentService(
+                    new DesktopRuntimeHostKel103AttachmentFactory(
+                        runtimeContext,
+                        new SystemIoPortsSerialByteStreamFactory())))
+    {
+    }
+
+    internal ProductionPrivateNetworkRuntimeHostBackend(
+        DesktopRuntimeHostStartupConfiguration configuration,
+        Func<RuntimeContext, IEndpointAttachmentService>
+            kel103AttachmentServiceProvider)
     {
         this.configuration =
             configuration
             ?? throw new ArgumentNullException(nameof(configuration));
+        this.kel103AttachmentServiceProvider =
+            kel103AttachmentServiceProvider
+            ?? throw new ArgumentNullException(nameof(kel103AttachmentServiceProvider));
     }
 
     public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture()
@@ -278,12 +299,6 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 new Kel103DefinitionRepository(),
                 cancellationToken);
 
-        if (kel103Plans.Count > 0)
-        {
-            throw new NotSupportedException(
-                "Configured KEL-103 endpoint attachment is not enabled by the production runtime host yet.");
-        }
-
         try
         {
             var session =
@@ -301,9 +316,23 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 new InMemoryCompactEndpointDefinitionRepository(
                     [legacyCompactDefinition, compactDefinition]);
 
-            attachmentHost =
-                configuration.IncludeByteBufferSimulation
+            bool hasKel103Endpoints = kel103Plans.Count > 0;
+
+            if (configuration.IncludeByteBufferSimulation)
+            {
+                attachmentHost = hasKel103Endpoints
                     ? RuntimeEndpointAttachmentHost
+                        .CreateNativeNetworkCompactSerialAndInProcess(
+                            new ProtocolNativeEndpointBootstrapper(),
+                            new ProtocolRuntimeEndpointSynchronizer(
+                                new EndpointDescriptorCompatibilityValidator()),
+                            definitionRepository,
+                            new DefaultRuntimeEndpointReconnectPolicy(),
+                            kel103AttachmentServiceProvider,
+                            MaximumPayloadLength,
+                            CompactEndpointHealthProbeOptions.Default,
+                            diagnostics: session.Publisher)
+                    : RuntimeEndpointAttachmentHost
                         .CreateNativeNetworkCompactSerialAndInProcess(
                             new ProtocolNativeEndpointBootstrapper(),
                             new ProtocolRuntimeEndpointSynchronizer(
@@ -312,8 +341,22 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             new DefaultRuntimeEndpointReconnectPolicy(),
                             MaximumPayloadLength,
                             CompactEndpointHealthProbeOptions.Default,
-                            diagnostics:
-                                session.Publisher)
+                            diagnostics: session.Publisher);
+            }
+            else
+            {
+                attachmentHost = hasKel103Endpoints
+                    ? RuntimeEndpointAttachmentHost
+                        .CreateNativeNetworkAndCompactSerial(
+                            new ProtocolNativeEndpointBootstrapper(),
+                            new ProtocolRuntimeEndpointSynchronizer(
+                                new EndpointDescriptorCompatibilityValidator()),
+                            definitionRepository,
+                            new DefaultRuntimeEndpointReconnectPolicy(),
+                            kel103AttachmentServiceProvider,
+                            MaximumPayloadLength,
+                            CompactEndpointHealthProbeOptions.Default,
+                            diagnostics: session.Publisher)
                     : RuntimeEndpointAttachmentHost
                         .CreateNativeNetworkAndCompactSerial(
                             new ProtocolNativeEndpointBootstrapper(),
@@ -323,8 +366,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             new DefaultRuntimeEndpointReconnectPolicy(),
                             MaximumPayloadLength,
                             CompactEndpointHealthProbeOptions.Default,
-                            diagnostics:
-                                session.Publisher);
+                            diagnostics: session.Publisher);
+            }
 
             composition =
                 await RuntimeHostNorthboundSnapshotComposition
@@ -359,6 +402,14 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     attachmentHost,
                     definitionRepository,
                     compactEndpoint);
+            }
+
+            for (int index = 0; index < kel103Plans.Count; index++)
+            {
+                await AttachKel103EndpointAsync(
+                    attachmentHost,
+                    endpointComposition.Kel103SerialEndpoints[index],
+                    kel103Plans[index]);
             }
 
             if (configuration.IncludeByteBufferSimulation)
@@ -582,6 +633,28 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
         await host.AttachmentInventory.AttachAsync(
             request);
+    }
+
+    private static async Task AttachKel103EndpointAsync(
+        RuntimeEndpointAttachmentHost host,
+        DesktopRuntimeHostKel103SerialEndpointProfile endpoint,
+        DesktopRuntimeHostKel103EndpointPlan plan)
+    {
+        if (new EndpointId(endpoint.ExpectedEndpointId) != plan.ExpectedEndpointId)
+        {
+            throw new InvalidDataException(
+                "A KEL-103 endpoint profile does not match its preflight plan.");
+        }
+
+        var request = new EndpointAttachmentRequest(
+            new DesktopRuntimeHostKel103ConnectionDefinition(
+                plan.ExpectedEndpointId,
+                new SerialTransportOptions(
+                    endpoint.SerialPort,
+                    endpoint.BaudRate)),
+            HostRepositoryDescriptorSource.Instance);
+
+        await host.AttachmentInventory.AttachAsync(request);
     }
 
     private static async Task AttachByteBufferSimulationAsync(

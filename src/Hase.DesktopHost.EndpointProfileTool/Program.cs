@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Hase.DesktopHost.Configuration;
+using Hase.Scpi.Kel103;
 
 if (Process.GetProcessesByName("Hase.DesktopHost.App").Length > 0)
     return Fail("HASE Desktop Runtime Host is running. Close it before editing endpoint composition.");
@@ -39,6 +40,20 @@ try
             await editor.RemoveCompactAsync(profilePath, backupPath, endpointId);
             endpointKind = "CompactSerial";
             break;
+        case "add-kel103" when args.Length == 4:
+            await editor.AddKel103Async(profilePath, backupPath,
+                new DesktopRuntimeHostKel103SerialEndpointProfile(
+                    endpointId,
+                    Kel103ReadOnlyMeasurementDefinition.Reference.Id.Value,
+                    Kel103ReadOnlyMeasurementDefinition.Reference.Version,
+                    args[3],
+                    DesktopRuntimeHostKel103SerialEndpointProfile.SupportedBaudRate));
+            endpointKind = "Kel103Serial";
+            break;
+        case "remove-kel103" when args.Length == 4 && args[3] == endpointId:
+            await editor.RemoveKel103Async(profilePath, backupPath, endpointId);
+            endpointKind = "Kel103Serial";
+            break;
         default: return Usage();
     }
 }
@@ -56,6 +71,8 @@ static int Usage()
     Console.Error.WriteLine("  remove-native <composition> <endpoint-id> <same-id-confirmation>");
     Console.Error.WriteLine("  add-compact <composition> <endpoint-id> <0xVID> <0xPID> <baud> <timeout-ms>");
     Console.Error.WriteLine("  remove-compact <composition> <endpoint-id> <same-id-confirmation>");
+    Console.Error.WriteLine("  add-kel103 <composition> <endpoint-id> <serial-target>");
+    Console.Error.WriteLine("  remove-kel103 <composition> <endpoint-id> <same-id-confirmation>");
     return 2;
 }
 static int Fail(string message) { Console.Error.WriteLine(message); return 1; }

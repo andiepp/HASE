@@ -81,6 +81,53 @@ public sealed class RuntimeEndpointAttachmentHost
     }
 
     /// <summary>
+    /// Creates the native/compact host with one additional attachment-service
+    /// family constructed for the same runtime context.
+    /// </summary>
+    public static RuntimeEndpointAttachmentHost CreateNativeNetworkAndCompactSerial(
+        INativeEndpointBootstrapper bootstrapper,
+        IRuntimeEndpointSynchronizer synchronizer,
+        ICompactEndpointDefinitionRepository definitionRepository,
+        IRuntimeEndpointReconnectPolicy reconnectPolicy,
+        Func<RuntimeContext, IEndpointAttachmentService> additionalServiceFactory,
+        int maximumPayloadLength =
+            TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
+        CompactEndpointHealthProbeOptions? compactProbeOptions = null,
+        RuntimeDiagnosticPublisher? diagnostics = null)
+    {
+        ArgumentNullException.ThrowIfNull(bootstrapper);
+        ArgumentNullException.ThrowIfNull(synchronizer);
+        ArgumentNullException.ThrowIfNull(definitionRepository);
+        ArgumentNullException.ThrowIfNull(reconnectPolicy);
+        ArgumentNullException.ThrowIfNull(additionalServiceFactory);
+
+        var runtimeContext = new RuntimeContext(diagnostics);
+        var nativeNetworkService = new NativeNetworkEndpointAttachmentService(
+            runtimeContext,
+            bootstrapper,
+            synchronizer,
+            reconnectPolicy,
+            maximumPayloadLength);
+        var compactSerialService = new CompactSerialEndpointAttachmentService(
+            runtimeContext,
+            new SystemIoPortsSerialByteStreamFactory(),
+            definitionRepository,
+            reconnectPolicy,
+            compactProbeOptions ?? CompactEndpointHealthProbeOptions.Default);
+        IEndpointAttachmentService additionalService =
+            additionalServiceFactory(runtimeContext)
+            ?? throw new InvalidOperationException(
+                "The additional attachment-service factory returned null.");
+        var attachmentService = new EndpointAttachmentServiceRouter(
+            nativeNetworkService,
+            compactSerialService,
+            inProcessService: null,
+            additionalService: additionalService);
+
+        return new RuntimeEndpointAttachmentHost(runtimeContext, attachmentService);
+    }
+
+    /// <summary>
     /// Creates a host configured for native network, compact serial, and
     /// explicitly selected in-process endpoints.
     /// </summary>
@@ -138,6 +185,55 @@ public sealed class RuntimeEndpointAttachmentHost
         return new RuntimeEndpointAttachmentHost(
             runtimeContext,
             attachmentService);
+    }
+
+    /// <summary>
+    /// Creates the native/compact/in-process host with one additional
+    /// attachment-service family constructed for the same runtime context.
+    /// </summary>
+    public static RuntimeEndpointAttachmentHost
+        CreateNativeNetworkCompactSerialAndInProcess(
+            INativeEndpointBootstrapper bootstrapper,
+            IRuntimeEndpointSynchronizer synchronizer,
+            ICompactEndpointDefinitionRepository definitionRepository,
+            IRuntimeEndpointReconnectPolicy reconnectPolicy,
+            Func<RuntimeContext, IEndpointAttachmentService> additionalServiceFactory,
+            int maximumPayloadLength =
+                TcpNativeEndpointBootstrapClient.DefaultMaximumPayloadLength,
+            CompactEndpointHealthProbeOptions? compactProbeOptions = null,
+            RuntimeDiagnosticPublisher? diagnostics = null)
+    {
+        ArgumentNullException.ThrowIfNull(bootstrapper);
+        ArgumentNullException.ThrowIfNull(synchronizer);
+        ArgumentNullException.ThrowIfNull(definitionRepository);
+        ArgumentNullException.ThrowIfNull(reconnectPolicy);
+        ArgumentNullException.ThrowIfNull(additionalServiceFactory);
+
+        var runtimeContext = new RuntimeContext(diagnostics);
+        var nativeNetworkService = new NativeNetworkEndpointAttachmentService(
+            runtimeContext,
+            bootstrapper,
+            synchronizer,
+            reconnectPolicy,
+            maximumPayloadLength);
+        var compactSerialService = new CompactSerialEndpointAttachmentService(
+            runtimeContext,
+            new SystemIoPortsSerialByteStreamFactory(),
+            definitionRepository,
+            reconnectPolicy,
+            compactProbeOptions ?? CompactEndpointHealthProbeOptions.Default);
+        var inProcessService = new InProcessEndpointAttachmentService(runtimeContext);
+        IEndpointAttachmentService additionalService =
+            additionalServiceFactory(runtimeContext)
+            ?? throw new InvalidOperationException(
+                "The additional attachment-service factory returned null.");
+        var attachmentService = new EndpointAttachmentServiceRouter(
+            nativeNetworkService,
+            compactSerialService,
+            inProcessService,
+            additionalService);
+
+        return new RuntimeEndpointAttachmentHost(runtimeContext, attachmentService);
     }
 
     /// <summary>

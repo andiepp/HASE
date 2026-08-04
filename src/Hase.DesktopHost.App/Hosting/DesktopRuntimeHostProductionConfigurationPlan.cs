@@ -18,6 +18,7 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
         ExpectedPublishedEndpointCount =
             endpointComposition.NativeNetworkEndpoints.Count
             + endpointComposition.CompactSerialEndpoints.Count
+            + endpointComposition.Kel103SerialEndpoints.Count
             + (includeByteBufferSimulation ? 1 : 0);
     }
 

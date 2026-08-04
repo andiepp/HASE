@@ -62,6 +62,60 @@ public sealed class RuntimeEndpointAttachmentHostTests
     }
 
     [Fact]
+    public async Task CreateNativeNetworkAndCompactSerial_AdditionalRoute_ShouldShareContext()
+    {
+        RuntimeContext? suppliedContext = null;
+        TestEndpointAttachmentService? additionalService = null;
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost.CreateNativeNetworkAndCompactSerial(
+                new ProtocolNativeEndpointBootstrapper(),
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                new InMemoryCompactEndpointDefinitionRepository([]),
+                new DefaultRuntimeEndpointReconnectPolicy(),
+                runtimeContext =>
+                {
+                    suppliedContext = runtimeContext;
+                    additionalService = new TestEndpointAttachmentService();
+                    return additionalService;
+                });
+        EndpointAttachmentRequest request = CreateRequest();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => host.AttachmentInventory.AttachAsync(request));
+
+        Assert.Same(host.RuntimeContext, suppliedContext);
+        Assert.Same(request, additionalService!.LastRequest);
+    }
+
+    [Fact]
+    public async Task CreateNativeCompactInProcess_AdditionalRoute_ShouldShareContext()
+    {
+        RuntimeContext? suppliedContext = null;
+        TestEndpointAttachmentService? additionalService = null;
+        await using RuntimeEndpointAttachmentHost host =
+            RuntimeEndpointAttachmentHost.CreateNativeNetworkCompactSerialAndInProcess(
+                new ProtocolNativeEndpointBootstrapper(),
+                new ProtocolRuntimeEndpointSynchronizer(
+                    new EndpointDescriptorCompatibilityValidator()),
+                new InMemoryCompactEndpointDefinitionRepository([]),
+                new DefaultRuntimeEndpointReconnectPolicy(),
+                runtimeContext =>
+                {
+                    suppliedContext = runtimeContext;
+                    additionalService = new TestEndpointAttachmentService();
+                    return additionalService;
+                });
+        EndpointAttachmentRequest request = CreateRequest();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => host.AttachmentInventory.AttachAsync(request));
+
+        Assert.Same(host.RuntimeContext, suppliedContext);
+        Assert.Same(request, additionalService!.LastRequest);
+    }
+
+    [Fact]
     public void CreateNativeNetworkAndCompactSerial_NullBootstrapper_ShouldThrow()
     {
         Assert.Throws<ArgumentNullException>(
