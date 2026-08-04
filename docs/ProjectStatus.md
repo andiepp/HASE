@@ -3,7 +3,8 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46C read-only limit characterization complete at 4,905 tests**
+Increment 46D input-OFF mode-selection characterization complete at 4,937
+tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -32,11 +33,20 @@ Increment 46C read-only limit characterization complete at 4,905 tests**
 - The rejected `:VOLTage? MIN` candidate timed out without retry or mutation;
   `MIN` and `MAX` remain excluded setter tokens rather than limit-query
   parameters.
+- Physical mode-selection characterization established exact commands and
+  readbacks for CC, CV, CR, CW, and case-sensitive `SHORt`.
+- `:FUNCtion VOLT` and all-uppercase `:FUNCtion SHORT` were rejected after one
+  transmission each and were not retried.
+- Every successful mode probe kept input OFF, preserved all four setpoints,
+  transmitted the destination once, restored CC once, and closed in CC/OFF
+  state with the external supply output off.
+- SHORT selection did not activate the input and remains separate from the
+  later explicitly confirmed short-circuit activation gate.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46D — Input-OFF
-Mode-Selection Characterization and Restoration.
+Proceed only after explicit approval with Increment 46E — Input-OFF
+Setpoint-Write Characterization and Restoration.
 
 ---
 

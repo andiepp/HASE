@@ -295,6 +295,44 @@ original targets unchanged. Every session closed normally, and the port was
 independently reopened for a redacted identity-only query. The validated
 automated baseline is 4,905 tests passing.
 
+## ADR-0046 input-OFF mode-selection characterization
+
+A bounded Protocol Explorer scenario verified identity, authoritative input
+OFF, initial CC mode, and normalized voltage, current, resistance, and power
+targets before transmitting one fixed mode-selection command. It required input
+to remain OFF and exact destination readback before transmitting one CC
+restoration command. It then reverified OFF, CC, and equality of all four target
+snapshots. No automatic retry or recovery replay was permitted.
+
+Firmware V3.30 physically established these exact case-sensitive mappings:
+
+| Selection | Setter command | Readback |
+| --- | --- | --- |
+| CC | `:FUNCtion CC` | `CC` |
+| CV | `:FUNCtion CV` | `CV` |
+| CR | `:FUNCtion CR` | `CR` |
+| CW | `:FUNCtion CW` | `CW` |
+| SHORT | `:FUNCtion SHORt` | `SHORt` |
+
+Two candidates were explicitly rejected. `:FUNCtion VOLT` did not change CC to
+CV, and `:FUNCtion SHORT` did not change CC to SHORT. Each was transmitted once
+without retry. Because destination readback failed, the scenario sent no
+restoration command; physical inspection found the instrument already at CC
+with input OFF.
+
+The official RND testing package includes a command reference whose legacy
+`VOLT`, `CURR`, `RES`, and `POW` vocabulary does not match this firmware's
+observed tokens. Static inspection of the supplied command utility found the
+mixed-case literal `SHORt` and its `:FUNC %s` format. A separately gated probe
+then physically confirmed `:FUNCtion SHORt`.
+
+All four successful destination probes transmitted the destination once and CC
+restoration once. Input remained OFF throughout, all four setpoints remained
+unchanged, and each connection closed in authoritative CC/OFF state while the
+external supply output remained off. SHORT mode selection did not activate the
+input and is not evidence for SHORT activation. The validated automated
+baseline is 4,937 tests passing.
+
 ## Exclusions
 
 This report does not validate:

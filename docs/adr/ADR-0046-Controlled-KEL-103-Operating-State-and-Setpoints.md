@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46C read-only limit characterization complete
+- Status: Accepted — Increment 46D input-OFF mode-selection characterization complete
 - Date: 2026-08-04
 
 ## Context
@@ -37,13 +37,14 @@ authoritative state Properties:
 - `Target.Resistance`, read/write numeric value in ohms; and
 - `Target.Power`, read/write numeric value in watts.
 
-`Operating.Mode` recognizes all five documented steady-state modes:
+`Operating.Mode` recognizes all five physically characterized steady-state
+modes:
 
-- CC — constant current, wire token `CURR`;
-- CV — constant voltage, wire token `VOLT`;
-- CR — constant resistance, wire token `RES`;
-- CW — constant power, wire token `POW`; and
-- SHORT — short circuit, wire token `SHORT`.
+- CC — constant current, setter and readback token `CC`;
+- CV — constant voltage, setter and readback token `CV`;
+- CR — constant resistance, setter and readback token `CR`;
+- CW — constant power, setter and readback token `CW`; and
+- SHORT — short circuit, case-sensitive setter and readback token `SHORt`.
 
 Mode selection is behavior rather than direct Property assignment. The
 definition exposes these parameterless Commands:
@@ -205,7 +206,8 @@ Protocol and Bytes diagnostics remain deferred.
    at 4,854 tests.
 3. 46C — Read-only upper/lower-limit characterization — complete at 4,905
    tests.
-4. 46D — Input-OFF mode-selection characterization and restoration.
+4. 46D — Input-OFF mode-selection characterization and restoration — complete
+   at 4,937 tests.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
 6. 46F — Versioned state and controlled-capability definitions.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
@@ -279,3 +281,44 @@ queries confirmed CC mode, input off, and unchanged original targets. The port
 then reopened independently for a redacted identity-only query. Increment 46C
 closes at 4,905 automated tests passing in Visual Studio 2026 Release
 configuration on .NET 10.
+
+## Increment 46D characterized result
+
+The bounded Protocol Explorer path first verified KEL-103 identity,
+authoritative input OFF, initial CC mode, and all four original setpoints. It
+then transmitted one fixed destination command, required input to remain OFF,
+and required exact destination readback. Only after that confirmation did it
+transmit one CC restoration command, reverify OFF and CC, and compare all four
+setpoints with the original normalized snapshot. No command was retried and no
+recovery session replayed an operation.
+
+Physical validation established these exact case-sensitive mappings on firmware
+V3.30:
+
+| Selection | Setter command | Authoritative readback |
+| --- | --- | --- |
+| CC | `:FUNCtion CC` | `CC` |
+| CV | `:FUNCtion CV` | `CV` |
+| CR | `:FUNCtion CR` | `CR` |
+| CW | `:FUNCtion CW` | `CW` |
+| SHORT | `:FUNCtion SHORt` | `SHORt` |
+
+The legacy-shaped `:FUNCtion VOLT` candidate was transmitted once but left the
+authoritative mode at CC. The all-uppercase `:FUNCtion SHORT` candidate likewise
+left the mode at CC. Neither failed candidate was retried, and the restoration
+path was correctly suppressed because the requested destination had not been
+confirmed. Physical inspection found CC and OFF after both failures.
+
+Offline inspection of the manufacturer-supplied RND testing package found the
+mixed-case literal `SHORt` combined with the utility's `:FUNC %s` command
+format. A separately approved physical probe then confirmed `:FUNCtion SHORt`
+exactly once and restored CC exactly once. CV, CR, and CW probes also completed
+with one destination and one restoration transmission each. Input remained OFF,
+all four setpoints remained unchanged, and every successful session closed in
+authoritative CC and OFF state while the external supply output remained off.
+
+SHORT selection did not activate the load. Input activation remains a separate
+operation, generic activation must reject SHORT, and `ShortCircuit.Activate`
+still requires explicit Boolean confirmation and its own later physical gate.
+Increment 46D closes at 4,937 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10.

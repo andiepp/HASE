@@ -1210,7 +1210,8 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46C read-only limit characterization complete
+**Status:** [Active] Increment 46D input-OFF mode-selection characterization
+complete
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1230,7 +1231,8 @@ Completed and planned increments:
    at 4,854 tests.
 3. 46C — Read-only upper/lower-limit characterization — complete at 4,905
    tests.
-4. 46D — Input-OFF mode-selection characterization and restoration.
+4. 46D — Input-OFF mode-selection characterization and restoration — complete
+   at 4,937 tests.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
 6. 46F — Versioned state and controlled-capability definitions.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
@@ -1254,12 +1256,22 @@ timed out without retry or mutation and was rejected. Final authoritative
 queries confirmed CC, OFF, and unchanged targets before independent port
 reopening.
 
+Increment 46D physically established exact mode-selection commands and
+readbacks: `:FUNCtion CC`/`CC`, `:FUNCtion CV`/`CV`, `:FUNCtion CR`/`CR`,
+`:FUNCtion CW`/`CW`, and case-sensitive `:FUNCtion SHORt`/`SHORt`.
+Legacy-shaped `:FUNCtion VOLT` and all-uppercase `:FUNCtion SHORT` candidates
+were each rejected after one transmission and were not retried. Every successful
+probe kept input OFF, transmitted one destination and one CC restoration
+command, preserved all four targets, and closed in CC/OFF state. SHORT selection
+did not activate the input and remains separate from explicitly confirmed SHORT
+activation.
+
 Current baseline:
 
 ```text
-4,905 automated tests pass
+4,937 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 read-only state and limit characterization complete through 46C
+ADR-0046 mode-selection characterization complete through 46D
 Runtime Hosts and Client stopped
 ```
 
