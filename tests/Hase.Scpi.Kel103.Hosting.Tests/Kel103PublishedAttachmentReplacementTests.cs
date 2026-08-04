@@ -87,6 +87,11 @@ public sealed class Kel103PublishedAttachmentReplacementTests
             new InstrumentId("electronic-load-01"),
             new PropertyId("measured-voltage"));
         Assert.Equal(EndpointAttachmentPropertyOperationStatus.Unavailable, read.Status);
+        EndpointAttachmentPropertyOperationResult write = await attachment.PropertyOperations.WriteAsync(
+            new InstrumentId("electronic-load-01"),
+            new PropertyId("target-current"),
+            0.25m);
+        Assert.Equal(EndpointAttachmentPropertyOperationStatus.Unavailable, write.Status);
     }
 
     [Fact]

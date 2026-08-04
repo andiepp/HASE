@@ -60,7 +60,7 @@ internal sealed class Kel103PublishedConnectionSlot
         }
     }
 
-    public Task<EndpointAttachmentPropertyOperationResult> WriteAsync(
+    public async Task<EndpointAttachmentPropertyOperationResult> WriteAsync(
         InstrumentId instrumentId,
         PropertyId propertyId,
         object? requestedValue,
@@ -69,9 +69,27 @@ internal sealed class Kel103PublishedConnectionSlot
         ArgumentNullException.ThrowIfNull(instrumentId);
         ArgumentNullException.ThrowIfNull(propertyId);
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(
-            EndpointAttachmentPropertyOperationResult.Failed(
-                EndpointAttachmentPropertyOperationStatus.NotSupported));
+
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (disposed || connection is null)
+            {
+                return Unavailable();
+            }
+
+            return await connection.PropertyOperations
+                .WriteAsync(
+                    instrumentId,
+                    propertyId,
+                    requestedValue,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
     }
 
     public async Task ReplaceAsync(
