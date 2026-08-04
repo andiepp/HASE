@@ -1,11 +1,194 @@
 using System.IO;
 using System.Text.Json;
+using Hase.Core.Domain.Descriptors;
 using Hase.DesktopHost.Configuration;
+using Hase.Scpi.Kel103;
 
 namespace Hase.DesktopHost.Tests.Configuration;
 
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
 {
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_ChangesOnlyExactDefinitionAndRetainsBackup()
+    {
+        using Files files = new();
+        files.Write(
+            Native("native"),
+            Compact("compact"),
+            Kel103Version("first", 2, "external-target-first"),
+            Kel103Version("selected", 2, "external-target-selected"));
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor()
+            .MigrateKel103DefinitionAsync(
+                files.Profile,
+                files.Backup,
+                "selected",
+                Kel103ReadOnlyMeasurementDefinition.Reference,
+                Kel103ControlledSetpointDefinition.Reference);
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        DesktopRuntimeHostKel103SerialEndpointProfile selected = active.Kel103SerialEndpoints
+            .Single(endpoint => endpoint.ExpectedEndpointId == "selected");
+        Assert.Equal(Kel103ControlledSetpointDefinition.Reference, selected.DefinitionReference);
+        Assert.Equal("external-target-selected", selected.SerialPort);
+        Assert.Equal(115200, selected.BaudRate);
+        Assert.Equal(
+            Kel103ReadOnlyMeasurementDefinition.Reference,
+            active.Kel103SerialEndpoints.Single(endpoint =>
+                endpoint.ExpectedEndpointId == "first").DefinitionReference);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.CompactSerialEndpoints);
+
+        DesktopRuntimeHostEndpointCompositionProfile backup = await files.Load(files.Backup);
+        Assert.All(
+            backup.Kel103SerialEndpoints,
+            endpoint => Assert.Equal(
+                Kel103ReadOnlyMeasurementDefinition.Reference,
+                endpoint.DefinitionReference));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task MigrateKel103DefinitionAsync_WrongCurrentVersionPreservesActive(
+        ushort version)
+    {
+        using Files files = new();
+        files.Write(Kel103Version("selected", version, "external-target"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_MissingEndpointPreservesActive()
+    {
+        using Files files = new();
+        files.Write(Kel103Version("other", 2, "external-target"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "missing",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_WrongFamilyPreservesActive()
+    {
+        using Files files = new();
+        files.Write(Native("selected"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_ExistingBackupIsNeverOverwritten()
+    {
+        using Files files = new();
+        files.Write(Kel103Version("selected", 2, "external-target"));
+        File.WriteAllText(files.Backup, "preserved-backup");
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<IOException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.Equal("preserved-backup", File.ReadAllText(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_PreCancellationPreservesActive()
+    {
+        using Files files = new();
+        files.Write(Kel103Version("selected", 2, "external-target"));
+        string before = File.ReadAllText(files.Profile);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference,
+                    cancellation.Token));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_MalformedProfilePreservesActive()
+    {
+        using Files files = new();
+        File.WriteAllText(files.Profile, "{ malformed");
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ReadOnlyMeasurementDefinition.Reference,
+                    Kel103ControlledSetpointDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task MigrateKel103DefinitionAsync_EqualDefinitionsRejectBeforeFileAccess()
+    {
+        var editor = new DesktopRuntimeHostEndpointCompositionProfileEditor();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => editor.MigrateKel103DefinitionAsync(
+            "unused-profile",
+            "unused-backup",
+            "selected",
+            Kel103ReadOnlyMeasurementDefinition.Reference,
+            Kel103ReadOnlyMeasurementDefinition.Reference));
+    }
+
     [Fact]
     public async Task AddCompactAsync_ShouldAppendAndBackup()
     {
@@ -240,6 +423,15 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     private static object Native(string id) => new { kind = "NativeNetwork", expectedEndpointId = id, host = "192.0.2.1", port = 5000 };
     private static object Compact(string id) => new { kind = "CompactSerial", expectedEndpointId = id, vendorId = 0x2341, productId = 0x0043, baudRate = 115200, verificationTimeoutMilliseconds = 3000 };
     private static object Kel103(string id) => new { kind = "Kel103Serial", expectedEndpointId = id, definitionId = "korad-kel103", definitionVersion = 2, serialPort = $"external-target-{id}", baudRate = 115200 };
+    private static object Kel103Version(string id, ushort version, string serialTarget) => new
+    {
+        kind = "Kel103Serial",
+        expectedEndpointId = id,
+        definitionId = Kel103IdentityDefinition.Reference.Id.Value,
+        definitionVersion = version,
+        serialPort = serialTarget,
+        baudRate = 115200
+    };
 
     private sealed class Files : IDisposable
     {

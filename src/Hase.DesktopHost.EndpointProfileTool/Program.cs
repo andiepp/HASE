@@ -54,14 +54,38 @@ try
             await editor.RemoveKel103Async(profilePath, backupPath, endpointId);
             endpointKind = "Kel103Serial";
             break;
+        case "migrate-kel103-v4" when args.Length == 4 && args[3] == endpointId:
+            await editor.MigrateKel103DefinitionAsync(
+                profilePath,
+                backupPath,
+                endpointId,
+                Kel103ReadOnlyMeasurementDefinition.Reference,
+                Kel103ControlledSetpointDefinition.Reference);
+            endpointKind = "Kel103Serial";
+            break;
         default: return Usage();
     }
 }
-catch (Exception exception) { return Fail(exception.Message); }
+catch (Exception exception)
+{
+    return Fail(
+        operation == "migrate-kel103-v4"
+            ? MigrationFailure(exception)
+            : exception.Message);
+}
 Console.WriteLine($"Endpoint profile operation succeeded: {operation}");
 Console.WriteLine($"Expected endpoint ID: {endpointId}");
 Console.WriteLine($"Endpoint kind: {endpointKind}");
-Console.WriteLine($"Previous composition backup: {backupPath}");
+if (operation == "migrate-kel103-v4")
+{
+    Console.WriteLine("Previous definition version: 2");
+    Console.WriteLine("Current definition version: 4");
+    Console.WriteLine("Previous composition backup: Retained");
+}
+else
+{
+    Console.WriteLine($"Previous composition backup: {backupPath}");
+}
 return 0;
 
 static int Usage()
@@ -73,6 +97,16 @@ static int Usage()
     Console.Error.WriteLine("  remove-compact <composition> <endpoint-id> <same-id-confirmation>");
     Console.Error.WriteLine("  add-kel103 <composition> <endpoint-id> <serial-target>");
     Console.Error.WriteLine("  remove-kel103 <composition> <endpoint-id> <same-id-confirmation>");
+    Console.Error.WriteLine("  migrate-kel103-v4 <composition> <endpoint-id> <same-endpoint-id-confirmation>");
     return 2;
 }
 static int Fail(string message) { Console.Error.WriteLine(message); return 1; }
+static string MigrationFailure(Exception exception) => exception switch
+{
+    KeyNotFoundException => "The selected KEL-103 endpoint is not registered.",
+    InvalidOperationException =>
+        "The selected KEL-103 endpoint does not use the exact version 2 definition.",
+    InvalidDataException => "The endpoint composition is not valid for migration.",
+    OperationCanceledException => "The KEL-103 definition migration was cancelled.",
+    _ => "The KEL-103 definition migration failed. Inspect the active profile and retained backups before retrying."
+};

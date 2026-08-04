@@ -1,9 +1,61 @@
 using System.Text.Json;
+using Hase.Core.Domain.Descriptors;
 
 namespace Hase.DesktopHost.Configuration;
 
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
 {
+    public Task MigrateKel103DefinitionAsync(
+        string profilePath,
+        string backupPath,
+        string expectedEndpointId,
+        DescriptorReference expectedCurrentDefinition,
+        DescriptorReference replacementDefinition,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        ArgumentNullException.ThrowIfNull(expectedCurrentDefinition);
+        ArgumentNullException.ThrowIfNull(replacementDefinition);
+        if (expectedCurrentDefinition == replacementDefinition)
+        {
+            throw new ArgumentException(
+                "Current and replacement definitions must be distinct.",
+                nameof(replacementDefinition));
+        }
+
+        return EditAsync(profilePath, backupPath, profile =>
+        {
+            DesktopRuntimeHostKel103SerialEndpointProfile? existing =
+                profile.Kel103SerialEndpoints.SingleOrDefault(endpoint =>
+                    endpoint.ExpectedEndpointId == expectedEndpointId);
+            if (existing is null)
+            {
+                throw new KeyNotFoundException(
+                    "The KEL-103 serial endpoint profile is not registered.");
+            }
+
+            if (existing.DefinitionReference != expectedCurrentDefinition)
+            {
+                throw new InvalidOperationException(
+                    "The KEL-103 serial endpoint does not use the required current definition.");
+            }
+
+            var migrated = new DesktopRuntimeHostKel103SerialEndpointProfile(
+                existing.ExpectedEndpointId,
+                replacementDefinition.Id.Value,
+                replacementDefinition.Version,
+                existing.SerialPort,
+                existing.BaudRate);
+            return new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints.Select(endpoint =>
+                    endpoint.ExpectedEndpointId == expectedEndpointId
+                        ? migrated
+                        : endpoint));
+        }, cancellationToken);
+    }
+
     public Task AddCompactAsync(string profilePath, string backupPath,
         DesktopRuntimeHostCompactSerialEndpointProfile endpoint,
         CancellationToken cancellationToken = default)
@@ -114,6 +166,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             await WriteAsync(temporaryPath, candidate, cancellationToken).ConfigureAwait(false);
             _ = await DesktopRuntimeHostEndpointCompositionProfileFile.LoadAsync(
                 temporaryPath, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             File.Replace(temporaryPath, profilePath, backupPath);
         }
         finally
