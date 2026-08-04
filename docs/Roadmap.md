@@ -1208,6 +1208,43 @@ Operational diagnostics remained sanitized
 Runtime Hosts and Client stopped; serial port independently reopened
 ```
 
+## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
+
+**Status:** [Active] Increment 46A decision and safety boundary accepted
+
+ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
+display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
+current, resistance, and power targets. State changes remain device-specific
+below the unchanged normalized Runtime Host and Client contracts.
+
+Setpoints use read/write Properties. Mode and input behavior use explicit
+Commands. Mode and setpoint changes require authoritative input OFF. Generic
+activation rejects SHORT; a separate short-circuit activation Command requires
+explicit Boolean confirmation. Every mutation is transmitted once, read back,
+never retried, and never replayed during recovery.
+
+Planned increments:
+
+1. 46A — Decision, safety model, and characterization plan — complete.
+2. 46B — Read-only mode, input-state, and setpoint characterization.
+3. 46C — Read-only upper/lower-limit characterization.
+4. 46D — Input-OFF mode-selection characterization and restoration.
+5. 46E — Input-OFF setpoint-write characterization and restoration.
+6. 46F — Versioned state and controlled-capability definitions.
+7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
+8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
+9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
+   physical validation.
+10. 46J — Documentation and closure.
+
+Current baseline:
+
+```text
+4,772 automated tests pass
+ADR-0045 Runtime Host publication and recovery remain the authoritative base
+Runtime Hosts and Client stopped
+```
+
 ## Agreed later objectives
 
 - Python Automation Boundary.

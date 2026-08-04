@@ -1,5 +1,31 @@
 # Project Status
 
+## Current architectural objective — ADR-0046
+
+**ADR-0046 — Controlled KEL-103 Operating State and Setpoints — accepted;
+Increment 46A decision and safety boundary approved**
+
+- The objective adds authoritative mode, input state, and voltage, current,
+  resistance, and power targets above the completed ADR-0045 attachment.
+- Controlled modes are CC, CV, CR, CW, and SHORT.
+- Setpoints become read/write Properties; mode and input behavior use explicit
+  Commands.
+- Mode and setpoint changes require authoritative input OFF.
+- Generic activation rejects SHORT; short-circuit activation has a distinct
+  Command requiring explicit Boolean confirmation.
+- Every state change is sent once, authoritatively read back, never retried, and
+  never replayed during recovery.
+- Unsupported input-state query behavior blocks input-control publication.
+- ADR-0045 version 2 remains immutable; definition migration is explicit and
+  offline.
+
+### Next
+
+Proceed only after explicit approval with Increment 46B — Read-Only Mode,
+Input-State, and Setpoint Characterization.
+
+---
+
 ## Completed architectural objective — ADR-0045
 
 **ADR-0045 — Runtime-Hosted SCPI Instrument Publication — implemented,
@@ -21,14 +47,6 @@ physically validated, and closed at 4,772 tests**
   diagnostics remain deferred.
 - Physical validation covered simultaneous Desktop Arduino, ESP32, and KEL-103
   operation plus a MiniPC Arduino through two authenticated Client sessions.
-
-### Next
-
-Select the next architectural objective explicitly. Current candidates are the
-Python Automation Boundary, Remote Media Feedback, and Diagnostic Export and
-Offline Analysis.
-
----
 
 ## Completed architectural objective — ADR-0044
 
@@ -1239,7 +1257,7 @@ shutdown, and deterministic port release. ADR-0045 closes at 4,772 tests.
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0045 are accepted.
+ADR-0001 through ADR-0046 are accepted.
 
 Relevant recent decisions:
 
@@ -1275,6 +1293,7 @@ Relevant recent decisions:
   Client Topology.
 - ADR-0044 - SCPI Instrument Adapter Boundary.
 - ADR-0045 - Runtime-Hosted SCPI Instrument Publication.
+- ADR-0046 - Controlled KEL-103 Operating State and Setpoints.
 
 ---
 
@@ -1311,7 +1330,8 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Select the next architectural objective explicitly after ADR-0045 closure.
+1. Proceed with ADR-0046 only through separately approved, characterized, and
+   restorable increments.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.
