@@ -1,10 +1,12 @@
 # KEL-103 SCPI Serial Characterization
 
 - Related decisions: ADR-0044 — SCPI Instrument Adapter Boundary; ADR-0045 —
-  Runtime-Hosted SCPI Instrument Publication
-- Increment: 45J — Runtime publication closure
+  Runtime-Hosted SCPI Instrument Publication; ADR-0046 — Controlled KEL-103
+  Operating State and Setpoints
+- Increment: 46B — Read-only mode, input-state, and setpoint characterization
 - Initial date: 2026-08-03
 - Runtime closure date: 2026-08-04
+- State-characterization date: 2026-08-04
 - Status: Complete
 
 ## Purpose
@@ -210,11 +212,62 @@ Every shutdown released the port for immediate independent reopening and a
 redacted read-only identity check. The ADR-0045 closure baseline is 4,772
 automated tests passing.
 
+## ADR-0046 read-only operating-state characterization
+
+A separately bounded Protocol Explorer scenario verified identity and then sent
+exactly one selected fixed read-only query for operating mode, input state, or
+one target. Every exchange used the established 115200 8N1 serial profile, CR
+command termination, LF response termination, three-second timeout, and
+512-byte response bound. The scenario accepted no arbitrary SCPI text.
+
+Physical mode characterization kept the external supply output off and the
+load input off. Mode changes were made only from the instrument front panel.
+The exact case-sensitive `:FUNCtion?` responses are:
+
+| Operating mode | Exact response |
+| --- | --- |
+| Constant current | `CC` |
+| Constant voltage | `CV` |
+| Constant resistance | `CR` |
+| Constant power | `CW` |
+| Short circuit | `SHORt` |
+
+Selecting SHORT from the front panel did not activate the input. The input
+remained off, the source output remained off, and the original CC mode was
+restored and authoritatively reverified afterward.
+
+The exact case-sensitive `:INPut?` responses are `OFF` and `ON`. The ON response
+was characterized only after manual front-panel activation while the external
+supply output remained off. The input was then manually deactivated and `OFF`
+was authoritatively reverified.
+
+The four target queries returned invariant decimal values with the following
+exact suffixes:
+
+| Target | Exact suffix |
+| --- | --- |
+| Voltage | `V` |
+| Current | `A` |
+| Resistance | `OHM` |
+| Power | `W` |
+
+Four fractional digits were observed for every characterized target response.
+No target value is retained in this report. All selected state-query durations
+in the validation were below five milliseconds, comfortably inside the
+three-second bound; observed timings are not protocol guarantees.
+
+Every query first reverified identity, sent no state-changing SCPI command,
+closed normally, and released the port. Mode and input changes occurred only
+through attended front-panel actions. Final verification confirmed input off,
+mode restored to CC, original setpoints unchanged, external supply output off,
+and successful independent reopening for a redacted identity-only query. The
+validated automated baseline is 4,854 tests passing.
+
 ## Exclusions
 
 This report does not validate:
 
-- input-state and function publication;
+- input-state, mode, or target publication;
 - resistance measurement publication;
 - Property writes;
 - load input enablement;

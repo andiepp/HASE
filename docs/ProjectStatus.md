@@ -2,8 +2,8 @@
 
 ## Current architectural objective — ADR-0046
 
-**ADR-0046 — Controlled KEL-103 Operating State and Setpoints — accepted;
-Increment 46A decision and safety boundary approved**
+**ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
+Increment 46B read-only state characterization complete at 4,854 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -18,11 +18,20 @@ Increment 46A decision and safety boundary approved**
 - Unsupported input-state query behavior blocks input-control publication.
 - ADR-0045 version 2 remains immutable; definition migration is explicit and
   offline.
+- Physical read-only characterization established exact mode responses `CC`,
+  `CV`, `CR`, `CW`, and case-sensitive `SHORt`.
+- Exact input-state responses are `OFF` and `ON`; the ON response was observed
+  only during attended manual activation with the external supply output off.
+- Voltage, current, resistance, and power targets use invariant numeric text
+  with exact suffixes `V`, `A`, `OHM`, and `W`.
+- All characterization queries were identity-gated and read-only. Final state
+  was restored to CC and OFF with original setpoints unchanged, and independent
+  port reopening succeeded.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46B — Read-Only Mode,
-Input-State, and Setpoint Characterization.
+Proceed only after explicit approval with Increment 46C — Read-Only Upper/Lower
+Limit Characterization.
 
 ---
 

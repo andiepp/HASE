@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46A
+- Status: Accepted — Increment 46B read-only characterization complete
 - Date: 2026-08-04
 
 ## Context
@@ -201,7 +201,8 @@ Protocol and Bytes diagnostics remain deferred.
 ## Approved increment sequence
 
 1. 46A — Decision, safety model, and characterization plan.
-2. 46B — Read-only mode, input-state, and setpoint characterization.
+2. 46B — Read-only mode, input-state, and setpoint characterization — complete
+   at 4,854 tests.
 3. 46C — Read-only upper/lower-limit characterization.
 4. 46D — Input-OFF mode-selection characterization and restoration.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
@@ -236,3 +237,23 @@ ADR-0046 starts from the clean pushed ADR-0045 closure baseline of 4,772
 automated tests passing in Visual Studio 2026 Release configuration on .NET 10.
 The Client and both Runtime Hosts are stopped. Machine-specific reachability,
 instrument serial identity, and deployment security values remain external.
+
+## Increment 46B characterized result
+
+The bounded Protocol Explorer path verifies identity and sends exactly one
+selected fixed read-only query. Physical validation established case-sensitive
+mode responses `CC`, `CV`, `CR`, `CW`, and `SHORt`; input responses `OFF` and
+`ON`; and invariant voltage, current, resistance, and power target responses
+with exact suffixes `V`, `A`, `OHM`, and `W`. Four fractional digits were
+observed for each characterized target response.
+
+Mode selection and the brief input activation used only attended front-panel
+actions while the external supply output remained off. No state-changing SCPI
+command was transmitted. Final authoritative queries confirmed CC mode, input
+off, and unchanged original setpoints. Every session closed normally, and an
+independent redacted identity-only query reopened the port successfully.
+
+No actual target value, serial target, instrument serial identity, or deployment
+security value is retained in the characterization record. Increment 46B closes
+at 4,854 automated tests passing in Visual Studio 2026 Release configuration on
+.NET 10.

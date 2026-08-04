@@ -1210,7 +1210,7 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46A decision and safety boundary accepted
+**Status:** [Active] Increment 46B read-only state characterization complete
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1223,10 +1223,11 @@ activation rejects SHORT; a separate short-circuit activation Command requires
 explicit Boolean confirmation. Every mutation is transmitted once, read back,
 never retried, and never replayed during recovery.
 
-Planned increments:
+Completed and planned increments:
 
 1. 46A — Decision, safety model, and characterization plan — complete.
-2. 46B — Read-only mode, input-state, and setpoint characterization.
+2. 46B — Read-only mode, input-state, and setpoint characterization — complete
+   at 4,854 tests.
 3. 46C — Read-only upper/lower-limit characterization.
 4. 46D — Input-OFF mode-selection characterization and restoration.
 5. 46E — Input-OFF setpoint-write characterization and restoration.
@@ -1236,6 +1237,14 @@ Planned increments:
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
    physical validation.
 10. 46J — Documentation and closure.
+
+Increment 46B physically established exact `:FUNCtion?` responses `CC`, `CV`,
+`CR`, `CW`, and case-sensitive `SHORt`; exact `:INPut?` responses `OFF` and
+`ON`; and invariant target responses with suffixes `V`, `A`, `OHM`, and `W`.
+All queries were identity-gated and read-only. Front-panel-only mode and input
+changes occurred with the external supply output off, followed by authoritative
+restoration to CC and OFF, unchanged setpoints, normal session closure, and
+independent port reopening.
 
 Current baseline:
 
