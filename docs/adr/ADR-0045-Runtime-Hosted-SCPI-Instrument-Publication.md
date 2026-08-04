@@ -1,7 +1,8 @@
 # ADR-0045 — Runtime-Hosted SCPI Instrument Publication
 
-- Status: Accepted — Increment 45A
+- Status: Implemented, physically validated, and closed — Increment 45J
 - Date: 2026-08-03
+- Closure date: 2026-08-04
 
 ## Context
 
@@ -178,3 +179,63 @@ multi-host regression, orderly shutdown, and independent port reopening.
 ADR-0045 starts from the clean ADR-0044 closure baseline of 4,515 automated
 tests. The Runtime Hosts and Client are stopped. Machine-specific reachability
 and instrument identity remain external deployment data.
+
+## Implemented result
+
+ADR-0045 adds a reusable serial-to-SCPI bridge, versioned KEL-103 definitions,
+strict invariant response parsing, a normalized read-only runtime adapter,
+readiness-gated attachment, supervised connection replacement, explicit
+external endpoint composition, authoritative inventory publication, and
+unchanged Desktop Host, Client, and gRPC presentation boundaries.
+
+The production KEL-103 definition publishes one electronic-load instrument and
+exactly five read-only Properties:
+
+- product identity;
+- firmware version;
+- measured voltage;
+- measured current; and
+- measured power.
+
+There is no writable Property, Command, arbitrary SCPI console, automatic
+discovery, or automatic replacement of an existing attachment. The configured
+serial target remains reachability only. The configured HASE endpoint identity
+and attachment generation remain authoritative northbound identity.
+
+Explicit offline profile administration adds and removes KEL-103 entries using
+atomic replacement, timestamped backup, exact endpoint-identity confirmation
+for removal, the fixed supported definition, and the physically verified serial
+profile. It performs no port access or Runtime Host startup and does not print
+the serial target.
+
+## Physical validation and closure
+
+Physical validation confirmed:
+
+- production publication beside the existing Desktop Arduino and ESP32;
+- complete identity and measurement synchronization before `Ready`;
+- correct Host and Client presentation of five read-only Properties;
+- successful authoritative reads with `Good` quality and advancing UTC
+  timestamps;
+- no writable Property or Command exposure;
+- bounded operation-triggered detection of USB loss and instrument power loss;
+- supervised serial/SCPI connection replacement, identity reverification, and
+  complete resynchronization;
+- stable attachment generation across USB reconnect and instrument power-cycle
+  recovery;
+- unaffected Arduino and ESP32 Properties, Commands, and Events;
+- correct endpoint and Runtime Host scoping in simultaneous Desktop and MiniPC
+  sessions;
+- independent Client-session disconnect and reconnect;
+- sanitized Host and Client Operational diagnostics; and
+- orderly shutdown followed by immediate independent serial-port reopening and
+  redacted read-only identity verification.
+
+The final physical topology contained three endpoints on the Desktop Runtime
+Host (Arduino, ESP32, and KEL-103), one Arduino on the MiniPC Runtime Host, and
+both authenticated Runtime Host profiles in the Laptop Client. No
+machine-specific address, serial target, certificate identity, credential, or
+instrument serial identity is part of this record.
+
+ADR-0045 closes at 4,772 automated tests passing in Visual Studio 2026 Release
+configuration on .NET 10.

@@ -1,35 +1,32 @@
 # Project Status
 
-## Current architectural objective — ADR-0045
+## Completed architectural objective — ADR-0045
 
-**ADR-0045 — Runtime-Hosted SCPI Instrument Publication — accepted; Increment
-45A decision and read-only safety boundary approved**
+**ADR-0045 — Runtime-Hosted SCPI Instrument Publication — implemented,
+physically validated, and closed at 4,772 tests**
 
-- ADR-0045 starts from the clean ADR-0044 closure baseline of 4,515 tests.
-- `Hase.Scpi` remains transport-independent and no SCPI contract crosses the
-  normalized runtime, gRPC, Desktop Host, or Client boundaries.
-- Runtime Host publication begins with explicit external configuration,
-  configured endpoint identity, versioned KEL-103 definition, read-only
-  verification, complete initial synchronization, and readiness-gated
-  publication.
-- Only product identity and firmware are currently physically verified.
-  Measurement Properties require separate read-only characterization.
-- The initial scope exposes no writable Property and no Command.
-- Runtime Host ownership includes session creation, serialization, supervision,
-  replacement, reverification, resynchronization, and disposal.
-- Operational diagnostics are sanitized; SCPI Protocol and Bytes diagnostics
-  remain deferred.
+- The production Desktop Runtime Host explicitly attaches and publishes the
+  physical KEL-103 through the authoritative inventory.
+- One normalized electronic-load instrument exposes product identity, firmware,
+  voltage, current, and power as five read-only Properties.
+- No writable Property, Command, raw SCPI console, or SCPI-specific northbound
+  contract is exposed.
+- Publication follows identity verification and complete synchronization.
+- USB reconnect and complete instrument power-cycle recovery replace the
+  connection, reverify identity, resynchronize fully, and retain the published
+  attachment generation.
+- Host, Client, gRPC, diagnostics, and multi-host contracts remain unchanged and
+  correctly scoped.
+- Operational diagnostics are useful and sanitized; Protocol and Bytes SCPI
+  diagnostics remain deferred.
+- Physical validation covered simultaneous Desktop Arduino, ESP32, and KEL-103
+  operation plus a MiniPC Arduino through two authenticated Client sessions.
 
 ### Next
 
-Proceed only after explicit approval with Increment 45B — Reusable
-Serial-to-SCPI Bridge.
-
-### Previous completed architectural objective
-
-ADR-0044 — SCPI Instrument Adapter Boundary — closed at 4,515 tests after
-read-only KEL-103 characterization migrated to `ScpiTextSession` and physical
-port-release validation.
+Select the next architectural objective explicitly. Current candidates are the
+Python Automation Boundary, Remote Media Feedback, and Diagnostic Export and
+Offline Analysis.
 
 ---
 
@@ -227,7 +224,7 @@ validated local and remote authoritative writes.
 The current verified baseline is:
 
 ```text
-4,405 automated tests passing
+4,772 automated tests passing
 .NET solution builds
 ESP32 firmware builds
 Arduino Uno firmware builds
@@ -268,6 +265,13 @@ Bounded operator activity projection verified
 Physical ESP32 and Arduino Event descriptors verified
 Live Event occurrence source attribution verified in both endpoint orders
 Desktop Runtime Host window and process shutdown verified
+Physical KEL-103 identity, voltage, current, and power access verified
+KEL-103 Runtime Host publication and authoritative Client reads verified
+KEL-103 USB reconnect and complete instrument power-cycle recovery verified
+Native, Compact, and SCPI endpoint coexistence verified
+Four-endpoint simultaneous Desktop and MiniPC topology verified
+Sanitized KEL-103 Host and Client Operational diagnostics verified
+KEL-103 orderly shutdown and independent serial-port reopening verified
 ```
 
 Protocol Version 1 is feature complete for the current endpoint contract.
@@ -1215,14 +1219,27 @@ Protocol Explorer adapts the physically characterized KEL-103 serial profile to
 `ScpiTextSession`, requires one LF-terminated response, rejects echo and
 trailing frames, preserves identity redaction and timing diagnostics, closes
 normally, and releases the port for independent reuse. ADR-0044 closes its
-session and characterization boundary at 4,515 tests. Runtime publication and
-device capability mappings remain deferred to a later explicit decision.
+session and characterization boundary at 4,515 tests.
+
+## ADR-0045 — Runtime-Hosted SCPI Instrument Publication
+
+The production Runtime Host now owns the explicitly configured KEL-103 serial
+session, verification, complete synchronization, authoritative publication,
+operations, supervised replacement, recovery, and disposal. The versioned
+definition publishes product identity, firmware, measured voltage, measured
+current, and measured power as five read-only normalized Properties.
+
+Physical validation covered Host and Client presentation, authoritative reads,
+USB reconnect, complete instrument power-cycle recovery, mixed Native/Compact/
+SCPI Command and Event coexistence, simultaneous Desktop and MiniPC Runtime
+Hosts, independent Client-session reconnection, sanitized diagnostics, orderly
+shutdown, and deterministic port release. ADR-0045 closes at 4,772 tests.
 
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0044 are accepted.
+ADR-0001 through ADR-0045 are accepted.
 
 Relevant recent decisions:
 
@@ -1257,6 +1274,7 @@ Relevant recent decisions:
 - ADR-0043 - Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
   Client Topology.
 - ADR-0044 - SCPI Instrument Adapter Boundary.
+- ADR-0045 - Runtime-Hosted SCPI Instrument Publication.
 
 ---
 
@@ -1281,9 +1299,10 @@ The current implementation intentionally excludes:
 - operator activity and Event filtering or export;
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
-- Tailscale runtime-host discovery.
-- SCPI instrument publication through the Runtime Host;
-- a versioned KEL-103 endpoint definition and safe capability mappings;
+- Tailscale runtime-host discovery;
+- state-changing KEL-103 Properties and Commands;
+- SCPI Protocol and Bytes diagnostics;
+- automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
 - Python automation;
 - diagnostic export and offline analysis;
 - remote media feedback.
@@ -1292,8 +1311,7 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Select the next architectural objective explicitly; ADR-0044 runtime
-   publication is not implied by completion of its session boundary.
+1. Select the next architectural objective explicitly after ADR-0045 closure.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.

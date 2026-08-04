@@ -1086,6 +1086,9 @@ The northbound runtime-host API begins in Phase 7 under ADR-0023.
 - ADR-0043 — Repeatable Runtime-Host Deployment, Enrollment, and Multi-Host
   Client Topology — complete at 4,405 tests after simultaneous Desktop and
   MiniPC Runtime Host validation from one laptop Client.
+- ADR-0044 — SCPI Instrument Adapter Boundary — complete at 4,515 tests.
+- ADR-0045 — Runtime-Hosted SCPI Instrument Publication — complete at 4,772
+  tests after physical recovery and simultaneous multi-host validation.
 
 ADR-0042 closed at 4,017 automated tests with all thirty-seven combined
 physical ESP32 and Arduino Uno validation checks passing without deviation.
@@ -1109,7 +1112,7 @@ TLS, certificate-pinning, explicit endpoint-attachment, and runtime-host
 lifecycle-ownership boundaries remain unchanged. Tailscale remains reachability
 only.
 
-## Current objective — ADR-0044 SCPI Instrument Adapter Boundary
+## Completed objective — ADR-0044 SCPI Instrument Adapter Boundary
 
 **Status:** [Completed boundary] SCPI session and read-only KEL-103
 characterization migration complete through 44B5C
@@ -1144,18 +1147,16 @@ The accepted boundary requires:
 - no SCPI-specific northbound contract; and
 - no arbitrary operator-entered SCPI console.
 
-Completed and planned increments:
+Completed increments:
 
 1. 44A1 — Architecture decision — complete.
 2. 44A2 — Read-only KEL-103 serial characterization utility — complete.
 3. 44A3 — Physical protocol characterization documentation — complete.
 4. 44B — Serialized SCPI text-session core and KEL-103 characterization
    migration — complete.
-5. 44C — Versioned KEL-103 definition and mappings.
-6. 44D — Runtime attachment, supervision, and synchronization.
-7. 44E — External Runtime Host profile integration.
-8. 44F — Existing Desktop Host and Client presentation.
-9. 44G — Physical multi-host validation and closure.
+
+Runtime publication and capability mapping continued under ADR-0045 rather
+than extending the completed adapter-boundary decision.
 
 Current verified baseline:
 
@@ -1170,39 +1171,41 @@ triggering, LIST, OCP, OPP, battery, dynamic, pulse, and flip modes. Generic
 VISA, USBTMC, GPIB, automatic instrument discovery, and a public instrument-
 definition repository also remain later work.
 
-## Current objective — ADR-0045 Runtime-Hosted SCPI Instrument Publication
+## Completed objective — ADR-0045 Runtime-Hosted SCPI Instrument Publication
 
-**Status:** [Active] Increment 45A decision and read-only safety boundary
-accepted
+**Status:** [Completed] Implemented, automated, and physically validated
 
 ADR-0045 publishes explicitly configured SCPI instruments through the existing
 normalized endpoint, instrument, Property, attachment-generation, diagnostics,
 Runtime Host, and Client boundaries. `Hase.Scpi` remains transport independent.
 
-The first KEL-103 slice is read-only. Product identity and firmware are the only
-currently verified Properties. Candidate measurements require isolated physical
-characterization before descriptor publication. No writable Property, Command,
-automatic discovery, arbitrary SCPI console, or raw SCPI diagnostics are in the
-initial scope.
+The completed KEL-103 slice is read-only. Product identity, firmware, measured
+voltage, measured current, and measured power were separately characterized and
+published as normalized Properties. No writable Property, Command, automatic
+discovery, arbitrary SCPI console, or raw SCPI diagnostics are exposed.
 
-Planned increments:
+Completed increments:
 
 1. 45A — Decision and read-only safety boundary — complete.
-2. 45B — Reusable serial-to-SCPI bridge.
-3. 45C — Versioned KEL-103 identity definition.
-4. 45D — Read-only measurement characterization.
-5. 45E — Normalized KEL-103 runtime adapter.
-6. 45F — Attachment, supervision, and synchronization.
-7. 45G — External Runtime Host profile integration.
-8. 45H — Desktop Host and Client presentation validation.
-9. 45I — Physical recovery and multi-host validation.
-10. 45J — Documentation and closure.
+2. 45B — Reusable serial-to-SCPI bridge — complete.
+3. 45C — Versioned KEL-103 identity definition — complete.
+4. 45D — Read-only measurement characterization — complete.
+5. 45E — Normalized KEL-103 runtime adapter — complete.
+6. 45F — Attachment, supervision, and synchronization — complete.
+7. 45G — External Runtime Host profile integration — complete.
+8. 45H — Desktop Host and Client presentation validation — complete.
+9. 45I — Physical recovery and multi-host validation — complete.
+10. 45J — Documentation and closure — complete.
 
 Current baseline:
 
 ```text
-4,515 automated tests pass
-Runtime Hosts and Client stopped
+4,772 automated tests pass
+KEL-103 USB and complete power-cycle recovery verified
+Native, Compact, and SCPI endpoints operated concurrently
+Desktop and MiniPC Runtime Hosts operated simultaneously from one Client
+Operational diagnostics remained sanitized
+Runtime Hosts and Client stopped; serial port independently reopened
 ```
 
 ## Agreed later objectives

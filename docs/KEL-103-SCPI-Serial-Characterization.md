@@ -1,19 +1,23 @@
 # KEL-103 SCPI Serial Characterization
 
-- Related decision: ADR-0044 — SCPI Instrument Adapter Boundary
-- Increment: 44B5C — SCPI Session Migration Closure
-- Date: 2026-08-03
+- Related decisions: ADR-0044 — SCPI Instrument Adapter Boundary; ADR-0045 —
+  Runtime-Hosted SCPI Instrument Publication
+- Increment: 45J — Runtime publication closure
+- Initial date: 2026-08-03
+- Runtime closure date: 2026-08-04
 - Status: Complete
 
 ## Purpose
 
-This report freezes the physical serial and read-only identity behavior observed
-for the KORAD KEL-103 programmable DC electronic load before HASE introduces a
-reusable production SCPI session.
+This report freezes the physical serial, read-only identity, measurement, and
+Runtime Host behavior observed for the KORAD KEL-103 programmable DC electronic
+load.
 
-The characterization is deliberately narrower than runtime attachment. It does
-not publish a HASE endpoint, construct descriptors, perform Property operations,
-execute a state-changing command, or alter instrument configuration.
+The original Protocol Explorer characterization is deliberately narrower than
+runtime attachment. It does not publish a HASE endpoint, construct descriptors,
+perform Property operations, execute a state-changing command, or alter
+instrument configuration. Later sections separately record the approved
+ADR-0045 production publication and recovery validation.
 
 ## Safety boundary
 
@@ -161,23 +165,66 @@ Production timeout and idle values remain decisions for 44B. The
 characterization values are safe experimental bounds, not automatically the
 production defaults.
 
+## ADR-0045 read-only measurement characterization
+
+Separate bounded Protocol Explorer runs verified the fixed voltage, current,
+and power measurement queries before descriptor publication. With the load
+input off, voltage followed the connected source while current and power were
+zero. With the instrument manually configured for a small constant-current
+load, voltage, current, and power returned mutually consistent numeric values
+with the exact units V, A, and W. Every run first reverified identity, sent no
+state-changing command, closed normally, and released the port for independent
+reuse.
+
+The production definition therefore contains product identity, firmware,
+measured voltage, measured current, and measured power as read-only Properties.
+Invariant parsing, exact units, bounded responses, sentinel rejection, and
+identity-before-measurement remain device-specific below the normalized runtime
+boundary.
+
+## ADR-0045 runtime and recovery validation
+
+The explicitly configured KEL-103 was published through the production Desktop
+Runtime Host beside its existing Arduino and ESP32. Publication occurred only
+after identity verification and complete synchronization. Host and Client
+showed one electronic-load instrument, five read-only Properties with `Good`
+quality, no writable Properties, and no Commands.
+
+Authoritative Client reads succeeded for all five Properties. USB disconnect
+and complete instrument power loss were detected by a bounded authoritative
+operation. In both cases the published endpoint faulted without disturbing the
+Client session or unrelated endpoints, then returned to `Ready` after automatic
+connection replacement, identity reverification, and full resynchronization.
+The attachment generation remained stable.
+
+Native ESP32 and Compact Arduino Commands, authoritative restoration, and
+Events operated concurrently without disturbing the KEL-103. A Laptop Client
+also maintained simultaneous authenticated Desktop and MiniPC Runtime Host
+sessions; inventory, operations, Events, diagnostics, and independent session
+reconnection remained correctly host-scoped. Operational diagnostics exposed
+useful sanitized context without serial targets, raw identity responses,
+instrument serial identity, SCPI text, Property values, credentials,
+configuration paths, or exception text.
+
+Every shutdown released the port for immediate independent reopening and a
+redacted read-only identity check. The ADR-0045 closure baseline is 4,772
+automated tests passing.
+
 ## Exclusions
 
 This report does not validate:
 
-- input-state queries;
-- function queries;
-- voltage, current, resistance, or power queries;
-- measurements;
+- input-state and function publication;
+- resistance measurement publication;
 - Property writes;
 - load input enablement;
 - setpoint changes;
 - saved configurations;
 - triggers;
 - LIST, protection, battery, or dynamic modes;
-- runtime attachment or supervision;
-- reconnection;
-- Desktop Host or Client presentation; or
-- multi-host operation.
+- SCPI Protocol or Bytes diagnostics;
+- automatic discovery;
+- generic VISA, USBTMC, or GPIB; or
+- arbitrary operator-entered SCPI.
 
 Each requires a later explicitly approved increment.
