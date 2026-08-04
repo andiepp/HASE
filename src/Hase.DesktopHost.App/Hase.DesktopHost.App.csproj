@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Hosting\Hase.Runtime.Remote.Grpc.Hosting.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
     <ProjectReference Include="..\Hase.Scpi.Kel103\Hase.Scpi.Kel103.csproj" />
+    <ProjectReference Include="..\Hase.Scpi.Kel103.Hosting\Hase.Scpi.Kel103.Hosting.csproj" />
     <ProjectReference Include="..\Hase.Simulation.Runtime\Hase.Simulation.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
   </ItemGroup>
