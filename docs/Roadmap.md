@@ -1210,8 +1210,8 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46E input-OFF setpoint-write characterization
-complete
+**Status:** [Active] Increment 46F versioned state and controlled-capability
+definitions complete
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1235,7 +1235,8 @@ Completed and planned increments:
    at 4,937 tests.
 5. 46E — Input-OFF setpoint-write characterization and restoration — complete
    at 5,000 tests.
-6. 46F — Versioned state and controlled-capability definitions.
+6. 46F — Versioned state and controlled-capability definitions — complete at
+   5,018 tests.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
@@ -1277,12 +1278,20 @@ and the external supply output remained off, unrelated targets stayed
 unchanged, and every successful run closed with all original targets in CC/OFF
 state. No values were disclosed and no mutation was retried or replayed.
 
+Increment 46F preserved immutable definition versions 1 and 2, added version 3
+with eleven read-only identity, measurement, mode, input-state, and target
+Properties, and added version 4 with the same inventory, four read/write target
+Properties, and five parameterless mode-selection Commands. SHORT selection
+does not activate the input. Input-control Commands, runtime mappings,
+deployment, and migration remain excluded. Production continues to use
+definition version 2 pending an explicitly approved offline migration.
+
 Current baseline:
 
 ```text
-5,000 automated tests pass
+5,018 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 mode and setpoint-write characterization complete through 46E
+ADR-0046 characterization and versioned definitions complete through 46F
 Runtime Hosts and Client stopped
 ```
 

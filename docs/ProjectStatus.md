@@ -3,8 +3,7 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46E input-OFF setpoint-write characterization complete at 5,000
-tests**
+Increment 46F versioned definitions complete at 5,018 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -52,11 +51,21 @@ tests**
 - Every successful setter probe closed in CC/OFF state with all original
   targets restored while the external supply output remained off.
 - No value or bound was disclosed, and no mutation was retried or replayed.
+- Definition versions 1 and 2 remain immutable; production continues to use
+  version 2.
+- Definition version 3 adds read-only mode, input state, and all four target
+  Properties to the existing identity and measurement inventory.
+- Definition version 4 makes only the four targets read/write and adds five
+  parameterless mode-selection Commands for CC, CV, CR, CW, and SHORT.
+- SHORT mode selection does not activate the input. Input activation,
+  deactivation, and separately confirmed SHORT activation remain excluded.
+- No Runtime Host profile, runtime mapping, deployment, or migration changed in
+  Increment 46F.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46F — Versioned State and
-Controlled-Capability Definitions.
+Proceed only after explicit approval with Increment 46G — Runtime Reads,
+Writes, Commands, Readback, and Uncertain Outcomes.
 
 ---
 

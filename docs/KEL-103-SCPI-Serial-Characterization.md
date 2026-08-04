@@ -368,13 +368,39 @@ was retried or replayed through a recovery session. Candidate, original,
 returned, and bound values remained redacted from output and this report. The
 validated automated baseline is 5,000 tests passing.
 
+## ADR-0046 versioned state and controlled-capability definitions
+
+The accepted characterization evidence is represented by two new exact
+definition versions under the existing KEL-103 descriptor identity. Existing
+versions remain immutable.
+
+Version 3 retains the five version-2 identity and measurement Properties and
+adds read-only `Operating.Mode`, `Input.Enabled`, `Target.Voltage`,
+`Target.Current`, `Target.Resistance`, and `Target.Power`. The target descriptors
+carry the characterized ranges and native units. They intentionally declare no
+resolution because response-scale formatting does not establish one invariant
+instrument resolution.
+
+Version 4 retains those eleven Properties, makes only the four targets
+read/write, and exposes the parameterless Commands
+`Mode.SelectConstantCurrent`, `Mode.SelectConstantVoltage`,
+`Mode.SelectConstantResistance`, `Mode.SelectConstantPower`, and
+`Mode.SelectShortCircuit`. Selecting SHORT does not activate the input.
+
+The production Runtime Host remains on immutable definition version 2. No
+runtime mapping, state-changing execution, profile update, deployment, or
+migration was performed. Moving an installation to a later exact definition
+remains an explicit offline operation with strict validation, atomic profile
+replacement, and retained backup. The validated automated baseline is 5,018
+tests passing.
+
 ## Exclusions
 
 This report does not validate:
 
-- input-state, mode, or target publication;
+- runtime input-state, mode, or target publication;
 - resistance measurement publication;
-- Property writes;
+- runtime Property writes and mode-Command execution;
 - load input enablement;
 - saved configurations;
 - triggers;

@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46E input-OFF setpoint-write characterization complete
+- Status: Accepted — Increment 46F versioned definitions complete
 - Date: 2026-08-04
 
 ## Context
@@ -215,7 +215,8 @@ Protocol and Bytes diagnostics remain deferred.
    at 4,937 tests.
 5. 46E — Input-OFF setpoint-write characterization and restoration — complete
    at 5,000 tests.
-6. 46F — Versioned state and controlled-capability definitions.
+6. 46F — Versioned state and controlled-capability definitions — complete at
+   5,018 tests.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
@@ -367,5 +368,43 @@ a valid but differently quantized changed readback permits the already-planned
 original-value and CC restoration before reporting failure.
 
 Increment 46E closes at 5,000 automated tests passing in Visual Studio 2026
-Release configuration on .NET 10. Production Properties and Commands remain
-unchanged pending Increment 46F.
+Release configuration on .NET 10. Production Properties and Commands remained
+unchanged through Increment 46E.
+
+## Increment 46F versioned definition result
+
+The definition repository now preserves four exact versions under the existing
+KEL-103 descriptor identity:
+
+| Version | Capability |
+| --- | --- |
+| 1 | Immutable identity definition |
+| 2 | Immutable production read-only identity and measurement definition |
+| 3 | Read-only identity, measurements, operating mode, input state, and four targets |
+| 4 | Version-3 state plus four writable targets and five mode-selection Commands |
+
+Version 3 contains eleven read-only Properties. It retains product identity,
+firmware, measured voltage, measured current, and measured power, then adds
+`Operating.Mode`, `Input.Enabled`, `Target.Voltage`, `Target.Current`,
+`Target.Resistance`, and `Target.Power`. The four targets carry their physically
+characterized native units and ranges. No invariant numeric resolution is
+claimed from response formatting alone.
+
+Version 4 retains the same eleven Properties. Only the four target Properties
+are read/write. It adds the parameterless Commands
+`Mode.SelectConstantCurrent`, `Mode.SelectConstantVoltage`,
+`Mode.SelectConstantResistance`, `Mode.SelectConstantPower`, and
+`Mode.SelectShortCircuit`. SHORT selection is mode selection only and does not
+activate the input.
+
+`Input.Activate`, `Input.Deactivate`, and `ShortCircuit.Activate` remain absent.
+They require their later characterization and physical-validation gates before
+publication. No runtime mapping, execution path, profile migration, or
+deployment change entered Increment 46F. Production remains on immutable
+definition version 2 until an explicitly approved offline migration validates
+and atomically replaces the installed profile while retaining a backup.
+
+Increment 46F closes at 5,018 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10. No additional physical operation was required
+because the definitions encode the accepted Increment 46B through 46E evidence
+without yet executing those capabilities in production.
