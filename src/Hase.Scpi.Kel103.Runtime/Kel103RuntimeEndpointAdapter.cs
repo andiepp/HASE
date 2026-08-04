@@ -12,6 +12,7 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
     private readonly RuntimeInstrument runtimeInstrument;
     private readonly IReadOnlyDictionary<PropertyId, RuntimeProperty> properties;
     private readonly bool supportsOperatingState;
+    private readonly bool supportsSetpointWrites;
     private readonly TimeProvider timeProvider;
 
     public Kel103RuntimeEndpointAdapter(
@@ -25,7 +26,8 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
             ?? throw new ArgumentNullException(nameof(runtimeEndpoint));
         this.timeProvider = timeProvider ?? TimeProvider.System;
 
-        (runtimeInstrument, supportsOperatingState) = ValidateEndpoint(runtimeEndpoint);
+        (runtimeInstrument, supportsOperatingState, supportsSetpointWrites) =
+            ValidateEndpoint(runtimeEndpoint);
         properties = runtimeInstrument.Properties.ToDictionary(
             property => property.Descriptor.Id);
     }
@@ -136,6 +138,49 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
 
     public ValueTask DisposeAsync() => sessionAdapter.DisposeAsync();
 
+    public async Task<RuntimeProperty> WriteAsync(
+        InstrumentId instrumentId,
+        PropertyId propertyId,
+        object? requestedValue,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instrumentId);
+        ArgumentNullException.ThrowIfNull(propertyId);
+
+        if (!supportsSetpointWrites
+            || instrumentId != runtimeInstrument.Descriptor.Id
+            || !properties.TryGetValue(propertyId, out RuntimeProperty? property)
+            || property.Descriptor.AccessMode != PropertyAccessMode.ReadWrite)
+        {
+            throw new KeyNotFoundException(
+                "The requested KEL-103 runtime Property is not writable.");
+        }
+
+        Kel103SetpointMapping mapping = Kel103SetpointMapping.All.SingleOrDefault(
+            candidate => candidate.PropertyId == propertyId)
+            ?? throw new KeyNotFoundException(
+                "The requested KEL-103 runtime Property is not a supported target.");
+        decimal normalizedValue = NormalizeRequestedValue(requestedValue);
+        if (normalizedValue < mapping.Minimum || normalizedValue > mapping.Maximum)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(requestedValue),
+                "The requested KEL-103 target is outside the characterized range.");
+        }
+
+        Kel103SetpointMutationResult result = await sessionAdapter
+            .WriteSetpointAsync(mapping, normalizedValue, cancellationToken)
+            .ConfigureAwait(false);
+
+        PropertyValue targetValue = CreateValue(result.Value, result.TimestampUtc);
+        PropertyValue modeValue = CreateValue(
+            Kel103OperatingModeMapping.ToNormalizedValue(result.OperatingMode),
+            result.TimestampUtc);
+        property.UpdateValue(targetValue);
+        properties[Kel103OperatingModeMapping.PropertyId].UpdateValue(modeValue);
+        return property;
+    }
+
     private async Task<RuntimeEndpoint> SynchronizeOperatingStateAsync(
         CancellationToken cancellationToken)
     {
@@ -168,7 +213,10 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
         return runtimeEndpoint;
     }
 
-    private static (RuntimeInstrument Instrument, bool SupportsOperatingState)
+    private static (
+        RuntimeInstrument Instrument,
+        bool SupportsOperatingState,
+        bool SupportsSetpointWrites)
         ValidateEndpoint(RuntimeEndpoint endpoint)
     {
         RuntimeInstrument instrument = endpoint.Instruments.Count == 1
@@ -179,14 +227,21 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 instrument,
                 Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()))
         {
-            return (instrument, false);
+            return (instrument, false, false);
         }
 
         if (IsCompatible(
                 instrument,
                 Kel103OperatingStateDefinition.EndpointDefinition.Instruments.Single()))
         {
-            return (instrument, true);
+            return (instrument, true, false);
+        }
+
+        if (IsCompatible(
+                instrument,
+                Kel103ControlledSetpointDefinition.EndpointDefinition.Instruments.Single()))
+        {
+            return (instrument, true, true);
         }
 
         throw Incompatible();
@@ -230,7 +285,56 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
             }
         }
 
+        for (int index = 0; index < instrument.Commands.Count; index++)
+        {
+            var actual = instrument.Commands[index].Descriptor;
+            var required = expected.Interface.Commands[index];
+            if (actual.Path != required.Path
+                || (actual.Argument is null) != (required.Argument is null)
+                || actual.Argument?.Data.GetType() != required.Argument?.Data.GetType())
+            {
+                return false;
+            }
+        }
+
         return true;
+    }
+
+    private static decimal NormalizeRequestedValue(object? requestedValue)
+    {
+        try
+        {
+            return requestedValue switch
+            {
+                byte value => value,
+                sbyte value => value,
+                short value => value,
+                ushort value => value,
+                int value => value,
+                uint value => value,
+                long value => value,
+                ulong value => value,
+                decimal value => value,
+                float value when float.IsFinite(value) => Convert.ToDecimal(value),
+                double value when double.IsFinite(value) => Convert.ToDecimal(value),
+                float => throw new ArgumentException(
+                    "The requested KEL-103 target must be finite.",
+                    nameof(requestedValue)),
+                double => throw new ArgumentException(
+                    "The requested KEL-103 target must be finite.",
+                    nameof(requestedValue)),
+                _ => throw new ArgumentException(
+                    "The requested KEL-103 target must be numeric.",
+                    nameof(requestedValue))
+            };
+        }
+        catch (OverflowException)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(requestedValue),
+                requestedValue,
+                "The requested KEL-103 target cannot be represented as a decimal value.");
+        }
     }
 
     private static PropertyValue CreateValue(object value, DateTimeOffset timestampUtc) =>
