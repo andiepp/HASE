@@ -3,7 +3,7 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46D input-OFF mode-selection characterization complete at 4,937
+Increment 46E input-OFF setpoint-write characterization complete at 5,000
 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
@@ -42,11 +42,21 @@ tests**
   state with the external supply output off.
 - SHORT selection did not activate the input and remains separate from the
   later explicitly confirmed short-circuit activation gate.
+- Physical setpoint-write characterization established exact invariant setter
+  forms for voltage, current, resistance, and power with their exact units.
+- Voltage setters select CV, current setters select CC, resistance setters
+  select CR, and power setters select CW; setpoint writes are not mode-neutral.
+- Same-value and bounded changed-value probes kept input OFF, preserved
+  unrelated targets, restored the original selected target once, and restored
+  CC once where required.
+- Every successful setter probe closed in CC/OFF state with all original
+  targets restored while the external supply output remained off.
+- No value or bound was disclosed, and no mutation was retried or replayed.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46E — Input-OFF
-Setpoint-Write Characterization and Restoration.
+Proceed only after explicit approval with Increment 46F — Versioned State and
+Controlled-Capability Definitions.
 
 ---
 

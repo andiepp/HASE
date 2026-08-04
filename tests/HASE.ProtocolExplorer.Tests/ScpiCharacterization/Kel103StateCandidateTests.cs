@@ -34,4 +34,40 @@ public sealed class Kel103StateCandidateTests
         Assert.Throws<ArgumentOutOfRangeException>(() => candidate.ToQueryText());
         Assert.Throws<ArgumentOutOfRangeException>(() => candidate.ToUnitSymbol());
     }
+
+    [Theory]
+    [InlineData(2, "1.25", ":VOLTage 1.25V")]
+    [InlineData(3, "2.5", ":CURRent 2.5A")]
+    [InlineData(4, "3.75", ":RESistance 3.75OHM")]
+    [InlineData(5, "4.5", ":POWer 4.5W")]
+    public void Candidate_MapsSetpointToOneFixedSetter(
+        int candidateValue,
+        string normalizedValue,
+        string expectedSetter)
+    {
+        Assert.Equal(
+            expectedSetter,
+            ((Kel103StateCandidate)candidateValue).ToSetterText(normalizedValue));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(99)]
+    public void Candidate_RejectsSetterForNonSetpoint(int candidateValue)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ((Kel103StateCandidate)candidateValue).ToSetterText("1"));
+    }
+
+    [Theory]
+    [InlineData("1,25")]
+    [InlineData("1E2")]
+    [InlineData("1V")]
+    [InlineData("1;:INPut ON")]
+    public void Candidate_RejectsNonDecimalSetterValue(string value)
+    {
+        Assert.Throws<ArgumentException>(() =>
+            Kel103StateCandidate.TargetVoltage.ToSetterText(value));
+    }
 }

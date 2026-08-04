@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46D input-OFF mode-selection characterization complete
+- Status: Accepted — Increment 46E input-OFF setpoint-write characterization complete
 - Date: 2026-08-04
 
 ## Context
@@ -120,6 +120,11 @@ For a setpoint write the adapter:
 6. succeeds only when readback confirms the requested normalized value; and
 7. updates the runtime cache only from the authoritative readback.
 
+Each setpoint setter also selects its associated steady-state mode: voltage
+selects CV, current selects CC, resistance selects CR, and power selects CW.
+The adapter must treat that mode change as authoritative operation behavior,
+read it back, and update mode state rather than assuming a mode-neutral write.
+
 For a mode-selection Command the adapter authoritatively confirms input OFF,
 sends exactly one fixed mode command, queries current mode, and succeeds only
 when readback matches the requested mode.
@@ -208,7 +213,8 @@ Protocol and Bytes diagnostics remain deferred.
    tests.
 4. 46D — Input-OFF mode-selection characterization and restoration — complete
    at 4,937 tests.
-5. 46E — Input-OFF setpoint-write characterization and restoration.
+5. 46E — Input-OFF setpoint-write characterization and restoration — complete
+   at 5,000 tests.
 6. 46F — Versioned state and controlled-capability definitions.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
@@ -322,3 +328,44 @@ operation, generic activation must reject SHORT, and `ShortCircuit.Activate`
 still requires explicit Boolean confirmation and its own later physical gate.
 Increment 46D closes at 4,937 automated tests passing in Visual Studio 2026
 Release configuration on .NET 10.
+
+## Increment 46E characterized result
+
+Physical validation established these exact invariant setter forms on firmware
+V3.30:
+
+| Target | Setter form | Mode side effect |
+| --- | --- | --- |
+| Voltage | `:VOLTage <value>V` | CV |
+| Current | `:CURRent <value>A` | CC |
+| Resistance | `:RESistance <value>OHM` | CR |
+| Power | `:POWer <value>W` | CW |
+
+The first same-value voltage probe established that a voltage setter is not
+mode-neutral: it selected CV while input remained OFF. The initial scenario
+reported that mode mismatch without sending another command, and attended
+physical inspection confirmed CV and OFF before manual CC restoration. The
+corrected path then required initial CC, confirmed each setter-associated mode,
+verified all four targets unchanged, and restored CC exactly once for voltage,
+resistance, and power. Current remained in CC and sent no redundant mode
+restoration.
+
+Changed-value characterization queried the selected target's established lower
+and upper bounds and derived one different interior candidate at exactly one
+response-scale decimal quantum. No value or bound was displayed or retained in
+documentation. Each changed setter was transmitted once and authoritatively
+confirmed with input OFF, the expected mode, and all unrelated targets
+unchanged. The original selected value was then transmitted once and all four
+original targets were confirmed. Voltage, resistance, and power completed one
+additional CC restoration; current required none.
+
+Every successful same-value and changed-value session closed in authoritative
+CC and OFF state with all original targets restored while the external supply
+output remained off. No command was retried and no recovery session replayed a
+mutation. Incomplete or uncertain outcomes stop before speculative restoration;
+a valid but differently quantized changed readback permits the already-planned
+original-value and CC restoration before reporting failure.
+
+Increment 46E closes at 5,000 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10. Production Properties and Commands remain
+unchanged pending Increment 46F.

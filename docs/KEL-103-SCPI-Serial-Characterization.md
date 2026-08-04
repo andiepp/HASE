@@ -333,6 +333,41 @@ external supply output remained off. SHORT mode selection did not activate the
 input and is not evidence for SHORT activation. The validated automated
 baseline is 4,937 tests passing.
 
+## ADR-0046 input-OFF setpoint-write characterization
+
+Firmware V3.30 physically established these exact invariant setter forms and
+mode side effects:
+
+| Target | Setter form | Resulting mode |
+| --- | --- | --- |
+| Voltage | `:VOLTage <value>V` | CV |
+| Current | `:CURRent <value>A` | CC |
+| Resistance | `:RESistance <value>OHM` | CR |
+| Power | `:POWer <value>W` | CW |
+
+Each scenario verified identity, input OFF, initial CC, and all four targets
+before mutation. Same-value probes transmitted the selected target's current
+authoritative value exactly once. The first voltage probe exposed the implicit
+CV selection and stopped without an additional command; attended inspection
+confirmed CV/OFF and manual CC restoration. The corrected probes confirmed the
+expected target mode, input OFF, and unchanged targets, then restored CC once
+for voltage, resistance, and power. Current stayed in CC without a redundant
+restoration command.
+
+Changed-value probes additionally queried the selected target's established
+lower and upper limits. They derived one different candidate at one
+response-scale decimal quantum toward the available interior bound. Each
+changed setter was transmitted once and confirmed with input OFF, its expected
+mode, and all unrelated targets unchanged. The original target was restored
+with one setter transmission and complete target readback. Voltage, resistance,
+and power then restored CC once; current already remained in CC.
+
+The external supply output remained off throughout. Every successful run closed
+in authoritative CC/OFF state with all original targets restored. No mutation
+was retried or replayed through a recovery session. Candidate, original,
+returned, and bound values remained redacted from output and this report. The
+validated automated baseline is 5,000 tests passing.
+
 ## Exclusions
 
 This report does not validate:
@@ -341,7 +376,6 @@ This report does not validate:
 - resistance measurement publication;
 - Property writes;
 - load input enablement;
-- setpoint changes;
 - saved configurations;
 - triggers;
 - LIST, protection, battery, or dynamic modes;

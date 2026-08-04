@@ -1210,7 +1210,7 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46D input-OFF mode-selection characterization
+**Status:** [Active] Increment 46E input-OFF setpoint-write characterization
 complete
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
@@ -1233,7 +1233,8 @@ Completed and planned increments:
    tests.
 4. 46D — Input-OFF mode-selection characterization and restoration — complete
    at 4,937 tests.
-5. 46E — Input-OFF setpoint-write characterization and restoration.
+5. 46E — Input-OFF setpoint-write characterization and restoration — complete
+   at 5,000 tests.
 6. 46F — Versioned state and controlled-capability definitions.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
@@ -1266,12 +1267,22 @@ command, preserved all four targets, and closed in CC/OFF state. SHORT selection
 did not activate the input and remains separate from explicitly confirmed SHORT
 activation.
 
+Increment 46E physically established invariant voltage, current, resistance,
+and power setter forms with exact units. Each setter also selects its associated
+mode: voltage selects CV, current selects CC, resistance selects CR, and power
+selects CW. Same-value probes confirmed setter grammar and mode behavior.
+Changed-value probes derived one bounded response-scale step, confirmed it,
+restored the original target once, and restored CC once where required. Input
+and the external supply output remained off, unrelated targets stayed
+unchanged, and every successful run closed with all original targets in CC/OFF
+state. No values were disclosed and no mutation was retried or replayed.
+
 Current baseline:
 
 ```text
-4,937 automated tests pass
+5,000 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 mode-selection characterization complete through 46D
+ADR-0046 mode and setpoint-write characterization complete through 46E
 Runtime Hosts and Client stopped
 ```
 

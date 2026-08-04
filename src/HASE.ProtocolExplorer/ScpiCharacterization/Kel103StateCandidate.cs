@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Hase.ProtocolExplorer.ScpiCharacterization;
 
 internal enum Kel103StateCandidate
@@ -46,6 +48,33 @@ internal static class Kel103StateCandidateExtensions
             Kel103StateCandidate.TargetPower => "W",
             _ => throw Unsupported(candidate)
         };
+
+    public static string ToSetterText(
+        this Kel103StateCandidate candidate,
+        string normalizedValue)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(normalizedValue);
+
+        if (!decimal.TryParse(
+                normalizedValue,
+                NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture,
+                out _))
+        {
+            throw new ArgumentException(
+                "The normalized setpoint must use invariant decimal syntax.",
+                nameof(normalizedValue));
+        }
+
+        return candidate switch
+        {
+            Kel103StateCandidate.TargetVoltage => $":VOLTage {normalizedValue}V",
+            Kel103StateCandidate.TargetCurrent => $":CURRent {normalizedValue}A",
+            Kel103StateCandidate.TargetResistance => $":RESistance {normalizedValue}OHM",
+            Kel103StateCandidate.TargetPower => $":POWer {normalizedValue}W",
+            _ => throw Unsupported(candidate)
+        };
+    }
 
     private static ArgumentOutOfRangeException Unsupported(Kel103StateCandidate candidate) =>
         new(
