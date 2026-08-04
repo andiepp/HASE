@@ -122,6 +122,55 @@ public sealed class Kel103ReadOnlySessionAdapter : IAsyncDisposable
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<Kel103SetpointMutationResult> WriteSetpointAsync(
+        Kel103SetpointMapping mapping,
+        decimal value,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mapping);
+        string command = mapping.FormatSetterCommand(value);
+
+        Kel103SetpointMutationResult? result = await ExecuteAsync(async token =>
+        {
+            bool inputEnabled = Kel103InputStateMapping.ParseResponse(
+                await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+            if (inputEnabled)
+            {
+                return null;
+            }
+
+            await session.SendCommandAsync(command, token).ConfigureAwait(false);
+
+            try
+            {
+                decimal readback = await QueryAsync(mapping, token).ConfigureAwait(false);
+                Kel103OperatingMode mode = Kel103OperatingModeMapping.ParseResponse(
+                    await session.QueryAsync(Kel103OperatingModeMapping.Query, token).ConfigureAwait(false));
+
+                if (readback != value || mode != mapping.AssociatedMode)
+                {
+                    throw new InvalidDataException(
+                        "The KEL-103 setpoint mutation readback did not confirm the requested state.");
+                }
+
+                return new Kel103SetpointMutationResult(
+                    mapping.Setpoint,
+                    readback,
+                    mode,
+                    timeProvider.GetUtcNow());
+            }
+            catch (Exception exception)
+            {
+                throw new Kel103MutationOutcomeUncertainException(
+                    "The KEL-103 setpoint mutation outcome is uncertain because authoritative readback was not established.",
+                    exception);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        return result ?? throw new InvalidOperationException(
+            "The KEL-103 setpoint mutation requires authoritative input OFF.");
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (disposalLock)

@@ -210,6 +210,221 @@ public sealed class Kel103ReadOnlySessionAdapterTests
             session.Queries);
     }
 
+    [Theory]
+    [InlineData(0, "1.25V", "CV", ":VOLTage 1.25V", "1.25", Kel103OperatingMode.ConstantVoltage)]
+    [InlineData(1, "0.1A", "CC", ":CURRent 0.1A", "0.1", Kel103OperatingMode.ConstantCurrent)]
+    [InlineData(2, "100OHM", "CR", ":RESistance 100OHM", "100", Kel103OperatingMode.ConstantResistance)]
+    [InlineData(3, "0.125W", "CW", ":POWer 0.125W", "0.125", Kel103OperatingMode.ConstantPower)]
+    public async Task WriteSetpoint_UsesExactSequenceAndReturnsAuthoritativeResult(
+        int index,
+        string readback,
+        string modeReadback,
+        string expectedCommand,
+        string expectedValue,
+        Kel103OperatingMode expectedMode)
+    {
+        var time = new FixedTimeProvider(new DateTimeOffset(2026, 8, 3, 12, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession("OFF", readback, modeReadback);
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103SetpointMutationResult result = await adapter.WriteSetpointAsync(
+            Kel103SetpointMapping.All[index],
+            decimal.Parse(expectedValue, System.Globalization.CultureInfo.InvariantCulture));
+
+        Assert.Equal((Kel103Setpoint)index, result.Setpoint);
+        Assert.Equal(
+            decimal.Parse(expectedValue, System.Globalization.CultureInfo.InvariantCulture),
+            result.Value);
+        Assert.Equal(expectedMode, result.OperatingMode);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(new[] { ":INPut?", Kel103SetpointMapping.All[index].Query, ":FUNCtion?" }, session.Queries);
+        Assert.Equal(new[] { expectedCommand }, session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_InputOnRejectsWithoutSetterAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("ON", "OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+
+        Kel103InputStateObservation later = await adapter.ReadInputStateAsync();
+        Assert.False(later.InputEnabled);
+        Assert.Equal(new[] { ":INPut?", ":INPut?" }, session.Queries);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_InvalidInputUsesNoScpiAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            adapter.WriteSetpointAsync(null!, 1m));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            adapter.WriteSetpointAsync(Kel103SetpointMapping.Voltage, 0.09m));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+        Assert.False((await adapter.ReadInputStateAsync()).InputEnabled);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_PreCanceledUsesNoScpiAndDoesNotFault()
+    {
+        var session = new FakeSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            adapter.WriteSetpointAsync(
+                Kel103SetpointMapping.Current,
+                0.1m,
+                cancellation.Token));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_TransmissionUncertaintyIsPreservedAndFaultsWithoutRetry()
+    {
+        var transmission = new ScpiCommandTransmissionException(
+            "uncertain",
+            true,
+            new IOException("write failed"));
+        var session = new FakeSession("OFF") { SendException = transmission };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        ScpiCommandTransmissionException actual =
+            await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+                adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.Same(transmission, actual);
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_TargetQueryFailureAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF")
+        {
+            FailingQueryNumber = 2,
+            QueryException = new TimeoutException("readback timeout")
+        };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.IsType<TimeoutException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_ModeParsingFailureAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "0.1A", "WRONG");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.IsType<InvalidDataException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_TargetMismatchAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "0.2A", "CC");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+            adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_ModeMismatchAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "0.1A", "CV");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+            adapter.WriteSetpointAsync(Kel103SetpointMapping.Current, 0.1m));
+
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_CancellationAfterTransmissionIsUncertain()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var session = new FakeSession("OFF")
+        {
+            CommandSent = cancellation.Cancel
+        };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.WriteSetpointAsync(
+                    Kel103SetpointMapping.Current,
+                    0.1m,
+                    cancellation.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task WriteSetpoint_DoesNotInterleaveWithConcurrentRead()
+    {
+        var session = new BlockingMutationSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Task<Kel103SetpointMutationResult> mutation = adapter.WriteSetpointAsync(
+            Kel103SetpointMapping.Current,
+            0.1m);
+        await session.FirstQueryStarted.Task;
+        Task<Kel103Identity> concurrentRead = adapter.ReadIdentityAsync();
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        session.ReleaseFirstQuery.SetResult();
+        await mutation;
+        await concurrentRead;
+
+        Assert.Equal(
+            new[] { ":INPut?", ":CURRent?", ":FUNCtion?", "*IDN?" },
+            session.Queries);
+        Assert.Equal(new[] { ":CURRent 0.1A" }, session.Commands);
+    }
+
     [Fact]
     public async Task InvalidMeasurement_FaultsAndPreventsLaterQuery()
     {
@@ -306,16 +521,33 @@ public sealed class Kel103ReadOnlySessionAdapterTests
     {
         private readonly Queue<string> pending = new(responses);
         public List<string> Queries { get; } = [];
+        public List<string> Commands { get; } = [];
         public int DisposeCount { get; private set; }
+        public int? FailingQueryNumber { get; init; }
+        public Exception? QueryException { get; init; }
+        public Exception? SendException { get; init; }
+        public Action? CommandSent { get; init; }
         public ScpiTextSessionState State => DisposeCount == 0 ? ScpiTextSessionState.Open : ScpiTextSessionState.Disposed;
         public Task<string> QueryAsync(string query, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Queries.Add(query);
+            if (Queries.Count == FailingQueryNumber)
+            {
+                return Task.FromException<string>(
+                    QueryException ?? new IOException("query failed"));
+            }
             return Task.FromResult(pending.Dequeue());
         }
-        public Task SendCommandAsync(string command, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+        public Task SendCommandAsync(string command, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Commands.Add(command);
+            CommandSent?.Invoke();
+            return SendException is null
+                ? Task.CompletedTask
+                : Task.FromException(SendException);
+        }
         public ValueTask DisposeAsync()
         {
             DisposeCount++;
@@ -391,6 +623,53 @@ public sealed class Kel103ReadOnlySessionAdapterTests
             string command,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class BlockingMutationSession : IScpiTextSession
+    {
+        private readonly Queue<string> responses = new(
+        [
+            "OFF",
+            "0.1A",
+            "CC",
+            "RND 320-KEL103 V3.30 SN:REDACTED"
+        ]);
+
+        public TaskCompletionSource FirstQueryStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseFirstQuery { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public List<string> Queries { get; } = [];
+
+        public List<string> Commands { get; } = [];
+
+        public ScpiTextSessionState State => ScpiTextSessionState.Open;
+
+        public async Task<string> QueryAsync(
+            string query,
+            CancellationToken cancellationToken = default)
+        {
+            Queries.Add(query);
+            if (Queries.Count == 1)
+            {
+                FirstQueryStarted.SetResult();
+                await ReleaseFirstQuery.Task.WaitAsync(cancellationToken);
+            }
+
+            return responses.Dequeue();
+        }
+
+        public Task SendCommandAsync(
+            string command,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command);
+            return Task.CompletedTask;
+        }
 
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
