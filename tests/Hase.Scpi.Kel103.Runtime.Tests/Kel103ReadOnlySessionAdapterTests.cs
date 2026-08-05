@@ -425,6 +425,221 @@ public sealed class Kel103ReadOnlySessionAdapterTests
         Assert.Equal(new[] { ":CURRent 0.1A" }, session.Commands);
     }
 
+    [Theory]
+    [InlineData(0, "CC")]
+    [InlineData(1, "CV")]
+    [InlineData(2, "CR")]
+    [InlineData(3, "CW")]
+    [InlineData(4, "SHORt")]
+    public async Task SelectOperatingMode_UsesExactSequenceAndReturnsAuthoritativeResult(
+        int index,
+        string modeReadback)
+    {
+        var time = new FixedTimeProvider(
+            new DateTimeOffset(2026, 8, 5, 12, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession("OFF", "OFF", modeReadback);
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103ModeSelectionMapping mapping = Kel103ModeSelectionMapping.All[index];
+        Kel103ModeSelectionMutationResult result =
+            await adapter.SelectOperatingModeAsync(mapping);
+
+        Assert.Equal(mapping.Mode, result.OperatingMode);
+        Assert.False(result.InputEnabled);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(
+            new[] { ":INPut?", ":INPut?", ":FUNCtion?" },
+            session.Queries);
+        Assert.Equal(new[] { mapping.Command }, session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_InputOnRejectsWithoutMutationAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("ON", "OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantVoltage));
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+
+        Kel103InputStateObservation later = await adapter.ReadInputStateAsync();
+        Assert.False(later.InputEnabled);
+        Assert.Equal(new[] { ":INPut?", ":INPut?" }, session.Queries);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_NullMappingUsesNoScpiAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            adapter.SelectOperatingModeAsync(null!));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+        Assert.False((await adapter.ReadInputStateAsync()).InputEnabled);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_PreCanceledUsesNoScpiAndDoesNotFault()
+    {
+        var session = new FakeSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantResistance,
+                cancellation.Token));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_TransmissionUncertaintyIsPreservedWithoutRetry()
+    {
+        var transmission = new ScpiCommandTransmissionException(
+            "uncertain",
+            true,
+            new IOException("write failed"));
+        var session = new FakeSession("OFF") { SendException = transmission };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        ScpiCommandTransmissionException actual =
+            await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+                adapter.SelectOperatingModeAsync(
+                    Kel103ModeSelectionMapping.ConstantPower));
+
+        Assert.Same(transmission, actual);
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantPower));
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_InputQueryFailureAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF")
+        {
+            FailingQueryNumber = 2,
+            QueryException = new TimeoutException("readback timeout")
+        };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.SelectOperatingModeAsync(
+                    Kel103ModeSelectionMapping.ConstantVoltage));
+
+        Assert.True(actual.ExecutionMayHaveOccurred);
+        Assert.IsType<TimeoutException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_InputOnAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "ON", "CV");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantVoltage));
+
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_ModeParsingFailureAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "OFF", "WRONG");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.SelectOperatingModeAsync(
+                    Kel103ModeSelectionMapping.ShortCircuit));
+
+        Assert.IsType<InvalidDataException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_ModeMismatchAfterTransmissionIsUncertain()
+    {
+        var session = new FakeSession("OFF", "OFF", "CR");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantVoltage));
+
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_CancellationAfterTransmissionIsUncertain()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var session = new FakeSession("OFF")
+        {
+            CommandSent = cancellation.Cancel
+        };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException actual =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.SelectOperatingModeAsync(
+                    Kel103ModeSelectionMapping.ConstantCurrent,
+                    cancellation.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(actual.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task SelectOperatingMode_DoesNotInterleaveWithConcurrentRead()
+    {
+        var session = new BlockingModeSelectionSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Task<Kel103ModeSelectionMutationResult> mutation =
+            adapter.SelectOperatingModeAsync(
+                Kel103ModeSelectionMapping.ConstantVoltage);
+        await session.FirstQueryStarted.Task;
+        Task<Kel103Identity> concurrentRead = adapter.ReadIdentityAsync();
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        session.ReleaseFirstQuery.SetResult();
+        await mutation;
+        await concurrentRead;
+
+        Assert.Equal(
+            new[] { ":INPut?", ":INPut?", ":FUNCtion?", "*IDN?" },
+            session.Queries);
+        Assert.Equal(new[] { ":FUNCtion CV" }, session.Commands);
+    }
+
     [Fact]
     public async Task InvalidMeasurement_FaultsAndPreventsLaterQuery()
     {
@@ -634,6 +849,53 @@ public sealed class Kel103ReadOnlySessionAdapterTests
             "OFF",
             "0.1A",
             "CC",
+            "RND 320-KEL103 V3.30 SN:REDACTED"
+        ]);
+
+        public TaskCompletionSource FirstQueryStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReleaseFirstQuery { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public List<string> Queries { get; } = [];
+
+        public List<string> Commands { get; } = [];
+
+        public ScpiTextSessionState State => ScpiTextSessionState.Open;
+
+        public async Task<string> QueryAsync(
+            string query,
+            CancellationToken cancellationToken = default)
+        {
+            Queries.Add(query);
+            if (Queries.Count == 1)
+            {
+                FirstQueryStarted.SetResult();
+                await ReleaseFirstQuery.Task.WaitAsync(cancellationToken);
+            }
+
+            return responses.Dequeue();
+        }
+
+        public Task SendCommandAsync(
+            string command,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class BlockingModeSelectionSession : IScpiTextSession
+    {
+        private readonly Queue<string> responses = new(
+        [
+            "OFF",
+            "OFF",
+            "CV",
             "RND 320-KEL103 V3.30 SN:REDACTED"
         ]);
 

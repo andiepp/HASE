@@ -171,6 +171,58 @@ public sealed class Kel103ReadOnlySessionAdapter : IAsyncDisposable
             "The KEL-103 setpoint mutation requires authoritative input OFF.");
     }
 
+    public async Task<Kel103ModeSelectionMutationResult> SelectOperatingModeAsync(
+        Kel103ModeSelectionMapping mapping,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mapping);
+
+        Kel103ModeSelectionMutationResult? result = await ExecuteAsync(async token =>
+        {
+            bool inputEnabled = Kel103InputStateMapping.ParseResponse(
+                await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+            if (inputEnabled)
+            {
+                return null;
+            }
+
+            await session.SendCommandAsync(mapping.Command, token).ConfigureAwait(false);
+
+            try
+            {
+                bool readbackInputEnabled = Kel103InputStateMapping.ParseResponse(
+                    await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+                string modeResponse = await session
+                    .QueryAsync(Kel103OperatingModeMapping.Query, token)
+                    .ConfigureAwait(false);
+                Kel103OperatingMode readbackMode =
+                    Kel103OperatingModeMapping.ParseResponse(modeResponse);
+
+                if (readbackInputEnabled
+                    || readbackMode != mapping.Mode
+                    || modeResponse != mapping.ExpectedReadbackToken)
+                {
+                    throw new InvalidDataException(
+                        "The KEL-103 mode-selection readback did not confirm the requested state.");
+                }
+
+                return new Kel103ModeSelectionMutationResult(
+                    readbackMode,
+                    readbackInputEnabled,
+                    timeProvider.GetUtcNow());
+            }
+            catch (Exception exception)
+            {
+                throw new Kel103MutationOutcomeUncertainException(
+                    "The KEL-103 mode-selection outcome is uncertain because authoritative readback was not established.",
+                    exception);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        return result ?? throw new InvalidOperationException(
+            "KEL-103 mode selection requires authoritative input OFF.");
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (disposalLock)
