@@ -1210,8 +1210,8 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46F versioned state and controlled-capability
-definitions complete
+**Status:** [Active] Increment 46G runtime state, setpoints, and mode Commands
+complete at 5,283 tests
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1237,7 +1237,8 @@ Completed and planned increments:
    at 5,000 tests.
 6. 46F — Versioned state and controlled-capability definitions — complete at
    5,018 tests.
-7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
+7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes —
+   complete at 5,283 tests.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
    physical validation.
@@ -1286,12 +1287,32 @@ does not activate the input. Input-control Commands, runtime mappings,
 deployment, and migration remain excluded. Production continues to use
 definition version 2 pending an explicitly approved offline migration.
 
+Increment 46G carries version-3 reads and version-4 writes and mode Commands
+through the serialized runtime, hosting, attachment, Runtime Host, and Client
+paths. Installed version-2 profiles move to version 4 only through the explicit
+offline, atomic, backed-up migration. Mutations retain input-OFF interlocks,
+one transmission, authoritative readback, explicit uncertainty, and no retry or
+recovery replay.
+
+The Runtime Host exposes the five mode Commands through its ordered selector.
+The final Client design uses direct CC, CV, CR, CW, and SHORT buttons rather
+than a requested-selection dropdown. Each button maps to one exact published
+Command. A press-only presentation guard prevents same-generation observation
+reprojection from swallowing a click without hiding host, connection, or
+generation changes.
+
+Physical Client validation confirmed all five mode buttons with input OFF and
+the external supply output OFF. Each mode change produced one Client Command
+and matching authoritative displayed and physical readback. SHORT selection
+did not activate the input, and the final state was restored to CC/OFF. The
+validated automated baseline is 5,283 tests.
+
 Current baseline:
 
 ```text
-5,018 automated tests pass
+5,283 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 characterization and versioned definitions complete through 46F
+ADR-0046 runtime state, setpoints, and mode Commands complete through 46G
 Runtime Hosts and Client stopped
 ```
 

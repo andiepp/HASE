@@ -3,7 +3,8 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46F versioned definitions complete at 5,018 tests**
+Increment 46G runtime state, setpoints, and mode Commands complete at 5,283
+tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -59,13 +60,27 @@ Increment 46F versioned definitions complete at 5,018 tests**
   parameterless mode-selection Commands for CC, CV, CR, CW, and SHORT.
 - SHORT mode selection does not activate the input. Input activation,
   deactivation, and separately confirmed SHORT activation remain excluded.
-- No Runtime Host profile, runtime mapping, deployment, or migration changed in
-  Increment 46F.
+- Version-3 state reads and version-4 setpoint writes and mode Commands now
+  cross the serialized runtime, hosting, attachment, Host, and Client paths.
+- The installed profile migrated explicitly and offline from version 2 to
+  version 4 with atomic replacement, retained backup, and preserved endpoint
+  and serial-profile custody.
+- Setpoint and mode mutations enforce authoritative input OFF, transmit once,
+  read back authoritatively, expose uncertainty, and are never retried or
+  replayed through recovery.
+- The Runtime Host presents an ordered mode selector. The Client uses five
+  direct descriptor-driven CC, CV, CR, CW, and SHORT buttons.
+- The Client preserves a pressed mode button only through that single click so
+  same-generation observation refresh cannot swallow it; host, connection, and
+  generation changes are never deferred.
+- Physical Client validation confirmed all five selections, one successful
+  Command per accepted press, SHORT remaining OFF, and final CC/OFF restoration
+  while the external supply output remained off.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46G — Runtime Reads,
-Writes, Commands, Readback, and Uncertain Outcomes.
+Proceed only after explicit approval with Increment 46H — Hosting, recovery,
+diagnostics, Host, and Client integration.
 
 ---
 

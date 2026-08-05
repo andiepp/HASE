@@ -387,20 +387,40 @@ read/write, and exposes the parameterless Commands
 `Mode.SelectConstantResistance`, `Mode.SelectConstantPower`, and
 `Mode.SelectShortCircuit`. Selecting SHORT does not activate the input.
 
-The production Runtime Host remains on immutable definition version 2. No
-runtime mapping, state-changing execution, profile update, deployment, or
-migration was performed. Moving an installation to a later exact definition
-remains an explicit offline operation with strict validation, atomic profile
-replacement, and retained backup. The validated automated baseline is 5,018
-tests passing.
+Through Increment 46F, the production Runtime Host remained on immutable
+definition version 2. No runtime mapping, state-changing execution, profile
+update, deployment, or migration had yet been performed. The validated
+Increment 46F automated baseline was 5,018 tests passing.
+
+## ADR-0046 runtime mode-selection validation
+
+Increment 46G carried the characterized operating-state and setpoint reads,
+writes, and five mode Commands through the production runtime and hosting
+boundaries. The installed endpoint moved explicitly and offline to definition
+version 4. The operation preserved endpoint identity and serial-profile
+custody, atomically replaced the active composition, and retained the prior
+version-2 composition backup.
+
+The Runtime Host and Client both presented the five descriptor-backed mode
+Commands. The accepted Client surface uses direct CC, CV, CR, CW, and SHORT
+buttons. A same-generation observation refresh is deferred only for the brief
+physical duration of a button activation so one click cannot be lost when the
+immutable inventory is reprojected. Host changes, disconnects, faults, and
+attachment-generation changes remain immediate.
+
+Physical validation selected CC, CV, CR, CW, and SHORT through the Client with
+authoritative input OFF and the external laboratory supply output OFF. Every
+accepted press produced one outbound Client Command and one successful
+completion, followed by matching displayed and physical mode readback. No
+automatic retry or recovery replay occurred. SHORT selection did not activate
+the input. One final CC selection restored and confirmed authoritative CC/OFF.
+The validated automated baseline is 5,283 tests passing.
 
 ## Exclusions
 
 This report does not validate:
 
-- runtime input-state, mode, or target publication;
 - resistance measurement publication;
-- runtime Property writes and mode-Command execution;
 - load input enablement;
 - saved configurations;
 - triggers;

@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46F versioned definitions complete
+- Status: Accepted — Increment 46G runtime state, setpoints, and mode Commands complete
 - Date: 2026-08-04
 
 ## Context
@@ -217,7 +217,8 @@ Protocol and Bytes diagnostics remain deferred.
    at 5,000 tests.
 6. 46F — Versioned state and controlled-capability definitions — complete at
    5,018 tests.
-7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes.
+7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes —
+   complete at 5,283 tests.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
    physical validation.
@@ -408,3 +409,38 @@ Increment 46F closes at 5,018 automated tests passing in Visual Studio 2026
 Release configuration on .NET 10. No additional physical operation was required
 because the definitions encode the accepted Increment 46B through 46E evidence
 without yet executing those capabilities in production.
+
+## Increment 46G runtime result
+
+The production KEL-103 path now maps definition-version-3 operating mode,
+input state, and four setpoint reads through the serialized runtime session and
+publishes them through the existing normalized Property inventory. Version 4
+adds the characterized writable targets and five parameterless mode-selection
+Commands. Moving an installed endpoint from version 2 to version 4 remains an
+explicit offline profile migration with validation, atomic replacement, a
+retained version-2 backup, and preservation of endpoint identity and serial
+profile custody.
+
+Setpoint writes and mode Commands cross the runtime, hosting, attachment, and
+northbound boundaries without exposing SCPI syntax. Every mutation verifies
+the authoritative input-OFF precondition, transmits once, reads back the
+requested result, and reports uncertainty without automatic retry or recovery
+replay. Definition compatibility is checked before publication and unsupported
+references remain unavailable rather than being substituted.
+
+The Runtime Host presents the five mode Commands as one ordered selector. The
+Client initially used an equivalent requested-selection dropdown, but live
+immutable inventory reprojection could replace its controls during interaction.
+The accepted Client presentation therefore uses five direct descriptor-driven
+buttons in fixed order: CC, CV, CR, CW, and SHORT. A narrowly bounded interaction
+guard preserves a pressed button through completion or cancellation of that
+single click while continuing to accept the newest observation state. It never
+defers host changes, faults, disconnects, or attachment-generation replacement.
+
+Physical validation exercised every Client button with authoritative input
+OFF and the external laboratory supply output OFF. Each accepted press produced
+one outbound Client Command, one successful completion, and matching displayed
+and physical mode readback. SHORT selection did not activate the input. The
+final CC restoration was transmitted once and confirmed in authoritative
+CC/OFF state. Increment 46G closes at 5,283 automated tests passing in Visual
+Studio 2026 Release configuration on .NET 10.
