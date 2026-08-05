@@ -181,6 +181,52 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
         return property;
     }
 
+    public async Task<RuntimeCommand> ExecuteAsync(
+        InstrumentId instrumentId,
+        DescriptorPath commandPath,
+        object? argument,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instrumentId);
+        ArgumentNullException.ThrowIfNull(commandPath);
+
+        RuntimeCommand? command = supportsSetpointWrites
+            && instrumentId == runtimeInstrument.Descriptor.Id
+                ? runtimeInstrument.Commands.SingleOrDefault(
+                    candidate => candidate.Descriptor.Path == commandPath)
+                : null;
+        Kel103ModeSelectionMapping? mapping = command is null
+            ? null
+            : Kel103ModeSelectionMapping.All.SingleOrDefault(
+                candidate => candidate.CommandPath == commandPath);
+        if (command is null || mapping is null)
+        {
+            throw new KeyNotFoundException(
+                "The requested KEL-103 runtime Command is not supported.");
+        }
+
+        if (argument is not null)
+        {
+            throw new ArgumentException(
+                "The KEL-103 mode-selection Command does not accept an argument.",
+                nameof(argument));
+        }
+
+        Kel103ModeSelectionMutationResult result = await sessionAdapter
+            .SelectOperatingModeAsync(mapping, cancellationToken)
+            .ConfigureAwait(false);
+
+        PropertyValue modeValue = CreateValue(
+            Kel103OperatingModeMapping.ToNormalizedValue(result.OperatingMode),
+            result.TimestampUtc);
+        PropertyValue inputValue = CreateValue(
+            result.InputEnabled,
+            result.TimestampUtc);
+        properties[Kel103OperatingModeMapping.PropertyId].UpdateValue(modeValue);
+        properties[Kel103InputStateMapping.PropertyId].UpdateValue(inputValue);
+        return command;
+    }
+
     private async Task<RuntimeEndpoint> SynchronizeOperatingStateAsync(
         CancellationToken cancellationToken)
     {

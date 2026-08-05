@@ -621,6 +621,215 @@ public sealed class Kel103RuntimeEndpointAdapterTests
         Assert.False(adapter.IsFaulted);
     }
 
+    [Theory]
+    [InlineData(0, "CC")]
+    [InlineData(1, "CV")]
+    [InlineData(2, "CR")]
+    [InlineData(3, "CW")]
+    [InlineData(4, "SHORt")]
+    public async Task VersionFourExecuteMode_UpdatesOnlyAuthoritativeStateCaches(
+        int index,
+        string modeReadback)
+    {
+        var endpoint = CreateVersionFourEndpoint();
+        RuntimeInstrument instrument = endpoint.Instruments.Single();
+        RuntimeProperty mode = instrument.Properties[5];
+        RuntimeProperty input = instrument.Properties[6];
+        RuntimeProperty unrelated = instrument.Properties[8];
+        var previousMode = new PropertyValue("OLD", FixedTimestamp.AddMinutes(-1));
+        var previousInput = new PropertyValue(true, FixedTimestamp.AddMinutes(-1));
+        var previousUnrelated = new PropertyValue(0.2m, FixedTimestamp.AddMinutes(-1));
+        mode.UpdateValue(previousMode);
+        input.UpdateValue(previousInput);
+        unrelated.UpdateValue(previousUnrelated);
+        var session = new FakeSession("OFF", "OFF", modeReadback);
+        await using var adapter = CreateAdapter(session, endpoint);
+        Kel103ModeSelectionMapping mapping = Kel103ModeSelectionMapping.All[index];
+
+        RuntimeCommand result = await adapter.ExecuteAsync(
+            instrument.Descriptor.Id,
+            mapping.CommandPath,
+            argument: null);
+
+        Assert.Same(instrument.Commands[index], result);
+        Assert.Equal(
+            Kel103OperatingModeMapping.ToNormalizedValue(mapping.Mode),
+            mode.CurrentValue!.Value);
+        Assert.False(Assert.IsType<bool>(input.CurrentValue!.Value));
+        Assert.Equal(FixedTimestamp, mode.CurrentValue.TimestampUtc);
+        Assert.Equal(FixedTimestamp, input.CurrentValue.TimestampUtc);
+        Assert.Equal(PropertyQuality.Good, mode.CurrentValue.Quality);
+        Assert.Equal(PropertyQuality.Good, input.CurrentValue.Quality);
+        Assert.Same(previousUnrelated, unrelated.CurrentValue);
+        Assert.Equal(
+            new[] { ":INPut?", ":INPut?", ":FUNCtion?" },
+            session.Queries);
+        Assert.Equal(new[] { mapping.Command }, session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task ExecuteMode_RejectsUnsupportedLocalRequestsWithoutScpiUse()
+    {
+        var wrongInstrumentSession = new FakeSession();
+        await using var wrongInstrumentAdapter = CreateAdapter(
+            wrongInstrumentSession,
+            CreateVersionFourEndpoint());
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            wrongInstrumentAdapter.ExecuteAsync(
+                new InstrumentId("wrong-instrument"),
+                Kel103ModeSelectionMapping.ConstantCurrent.CommandPath,
+                argument: null));
+        Assert.Empty(wrongInstrumentSession.Queries);
+        Assert.Empty(wrongInstrumentSession.Commands);
+
+        var wrongPathSession = new FakeSession();
+        await using var wrongPathAdapter = CreateAdapter(
+            wrongPathSession,
+            CreateVersionFourEndpoint());
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            wrongPathAdapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                DescriptorPath.Parse("Mode.Unsupported"),
+                argument: null));
+        Assert.Empty(wrongPathSession.Queries);
+        Assert.Empty(wrongPathSession.Commands);
+
+        var argumentSession = new FakeSession();
+        await using var argumentAdapter = CreateAdapter(
+            argumentSession,
+            CreateVersionFourEndpoint());
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            argumentAdapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantCurrent.CommandPath,
+                argument: true));
+        Assert.Empty(argumentSession.Queries);
+        Assert.Empty(argumentSession.Commands);
+
+        var versionThreeSession = new FakeSession();
+        await using var versionThreeAdapter = CreateAdapter(
+            versionThreeSession,
+            CreateVersionThreeEndpoint());
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            versionThreeAdapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantCurrent.CommandPath,
+                argument: null));
+        Assert.Empty(versionThreeSession.Queries);
+        Assert.Empty(versionThreeSession.Commands);
+    }
+
+    [Fact]
+    public async Task VersionFourExecuteMode_InputOnPreservesCachesAndSessionAvailability()
+    {
+        var endpoint = CreateVersionFourEndpoint();
+        RuntimeProperty mode = endpoint.Instruments.Single().Properties[5];
+        RuntimeProperty input = endpoint.Instruments.Single().Properties[6];
+        var previousMode = new PropertyValue("CC", FixedTimestamp);
+        var previousInput = new PropertyValue(true, FixedTimestamp);
+        mode.UpdateValue(previousMode);
+        input.UpdateValue(previousInput);
+        var session = new FakeSession("ON");
+        await using var adapter = CreateAdapter(session, endpoint);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                argument: null));
+
+        Assert.Same(previousMode, mode.CurrentValue);
+        Assert.Same(previousInput, input.CurrentValue);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task VersionFourExecuteMode_UncertaintyPreservesCachesAndFaults()
+    {
+        var endpoint = CreateVersionFourEndpoint();
+        RuntimeProperty mode = endpoint.Instruments.Single().Properties[5];
+        RuntimeProperty input = endpoint.Instruments.Single().Properties[6];
+        var previousMode = new PropertyValue("CC", FixedTimestamp);
+        var previousInput = new PropertyValue(false, FixedTimestamp);
+        mode.UpdateValue(previousMode);
+        input.UpdateValue(previousInput);
+        var session = new FakeSession("OFF", "OFF", "CR");
+        await using var adapter = CreateAdapter(session, endpoint);
+
+        await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+            adapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                argument: null));
+
+        Assert.Same(previousMode, mode.CurrentValue);
+        Assert.Same(previousInput, input.CurrentValue);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task VersionFourExecuteMode_TransmissionUncertaintyPreservesCachesAndFaults()
+    {
+        var endpoint = CreateVersionFourEndpoint();
+        RuntimeProperty mode = endpoint.Instruments.Single().Properties[5];
+        RuntimeProperty input = endpoint.Instruments.Single().Properties[6];
+        var previousMode = new PropertyValue("CC", FixedTimestamp);
+        var previousInput = new PropertyValue(false, FixedTimestamp);
+        mode.UpdateValue(previousMode);
+        input.UpdateValue(previousInput);
+        var transmission = new ScpiCommandTransmissionException(
+            "uncertain",
+            true,
+            new IOException("write failed"));
+        var session = new FakeSession("OFF") { SendException = transmission };
+        await using var adapter = CreateAdapter(session, endpoint);
+
+        ScpiCommandTransmissionException actual =
+            await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+                adapter.ExecuteAsync(
+                    new InstrumentId("electronic-load-01"),
+                    Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                    argument: null));
+
+        Assert.Same(transmission, actual);
+        Assert.Same(previousMode, mode.CurrentValue);
+        Assert.Same(previousInput, input.CurrentValue);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task VersionFourExecuteMode_PreCancellationPreservesCachesWithoutScpiUse()
+    {
+        var endpoint = CreateVersionFourEndpoint();
+        RuntimeProperty mode = endpoint.Instruments.Single().Properties[5];
+        RuntimeProperty input = endpoint.Instruments.Single().Properties[6];
+        var previousMode = new PropertyValue("CC", FixedTimestamp);
+        var previousInput = new PropertyValue(false, FixedTimestamp);
+        mode.UpdateValue(previousMode);
+        input.UpdateValue(previousInput);
+        var session = new FakeSession();
+        await using var adapter = CreateAdapter(session, endpoint);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            adapter.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                argument: null,
+                cancellationToken: cancellation.Token));
+
+        Assert.Same(previousMode, mode.CurrentValue);
+        Assert.Same(previousInput, input.CurrentValue);
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
     [Fact]
     public async Task Dispose_DisposesOwnedSessionAdapter()
     {
