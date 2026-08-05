@@ -1,7 +1,9 @@
+using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
+using Hase.Runtime.Northbound;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
@@ -186,6 +188,66 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
     }
 
     [Fact]
+    public async Task NorthboundCommandService_VersionFourModeCommand_ShouldUseAttachmentPortOnce()
+    {
+        string directoryPath = Path.Combine(
+            Path.GetTempPath(),
+            $"hase-kel103-command-composition-{Guid.NewGuid():N}");
+
+        try
+        {
+            var context = new RuntimeContext();
+            var factory = new RecordingFactory(context);
+            await using var inventory = new RuntimeEndpointAttachmentInventory(
+                new DesktopRuntimeHostKel103AttachmentService(factory));
+            var request = new EndpointAttachmentRequest(
+                new DesktopRuntimeHostKel103ConnectionDefinition(
+                    new EndpointId("kel-01"),
+                    Kel103ControlledSetpointDefinition.EndpointDefinition,
+                    new SerialTransportOptions("external-target", 115200)),
+                HostRepositoryDescriptorSource.Instance);
+
+            RuntimeEndpointAttachmentInventoryEntry entry =
+                await inventory.AttachAsync(request);
+            await using RuntimeHostNorthboundSnapshotComposition composition =
+                await RuntimeHostNorthboundSnapshotComposition.CreateFileBackedAsync(
+                    inventory,
+                    Path.Combine(directoryPath, "runtime-host-identity.json"),
+                    new RuntimeHostId("runtime-host-kel103-command-composition"));
+            PublishedRuntimeEndpointSnapshot endpoint = Assert.Single(
+                composition.InventorySnapshotProvider.List());
+            InstrumentId instrumentId = entry.RuntimeEndpoint.Instruments
+                .Single()
+                .Descriptor
+                .Id;
+            var target = new RuntimeHostCommandTarget(
+                endpoint.EndpointId,
+                endpoint.Generation,
+                instrumentId,
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath);
+
+            RuntimeHostCommandOperationResult result =
+                await composition.CommandService.ExecuteAsync(target, argument: null);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(1, factory.CommandOperations.ExecuteCount);
+            Assert.Equal(instrumentId, factory.CommandOperations.InstrumentId);
+            Assert.Equal(
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                factory.CommandOperations.CommandPath);
+            Assert.Null(factory.CommandOperations.Argument);
+            Assert.Equal(0, factory.PropertyOperations.CallCount);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public async Task AttachAsync_Cancellation_ShouldPropagateWithoutTargetLeak()
     {
         const string sensitiveTarget = "sensitive-target";
@@ -305,29 +367,50 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
     private sealed class RecordingPropertyOperations
         : IEndpointAttachmentPropertyOperations
     {
+        public int CallCount { get; private set; }
+
         public Task<EndpointAttachmentPropertyOperationResult> ReadAsync(
             InstrumentId instrumentId,
             PropertyId propertyId,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
             throw new NotSupportedException();
+        }
 
         public Task<EndpointAttachmentPropertyOperationResult> WriteAsync(
             InstrumentId instrumentId,
             PropertyId propertyId,
             object? requestedValue,
-            CancellationToken cancellationToken = default) =>
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
             throw new NotSupportedException();
+        }
     }
 
     private sealed class RecordingCommandOperations
         : IEndpointAttachmentCommandOperations
     {
+        public int ExecuteCount { get; private set; }
+        public InstrumentId? InstrumentId { get; private set; }
+        public DescriptorPath? CommandPath { get; private set; }
+        public object? Argument { get; private set; }
+
         public Task<EndpointAttachmentCommandOperationResult> ExecuteAsync(
             InstrumentId instrumentId,
             DescriptorPath commandPath,
             object? argument,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ExecuteCount++;
+            InstrumentId = instrumentId;
+            CommandPath = commandPath;
+            Argument = argument;
+            return Task.FromResult(
+                EndpointAttachmentCommandOperationResult.Successful());
+        }
     }
 
     private sealed class RecordingObserver : IRuntimeEndpointAttachmentInventoryObserver
