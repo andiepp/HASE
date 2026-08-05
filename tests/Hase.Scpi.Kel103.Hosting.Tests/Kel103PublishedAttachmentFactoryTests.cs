@@ -132,6 +132,7 @@ public sealed class Kel103PublishedAttachmentFactoryTests
         Assert.True(result.IsSuccess);
         Assert.Equal(10.0000m, result.ConfirmedValue!.Value);
         Assert.Equal(5, stream.Writes.Count);
+        Assert.Same(attachment.PropertyOperations, attachment.CommandOperations);
     }
 
     [Fact]

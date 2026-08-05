@@ -33,6 +33,9 @@ public sealed class Kel103SupervisedAttachment : IAsyncDisposable
     public IEndpointAttachmentPropertyOperations PropertyOperations =>
         publishedAttachment.PropertyOperations;
 
+    public IEndpointAttachmentCommandOperations CommandOperations =>
+        publishedAttachment.CommandOperations;
+
     public RuntimeEndpointConnectionStatistics GetConnectionStatistics() =>
         supervisor.GetStatistics();
 

@@ -1,4 +1,5 @@
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
@@ -8,6 +9,7 @@ namespace Hase.Scpi.Kel103.Hosting;
 
 internal sealed class Kel103PublishedConnectionSlot
     : IEndpointAttachmentPropertyOperations,
+      IEndpointAttachmentCommandOperations,
       IAsyncDisposable
 {
     private readonly RuntimeEndpoint runtimeEndpoint;
@@ -83,6 +85,38 @@ internal sealed class Kel103PublishedConnectionSlot
                     instrumentId,
                     propertyId,
                     requestedValue,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
+    public async Task<EndpointAttachmentCommandOperationResult> ExecuteAsync(
+        InstrumentId instrumentId,
+        DescriptorPath commandPath,
+        object? argument,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(instrumentId);
+        ArgumentNullException.ThrowIfNull(commandPath);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (disposed || connection is null)
+            {
+                return CommandUnavailable();
+            }
+
+            return await connection.CommandOperations
+                .ExecuteAsync(
+                    instrumentId,
+                    commandPath,
+                    argument,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -188,5 +222,10 @@ internal sealed class Kel103PublishedConnectionSlot
     private static EndpointAttachmentPropertyOperationResult Unavailable() =>
         EndpointAttachmentPropertyOperationResult.Failed(
             EndpointAttachmentPropertyOperationStatus.Unavailable,
+            "The KEL-103 attachment does not own an active connection.");
+
+    private static EndpointAttachmentCommandOperationResult CommandUnavailable() =>
+        EndpointAttachmentCommandOperationResult.Failed(
+            EndpointAttachmentCommandOperationStatus.Unavailable,
             "The KEL-103 attachment does not own an active connection.");
 }

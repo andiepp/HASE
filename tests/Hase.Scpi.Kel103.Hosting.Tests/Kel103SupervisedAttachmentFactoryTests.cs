@@ -54,6 +54,7 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
             SupportedOptions());
         RuntimeEndpoint endpoint = attachment.RuntimeEndpoint;
         object propertyPort = attachment.PropertyOperations;
+        object commandPort = attachment.CommandOperations;
 
         endpoint.UpdateConnectionStatus(
             new EndpointConnectionStatus(EndpointConnectionState.Faulted));
@@ -63,6 +64,7 @@ public sealed class Kel103SupervisedAttachmentFactoryTests
 
         Assert.Same(endpoint, attachment.RuntimeEndpoint);
         Assert.Same(propertyPort, attachment.PropertyOperations);
+        Assert.Same(commandPort, attachment.CommandOperations);
         Assert.Single(context.Endpoints);
         Assert.Same(endpoint, context.Endpoints.Single());
         Assert.Equal(1, initial.DisposeCount);

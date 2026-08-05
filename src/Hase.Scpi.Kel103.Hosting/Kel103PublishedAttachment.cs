@@ -30,6 +30,9 @@ public sealed class Kel103PublishedAttachment : IAsyncDisposable
     public IEndpointAttachmentPropertyOperations PropertyOperations =>
         connectionSlot;
 
+    public IEndpointAttachmentCommandOperations CommandOperations =>
+        connectionSlot;
+
     public Task ReplaceAsync(
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default) =>
