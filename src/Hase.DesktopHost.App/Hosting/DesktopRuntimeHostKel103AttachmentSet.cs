@@ -22,6 +22,7 @@ public interface IDesktopRuntimeHostKel103Attachment : IAsyncDisposable
 {
     RuntimeEndpoint RuntimeEndpoint { get; }
     IEndpointAttachmentPropertyOperations PropertyOperations { get; }
+    IEndpointAttachmentCommandOperations CommandOperations { get; }
 }
 
 public sealed class DesktopRuntimeHostKel103AttachmentFactory
@@ -76,6 +77,9 @@ public sealed class DesktopRuntimeHostKel103AttachmentFactory
 
         public IEndpointAttachmentPropertyOperations PropertyOperations =>
             attachment.PropertyOperations;
+
+        public IEndpointAttachmentCommandOperations CommandOperations =>
+            attachment.CommandOperations;
 
         public ValueTask DisposeAsync() => attachment.DisposeAsync();
     }

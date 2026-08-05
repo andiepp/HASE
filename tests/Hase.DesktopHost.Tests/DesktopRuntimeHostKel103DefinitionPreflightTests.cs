@@ -1,6 +1,7 @@
 using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Runtime;
@@ -392,6 +393,9 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
         public IEndpointAttachmentPropertyOperations PropertyOperations { get; } =
             new ThrowingPropertyOperations();
 
+        public IEndpointAttachmentCommandOperations CommandOperations { get; } =
+            new ThrowingCommandOperations();
+
         public ValueTask DisposeAsync()
         {
             if (!disposed)
@@ -418,6 +422,17 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
             InstrumentId instrumentId,
             PropertyId propertyId,
             object? requestedValue,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class ThrowingCommandOperations
+        : IEndpointAttachmentCommandOperations
+    {
+        public Task<EndpointAttachmentCommandOperationResult> ExecuteAsync(
+            InstrumentId instrumentId,
+            DescriptorPath commandPath,
+            object? argument,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }

@@ -101,6 +101,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentService
                 request,
                 attachment.RuntimeEndpoint,
                 attachment.PropertyOperations,
+                attachment.CommandOperations,
                 [attachment]);
             attachment = null;
             return session;

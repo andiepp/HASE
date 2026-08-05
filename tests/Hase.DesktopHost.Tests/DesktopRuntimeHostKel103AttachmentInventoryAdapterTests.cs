@@ -1,5 +1,6 @@
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
+using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
@@ -26,7 +27,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
     }
 
     [Fact]
-    public async Task AttachAsync_ValidRequest_ShouldExposeEndpointAndPropertyOperations()
+    public async Task AttachAsync_ValidRequest_ShouldExposeEndpointOperations()
     {
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context);
@@ -39,6 +40,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         Assert.Same(request, session.Request);
         Assert.Equal(new EndpointId("kel-01"), session.RuntimeEndpoint.Descriptor.Id);
         Assert.Same(factory.PropertyOperations, session.PropertyOperations);
+        Assert.Same(factory.CommandOperations, session.CommandOperations);
         Assert.Single(context.Endpoints);
 
         await session.ShutdownAsync();
@@ -151,6 +153,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         Assert.Same(entry, Assert.Single(inventory.List()));
         Assert.Same(entry, Assert.Single(observer.Published).Entry);
         Assert.Same(factory.PropertyOperations, entry.AttachmentSession.PropertyOperations);
+        Assert.Same(factory.CommandOperations, entry.AttachmentSession.CommandOperations);
 
         Assert.True(await inventory.DetachAsync(new EndpointId("kel-01")));
         Assert.Empty(inventory.List());
@@ -220,6 +223,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         public int DisposeCount { get; private set; }
         public EndpointDescriptorDefinition? Definition { get; private set; }
         public RecordingPropertyOperations PropertyOperations { get; } = new();
+        public RecordingCommandOperations CommandOperations { get; } = new();
 
         public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
@@ -257,6 +261,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
                     context,
                     endpoint,
                     PropertyOperations,
+                    CommandOperations,
                     () => DisposeCount++,
                     failDisposal,
                     sensitiveTarget));
@@ -267,6 +272,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         RuntimeContext context,
         RuntimeEndpoint runtimeEndpoint,
         IEndpointAttachmentPropertyOperations propertyOperations,
+        IEndpointAttachmentCommandOperations commandOperations,
         Action onDispose,
         bool failDisposal,
         string sensitiveTarget) : IDesktopRuntimeHostKel103Attachment
@@ -275,6 +281,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
 
         public RuntimeEndpoint RuntimeEndpoint => runtimeEndpoint;
         public IEndpointAttachmentPropertyOperations PropertyOperations => propertyOperations;
+        public IEndpointAttachmentCommandOperations CommandOperations => commandOperations;
 
         public ValueTask DisposeAsync()
         {
@@ -308,6 +315,17 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
             InstrumentId instrumentId,
             PropertyId propertyId,
             object? requestedValue,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class RecordingCommandOperations
+        : IEndpointAttachmentCommandOperations
+    {
+        public Task<EndpointAttachmentCommandOperationResult> ExecuteAsync(
+            InstrumentId instrumentId,
+            DescriptorPath commandPath,
+            object? argument,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
