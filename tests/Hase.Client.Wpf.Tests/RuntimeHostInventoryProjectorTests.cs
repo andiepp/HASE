@@ -343,4 +343,58 @@ public sealed class RuntimeHostInventoryProjectorTests
         Assert.True(
             property.RequestedBooleanValue);
     }
+
+    [Fact]
+    public void Project_ModeSelection_ShouldExposeOrderedDirectCommands()
+    {
+        Guid firstGeneration = Guid.Parse(
+            "50d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = CreateModeSelectionState(firstGeneration);
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(firstState)).Instruments);
+
+        Assert.Equal(
+            ["CC", "CV", "CR", "CW", "SHORT"],
+            instrument.ModeSelectionCommands
+                .Select(
+                    command =>
+                        command.ModeSelectionLabel)
+                .ToArray());
+        Assert.All(
+            instrument.ModeSelectionCommands,
+            command =>
+                Assert.True(command.CanExecute));
+    }
+
+    private static RemoteObservationState CreateModeSelectionState(
+        Guid generation)
+    {
+        var commands = new[]
+        {
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantCurrent"), "Select CC"),
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT")
+        };
+        var instrument = new InstrumentDescriptor(
+            new InstrumentId("electronic-load-01"),
+            "Electronic Load",
+            new InstrumentKind("ElectronicLoad"))
+        {
+            Interface = new InstrumentInterface(commands: commands)
+        };
+        var attachment = new RemoteEndpointAttachmentSnapshot(
+            new RemoteEndpointAttachmentGeneration(generation),
+            new EndpointDescriptor(new EndpointId("kel-01"), [instrument]),
+            new RemoteEndpointConnectionStatus(RemoteEndpointConnectionState.Ready));
+        return new RemoteObservationReducer().Initialize(
+            RemoteObservationState.Empty,
+            new RemoteObservationInitialSnapshot(
+                new RemoteRuntimeHostSnapshot(
+                    new RemoteRuntimeHostId("runtime-01"),
+                    RuntimeHostClientApiVersion.Current,
+                    [attachment]),
+                new RemoteObservationSequence(1)));
+    }
 }

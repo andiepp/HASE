@@ -183,6 +183,116 @@ public sealed class CommandInventoryItemViewModelTests
             command.IsEditingArgument);
     }
 
+    [Fact]
+    public void CompleteModeCommandSet_ShouldExposeOrderedSelectorAndGeneralCommands()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [
+                CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT"),
+                CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+                CreateCommand(new CommandDescriptor(
+                    DescriptorPath.Parse("System.Reset"),
+                    "Reset")),
+                CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
+                CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
+                CreateModeCommand("Mode.SelectConstantCurrent", "Select CC")
+            ]);
+
+        Assert.True(instrument.HasModeSelectionSelector);
+        Assert.Equal(
+            ["CC", "CV", "CR", "CW", "SHORT"],
+            instrument.ModeSelectionCommands
+                .Select(command => command.ModeSelectionLabel)
+                .ToArray());
+        Assert.Equal(
+            ["System.Reset"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void ModeSelectionCommand_ShouldRemainReadyForDirectExecution()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            CreateCompleteModeCommandSet());
+        CommandInventoryItemViewModel selected =
+            instrument.ModeSelectionCommands[2];
+
+        Assert.Equal(
+            "Mode.SelectConstantResistance",
+            selected.Target.CommandPath.ToString());
+        Assert.True(selected.CanExecute);
+    }
+
+    [Fact]
+    public void IncompleteModeCommandSet_ShouldRemainGeneric()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            CreateCompleteModeCommandSet().Take(4).ToArray());
+
+        Assert.False(instrument.HasModeSelectionSelector);
+        Assert.Empty(instrument.ModeSelectionCommands);
+        Assert.Equal(4, instrument.GeneralCommands.Count);
+    }
+
+    [Fact]
+    public void ArgumentBearingModeLookalike_ShouldRemainGeneric()
+    {
+        CommandInventoryItemViewModel[] commands = CreateCompleteModeCommandSet();
+        commands[1] = CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse("Mode.SelectConstantVoltage"),
+                "Select CV",
+                new CommandArgumentDescriptor(
+                    "Unexpected",
+                    new BooleanDataDescriptor())));
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            commands);
+
+        Assert.False(instrument.HasModeSelectionSelector);
+        Assert.Equal(5, instrument.GeneralCommands.Count);
+    }
+
+    [Fact]
+    public void UnavailableEndpoint_ShouldDisableEveryModeSelectionCommand()
+    {
+        CommandInventoryItemViewModel[] commands =
+        [
+            CreateModeCommand("Mode.SelectConstantCurrent", "Select CC", endpointReady: false),
+            CreateModeCommand("Mode.SelectConstantVoltage", "Select CV", endpointReady: false),
+            CreateModeCommand("Mode.SelectConstantResistance", "Select CR", endpointReady: false),
+            CreateModeCommand("Mode.SelectConstantPower", "Select CW", endpointReady: false),
+            CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT", endpointReady: false)
+        ];
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            commands);
+        Assert.All(
+            instrument.ModeSelectionCommands,
+            command =>
+                Assert.False(command.CanExecute));
+    }
+
     private static CommandInventoryItemViewModel CreateTypedCommand(
         DataDescriptor data)
     {
@@ -197,21 +307,42 @@ public sealed class CommandInventoryItemViewModelTests
     }
 
     private static CommandInventoryItemViewModel CreateCommand(
-        CommandDescriptor descriptor)
+        CommandDescriptor descriptor,
+        bool endpointReady = true)
     {
         return new CommandInventoryItemViewModel(
-            CreateTarget(),
+            CreateTarget(descriptor.Path),
             descriptor.Path.ToString(),
             descriptor.DisplayName,
             descriptor.Description,
-            true)
+            endpointReady)
         {
             Descriptor =
                 descriptor
         };
     }
 
-    private static RemoteCommandTarget CreateTarget()
+    private static CommandInventoryItemViewModel CreateModeCommand(
+        string path,
+        string displayName,
+        bool endpointReady = true) =>
+        CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse(path),
+                displayName),
+            endpointReady);
+
+    private static CommandInventoryItemViewModel[] CreateCompleteModeCommandSet() =>
+    [
+        CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
+        CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
+        CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
+        CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+        CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT")
+    ];
+
+    private static RemoteCommandTarget CreateTarget(
+        DescriptorPath commandPath)
     {
         return new RemoteCommandTarget(
             new RemoteEndpointAttachmentKey(
@@ -222,7 +353,6 @@ public sealed class CommandInventoryItemViewModelTests
                         "8f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
             new InstrumentId(
                 "controller-01"),
-            DescriptorPath.Parse(
-                "Controller.Send"));
+            commandPath);
     }
 }

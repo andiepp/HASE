@@ -285,16 +285,25 @@ public sealed class MainWindowViewModel
             mayPresentState && selectedSession!.CurrentState is not null
                 ? selectedSession.CurrentState
                 : RemoteObservationState.Empty;
+        bool deferEndpointProjection =
+            !clearEventOccurrences
+            && HasActiveModeCommandInteraction()
+            && HaveSameAttachmentKeys(
+                currentState,
+                selectedState);
         SetProperty(ref currentState, selectedState, nameof(CurrentState));
-        SetProperty(
-            ref endpoints,
-            RuntimeHostInventoryProjector.Project(
-                selectedState,
-                confirmedReads,
-                requestedBooleanValues,
-                requestedCommandArgumentTexts,
-                requestedPropertyValueTexts),
-            nameof(Endpoints));
+        if (!deferEndpointProjection)
+        {
+            SetProperty(
+                ref endpoints,
+                RuntimeHostInventoryProjector.Project(
+                    selectedState,
+                    confirmedReads,
+                    requestedBooleanValues,
+                    requestedCommandArgumentTexts,
+                    requestedPropertyValueTexts),
+                nameof(Endpoints));
+        }
         RaisePropertyChanged(nameof(EndpointCount));
         RaisePropertyChanged(nameof(HasEndpoints));
         RaisePropertyChanged(nameof(SessionState));
@@ -308,6 +317,29 @@ public sealed class MainWindowViewModel
                 "The selected Runtime Host is reconnecting; retained endpoint state is read-only.",
             _ => "The selected Runtime Host is not connected."
         };
+    }
+
+    private static bool HaveSameAttachmentKeys(
+        RemoteObservationState first,
+        RemoteObservationState second)
+    {
+        HashSet<RemoteEndpointAttachmentKey> firstKeys =
+            first.Snapshot?.Attachments
+                .Select(
+                    attachment =>
+                        attachment.Key)
+                .ToHashSet()
+            ?? [];
+        HashSet<RemoteEndpointAttachmentKey> secondKeys =
+            second.Snapshot?.Attachments
+                .Select(
+                    attachment =>
+                        attachment.Key)
+                .ToHashSet()
+            ?? [];
+
+        return firstKeys.SetEquals(
+            secondKeys);
     }
 
     private static bool ShouldClearEventOccurrences(
@@ -604,7 +636,11 @@ public sealed class MainWindowViewModel
             value);
 
         if (HasActiveCommandArgumentEditor()
-            || HasActivePropertyValueEditor())
+            || HasActivePropertyValueEditor()
+            || (HasActiveModeCommandInteraction()
+                && HaveSameAttachmentKeys(
+                    currentState,
+                    value)))
         {
             return;
         }
@@ -1108,6 +1144,17 @@ public sealed class MainWindowViewModel
             .Any(
                 command =>
                     command.IsEditingArgument);
+    }
+
+    private bool HasActiveModeCommandInteraction()
+    {
+        return endpoints
+            .SelectMany(
+                endpoint =>
+                    endpoint.Instruments)
+            .Any(
+                instrument =>
+                    instrument.IsInvokingModeCommand);
     }
 
     private bool HasActivePropertyValueEditor()

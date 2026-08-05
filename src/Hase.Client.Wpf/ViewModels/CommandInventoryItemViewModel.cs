@@ -14,6 +14,17 @@ public sealed record CommandInventoryItemViewModel(
     bool EndpointReady)
     : INotifyPropertyChanged
 {
+    private static readonly IReadOnlyDictionary<string, string>
+        Kel103ModeSelectionLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Mode.SelectConstantCurrent"] = "CC",
+                ["Mode.SelectConstantVoltage"] = "CV",
+                ["Mode.SelectConstantResistance"] = "CR",
+                ["Mode.SelectConstantPower"] = "CW",
+                ["Mode.SelectShortCircuit"] = "SHORT"
+            };
+
     private string requestedArgumentText =
         string.Empty;
 
@@ -25,6 +36,26 @@ public sealed record CommandInventoryItemViewModel(
 
     public bool RequiresArgument =>
         Descriptor?.Argument is not null;
+
+    public string? ModeSelectionLabel =>
+        Descriptor is not null
+        && !RequiresArgument
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            Path,
+            Target.CommandPath.ToString(),
+            StringComparison.Ordinal)
+        && Kel103ModeSelectionLabels.TryGetValue(
+            Path,
+            out string? label)
+                ? label
+                : null;
+
+    public bool IsModeSelectionCandidate =>
+        ModeSelectionLabel is not null;
 
     public string? ArgumentDisplayName =>
         Descriptor?.Argument?.DisplayName;

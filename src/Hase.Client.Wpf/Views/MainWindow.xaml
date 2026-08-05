@@ -320,9 +320,56 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
+                                                <Border
+                                                    Margin="16,4,0,8"
+                                                    Padding="8"
+                                                    Background="#FFF5F5F5"
+                                                    BorderBrush="#FFD0D0D0"
+                                                    BorderThickness="1">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasModeSelectionSelector}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="SemiBold" Text="Select mode" />
+                                                        <ItemsControl
+                                                            Margin="0,6,0,0"
+                                                            ItemsSource="{Binding ModeSelectionCommands}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button
+                                                                        MinWidth="64"
+                                                                        Margin="0,0,6,6"
+                                                                        Padding="10,4"
+                                                                        Command="{Binding DataContext.ExecuteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Content="{Binding ModeSelectionLabel}"
+                                                                        IsEnabled="{Binding CanExecute}"
+                                                                        LostMouseCapture="OnModeCommandLostMouseCapture"
+                                                                        PreviewKeyDown="OnModeCommandPreviewKeyDown"
+                                                                        PreviewKeyUp="OnModeCommandPreviewKeyUp"
+                                                                        PreviewMouseLeftButtonDown="OnModeCommandPreviewMouseLeftButtonDown"
+                                                                        PreviewMouseLeftButtonUp="OnModeCommandPreviewMouseLeftButtonUp"
+                                                                        ToolTip="{Binding DisplayName}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </Border>
                                                 <ItemsControl
                                                     Margin="16,4,0,8"
-                                                    ItemsSource="{Binding Commands}">
+                                                    ItemsSource="{Binding GeneralCommands}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Margin="0,4">
