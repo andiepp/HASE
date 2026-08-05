@@ -282,6 +282,101 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Fact]
+    public void CompleteModeCommandSet_ShouldExposeOrderedSelectorAndUnrelatedCommands()
+    {
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(
+            [
+                CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT"),
+                CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+                CreateCommand(CreateParameterlessDescriptor("System.Reset", "Reset")),
+                CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
+                CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
+                CreateModeCommand("Mode.SelectConstantCurrent", "Select CC")
+            ]));
+
+        Assert.True(instrument.HasModeSelectionSelector);
+        Assert.Null(instrument.SelectedModeCommand);
+        Assert.Equal(
+            ["CC", "CV", "CR", "CW", "SHORT"],
+            instrument.ModeSelectionCommands
+                .Select(command => command.ModeSelectionLabel)
+                .ToArray());
+        Assert.Equal(
+            ["System.Reset"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void ModeSelection_ShouldNotBeginExecutionAndShouldSurviveRefresh()
+    {
+        DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
+            CreateCompleteModeCommandSet());
+        var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
+        DesktopRuntimeCommandViewModel selected = instrument.ModeSelectionCommands[1];
+
+        instrument.SelectedModeCommand = selected;
+
+        Assert.Equal(DesktopRuntimeCommandExecutionState.Ready, selected.ExecutionState);
+        instrument.Update(snapshot);
+        Assert.Same(selected, instrument.SelectedModeCommand);
+        Assert.Equal(DesktopRuntimeCommandExecutionState.Ready, selected.ExecutionState);
+    }
+
+    [Fact]
+    public void SelectedModeCommand_ExplicitExecutionShouldUseExistingCommandTarget()
+    {
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(CreateCompleteModeCommandSet()));
+        DesktopRuntimeCommandViewModel selected = instrument.ModeSelectionCommands[2];
+        instrument.SelectedModeCommand = selected;
+
+        RuntimeHostCommandTarget? target =
+            instrument.SelectedModeCommand.TryBeginExecution();
+
+        Assert.Same(selected.Target, target);
+        Assert.Equal(
+            "Mode.SelectConstantResistance",
+            target!.CommandPath.ToString());
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Executing,
+            selected.ExecutionState);
+    }
+
+    [Fact]
+    public void IncompleteModeCommandSet_ShouldRetainGenericPresentation()
+    {
+        var commands = CreateCompleteModeCommandSet().Take(4).ToArray();
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(commands));
+
+        Assert.False(instrument.HasModeSelectionSelector);
+        Assert.Empty(instrument.ModeSelectionCommands);
+        Assert.Null(instrument.SelectedModeCommand);
+        Assert.Equal(4, instrument.GeneralCommands.Count);
+    }
+
+    [Fact]
+    public void ModeSelectionCandidate_WithArgument_ShouldRemainGeneric()
+    {
+        DesktopRuntimeCommandSnapshot[] commands = CreateCompleteModeCommandSet();
+        commands[1] = CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse("Mode.SelectConstantVoltage"),
+                "Select CV",
+                new CommandArgumentDescriptor(
+                    "Unexpected",
+                    new BooleanDataDescriptor())));
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(commands));
+
+        Assert.False(instrument.HasModeSelectionSelector);
+        Assert.Equal(5, instrument.GeneralCommands.Count);
+    }
+
+    [Fact]
     public void Constructor_WithEmptyPath_ShouldThrow()
     {
         Assert.Throws<ArgumentException>(
@@ -328,6 +423,21 @@ public sealed class DesktopRuntimeCommandViewModelTests
             DescriptorPath.Parse(
                 path),
             displayName);
+
+    private static DesktopRuntimeCommandSnapshot CreateModeCommand(
+        string path,
+        string displayName) =>
+        CreateCommand(
+            CreateParameterlessDescriptor(path, displayName));
+
+    private static DesktopRuntimeCommandSnapshot[] CreateCompleteModeCommandSet() =>
+    [
+        CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
+        CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
+        CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
+        CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+        CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT")
+    ];
 
     private static DesktopRuntimeCommandSnapshot CreateCommand(
         CommandDescriptor descriptor,

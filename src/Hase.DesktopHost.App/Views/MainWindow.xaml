@@ -638,9 +638,55 @@
                                                                     FontWeight="SemiBold"
                                                                     Text="{Binding CommandCount, StringFormat=Commands ({0})}" />
 
+                                                                <Border
+                                                                    Margin="0,8,0,8"
+                                                                    Padding="10"
+                                                                    Background="White"
+                                                                    BorderBrush="Gainsboro"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="3">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasModeSelectionSelector}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <StackPanel>
+                                                                        <TextBlock FontWeight="SemiBold" Text="Requested mode" />
+                                                                        <ComboBox
+                                                                            Margin="0,6,0,0"
+                                                                            Width="180"
+                                                                            HorizontalAlignment="Left"
+                                                                            DisplayMemberPath="ModeSelectionLabel"
+                                                                            ItemsSource="{Binding ModeSelectionCommands}"
+                                                                            SelectedItem="{Binding SelectedModeCommand, Mode=TwoWay}" />
+                                                                        <Button
+                                                                            Margin="0,8,0,0"
+                                                                            Width="130"
+                                                                            HorizontalAlignment="Left"
+                                                                            Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding SelectedModeCommand}"
+                                                                            Content="Apply mode"
+                                                                            IsEnabled="{Binding SelectedModeCommand.CanExecute, TargetNullValue=False}" />
+                                                                        <TextBlock
+                                                                            Margin="0,8,0,0"
+                                                                            FontWeight="SemiBold"
+                                                                            Text="{Binding SelectedModeCommand.ExecutionState, StringFormat=Execution: {0}}" />
+                                                                        <TextBlock
+                                                                            Margin="0,3,0,0"
+                                                                            Foreground="DimGray"
+                                                                            Text="{Binding SelectedModeCommand.ExecutionMessage}"
+                                                                            TextWrapping="Wrap" />
+                                                                    </StackPanel>
+                                                                </Border>
+
                                                                 <ItemsControl
                                                                     Margin="0,8,0,0"
-                                                                    ItemsSource="{Binding Commands}">
+                                                                    ItemsSource="{Binding GeneralCommands}">
                                                                     <ItemsControl.ItemTemplate>
                                                                         <DataTemplate>
                                                                             <Border

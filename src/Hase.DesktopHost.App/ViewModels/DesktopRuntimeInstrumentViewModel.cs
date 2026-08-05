@@ -7,6 +7,15 @@ namespace Hase.DesktopHost.App.ViewModels;
 public sealed class DesktopRuntimeInstrumentViewModel
     : INotifyPropertyChanged
 {
+    private static readonly string[] ModeSelectionOrder =
+    [
+        "CC",
+        "CV",
+        "CR",
+        "CW",
+        "SHORT"
+    ];
+
     private string name;
     private string kind;
     private string manufacturer;
@@ -15,6 +24,7 @@ public sealed class DesktopRuntimeInstrumentViewModel
     private string firmwareVersion;
     private string hardwareRevision;
     private string description;
+    private DesktopRuntimeCommandViewModel? selectedModeCommand;
 
     public DesktopRuntimeInstrumentViewModel(
         DesktopRuntimeInstrumentSnapshot snapshot)
@@ -159,6 +169,51 @@ public sealed class DesktopRuntimeInstrumentViewModel
 
     public int CommandCount =>
         Commands.Count;
+
+    public ObservableCollection<DesktopRuntimeCommandViewModel>
+        GeneralCommands
+    {
+        get;
+    } =
+        [];
+
+    public ObservableCollection<DesktopRuntimeCommandViewModel>
+        ModeSelectionCommands
+    {
+        get;
+    } =
+        [];
+
+    public bool HasModeSelectionSelector =>
+        ModeSelectionCommands.Count
+        == ModeSelectionOrder.Length;
+
+    public DesktopRuntimeCommandViewModel? SelectedModeCommand
+    {
+        get =>
+            selectedModeCommand;
+        set
+        {
+            if (value is not null
+                && !ModeSelectionCommands.Contains(value))
+            {
+                throw new ArgumentException(
+                    "The selected mode Command must belong to this instrument.",
+                    nameof(value));
+            }
+
+            if (ReferenceEquals(
+                    selectedModeCommand,
+                    value))
+            {
+                return;
+            }
+
+            selectedModeCommand =
+                value;
+            OnPropertyChanged();
+        }
+    }
 
     public ObservableCollection<DesktopRuntimeEventViewModel> Events
     {
@@ -383,6 +438,73 @@ public sealed class DesktopRuntimeInstrumentViewModel
 
         OnPropertyChanged(
             nameof(CommandCount));
+        ReconcileCommandPresentation();
+    }
+
+    private void ReconcileCommandPresentation()
+    {
+        string? selectedPath =
+            SelectedModeCommand?.Path;
+        DesktopRuntimeCommandViewModel[] candidates =
+            Commands
+                .Where(
+                    command =>
+                        command.IsModeSelectionCandidate)
+                .ToArray();
+        bool hasCompleteSelector =
+            candidates.Length == ModeSelectionOrder.Length
+            && ModeSelectionOrder.All(
+                label =>
+                    candidates.Count(
+                        command =>
+                            string.Equals(
+                                command.ModeSelectionLabel,
+                                label,
+                                StringComparison.Ordinal))
+                    == 1);
+
+        ReplaceContents(
+            ModeSelectionCommands,
+            hasCompleteSelector
+                ? ModeSelectionOrder.Select(
+                    label =>
+                        candidates.Single(
+                            command =>
+                                string.Equals(
+                                    command.ModeSelectionLabel,
+                                    label,
+                                    StringComparison.Ordinal)))
+                : []);
+        ReplaceContents(
+            GeneralCommands,
+            hasCompleteSelector
+                ? Commands.Where(
+                    command =>
+                        !command.IsModeSelectionCandidate)
+                : Commands);
+
+        SelectedModeCommand =
+            selectedPath is null
+                ? null
+                : ModeSelectionCommands.SingleOrDefault(
+                    command =>
+                        string.Equals(
+                            command.Path,
+                            selectedPath,
+                            StringComparison.Ordinal));
+        OnPropertyChanged(
+            nameof(HasModeSelectionSelector));
+    }
+
+    private static void ReplaceContents<T>(
+        ObservableCollection<T> destination,
+        IEnumerable<T> source)
+    {
+        destination.Clear();
+        foreach (T item in source)
+        {
+            destination.Add(item);
+        }
     }
 
     private int FindCommandIndex(

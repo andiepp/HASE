@@ -18,6 +18,17 @@ public enum CommandArgumentEditorKind
 public sealed class DesktopRuntimeCommandViewModel
     : INotifyPropertyChanged
 {
+    private static readonly IReadOnlyDictionary<string, string>
+        Kel103ModeSelectionLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Mode.SelectConstantCurrent"] = "CC",
+                ["Mode.SelectConstantVoltage"] = "CV",
+                ["Mode.SelectConstantResistance"] = "CR",
+                ["Mode.SelectConstantPower"] = "CW",
+                ["Mode.SelectShortCircuit"] = "SHORT"
+            };
+
     private RuntimeHostCommandTarget target;
     private bool isEndpointReady;
     private string requestedArgumentText =
@@ -103,6 +114,21 @@ public sealed class DesktopRuntimeCommandViewModel
 
     public bool RequiresArgument =>
         Descriptor.Argument is not null;
+
+    public string? ModeSelectionLabel =>
+        !RequiresArgument
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && Kel103ModeSelectionLabels.TryGetValue(
+            Path,
+            out string? label)
+                ? label
+                : null;
+
+    public bool IsModeSelectionCandidate =>
+        ModeSelectionLabel is not null;
 
     public string? ArgumentDisplayName =>
         Descriptor.Argument?.DisplayName;
