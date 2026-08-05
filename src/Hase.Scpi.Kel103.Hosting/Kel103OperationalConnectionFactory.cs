@@ -151,7 +151,8 @@ public sealed class Kel103OperationalConnectionFactory
 
             var connection = new Kel103OperationalConnection(
                 runtimeAdapter,
-                new Kel103EndpointAttachmentPropertyOperations(runtimeAdapter, timeProvider));
+                new Kel103EndpointAttachmentPropertyOperations(runtimeAdapter, timeProvider),
+                new Kel103EndpointAttachmentCommandOperations(runtimeAdapter, timeProvider));
             owner = null;
             return connection;
         }

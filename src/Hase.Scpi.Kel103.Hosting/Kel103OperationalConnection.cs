@@ -16,16 +16,31 @@ public sealed class Kel103OperationalConnection : IAsyncDisposable
     internal Kel103OperationalConnection(
         Kel103RuntimeEndpointAdapter runtimeAdapter,
         Kel103EndpointAttachmentPropertyOperations propertyOperations)
+        : this(
+            runtimeAdapter,
+            propertyOperations,
+            new Kel103EndpointAttachmentCommandOperations(runtimeAdapter))
+    {
+    }
+
+    internal Kel103OperationalConnection(
+        Kel103RuntimeEndpointAdapter runtimeAdapter,
+        Kel103EndpointAttachmentPropertyOperations propertyOperations,
+        Kel103EndpointAttachmentCommandOperations commandOperations)
     {
         this.runtimeAdapter = runtimeAdapter
             ?? throw new ArgumentNullException(nameof(runtimeAdapter));
         PropertyOperations = propertyOperations
             ?? throw new ArgumentNullException(nameof(propertyOperations));
+        CommandOperations = commandOperations
+            ?? throw new ArgumentNullException(nameof(commandOperations));
     }
 
     public RuntimeEndpoint RuntimeEndpoint => runtimeAdapter.RuntimeEndpoint;
 
     public IEndpointAttachmentPropertyOperations PropertyOperations { get; }
+
+    public IEndpointAttachmentCommandOperations CommandOperations { get; }
 
     public ValueTask DisposeAsync()
     {

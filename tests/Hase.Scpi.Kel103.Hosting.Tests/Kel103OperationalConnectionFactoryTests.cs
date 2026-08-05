@@ -3,6 +3,8 @@ using Hase.Core.Domain.Identity;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
+using Hase.Scpi;
+using Hase.Scpi.Kel103.Runtime;
 using Hase.Transport.Serial;
 
 namespace Hase.Scpi.Kel103.Hosting.Tests;
@@ -144,6 +146,41 @@ public sealed class Kel103OperationalConnectionFactoryTests
     }
 
     [Fact]
+    public async Task Connection_RequiresBothOperationPorts()
+    {
+        var session = new RejectingTextSession();
+        var endpoint = new RuntimeContext().CreateEndpoint(
+            Kel103ControlledSetpointDefinition.EndpointDefinition.Materialize(
+                new EndpointId("constructor-test")));
+        var runtimeAdapter = new Kel103RuntimeEndpointAdapter(
+            new Kel103ReadOnlySessionAdapter(session),
+            endpoint);
+        var propertyOperations = new Kel103EndpointAttachmentPropertyOperations(
+            runtimeAdapter);
+        var commandOperations = new Kel103EndpointAttachmentCommandOperations(
+            runtimeAdapter);
+
+        Assert.Throws<ArgumentNullException>(() =>
+            new Kel103OperationalConnection(
+                null!,
+                propertyOperations,
+                commandOperations));
+        Assert.Throws<ArgumentNullException>(() =>
+            new Kel103OperationalConnection(
+                runtimeAdapter,
+                null!,
+                commandOperations));
+        Assert.Throws<ArgumentNullException>(() =>
+            new Kel103OperationalConnection(
+                runtimeAdapter,
+                propertyOperations,
+                null!));
+
+        await runtimeAdapter.DisposeAsync();
+        Assert.Equal(1, session.DisposeCount);
+    }
+
+    [Fact]
     public async Task DisposeAsync_IsIdempotentAndClosesUnderlyingStreamOnce()
     {
         var stream = SuccessfulStream();
@@ -206,6 +243,32 @@ public sealed class Kel103OperationalConnectionFactoryTests
             OpenCount++;
             Options = options;
             return ValueTask.FromResult(stream);
+        }
+    }
+
+    private sealed class RejectingTextSession : IScpiTextSession
+    {
+        public int DisposeCount { get; private set; }
+
+        public ScpiTextSessionState State =>
+            DisposeCount == 0
+                ? ScpiTextSessionState.Open
+                : ScpiTextSessionState.Disposed;
+
+        public Task<string> QueryAsync(
+            string query,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No I/O is expected.");
+
+        public Task SendCommandAsync(
+            string command,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("No I/O is expected.");
+
+        public ValueTask DisposeAsync()
+        {
+            DisposeCount++;
+            return ValueTask.CompletedTask;
         }
     }
 

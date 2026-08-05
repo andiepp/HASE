@@ -33,6 +33,41 @@ public sealed class Kel103DefinitionAwareFactoryTests
         Assert.Equal(1, transport.OpenCount);
         Assert.Equal(expectedProperties, connection.RuntimeEndpoint.Instruments.Single().Properties.Count);
         Assert.Equal(expectedCommands, connection.RuntimeEndpoint.Instruments.Single().Commands.Count);
+        Assert.NotNull(connection.PropertyOperations);
+        Assert.NotNull(connection.CommandOperations);
+    }
+
+    [Fact]
+    public async Task OperationalFactory_VersionFourCommandUsesDefinitionAwarePath()
+    {
+        var stream = new ScriptedSerialByteStream(
+            Responses(version: 4)
+                .Concat(["OFF\n", "OFF\n", "CV\n"])
+                .ToArray());
+        var factory = new Kel103OperationalConnectionFactory(
+            new Hase.Runtime.Runtime.RuntimeContext(),
+            new RecordingSerialFactory(stream),
+            new FixedTimeProvider());
+        await using Kel103OperationalConnection connection = await factory.OpenAsync(
+            new EndpointId("kel-test-01"),
+            Kel103ControlledSetpointDefinition.EndpointDefinition,
+            SupportedOptions());
+
+        EndpointAttachmentCommandOperationResult result =
+            await connection.CommandOperations.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
+                argument: null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(
+            "CV",
+            connection.RuntimeEndpoint.Instruments.Single().Properties[5].CurrentValue!.Value);
+        Assert.False(Assert.IsType<bool>(
+            connection.RuntimeEndpoint.Instruments.Single().Properties[6].CurrentValue!.Value));
+        Assert.Equal(1, stream.Writes.Count(value => value == ":FUNCtion CV\r"));
+        Assert.Equal(3, stream.Writes.Count(value => value == ":INPut?\r"));
+        Assert.Equal(2, stream.Writes.Count(value => value == ":FUNCtion?\r"));
     }
 
     [Fact]
