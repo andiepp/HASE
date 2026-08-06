@@ -28,6 +28,65 @@ public sealed class Kel103PublishedConnectionSlotCommandTests
         Assert.Equal([":FUNCtion CV"], session.Commands);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task ExecuteAsync_ForwardsOrdinaryInputControlOnce(int mappingIndex)
+    {
+        var session = mappingIndex == 0
+            ? new FakeSession("OFF", "CC", "ON")
+            : new FakeSession("OFF");
+        await using Kel103PublishedConnectionSlot slot = CreateVersionFiveSlot(session);
+        Kel103InputControlMapping mapping = Kel103InputControlMapping.All[mappingIndex];
+
+        EndpointAttachmentCommandOperationResult result = await slot.ExecuteAsync(
+            InstrumentId(),
+            mapping.CommandPath,
+            argument: null);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal([mapping.Command], session.Commands);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ForwardsTrueShortConfirmationUnchangedOnce()
+    {
+        var session = new FakeSession("OFF", "SHORt", "ON");
+        await using Kel103PublishedConnectionSlot slot = CreateVersionFiveSlot(session);
+
+        EndpointAttachmentCommandOperationResult result = await slot.ExecuteAsync(
+            InstrumentId(),
+            Kel103InputControlMapping.ShortCircuitActivate.CommandPath,
+            argument: true);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal([":INPut?", ":FUNCtion?", ":INPut?"], session.Queries);
+        Assert.Equal([":INPut ON"], session.Commands);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData("true")]
+    [InlineData(1)]
+    public async Task ExecuteAsync_NormalizesInvalidShortConfirmationWithoutScpi(
+        object? argument)
+    {
+        var session = new FakeSession();
+        await using Kel103PublishedConnectionSlot slot = CreateVersionFiveSlot(session);
+
+        EndpointAttachmentCommandOperationResult result = await slot.ExecuteAsync(
+            InstrumentId(),
+            Kel103InputControlMapping.ShortCircuitActivate.CommandPath,
+            argument);
+
+        Assert.Equal(
+            EndpointAttachmentCommandOperationStatus.ArgumentNotSupported,
+            result.Status);
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+    }
+
     [Fact]
     public async Task ExecuteAsync_SerializesAConcurrentPropertyRead()
     {
@@ -200,6 +259,19 @@ public sealed class Kel103PublishedConnectionSlotCommandTests
             new FixedTimeProvider());
     }
 
+    private static Kel103PublishedConnectionSlot CreateVersionFiveSlot(
+        FakeSession session)
+    {
+        RuntimeEndpoint endpoint = CreateVersionFiveEndpoint();
+        return new Kel103PublishedConnectionSlot(
+            CreateConnection(endpoint, session),
+            new Kel103OperationalConnectionFactory(
+                endpoint.Context,
+                new RejectingSerialFactory(),
+                new FixedTimeProvider()),
+            new FixedTimeProvider());
+    }
+
     private static Kel103OperationalConnection CreateConnection(
         RuntimeEndpoint endpoint,
         FakeSession session)
@@ -218,6 +290,11 @@ public sealed class Kel103PublishedConnectionSlotCommandTests
     private static RuntimeEndpoint CreateVersionFourEndpoint() =>
         new RuntimeContext().CreateEndpoint(
             Kel103ControlledSetpointDefinition.EndpointDefinition.Materialize(
+                new EndpointId("kel-test-01")));
+
+    private static RuntimeEndpoint CreateVersionFiveEndpoint() =>
+        new RuntimeContext().CreateEndpoint(
+            Kel103ControlledInputDefinition.EndpointDefinition.Materialize(
                 new EndpointId("kel-test-01")));
 
     private static InstrumentId InstrumentId() => new("electronic-load-01");

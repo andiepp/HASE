@@ -52,11 +52,7 @@ public sealed class Kel103EndpointAttachmentCommandOperations
         ArgumentNullException.ThrowIfNull(instrumentId);
         ArgumentNullException.ThrowIfNull(commandPath);
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (argument is not null)
-        {
-            return ArgumentNotSupported();
-        }
+        CommandCategory category = Classify(commandPath);
 
         try
         {
@@ -83,7 +79,7 @@ public sealed class Kel103EndpointAttachmentCommandOperations
         catch (TimeoutException)
         {
             ProjectSessionFault();
-            return TimedOut();
+            return TimedOut(category);
         }
         catch (InvalidDataException)
         {
@@ -94,27 +90,27 @@ public sealed class Kel103EndpointAttachmentCommandOperations
         {
             if (!isSessionFaulted())
             {
-                return Rejected();
+                return Rejected(category);
             }
 
             ProjectSessionFault();
-            return Unavailable();
+            return Unavailable(category);
         }
         catch (Kel103MutationOutcomeUncertainException)
         {
             ProjectSessionFault();
-            return Uncertain();
+            return Uncertain(category);
         }
         catch (ScpiCommandTransmissionException exception)
             when (exception.ExecutionMayHaveOccurred)
         {
             ProjectSessionFault();
-            return Uncertain();
+            return Uncertain(category);
         }
         catch (IOException)
         {
             ProjectSessionFault();
-            return Unavailable();
+            return Unavailable(category);
         }
     }
 
@@ -122,29 +118,88 @@ public sealed class Kel103EndpointAttachmentCommandOperations
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.ArgumentNotSupported);
 
-    private static EndpointAttachmentCommandOperationResult Rejected() =>
+    private static EndpointAttachmentCommandOperationResult Rejected(
+        CommandCategory category) =>
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.Rejected,
-            "KEL-103 mode selection requires authoritative input OFF.");
+            category switch
+            {
+                CommandCategory.ModeSelection =>
+                    "KEL-103 mode selection requires authoritative input OFF.",
+                CommandCategory.InputActivation =>
+                    "Generic KEL-103 input activation rejects SHORT mode.",
+                CommandCategory.ShortCircuitActivation =>
+                    "KEL-103 SHORT activation requires authoritative input OFF and SHORT mode.",
+                CommandCategory.InputDeactivation =>
+                    "The KEL-103 input-deactivation operation was rejected.",
+                _ => "The KEL-103 Command was rejected."
+            });
 
     private static EndpointAttachmentCommandOperationResult Failure() =>
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.Failure);
 
-    private static EndpointAttachmentCommandOperationResult TimedOut() =>
+    private static EndpointAttachmentCommandOperationResult TimedOut(
+        CommandCategory category) =>
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.TimedOut,
-            "The KEL-103 mode-selection Command timed out.");
+            $"The KEL-103 {OperationName(category)} timed out.");
 
-    private static EndpointAttachmentCommandOperationResult Unavailable() =>
+    private static EndpointAttachmentCommandOperationResult Unavailable(
+        CommandCategory category) =>
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.Unavailable,
-            "The KEL-103 attachment cannot currently perform mode selection.");
+            $"The KEL-103 attachment cannot currently perform {OperationName(category)}.");
 
-    private static EndpointAttachmentCommandOperationResult Uncertain() =>
+    private static EndpointAttachmentCommandOperationResult Uncertain(
+        CommandCategory category) =>
         EndpointAttachmentCommandOperationResult.Failed(
             EndpointAttachmentCommandOperationStatus.Unavailable,
-            "The KEL-103 mode-selection outcome is uncertain. Physically verify input and operating mode before continuing.");
+            category == CommandCategory.ModeSelection
+                ? "The KEL-103 mode-selection outcome is uncertain. Physically verify input and operating mode before continuing."
+                : $"The KEL-103 {OperationName(category)} outcome is uncertain. Physically verify input state before continuing.");
+
+    private static CommandCategory Classify(DescriptorPath commandPath)
+    {
+        if (Kel103ModeSelectionMapping.All.Any(
+                mapping => mapping.CommandPath == commandPath))
+        {
+            return CommandCategory.ModeSelection;
+        }
+
+        if (commandPath == Kel103InputControlMapping.Activate.CommandPath)
+        {
+            return CommandCategory.InputActivation;
+        }
+
+        if (commandPath == Kel103InputControlMapping.Deactivate.CommandPath)
+        {
+            return CommandCategory.InputDeactivation;
+        }
+
+        return commandPath == Kel103InputControlMapping.ShortCircuitActivate.CommandPath
+            ? CommandCategory.ShortCircuitActivation
+            : CommandCategory.Unknown;
+    }
+
+    private static string OperationName(CommandCategory category) =>
+        category switch
+        {
+            CommandCategory.ModeSelection => "mode-selection operation",
+            CommandCategory.InputActivation => "input-activation operation",
+            CommandCategory.InputDeactivation => "input-deactivation operation",
+            CommandCategory.ShortCircuitActivation => "confirmed SHORT-activation operation",
+            _ => "Command operation"
+        };
+
+    private enum CommandCategory
+    {
+        Unknown,
+        ModeSelection,
+        InputActivation,
+        InputDeactivation,
+        ShortCircuitActivation
+    }
 
     private void ProjectSessionFault()
     {

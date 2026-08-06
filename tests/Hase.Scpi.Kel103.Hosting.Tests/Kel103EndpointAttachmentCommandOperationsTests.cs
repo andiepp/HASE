@@ -38,13 +38,15 @@ public sealed class Kel103EndpointAttachmentCommandOperationsTests
     }
 
     [Fact]
-    public async Task Execute_NonNullArgumentRejectsWithoutCallingAdapter()
+    public async Task Execute_InvalidNonNullArgumentIsForwardedThenNormalized()
     {
         var called = false;
+        object? observedArgument = null;
         var operations = CreateOperations((instrument, path, argument, token) =>
         {
             called = true;
-            return Task.FromResult(RuntimeCommand(path));
+            observedArgument = argument;
+            return Task.FromException<RuntimeCommand>(new ArgumentException("sensitive"));
         });
 
         EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
@@ -53,7 +55,40 @@ public sealed class Kel103EndpointAttachmentCommandOperationsTests
             argument: true);
 
         Assert.Equal(EndpointAttachmentCommandOperationStatus.ArgumentNotSupported, result.Status);
-        Assert.False(called);
+        Assert.True(called);
+        Assert.True(Assert.IsType<bool>(observedArgument));
+        Assert.DoesNotContain("sensitive", result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, null)]
+    [InlineData(2, true)]
+    public async Task Execute_ForwardsExactInputControlArgumentsOnce(
+        int mappingIndex,
+        object? argument)
+    {
+        var calls = 0;
+        object? observedArgument = new();
+        DescriptorPath? observedPath = null;
+        var operations = CreateOperations((instrument, path, actualArgument, token) =>
+        {
+            calls++;
+            observedArgument = actualArgument;
+            observedPath = path;
+            return Task.FromResult(RuntimeCommand(path));
+        });
+        Kel103InputControlMapping mapping = Kel103InputControlMapping.All[mappingIndex];
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            mapping.CommandPath,
+            argument);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, calls);
+        Assert.Equal(mapping.CommandPath, observedPath);
+        Assert.Equal(argument, observedArgument);
     }
 
     [Theory]
@@ -129,6 +164,112 @@ public sealed class Kel103EndpointAttachmentCommandOperationsTests
         Assert.DoesNotContain(sensitive, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(0, "mode selection requires authoritative input OFF")]
+    [InlineData(1, "input activation rejects SHORT")]
+    [InlineData(2, "input-deactivation operation was rejected")]
+    [InlineData(3, "SHORT activation requires authoritative input OFF and SHORT mode")]
+    public async Task Execute_UsesCapabilitySpecificSanitizedRejection(
+        int category,
+        string expected)
+    {
+        const string sensitive = "raw rejection detail";
+        DescriptorPath path = InputOrModePath(category);
+        var operations = CreateOperations(
+            (instrument, commandPath, argument, token) =>
+                Task.FromException<RuntimeCommand>(new InvalidOperationException(sensitive)),
+            isSessionFaulted: static () => false);
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            path,
+            category == 3 ? true : null);
+
+        Assert.Equal(EndpointAttachmentCommandOperationStatus.Rejected, result.Status);
+        Assert.Contains(expected, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(sensitive, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, "mode-selection operation")]
+    [InlineData(1, "input-activation operation")]
+    [InlineData(2, "input-deactivation operation")]
+    [InlineData(3, "confirmed SHORT-activation operation")]
+    public async Task Execute_UsesCapabilitySpecificSanitizedTimeout(
+        int category,
+        string expected)
+    {
+        const string sensitive = "raw timeout detail";
+        var operations = CreateOperations(
+            (instrument, commandPath, argument, token) =>
+                Task.FromException<RuntimeCommand>(new TimeoutException(sensitive)),
+            isSessionFaulted: static () => true);
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            InputOrModePath(category),
+            category == 3 ? true : null);
+
+        Assert.Equal(EndpointAttachmentCommandOperationStatus.TimedOut, result.Status);
+        Assert.Contains(expected, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(sensitive, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, "mode-selection operation")]
+    [InlineData(1, "input-activation operation")]
+    [InlineData(2, "input-deactivation operation")]
+    [InlineData(3, "confirmed SHORT-activation operation")]
+    public async Task Execute_UsesCapabilitySpecificSanitizedUnavailable(
+        int category,
+        string expected)
+    {
+        const string sensitive = "raw unavailable detail";
+        var operations = CreateOperations(
+            (instrument, commandPath, argument, token) =>
+                Task.FromException<RuntimeCommand>(new IOException(sensitive)),
+            isSessionFaulted: static () => true);
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            InputOrModePath(category),
+            category == 3 ? true : null);
+
+        Assert.Equal(EndpointAttachmentCommandOperationStatus.Unavailable, result.Status);
+        Assert.Contains(expected, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(sensitive, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, "mode-selection outcome is uncertain", "operating mode")]
+    [InlineData(1, "input-activation operation outcome is uncertain", "input state")]
+    [InlineData(2, "input-deactivation operation outcome is uncertain", "input state")]
+    [InlineData(3, "confirmed SHORT-activation operation outcome is uncertain", "input state")]
+    public async Task Execute_UsesCapabilitySpecificSanitizedUncertainty(
+        int category,
+        string expected,
+        string verification)
+    {
+        const string sensitive = "raw uncertain detail";
+        var operations = CreateOperations(
+            (instrument, commandPath, argument, token) =>
+                Task.FromException<RuntimeCommand>(
+                    new Kel103MutationOutcomeUncertainException(
+                        sensitive,
+                        new InvalidDataException(sensitive))),
+            isSessionFaulted: static () => true);
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            InputOrModePath(category),
+            category == 3 ? true : null);
+
+        Assert.Equal(EndpointAttachmentCommandOperationStatus.Unavailable, result.Status);
+        Assert.Contains(expected, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+        Assert.Contains(verification, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(sensitive, result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Execute_FaultedSessionProjectsSanitizedRuntimeFault()
     {
@@ -156,6 +297,64 @@ public sealed class Kel103EndpointAttachmentCommandOperationsTests
             sensitive,
             endpoint.ConnectionStatus.Detail ?? string.Empty,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Execute_InputControlUncertaintyProjectsSanitizedRuntimeFault()
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        var operations = CreateOperations(
+            (instrument, path, argument, token) =>
+                Task.FromException<RuntimeCommand>(
+                    new Kel103MutationOutcomeUncertainException(
+                        "sensitive",
+                        new InvalidDataException("sensitive"))),
+            isSessionFaulted: static () => true,
+            runtimeEndpoint: endpoint,
+            timeProvider: new FixedTimeProvider());
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            Kel103InputControlMapping.Activate.CommandPath,
+            argument: null);
+
+        Assert.Equal(EndpointAttachmentCommandOperationStatus.Unavailable, result.Status);
+        Assert.Equal(EndpointConnectionState.Faulted, endpoint.ConnectionStatus.State);
+        Assert.Equal(
+            "The KEL-103 communication session is faulted.",
+            endpoint.ConnectionStatus.Detail);
+        Assert.DoesNotContain("sensitive", result.Diagnostic ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task Execute_InputControlLocalRejectionsDoNotProjectFault(int failure)
+    {
+        RuntimeEndpoint endpoint = ReadyEndpoint();
+        Exception exception = failure == 0
+            ? new ArgumentException("sensitive")
+            : new InvalidOperationException("sensitive");
+        var operations = CreateOperations(
+            (instrument, path, argument, token) =>
+                Task.FromException<RuntimeCommand>(exception),
+            isSessionFaulted: static () => false,
+            runtimeEndpoint: endpoint,
+            timeProvider: new FixedTimeProvider());
+
+        EndpointAttachmentCommandOperationResult result = await operations.ExecuteAsync(
+            InstrumentId(),
+            failure == 0
+                ? Kel103InputControlMapping.ShortCircuitActivate.CommandPath
+                : Kel103InputControlMapping.Activate.CommandPath,
+            failure == 0 ? false : null);
+
+        Assert.Equal(
+            failure == 0
+                ? EndpointAttachmentCommandOperationStatus.ArgumentNotSupported
+                : EndpointAttachmentCommandOperationStatus.Rejected,
+            result.Status);
+        Assert.Equal(EndpointConnectionState.Ready, endpoint.ConnectionStatus.State);
     }
 
     [Fact]
@@ -309,11 +508,24 @@ public sealed class Kel103EndpointAttachmentCommandOperationsTests
 
     private static InstrumentId InstrumentId() => new("electronic-load-01");
 
+    private static DescriptorPath InputOrModePath(int category) =>
+        category switch
+        {
+            0 => Kel103ModeSelectionMapping.ConstantCurrent.CommandPath,
+            1 => Kel103InputControlMapping.Activate.CommandPath,
+            2 => Kel103InputControlMapping.Deactivate.CommandPath,
+            _ => Kel103InputControlMapping.ShortCircuitActivate.CommandPath
+        };
+
     private static RuntimeCommand RuntimeCommand(DescriptorPath path)
     {
+        bool inputControl = Kel103InputControlMapping.All.Any(
+            mapping => mapping.CommandPath == path);
         RuntimeEndpoint endpoint = new RuntimeContext().CreateEndpoint(
-            Kel103ControlledSetpointDefinition.EndpointDefinition.Materialize(
-                new EndpointId("test-endpoint")));
+            (inputControl
+                ? Kel103ControlledInputDefinition.EndpointDefinition
+                : Kel103ControlledSetpointDefinition.EndpointDefinition)
+            .Materialize(new EndpointId("test-endpoint")));
         return endpoint.Instruments.Single().Commands.Single(
             command => command.Descriptor.Path == path);
     }
