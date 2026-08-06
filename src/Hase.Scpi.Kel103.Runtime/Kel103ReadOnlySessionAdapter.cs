@@ -223,6 +223,78 @@ public sealed class Kel103ReadOnlySessionAdapter : IAsyncDisposable
             "KEL-103 mode selection requires authoritative input OFF.");
     }
 
+    public async Task<Kel103InputControlMutationResult> ActivateInputAsync(
+        CancellationToken cancellationToken = default)
+    {
+        Kel103InputControlMutationResult? result = await ExecuteAsync(async token =>
+        {
+            _ = Kel103InputStateMapping.ParseResponse(
+                await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+            Kel103OperatingMode mode = Kel103OperatingModeMapping.ParseResponse(
+                await session.QueryAsync(Kel103OperatingModeMapping.Query, token).ConfigureAwait(false));
+            if (mode == Kel103OperatingMode.ShortCircuit)
+            {
+                return null;
+            }
+
+            await session.SendCommandAsync(Kel103InputControlMapping.Activate.Command, token)
+                .ConfigureAwait(false);
+
+            try
+            {
+                bool inputEnabled = Kel103InputStateMapping.ParseResponse(
+                    await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+                if (!inputEnabled)
+                {
+                    throw new InvalidDataException(
+                        "The KEL-103 input-activation readback did not confirm the requested state.");
+                }
+
+                return new Kel103InputControlMutationResult(
+                    inputEnabled,
+                    timeProvider.GetUtcNow());
+            }
+            catch (Exception exception)
+            {
+                throw new Kel103MutationOutcomeUncertainException(
+                    "The KEL-103 input-activation outcome is uncertain because authoritative readback was not established.",
+                    exception);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        return result ?? throw new InvalidOperationException(
+            "Generic KEL-103 input activation rejects SHORT mode.");
+    }
+
+    public async Task<Kel103InputControlMutationResult> DeactivateInputAsync(
+        CancellationToken cancellationToken = default) =>
+        await ExecuteAsync(async token =>
+        {
+            await session.SendCommandAsync(Kel103InputControlMapping.Deactivate.Command, token)
+                .ConfigureAwait(false);
+
+            try
+            {
+                bool inputEnabled = Kel103InputStateMapping.ParseResponse(
+                    await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+                if (inputEnabled)
+                {
+                    throw new InvalidDataException(
+                        "The KEL-103 input-deactivation readback did not confirm the requested state.");
+                }
+
+                return new Kel103InputControlMutationResult(
+                    inputEnabled,
+                    timeProvider.GetUtcNow());
+            }
+            catch (Exception exception)
+            {
+                throw new Kel103MutationOutcomeUncertainException(
+                    "The KEL-103 input-deactivation outcome is uncertain because authoritative readback was not established.",
+                    exception);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
     public ValueTask DisposeAsync()
     {
         lock (disposalLock)
