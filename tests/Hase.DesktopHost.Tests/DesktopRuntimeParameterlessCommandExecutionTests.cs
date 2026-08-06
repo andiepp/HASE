@@ -116,6 +116,57 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
     }
 
     [Fact]
+    public async Task ExecuteAsync_ConfirmedShortActivationPassesTrueOnceAndClearsConfirmation()
+    {
+        RuntimeHostCommandTarget target = CreateShortActivationTarget();
+        var command = new DesktopRuntimeCommandViewModel(
+            CreateTypedCommandSnapshot(target, new BooleanDataDescriptor()));
+        command.RequestedBooleanArgument = true;
+        var runtimeOperator = new RecordingOperator
+        {
+            ExecuteHandler = (_, _, _) => Task.FromResult(
+                RuntimeHostCommandOperationResult.Successful())
+        };
+        using MainWindowViewModel viewModel = CreateMainWindowViewModel(runtimeOperator);
+
+        await viewModel.ExecuteParameterlessCommandAsync(command);
+
+        Assert.Equal(1, runtimeOperator.ExecuteCount);
+        Assert.Same(target, runtimeOperator.Target);
+        Assert.True(Assert.IsType<bool>(runtimeOperator.Argument));
+        Assert.Null(command.RequestedBooleanArgument);
+        Assert.False(command.CanExecute);
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Succeeded,
+            command.ExecutionState);
+        Assert.Equal(
+            "True",
+            Assert.Single(viewModel.Activity.Entries).InputSummary);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(false)]
+    public async Task ExecuteAsync_UnconfirmedShortActivationRemainsLocal(bool? confirmation)
+    {
+        var command = new DesktopRuntimeCommandViewModel(
+            CreateTypedCommandSnapshot(
+                CreateShortActivationTarget(),
+                new BooleanDataDescriptor()));
+        command.RequestedBooleanArgument = confirmation;
+        var runtimeOperator = new RecordingOperator();
+        using MainWindowViewModel viewModel = CreateMainWindowViewModel(runtimeOperator);
+
+        await viewModel.ExecuteParameterlessCommandAsync(command);
+
+        Assert.Equal(0, runtimeOperator.ExecuteCount);
+        Assert.Empty(viewModel.Activity.Entries);
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Ready,
+            command.ExecutionState);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_WithTypedByteArray_ShouldPassParsedArgumentAndRecordInput()
     {
         RuntimeHostCommandTarget target =
@@ -613,6 +664,14 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
             new DescriptorPath(
                 "Controller",
                 "Toggle"));
+
+    private static RuntimeHostCommandTarget CreateShortActivationTarget() =>
+        new(
+            new EndpointId("kel-103-01"),
+            new RuntimeEndpointAttachmentGeneration(
+                Guid.Parse("92b73fe3-e20e-4d31-8737-8410555769cd")),
+            new InstrumentId("electronic-load-01"),
+            DescriptorPath.Parse("ShortCircuit.Activate"));
 
     private static RuntimeHostPropertyTarget CreatePropertyTarget(
         RuntimeHostCommandTarget commandTarget) =>

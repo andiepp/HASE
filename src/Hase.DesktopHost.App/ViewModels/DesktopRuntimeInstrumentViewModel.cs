@@ -248,6 +248,16 @@ public sealed class DesktopRuntimeInstrumentViewModel
                     "Deactivate",
                     StringComparison.Ordinal));
 
+    public DesktopRuntimeCommandViewModel? ShortCircuitActivationCommand =>
+        HasInputControlControls
+            ? Commands.SingleOrDefault(
+                command =>
+                    command.IsConfirmedShortCircuitActivation)
+            : null;
+
+    public bool HasShortCircuitActivationControl =>
+        ShortCircuitActivationCommand is not null;
+
     public ObservableCollection<DesktopRuntimeEventViewModel> Events
     {
         get;
@@ -512,6 +522,13 @@ public sealed class DesktopRuntimeInstrumentViewModel
                                 label,
                                 StringComparison.Ordinal))
                     == 1);
+        DesktopRuntimeCommandViewModel? shortCircuitActivation =
+            Commands.SingleOrDefault(
+                command =>
+                    command.IsConfirmedShortCircuitActivation);
+        bool hasShortCircuitActivationControl =
+            hasCompleteInputControls
+            && shortCircuitActivation is not null;
 
         ReplaceContents(
             ModeSelectionCommands,
@@ -544,7 +561,11 @@ public sealed class DesktopRuntimeInstrumentViewModel
                     (!hasCompleteSelector
                         || !command.IsModeSelectionCandidate)
                     && (!hasCompleteInputControls
-                        || !command.IsInputControlCandidate)));
+                        || !command.IsInputControlCandidate)
+                    && (!hasShortCircuitActivationControl
+                        || !ReferenceEquals(
+                            command,
+                            shortCircuitActivation))));
 
         SelectedModeCommand =
             selectedPath is null
@@ -563,6 +584,10 @@ public sealed class DesktopRuntimeInstrumentViewModel
             nameof(ActivateInputCommand));
         OnPropertyChanged(
             nameof(DeactivateInputCommand));
+        OnPropertyChanged(
+            nameof(ShortCircuitActivationCommand));
+        OnPropertyChanged(
+            nameof(HasShortCircuitActivationControl));
     }
 
     private static void ReplaceContents<T>(

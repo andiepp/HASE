@@ -153,6 +153,17 @@ public sealed class DesktopRuntimeCommandViewModel
     public bool IsInputControlCandidate =>
         InputControlLabel is not null;
 
+    public bool IsConfirmedShortCircuitActivation =>
+        string.Equals(
+            Path,
+            "ShortCircuit.Activate",
+            StringComparison.Ordinal)
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && Descriptor.Argument?.Data is BooleanDataDescriptor;
+
     public string? ArgumentDisplayName =>
         Descriptor.Argument?.DisplayName;
 
@@ -262,13 +273,18 @@ public sealed class DesktopRuntimeCommandViewModel
 
     public bool HasValidArgument =>
         HasArgumentEditor
-        && InputResult.IsSuccess;
+        && InputResult.IsSuccess
+        && (!IsConfirmedShortCircuitActivation
+            || RequestedBooleanArgument is true);
 
     public string ValidationMessage =>
-        RequiresArgument
-        && !InputResult.IsSuccess
-            ? InputResult.Message
-            : string.Empty;
+        IsConfirmedShortCircuitActivation
+        && RequestedBooleanArgument is not true
+            ? "SHORT activation requires explicit Boolean confirmation true."
+            : RequiresArgument
+              && !InputResult.IsSuccess
+                ? InputResult.Message
+                : string.Empty;
 
     public bool IsEndpointReady
     {
@@ -379,6 +395,8 @@ public sealed class DesktopRuntimeCommandViewModel
         ArgumentNullException.ThrowIfNull(
             result);
 
+        ClearSingleUseConfirmation();
+
         if (result.IsSuccess)
         {
             if (result.ReturnValue is not null)
@@ -409,6 +427,7 @@ public sealed class DesktopRuntimeCommandViewModel
 
     public void CancelExecution()
     {
+        ClearSingleUseConfirmation();
         ExecutionMessage =
             "Command cancelled.";
         SetExecutionState(
@@ -455,6 +474,8 @@ public sealed class DesktopRuntimeCommandViewModel
         ArgumentNullException.ThrowIfNull(
             exception);
 
+        ClearSingleUseConfirmation();
+
         ExecutionMessage =
             string.IsNullOrWhiteSpace(exception.Message)
                 ? "Command failed."
@@ -496,6 +517,15 @@ public sealed class DesktopRuntimeCommandViewModel
             nameof(ValidationMessage));
         OnPropertyChanged(
             nameof(CanExecute));
+    }
+
+    private void ClearSingleUseConfirmation()
+    {
+        if (IsConfirmedShortCircuitActivation)
+        {
+            RequestedBooleanArgument =
+                null;
+        }
     }
 
     private void SetExecutionState(

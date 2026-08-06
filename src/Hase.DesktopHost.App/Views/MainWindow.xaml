@@ -748,6 +748,62 @@
                                                                             Foreground="DimGray"
                                                                             Text="{Binding DeactivateInputCommand.ExecutionMessage}"
                                                                             TextWrapping="Wrap" />
+
+                                                                        <Border
+                                                                            Margin="0,12,0,0"
+                                                                            Padding="10"
+                                                                            Background="MistyRose"
+                                                                            BorderBrush="Firebrick"
+                                                                            BorderThickness="1"
+                                                                            CornerRadius="3">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding HasShortCircuitActivationControl}" Value="True">
+                                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                            <StackPanel>
+                                                                                <TextBlock
+                                                                                    FontWeight="Bold"
+                                                                                    Foreground="Firebrick"
+                                                                                    Text="SHORT activation" />
+                                                                                <TextBlock
+                                                                                    Margin="0,4,0,0"
+                                                                                    Foreground="Firebrick"
+                                                                                    Text="The KEL-103 must already be in SHORT mode with authoritative input OFF. The activation is transmitted once. An uncertain result is not automatically reversed."
+                                                                                    TextWrapping="Wrap" />
+                                                                                <CheckBox
+                                                                                    Margin="0,8,0,0"
+                                                                                    Content="I explicitly confirm SHORT activation"
+                                                                                    IsChecked="{Binding ShortCircuitActivationCommand.RequestedBooleanArgument, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                                                <TextBlock
+                                                                                    Margin="0,4,0,0"
+                                                                                    Foreground="Firebrick"
+                                                                                    Text="{Binding ShortCircuitActivationCommand.ValidationMessage}"
+                                                                                    TextWrapping="Wrap" />
+                                                                                <Button
+                                                                                    Margin="0,8,0,0"
+                                                                                    Width="130"
+                                                                                    HorizontalAlignment="Left"
+                                                                                    Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                    CommandParameter="{Binding ShortCircuitActivationCommand}"
+                                                                                    Content="Activate SHORT"
+                                                                                    IsEnabled="{Binding ShortCircuitActivationCommand.CanExecute, TargetNullValue=False}" />
+                                                                                <TextBlock
+                                                                                    Margin="0,8,0,0"
+                                                                                    FontWeight="SemiBold"
+                                                                                    Text="{Binding ShortCircuitActivationCommand.ExecutionState, StringFormat=Execution: {0}}" />
+                                                                                <TextBlock
+                                                                                    Margin="0,3,0,0"
+                                                                                    Foreground="DimGray"
+                                                                                    Text="{Binding ShortCircuitActivationCommand.ExecutionMessage}"
+                                                                                    TextWrapping="Wrap" />
+                                                                            </StackPanel>
+                                                                        </Border>
                                                                     </StackPanel>
                                                                 </Border>
 

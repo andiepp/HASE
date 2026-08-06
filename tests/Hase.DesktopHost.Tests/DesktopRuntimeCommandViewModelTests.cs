@@ -403,13 +403,17 @@ public sealed class DesktopRuntimeCommandViewModelTests
         Assert.True(instrument.HasModeSelectionSelector);
         Assert.Equal("Input.Activate", instrument.ActivateInputCommand!.Path);
         Assert.Equal("Input.Deactivate", instrument.DeactivateInputCommand!.Path);
+        Assert.True(instrument.HasShortCircuitActivationControl);
+        Assert.Equal(
+            "ShortCircuit.Activate",
+            instrument.ShortCircuitActivationCommand!.Path);
         Assert.Equal(
             ["Activate", "Deactivate"],
             instrument.InputControlCommands
                 .Select(command => command.InputControlLabel)
                 .ToArray());
         Assert.Equal(
-            ["System.Reset", "ShortCircuit.Activate"],
+            ["System.Reset"],
             instrument.GeneralCommands
                 .Select(command => command.Path)
                 .ToArray());
@@ -459,16 +463,101 @@ public sealed class DesktopRuntimeCommandViewModelTests
         var instrument = new DesktopRuntimeInstrumentViewModel(
             CreateInstrument(
             [
-                CreateInputCommand("Input.Activate", "Activate input")
+                CreateInputCommand("Input.Activate", "Activate input"),
+                CreateCommand(
+                    new CommandDescriptor(
+                        DescriptorPath.Parse("ShortCircuit.Activate"),
+                        "Activate SHORT",
+                        new CommandArgumentDescriptor(
+                            "Confirmation",
+                            new BooleanDataDescriptor())))
             ]));
 
         Assert.False(instrument.HasInputControlControls);
         Assert.Empty(instrument.InputControlCommands);
         Assert.Null(instrument.ActivateInputCommand);
         Assert.Null(instrument.DeactivateInputCommand);
-        Assert.Equal(["Input.Activate"], instrument.GeneralCommands
+        Assert.Null(instrument.ShortCircuitActivationCommand);
+        Assert.False(instrument.HasShortCircuitActivationControl);
+        Assert.Equal(["Input.Activate", "ShortCircuit.Activate"], instrument.GeneralCommands
             .Select(command => command.Path)
             .ToArray());
+    }
+
+    [Fact]
+    public void ConfirmedShortCircuitActivation_RequiresExactlyTrue()
+    {
+        DesktopRuntimeCommandViewModel command = CreateConfirmedShortActivation();
+
+        Assert.True(command.IsConfirmedShortCircuitActivation);
+        Assert.False(command.HasValidArgument);
+        Assert.False(command.CanExecute);
+        Assert.Contains("explicit", command.ValidationMessage, StringComparison.OrdinalIgnoreCase);
+
+        command.RequestedBooleanArgument = false;
+
+        Assert.False(command.HasValidArgument);
+        Assert.False(command.CanExecute);
+
+        command.RequestedBooleanArgument = true;
+
+        Assert.True(command.HasValidArgument);
+        Assert.True(command.CanExecute);
+        Assert.True(Assert.IsType<bool>(command.InputResult.Value));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void ConfirmedShortCircuitActivation_ConsumesConfirmationAfterAttempt(
+        int outcome)
+    {
+        DesktopRuntimeCommandViewModel command = CreateConfirmedShortActivation();
+        command.RequestedBooleanArgument = true;
+        Assert.NotNull(command.TryBeginExecution());
+
+        switch (outcome)
+        {
+            case 0:
+                command.CompleteExecution(RuntimeHostCommandOperationResult.Successful());
+                break;
+            case 1:
+                command.CompleteExecution(RuntimeHostCommandOperationResult.Failed(
+                    RuntimeHostCommandOperationStatus.EndpointRejected));
+                break;
+            case 2:
+                command.CancelExecution();
+                break;
+            default:
+                command.FailExecution(new InvalidOperationException("Failure."));
+                break;
+        }
+
+        Assert.Null(command.RequestedBooleanArgument);
+        Assert.False(command.HasValidArgument);
+        Assert.False(command.CanExecute);
+    }
+
+    [Theory]
+    [InlineData("ShortCircuit.Activate", false)]
+    [InlineData("ShortCircuit.Other", true)]
+    public void NonExactShortCircuitContract_RemainsGeneric(
+        string path,
+        bool parameterless)
+    {
+        CommandDescriptor descriptor = parameterless
+            ? CreateParameterlessDescriptor(path, "Similar Command")
+            : new CommandDescriptor(
+                DescriptorPath.Parse(path),
+                "Similar Command",
+                new CommandArgumentDescriptor(
+                    "Value",
+                    new StringDataDescriptor()));
+        var command = new DesktopRuntimeCommandViewModel(CreateCommand(descriptor));
+
+        Assert.False(command.IsConfirmedShortCircuitActivation);
     }
 
     [Fact]
@@ -545,6 +634,16 @@ public sealed class DesktopRuntimeCommandViewModelTests
         CreateInputCommand("Input.Activate", "Activate input"),
         CreateInputCommand("Input.Deactivate", "Deactivate input")
     ];
+
+    private static DesktopRuntimeCommandViewModel CreateConfirmedShortActivation() =>
+        new(
+            CreateCommand(
+                new CommandDescriptor(
+                    DescriptorPath.Parse("ShortCircuit.Activate"),
+                    "Activate SHORT",
+                    new CommandArgumentDescriptor(
+                        "Confirmation",
+                        new BooleanDataDescriptor()))));
 
     private static DesktopRuntimeCommandSnapshot CreateCommand(
         CommandDescriptor descriptor,
