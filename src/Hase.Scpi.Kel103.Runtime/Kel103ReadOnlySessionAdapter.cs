@@ -295,6 +295,64 @@ public sealed class Kel103ReadOnlySessionAdapter : IAsyncDisposable
             }
         }, cancellationToken).ConfigureAwait(false);
 
+    public async Task<Kel103InputControlMutationResult> ActivateShortCircuitAsync(
+        bool confirmation,
+        CancellationToken cancellationToken = default)
+    {
+        if (!confirmation)
+        {
+            throw new ArgumentException(
+                "KEL-103 SHORT activation requires explicit Boolean confirmation true.",
+                nameof(confirmation));
+        }
+
+        Kel103InputControlMutationResult? result = await ExecuteAsync(async token =>
+        {
+            bool inputEnabled = Kel103InputStateMapping.ParseResponse(
+                await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+            if (inputEnabled)
+            {
+                return null;
+            }
+
+            Kel103OperatingMode mode = Kel103OperatingModeMapping.ParseResponse(
+                await session.QueryAsync(Kel103OperatingModeMapping.Query, token).ConfigureAwait(false));
+            if (mode != Kel103OperatingMode.ShortCircuit)
+            {
+                return null;
+            }
+
+            await session.SendCommandAsync(
+                    Kel103InputControlMapping.ShortCircuitActivate.Command,
+                    token)
+                .ConfigureAwait(false);
+
+            try
+            {
+                bool readbackInputEnabled = Kel103InputStateMapping.ParseResponse(
+                    await session.QueryAsync(Kel103InputStateMapping.Query, token).ConfigureAwait(false));
+                if (!readbackInputEnabled)
+                {
+                    throw new InvalidDataException(
+                        "The KEL-103 confirmed SHORT-activation readback did not confirm the requested state.");
+                }
+
+                return new Kel103InputControlMutationResult(
+                    readbackInputEnabled,
+                    timeProvider.GetUtcNow());
+            }
+            catch (Exception exception)
+            {
+                throw new Kel103MutationOutcomeUncertainException(
+                    "The KEL-103 confirmed SHORT-activation outcome is uncertain because authoritative readback was not established.",
+                    exception);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+
+        return result ?? throw new InvalidOperationException(
+            "KEL-103 SHORT activation requires authoritative input OFF and SHORT mode.");
+    }
+
     public ValueTask DisposeAsync()
     {
         lock (disposalLock)

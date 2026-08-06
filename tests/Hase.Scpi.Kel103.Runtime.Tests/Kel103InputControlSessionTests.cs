@@ -209,6 +209,194 @@ public sealed class Kel103InputControlSessionTests
         Assert.Equal(new[] { ":INPut ON" }, session.Commands);
     }
 
+    [Fact]
+    public async Task ShortActivation_FalseConfirmationUsesNoScpiAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            adapter.ActivateShortCircuitAsync(false));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+        Assert.False((await adapter.ReadInputStateAsync()).InputEnabled);
+    }
+
+    [Fact]
+    public async Task ShortActivation_TrueConfirmationUsesExactSequenceAndConfirmsOn()
+    {
+        var time = new FixedTimeProvider(
+            new DateTimeOffset(2026, 8, 6, 13, 0, 0, TimeSpan.Zero));
+        var session = new FakeSession("OFF", "SHORt", "ON");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session, time);
+
+        Kel103InputControlMutationResult result =
+            await adapter.ActivateShortCircuitAsync(true);
+
+        Assert.True(result.InputEnabled);
+        Assert.Equal(time.GetUtcNow(), result.TimestampUtc);
+        Assert.Equal(new[] { ":INPut?", ":FUNCtion?", ":INPut?" }, session.Queries);
+        Assert.Equal(new[] { ":INPut ON" }, session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task ShortActivation_InputOnRejectsBeforeModeQueryAndSessionRemainsUsable()
+    {
+        var session = new FakeSession("ON", "OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.ActivateShortCircuitAsync(true));
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+        Assert.False((await adapter.ReadInputStateAsync()).InputEnabled);
+    }
+
+    [Theory]
+    [InlineData("CC")]
+    [InlineData("CV")]
+    [InlineData("CR")]
+    [InlineData("CW")]
+    public async Task ShortActivation_NonShortModeRejectsWithoutMutationAndSessionRemainsUsable(
+        string mode)
+    {
+        var session = new FakeSession("OFF", mode, "OFF");
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.ActivateShortCircuitAsync(true));
+
+        Assert.Equal(new[] { ":INPut?", ":FUNCtion?" }, session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+        Assert.False((await adapter.ReadInputStateAsync()).InputEnabled);
+    }
+
+    [Theory]
+    [InlineData("MALFORMED", null, 1)]
+    [InlineData("OFF", "MALFORMED", 2)]
+    public async Task ShortActivation_MalformedPreconditionFaultsBeforeMutation(
+        string input,
+        string? mode,
+        int expectedQueries)
+    {
+        var session = mode is null
+            ? new FakeSession(input)
+            : new FakeSession(input, mode);
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            adapter.ActivateShortCircuitAsync(true));
+
+        Assert.Equal(expectedQueries, session.Queries.Count);
+        Assert.Empty(session.Commands);
+        Assert.True(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task ShortActivation_PreCanceledUsesNoScpiAndDoesNotFault()
+    {
+        var session = new FakeSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            adapter.ActivateShortCircuitAsync(true, cancellation.Token));
+
+        Assert.Empty(session.Queries);
+        Assert.Empty(session.Commands);
+        Assert.False(adapter.IsFaulted);
+    }
+
+    [Fact]
+    public async Task ShortActivation_TransmissionUncertaintyIsPreservedWithoutRetry()
+    {
+        var transmission = new ScpiCommandTransmissionException(
+            "raw transmission detail",
+            true,
+            new IOException("raw transport detail"));
+        var session = new FakeSession("OFF", "SHORt") { SendException = transmission };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        ScpiCommandTransmissionException actual =
+            await Assert.ThrowsAsync<ScpiCommandTransmissionException>(() =>
+                adapter.ActivateShortCircuitAsync(true));
+
+        Assert.Same(transmission, actual);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            adapter.ActivateShortCircuitAsync(true));
+        Assert.Single(session.Commands);
+    }
+
+    [Theory]
+    [InlineData("OFF")]
+    [InlineData("MALFORMED")]
+    public async Task ShortActivation_UnconfirmedReadbackIsUncertainAndSanitized(
+        string readback)
+    {
+        var session = new FakeSession("OFF", "SHORt", readback);
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException exception =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.ActivateShortCircuitAsync(true));
+
+        Assert.True(exception.ExecutionMayHaveOccurred);
+        Assert.DoesNotContain(readback, exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(":INPut ON", exception.Message, StringComparison.Ordinal);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task ShortActivation_ReadbackCancellationAfterTransmissionIsUncertain()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var session = new FakeSession("OFF", "SHORt")
+        {
+            CommandSent = cancellation.Cancel
+        };
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Kel103MutationOutcomeUncertainException exception =
+            await Assert.ThrowsAsync<Kel103MutationOutcomeUncertainException>(() =>
+                adapter.ActivateShortCircuitAsync(true, cancellation.Token));
+
+        Assert.IsAssignableFrom<OperationCanceledException>(exception.InnerException);
+        Assert.True(adapter.IsFaulted);
+        Assert.Single(session.Commands);
+    }
+
+    [Fact]
+    public async Task ShortActivation_DoesNotInterleaveWithConcurrentRead()
+    {
+        var session = new BlockingShortActivationSession();
+        await using var adapter = new Kel103ReadOnlySessionAdapter(session);
+
+        Task<Kel103InputControlMutationResult> mutation =
+            adapter.ActivateShortCircuitAsync(true);
+        await session.FirstQueryStarted.Task;
+        Task<Kel103Identity> concurrentRead = adapter.ReadIdentityAsync();
+
+        Assert.Equal(new[] { ":INPut?" }, session.Queries);
+        session.ReleaseFirstQuery.SetResult();
+        await mutation;
+        await concurrentRead;
+
+        Assert.Equal(
+            new[] { ":INPut?", ":FUNCtion?", ":INPut?", "*IDN?" },
+            session.Queries);
+        Assert.Equal(new[] { ":INPut ON" }, session.Commands);
+    }
+
     private sealed class FixedTimeProvider(DateTimeOffset value) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => value;
@@ -254,6 +442,49 @@ public sealed class Kel103InputControlSessionTests
         [
             "OFF",
             "CC",
+            "ON",
+            "RND 320-KEL103 V3.30 SN:REDACTED"
+        ]);
+
+        public TaskCompletionSource FirstQueryStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource ReleaseFirstQuery { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<string> Queries { get; } = [];
+        public List<string> Commands { get; } = [];
+        public ScpiTextSessionState State => ScpiTextSessionState.Open;
+
+        public async Task<string> QueryAsync(
+            string query,
+            CancellationToken cancellationToken = default)
+        {
+            Queries.Add(query);
+            if (Queries.Count == 1)
+            {
+                FirstQueryStarted.SetResult();
+                await ReleaseFirstQuery.Task.WaitAsync(cancellationToken);
+            }
+
+            return responses.Dequeue();
+        }
+
+        public Task SendCommandAsync(
+            string command,
+            CancellationToken cancellationToken = default)
+        {
+            Commands.Add(command);
+            return Task.CompletedTask;
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class BlockingShortActivationSession : IScpiTextSession
+    {
+        private readonly Queue<string> responses = new(
+        [
+            "OFF",
+            "SHORt",
             "ON",
             "RND 320-KEL103 V3.30 SN:REDACTED"
         ]);
