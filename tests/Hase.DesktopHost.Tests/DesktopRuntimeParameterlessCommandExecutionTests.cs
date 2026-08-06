@@ -80,6 +80,41 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
             activity.Reconciliation);
     }
 
+    [Theory]
+    [InlineData("Input.Activate")]
+    [InlineData("Input.Deactivate")]
+    public async Task ExecuteAsync_Kel103InputControlUsesExactTargetOnceWithNullArgument(
+        string commandPath)
+    {
+        var target = new RuntimeHostCommandTarget(
+            new EndpointId("kel-103-01"),
+            new RuntimeEndpointAttachmentGeneration(
+                Guid.Parse("9679ae0f-7c95-4d97-8815-cf719bda24cc")),
+            new InstrumentId("electronic-load-01"),
+            DescriptorPath.Parse(commandPath));
+        var command = CreateCommandViewModel(target);
+        var runtimeOperator = new RecordingOperator
+        {
+            ExecuteHandler = (_, _, _) => Task.FromResult(
+                RuntimeHostCommandOperationResult.Successful())
+        };
+        using MainWindowViewModel viewModel = CreateMainWindowViewModel(
+            runtimeOperator);
+
+        await viewModel.ExecuteParameterlessCommandAsync(command);
+
+        Assert.Equal(1, runtimeOperator.ExecuteCount);
+        Assert.Same(target, runtimeOperator.Target);
+        Assert.Null(runtimeOperator.Argument);
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Succeeded,
+            command.ExecutionState);
+        DesktopRuntimeOperatorActivityEntry activity = Assert.Single(
+            viewModel.Activity.Entries);
+        Assert.Equal(commandPath, activity.OperationPath);
+        Assert.Equal("None", activity.InputSummary);
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithTypedByteArray_ShouldPassParsedArgumentAndRecordInput()
     {

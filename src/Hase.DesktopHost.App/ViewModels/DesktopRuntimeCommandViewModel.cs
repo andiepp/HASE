@@ -29,6 +29,14 @@ public sealed class DesktopRuntimeCommandViewModel
                 ["Mode.SelectShortCircuit"] = "SHORT"
             };
 
+    private static readonly IReadOnlyDictionary<string, string>
+        Kel103InputControlLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Input.Activate"] = "Activate",
+                ["Input.Deactivate"] = "Deactivate"
+            };
+
     private RuntimeHostCommandTarget target;
     private bool isEndpointReady;
     private string requestedArgumentText =
@@ -129,6 +137,21 @@ public sealed class DesktopRuntimeCommandViewModel
 
     public bool IsModeSelectionCandidate =>
         ModeSelectionLabel is not null;
+
+    public string? InputControlLabel =>
+        !RequiresArgument
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && Kel103InputControlLabels.TryGetValue(
+            Path,
+            out string? label)
+                ? label
+                : null;
+
+    public bool IsInputControlCandidate =>
+        InputControlLabel is not null;
 
     public string? ArgumentDisplayName =>
         Descriptor.Argument?.DisplayName;

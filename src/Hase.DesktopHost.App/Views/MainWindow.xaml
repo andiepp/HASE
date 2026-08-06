@@ -684,6 +684,73 @@
                                                                     </StackPanel>
                                                                 </Border>
 
+                                                                <Border
+                                                                    Margin="0,8,0,8"
+                                                                    Padding="10"
+                                                                    Background="White"
+                                                                    BorderBrush="Gainsboro"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="3">
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasInputControlControls}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <StackPanel>
+                                                                        <TextBlock FontWeight="SemiBold" Text="Input control" />
+                                                                        <TextBlock
+                                                                            Margin="0,3,0,0"
+                                                                            Foreground="DimGray"
+                                                                            Text="The authoritative Input enabled Property is refreshed after each successful Command."
+                                                                            TextWrapping="Wrap" />
+
+                                                                        <Grid Margin="0,8,0,0">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="12" />
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <Button
+                                                                                Width="130"
+                                                                                Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding ActivateInputCommand}"
+                                                                                Content="Activate input"
+                                                                                IsEnabled="{Binding ActivateInputCommand.CanExecute, TargetNullValue=False}" />
+                                                                            <Button
+                                                                                Grid.Column="2"
+                                                                                Width="130"
+                                                                                Command="{Binding DataContext.ExecuteParameterlessCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                CommandParameter="{Binding DeactivateInputCommand}"
+                                                                                Content="Deactivate input"
+                                                                                IsEnabled="{Binding DeactivateInputCommand.CanExecute, TargetNullValue=False}" />
+                                                                        </Grid>
+
+                                                                        <TextBlock
+                                                                            Margin="0,8,0,0"
+                                                                            FontWeight="SemiBold"
+                                                                            Text="{Binding ActivateInputCommand.ExecutionState, StringFormat=Activation: {0}}" />
+                                                                        <TextBlock
+                                                                            Margin="0,3,0,0"
+                                                                            Foreground="DimGray"
+                                                                            Text="{Binding ActivateInputCommand.ExecutionMessage}"
+                                                                            TextWrapping="Wrap" />
+                                                                        <TextBlock
+                                                                            Margin="0,8,0,0"
+                                                                            FontWeight="SemiBold"
+                                                                            Text="{Binding DeactivateInputCommand.ExecutionState, StringFormat=Deactivation: {0}}" />
+                                                                        <TextBlock
+                                                                            Margin="0,3,0,0"
+                                                                            Foreground="DimGray"
+                                                                            Text="{Binding DeactivateInputCommand.ExecutionMessage}"
+                                                                            TextWrapping="Wrap" />
+                                                                    </StackPanel>
+                                                                </Border>
+
                                                                 <ItemsControl
                                                                     Margin="0,8,0,0"
                                                                     ItemsSource="{Binding GeneralCommands}">

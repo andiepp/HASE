@@ -16,6 +16,12 @@ public sealed class DesktopRuntimeInstrumentViewModel
         "SHORT"
     ];
 
+    private static readonly string[] InputControlOrder =
+    [
+        "Activate",
+        "Deactivate"
+    ];
+
     private string name;
     private string kind;
     private string manufacturer;
@@ -214,6 +220,33 @@ public sealed class DesktopRuntimeInstrumentViewModel
             OnPropertyChanged();
         }
     }
+
+    public ObservableCollection<DesktopRuntimeCommandViewModel>
+        InputControlCommands
+    {
+        get;
+    } =
+        [];
+
+    public bool HasInputControlControls =>
+        InputControlCommands.Count
+        == InputControlOrder.Length;
+
+    public DesktopRuntimeCommandViewModel? ActivateInputCommand =>
+        InputControlCommands.SingleOrDefault(
+            command =>
+                string.Equals(
+                    command.InputControlLabel,
+                    "Activate",
+                    StringComparison.Ordinal));
+
+    public DesktopRuntimeCommandViewModel? DeactivateInputCommand =>
+        InputControlCommands.SingleOrDefault(
+            command =>
+                string.Equals(
+                    command.InputControlLabel,
+                    "Deactivate",
+                    StringComparison.Ordinal));
 
     public ObservableCollection<DesktopRuntimeEventViewModel> Events
     {
@@ -462,6 +495,23 @@ public sealed class DesktopRuntimeInstrumentViewModel
                                 label,
                                 StringComparison.Ordinal))
                     == 1);
+        DesktopRuntimeCommandViewModel[] inputCandidates =
+            Commands
+                .Where(
+                    command =>
+                        command.IsInputControlCandidate)
+                .ToArray();
+        bool hasCompleteInputControls =
+            inputCandidates.Length == InputControlOrder.Length
+            && InputControlOrder.All(
+                label =>
+                    inputCandidates.Count(
+                        command =>
+                            string.Equals(
+                                command.InputControlLabel,
+                                label,
+                                StringComparison.Ordinal))
+                    == 1);
 
         ReplaceContents(
             ModeSelectionCommands,
@@ -476,12 +526,25 @@ public sealed class DesktopRuntimeInstrumentViewModel
                                     StringComparison.Ordinal)))
                 : []);
         ReplaceContents(
+            InputControlCommands,
+            hasCompleteInputControls
+                ? InputControlOrder.Select(
+                    label =>
+                        inputCandidates.Single(
+                            command =>
+                                string.Equals(
+                                    command.InputControlLabel,
+                                    label,
+                                    StringComparison.Ordinal)))
+                : []);
+        ReplaceContents(
             GeneralCommands,
-            hasCompleteSelector
-                ? Commands.Where(
-                    command =>
-                        !command.IsModeSelectionCandidate)
-                : Commands);
+            Commands.Where(
+                command =>
+                    (!hasCompleteSelector
+                        || !command.IsModeSelectionCandidate)
+                    && (!hasCompleteInputControls
+                        || !command.IsInputControlCandidate)));
 
         SelectedModeCommand =
             selectedPath is null
@@ -494,6 +557,12 @@ public sealed class DesktopRuntimeInstrumentViewModel
                             StringComparison.Ordinal));
         OnPropertyChanged(
             nameof(HasModeSelectionSelector));
+        OnPropertyChanged(
+            nameof(HasInputControlControls));
+        OnPropertyChanged(
+            nameof(ActivateInputCommand));
+        OnPropertyChanged(
+            nameof(DeactivateInputCommand));
     }
 
     private static void ReplaceContents<T>(

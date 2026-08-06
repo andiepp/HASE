@@ -377,6 +377,101 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Fact]
+    public void CompleteInputControlSet_ShouldExposeDedicatedStableCommands()
+    {
+        DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
+        [
+            CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
+            CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
+            CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
+            CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+            CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT"),
+            CreateInputCommand("Input.Deactivate", "Deactivate input"),
+            CreateCommand(CreateParameterlessDescriptor("System.Reset", "Reset")),
+            CreateInputCommand("Input.Activate", "Activate input"),
+            CreateCommand(
+                new CommandDescriptor(
+                    DescriptorPath.Parse("ShortCircuit.Activate"),
+                    "Activate SHORT",
+                    new CommandArgumentDescriptor(
+                        "Confirmation",
+                        new BooleanDataDescriptor())))
+        ]);
+        var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
+
+        Assert.True(instrument.HasInputControlControls);
+        Assert.True(instrument.HasModeSelectionSelector);
+        Assert.Equal("Input.Activate", instrument.ActivateInputCommand!.Path);
+        Assert.Equal("Input.Deactivate", instrument.DeactivateInputCommand!.Path);
+        Assert.Equal(
+            ["Activate", "Deactivate"],
+            instrument.InputControlCommands
+                .Select(command => command.InputControlLabel)
+                .ToArray());
+        Assert.Equal(
+            ["System.Reset", "ShortCircuit.Activate"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void InputControlCommands_ShouldSurviveUnchangedRefresh()
+    {
+        DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
+            CreateCompleteInputControlCommandSet());
+        var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
+        DesktopRuntimeCommandViewModel activate = instrument.ActivateInputCommand!;
+        DesktopRuntimeCommandViewModel deactivate = instrument.DeactivateInputCommand!;
+
+        instrument.Update(snapshot);
+
+        Assert.Same(activate, instrument.ActivateInputCommand);
+        Assert.Same(deactivate, instrument.DeactivateInputCommand);
+        Assert.True(instrument.ActivateInputCommand!.CanExecute);
+        Assert.True(instrument.DeactivateInputCommand!.CanExecute);
+    }
+
+    [Theory]
+    [InlineData(0, "Input.Activate")]
+    [InlineData(1, "Input.Deactivate")]
+    public void InputControlCommand_ExplicitExecutionUsesOwnTarget(
+        int commandIndex,
+        string expectedPath)
+    {
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(CreateCompleteInputControlCommandSet()));
+        DesktopRuntimeCommandViewModel command =
+            instrument.InputControlCommands[commandIndex];
+
+        RuntimeHostCommandTarget? target = command.TryBeginExecution();
+
+        Assert.Same(command.Target, target);
+        Assert.Equal(expectedPath, target!.CommandPath.ToString());
+        Assert.Equal(
+            DesktopRuntimeCommandExecutionState.Executing,
+            command.ExecutionState);
+    }
+
+    [Fact]
+    public void IncompleteInputControlSet_ShouldRetainGenericPresentation()
+    {
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(
+            [
+                CreateInputCommand("Input.Activate", "Activate input")
+            ]));
+
+        Assert.False(instrument.HasInputControlControls);
+        Assert.Empty(instrument.InputControlCommands);
+        Assert.Null(instrument.ActivateInputCommand);
+        Assert.Null(instrument.DeactivateInputCommand);
+        Assert.Equal(["Input.Activate"], instrument.GeneralCommands
+            .Select(command => command.Path)
+            .ToArray());
+    }
+
+    [Fact]
     public void Constructor_WithEmptyPath_ShouldThrow()
     {
         Assert.Throws<ArgumentException>(
@@ -430,6 +525,12 @@ public sealed class DesktopRuntimeCommandViewModelTests
         CreateCommand(
             CreateParameterlessDescriptor(path, displayName));
 
+    private static DesktopRuntimeCommandSnapshot CreateInputCommand(
+        string path,
+        string displayName) =>
+        CreateCommand(
+            CreateParameterlessDescriptor(path, displayName));
+
     private static DesktopRuntimeCommandSnapshot[] CreateCompleteModeCommandSet() =>
     [
         CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
@@ -437,6 +538,12 @@ public sealed class DesktopRuntimeCommandViewModelTests
         CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
         CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
         CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT")
+    ];
+
+    private static DesktopRuntimeCommandSnapshot[] CreateCompleteInputControlCommandSet() =>
+    [
+        CreateInputCommand("Input.Activate", "Activate input"),
+        CreateInputCommand("Input.Deactivate", "Deactivate input")
     ];
 
     private static DesktopRuntimeCommandSnapshot CreateCommand(
