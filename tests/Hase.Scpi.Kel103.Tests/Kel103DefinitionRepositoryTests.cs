@@ -6,7 +6,7 @@ namespace Hase.Scpi.Kel103.Tests;
 public sealed class Kel103DefinitionRepositoryTests
 {
     [Fact]
-    public async Task FindAsync_ResolvesVersionsOneThroughFourExactly()
+    public async Task FindAsync_ResolvesVersionsOneThroughFiveExactly()
     {
         var repository = new Kel103DefinitionRepository();
         Assert.Same(Kel103IdentityDefinition.EndpointDefinition,
@@ -17,6 +17,8 @@ public sealed class Kel103DefinitionRepositoryTests
             await repository.FindAsync(Kel103OperatingStateDefinition.Reference));
         Assert.Same(Kel103ControlledSetpointDefinition.EndpointDefinition,
             await repository.FindAsync(Kel103ControlledSetpointDefinition.Reference));
+        Assert.Same(Kel103ControlledInputDefinition.EndpointDefinition,
+            await repository.FindAsync(Kel103ControlledInputDefinition.Reference));
     }
 
     [Fact]
@@ -24,7 +26,7 @@ public sealed class Kel103DefinitionRepositoryTests
     {
         var repository = new Kel103DefinitionRepository();
         Assert.Null(await repository.FindAsync(
-            new DescriptorReference(Kel103IdentityDefinition.Reference.Id, 5)));
+            new DescriptorReference(Kel103IdentityDefinition.Reference.Id, 6)));
         Assert.Null(await repository.FindAsync(
             new DescriptorReference(new DescriptorId("other"), 2)));
     }
@@ -38,5 +40,6 @@ public sealed class Kel103DefinitionRepositoryTests
         Assert.Null(await repository.FindAsync(Kel103ReadOnlyMeasurementDefinition.Reference));
         Assert.Null(await repository.FindAsync(Kel103OperatingStateDefinition.Reference));
         Assert.Null(await repository.FindAsync(Kel103ControlledSetpointDefinition.Reference));
+        Assert.Null(await repository.FindAsync(Kel103ControlledInputDefinition.Reference));
     }
 }

@@ -17,7 +17,10 @@ public sealed class Kel103DefinitionRepository : IEndpointDescriptorRepository
             Kel103OperatingStateDefinition.EndpointDefinition),
         new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
             Kel103ControlledSetpointDefinition.Reference,
-            Kel103ControlledSetpointDefinition.EndpointDefinition)
+            Kel103ControlledSetpointDefinition.EndpointDefinition),
+        new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
+            Kel103ControlledInputDefinition.Reference,
+            Kel103ControlledInputDefinition.EndpointDefinition)
     ]);
 
     public ValueTask<EndpointDescriptorDefinition?> FindAsync(

@@ -47,4 +47,15 @@ public sealed class Kel103InputControlMappingTests
         Assert.Throws<NotSupportedException>(() => mappings.Add(
             Kel103InputControlMapping.Activate));
     }
+
+    [Fact]
+    public void All_CoversVersionFiveInputCommandsInDescriptorOrder()
+    {
+        var commands = Assert.Single(
+            Kel103ControlledInputDefinition.EndpointDefinition.Instruments).Interface.Commands;
+
+        Assert.Equal(
+            commands.Skip(5).Select(command => command.Path),
+            Kel103InputControlMapping.All.Select(mapping => mapping.CommandPath));
+    }
 }
