@@ -3,7 +3,7 @@
 ## Current architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46G runtime state, setpoints, and mode Commands complete at 5,283
+Increment 46H hosting recovery and no-replay validation complete at 5,285
 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
@@ -52,8 +52,9 @@ tests**
 - Every successful setter probe closed in CC/OFF state with all original
   targets restored while the external supply output remained off.
 - No value or bound was disclosed, and no mutation was retried or replayed.
-- Definition versions 1 and 2 remain immutable; production continues to use
-  version 2.
+- Definition versions 1 and 2 remain immutable; the installed KEL-103 profile
+  migrated explicitly and offline to version 4 with its version-2 backup
+  retained.
 - Definition version 3 adds read-only mode, input state, and all four target
   Properties to the existing identity and measurement inventory.
 - Definition version 4 makes only the four targets read/write and adds five
@@ -76,11 +77,27 @@ tests**
 - Physical Client validation confirmed all five selections, one successful
   Command per accepted press, SHORT remaining OFF, and final CC/OFF restoration
   while the external supply output remained off.
+- Automated version-4 recovery coverage confirms uncertain setpoint and mode
+  mutations are transmitted once, fault the session, and are never replayed by
+  the replacement session.
+- Recovery retains the published endpoint and operation ports, synchronizes all
+  eleven Properties through identity and read-only queries, and replaces cached
+  values only with authoritative recovered reads.
+- Physical USB-disconnect validation confirmed that offline front-panel mode
+  and target changes are adopted on recovery without replay, with unchanged
+  endpoint identity and attachment generation.
+- Idle USB removal is operation-detected rather than passively monitored: the
+  endpoint can remain Ready until the next Property or Command operation
+  encounters the unavailable transport and faults the session.
+- All post-recovery reads and explicit mode Commands succeeded, diagnostics
+  remained scoped and sanitized, and final state was CC/OFF with the external
+  supply output off.
 
 ### Next
 
-Proceed only after explicit approval with Increment 46H — Hosting, recovery,
-diagnostics, Host, and Client integration.
+Proceed only after explicit approval with the next narrowly scoped ADR-0046
+increment. Controlled activation, deactivation, and separately confirmed SHORT
+activation remain unpublished.
 
 ---
 
@@ -1377,7 +1394,8 @@ The current implementation intentionally excludes:
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery;
-- state-changing KEL-103 Properties and Commands;
+- KEL-103 input activation, deactivation, and confirmed SHORT activation;
+- passive KEL-103 serial health probing;
 - SCPI Protocol and Bytes diagnostics;
 - automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
 - Python automation;

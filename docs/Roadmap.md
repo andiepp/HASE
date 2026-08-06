@@ -1210,8 +1210,8 @@ Runtime Hosts and Client stopped; serial port independently reopened
 
 ## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46G runtime state, setpoints, and mode Commands
-complete at 5,283 tests
+**Status:** [Active] Increment 46H hosting recovery and no-replay validation
+complete at 5,285 tests
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1239,7 +1239,8 @@ Completed and planned increments:
    5,018 tests.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes —
    complete at 5,283 tests.
-8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
+8. 46H — Hosting, recovery, diagnostics, Host, and Client integration — complete
+   at 5,285 tests.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
    physical validation.
 10. 46J — Documentation and closure.
@@ -1307,12 +1308,27 @@ and matching authoritative displayed and physical readback. SHORT selection
 did not activate the input, and the final state was restored to CC/OFF. The
 validated automated baseline is 5,283 tests.
 
+Increment 46H verifies version-4 supervised recovery after uncertain setpoint
+and mode outcomes. Automated coverage requires one mutation transmission,
+fault projection, preservation of the published endpoint and operation ports,
+complete read-only resynchronization of all eleven Properties, and no mutation
+replay on the replacement session.
+
+Physical USB-disconnect validation changed the mode and one target at the
+instrument while disconnected, then confirmed that the same endpoint and
+attachment generation returned to Ready and adopted that authoritative state
+without replaying cached intent. All post-recovery reads and explicit mode
+Commands succeeded, diagnostics remained sanitized, and final state was
+CC/OFF with the external supply output off. USB removal is detected by the next
+Property or Command operation rather than by a passive idle health probe. The
+validated automated baseline is 5,285 tests.
+
 Current baseline:
 
 ```text
-5,283 automated tests pass
+5,285 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 runtime state, setpoints, and mode Commands complete through 46G
+ADR-0046 hosting recovery and no-replay validation complete through 46H
 Runtime Hosts and Client stopped
 ```
 

@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46G runtime state, setpoints, and mode Commands complete
+- Status: Accepted — Increment 46H hosting recovery and no-replay validation complete
 - Date: 2026-08-04
 
 ## Context
@@ -219,7 +219,8 @@ Protocol and Bytes diagnostics remain deferred.
    5,018 tests.
 7. 46G — Runtime reads, writes, Commands, readback, and uncertain outcomes —
    complete at 5,283 tests.
-8. 46H — Hosting, recovery, diagnostics, Host, and Client integration.
+8. 46H — Hosting, recovery, diagnostics, Host, and Client integration — complete
+   at 5,285 tests.
 9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
    physical validation.
 10. 46J — Documentation and closure.
@@ -444,3 +445,35 @@ and physical mode readback. SHORT selection did not activate the input. The
 final CC restoration was transmitted once and confirmed in authoritative
 CC/OFF state. Increment 46G closes at 5,283 automated tests passing in Visual
 Studio 2026 Release configuration on .NET 10.
+
+## Increment 46H recovery result
+
+Automated version-4 recovery coverage now begins with both an uncertain
+setpoint write and an uncertain mode Command. Each mutation is transmitted
+once, leaves the session faulted when its authoritative readback does not
+confirm the requested outcome, and is absent from the replacement session.
+Recovery reuses the same published endpoint and Property and Command ports,
+sends only the fixed identity and read-only synchronization queries, and
+refreshes all eleven Properties from the recovered physical state. Recovery
+and synchronization diagnostics remain sanitized.
+
+Physical validation disconnected the KEL-103 USB serial connection while the
+Runtime Host and Client remained active. USB removal alone did not immediately
+change the endpoint from Ready: this SCPI attachment currently has no passive
+health probe, so connection loss becomes authoritative when the next Property
+or Command operation encounters the unavailable transport. That failure
+faulted the session and entered the existing supervised recovery path.
+
+While disconnected, the operator changed the physical mode and one associated
+target with input OFF and the external laboratory supply output OFF. After USB
+reconnection the existing endpoint and attachment generation returned to
+Ready, complete version-4 synchronization adopted the manually changed
+physical state, and no cached setpoint or mode intent was replayed. All reads
+and explicit post-recovery mode Commands succeeded, diagnostics remained
+scoped and sanitized, and the final authoritative state was restored to CC/OFF
+with the external supply output OFF.
+
+Increment 46H closes at 5,285 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10. Immediate idle USB-removal indication remains
+outside this increment; adding it would require an explicit passive-health-
+query design that preserves serialized access and no-replay guarantees.

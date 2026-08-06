@@ -416,6 +416,31 @@ automatic retry or recovery replay occurred. SHORT selection did not activate
 the input. One final CC selection restored and confirmed authoritative CC/OFF.
 The validated automated baseline is 5,283 tests passing.
 
+## ADR-0046 version-4 recovery and no-replay validation
+
+Increment 46H added automated recovery cases for an uncertain setpoint write
+and an uncertain mode Command. Both cases transmit the mutation once, project
+the uncertain result as a fault, preserve the published endpoint and operation
+ports, and recover through the exact version-4 identity and read-only
+synchronization sequence. The replacement session contains no setter or mode
+Command, and its authoritative reads replace the cached operating state and all
+four targets. Recovery diagnostics retain only sanitized operation metadata.
+
+Physical USB-disconnect validation established that this KEL-103 attachment
+does not passively probe an otherwise idle serial connection. The endpoint can
+therefore remain displayed as Ready after USB removal until the next Property
+or Command operation detects the unavailable transport. Once detected, the
+session faults and supervised replacement proceeds normally.
+
+With USB disconnected, the operator changed the physical mode and one target
+while input and the external laboratory supply output remained OFF. On
+reconnection the same endpoint and attachment generation returned to Ready,
+complete synchronization adopted the manually changed physical state, and no
+previous HASE mutation was replayed. All post-recovery reads and explicit mode
+Commands succeeded. The run ended in authoritative CC/OFF state with the
+external supply output OFF. The validated automated baseline is 5,285 tests
+passing.
+
 ## Exclusions
 
 This report does not validate:
@@ -429,5 +454,9 @@ This report does not validate:
 - automatic discovery;
 - generic VISA, USBTMC, or GPIB; or
 - arbitrary operator-entered SCPI.
+
+Immediate idle connection-loss detection is also excluded. The current
+attachment detects USB loss through the next attempted Property or Command
+operation; passive health queries require a separate design and approval.
 
 Each requires a later explicitly approved increment.
