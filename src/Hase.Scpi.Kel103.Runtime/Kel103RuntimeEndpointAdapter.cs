@@ -13,6 +13,7 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
     private readonly IReadOnlyDictionary<PropertyId, RuntimeProperty> properties;
     private readonly bool supportsOperatingState;
     private readonly bool supportsSetpointWrites;
+    private readonly bool supportsInputControl;
     private readonly TimeProvider timeProvider;
 
     public Kel103RuntimeEndpointAdapter(
@@ -26,8 +27,11 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
             ?? throw new ArgumentNullException(nameof(runtimeEndpoint));
         this.timeProvider = timeProvider ?? TimeProvider.System;
 
-        (runtimeInstrument, supportsOperatingState, supportsSetpointWrites) =
-            ValidateEndpoint(runtimeEndpoint);
+        (
+            runtimeInstrument,
+            supportsOperatingState,
+            supportsSetpointWrites,
+            supportsInputControl) = ValidateEndpoint(runtimeEndpoint);
         properties = runtimeInstrument.Properties.ToDictionary(
             property => property.Descriptor.Id);
     }
@@ -195,35 +199,77 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 ? runtimeInstrument.Commands.SingleOrDefault(
                     candidate => candidate.Descriptor.Path == commandPath)
                 : null;
-        Kel103ModeSelectionMapping? mapping = command is null
+        Kel103ModeSelectionMapping? modeMapping = command is null
             ? null
             : Kel103ModeSelectionMapping.All.SingleOrDefault(
                 candidate => candidate.CommandPath == commandPath);
-        if (command is null || mapping is null)
+        Kel103InputControlMapping? inputMapping = command is null || !supportsInputControl
+            ? null
+            : Kel103InputControlMapping.All.SingleOrDefault(
+                candidate => candidate.CommandPath == commandPath);
+        if (command is null || (modeMapping is null && inputMapping is null))
         {
             throw new KeyNotFoundException(
                 "The requested KEL-103 runtime Command is not supported.");
         }
 
-        if (argument is not null)
+        if (modeMapping is not null)
         {
-            throw new ArgumentException(
-                "The KEL-103 mode-selection Command does not accept an argument.",
-                nameof(argument));
+            if (argument is not null)
+            {
+                throw new ArgumentException(
+                    "The KEL-103 mode-selection Command does not accept an argument.",
+                    nameof(argument));
+            }
+
+            Kel103ModeSelectionMutationResult modeResult = await sessionAdapter
+                .SelectOperatingModeAsync(modeMapping, cancellationToken)
+                .ConfigureAwait(false);
+
+            PropertyValue modeValue = CreateValue(
+                Kel103OperatingModeMapping.ToNormalizedValue(modeResult.OperatingMode),
+                modeResult.TimestampUtc);
+            PropertyValue inputValue = CreateValue(
+                modeResult.InputEnabled,
+                modeResult.TimestampUtc);
+            properties[Kel103OperatingModeMapping.PropertyId].UpdateValue(modeValue);
+            properties[Kel103InputStateMapping.PropertyId].UpdateValue(inputValue);
+            return command;
         }
 
-        Kel103ModeSelectionMutationResult result = await sessionAdapter
-            .SelectOperatingModeAsync(mapping, cancellationToken)
-            .ConfigureAwait(false);
+        Kel103InputControlMapping requiredInputMapping = inputMapping
+            ?? throw new KeyNotFoundException(
+                "The requested KEL-103 runtime Command is not supported.");
+        Kel103InputControlMutationResult inputResult;
+        if (requiredInputMapping == Kel103InputControlMapping.ShortCircuitActivate)
+        {
+            if (argument is not bool confirmation || !confirmation)
+            {
+                throw new ArgumentException(
+                    "KEL-103 SHORT activation requires the Boolean confirmation true.",
+                    nameof(argument));
+            }
 
-        PropertyValue modeValue = CreateValue(
-            Kel103OperatingModeMapping.ToNormalizedValue(result.OperatingMode),
-            result.TimestampUtc);
-        PropertyValue inputValue = CreateValue(
-            result.InputEnabled,
-            result.TimestampUtc);
-        properties[Kel103OperatingModeMapping.PropertyId].UpdateValue(modeValue);
-        properties[Kel103InputStateMapping.PropertyId].UpdateValue(inputValue);
+            inputResult = await sessionAdapter
+                .ActivateShortCircuitAsync(confirmation, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            if (argument is not null)
+            {
+                throw new ArgumentException(
+                    "The KEL-103 input-control Command does not accept an argument.",
+                    nameof(argument));
+            }
+
+            inputResult = requiredInputMapping == Kel103InputControlMapping.Activate
+                ? await sessionAdapter.ActivateInputAsync(cancellationToken).ConfigureAwait(false)
+                : await sessionAdapter.DeactivateInputAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        properties[Kel103InputStateMapping.PropertyId].UpdateValue(
+            CreateValue(inputResult.InputEnabled, inputResult.TimestampUtc));
         return command;
     }
 
@@ -262,7 +308,8 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
     private static (
         RuntimeInstrument Instrument,
         bool SupportsOperatingState,
-        bool SupportsSetpointWrites)
+        bool SupportsSetpointWrites,
+        bool SupportsInputControl)
         ValidateEndpoint(RuntimeEndpoint endpoint)
     {
         RuntimeInstrument instrument = endpoint.Instruments.Count == 1
@@ -273,21 +320,28 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
                 instrument,
                 Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()))
         {
-            return (instrument, false, false);
+            return (instrument, false, false, false);
         }
 
         if (IsCompatible(
                 instrument,
                 Kel103OperatingStateDefinition.EndpointDefinition.Instruments.Single()))
         {
-            return (instrument, true, false);
+            return (instrument, true, false, false);
         }
 
         if (IsCompatible(
                 instrument,
                 Kel103ControlledSetpointDefinition.EndpointDefinition.Instruments.Single()))
         {
-            return (instrument, true, true);
+            return (instrument, true, true, false);
+        }
+
+        if (IsCompatible(
+                instrument,
+                Kel103ControlledInputDefinition.EndpointDefinition.Instruments.Single()))
+        {
+            return (instrument, true, true, true);
         }
 
         throw Incompatible();
