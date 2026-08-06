@@ -361,7 +361,22 @@
                                                                         PreviewKeyUp="OnModeCommandPreviewKeyUp"
                                                                         PreviewMouseLeftButtonDown="OnModeCommandPreviewMouseLeftButtonDown"
                                                                         PreviewMouseLeftButtonUp="OnModeCommandPreviewMouseLeftButtonUp"
-                                                                        ToolTip="{Binding DisplayName}" />
+                                                                        ToolTip="{Binding DisplayName}">
+                                                                        <Button.Style>
+                                                                            <Style TargetType="Button">
+                                                                                <Setter Property="BorderThickness" Value="1" />
+                                                                                <Setter Property="FontWeight" Value="Normal" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsActiveModeSelection}" Value="True">
+                                                                                        <Setter Property="Background" Value="#FFE2F0D9" />
+                                                                                        <Setter Property="BorderBrush" Value="#FF548235" />
+                                                                                        <Setter Property="BorderThickness" Value="3" />
+                                                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Button.Style>
+                                                                    </Button>
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>

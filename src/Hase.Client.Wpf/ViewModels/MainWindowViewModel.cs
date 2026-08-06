@@ -46,6 +46,14 @@ public sealed class MainWindowViewModel
         RemoteCommandTarget,
         string> requestedCommandArgumentTexts =
         [];
+    private readonly Dictionary<RemoteRuntimeHostPropertyTarget, long>
+        initialModeReadAttempts =
+        [];
+    private readonly Dictionary<
+        RemoteRuntimeHostPropertyTarget,
+        RemotePropertyValue> initialModeReadValues =
+        [];
+    private long nextInitialModeReadAttemptId;
     private string? propertyReadMessage;
     private IReadOnlyList<EventOccurrenceItemViewModel> eventOccurrences =
         [];
@@ -233,6 +241,7 @@ public sealed class MainWindowViewModel
         RuntimeHostProfileSessionSnapshot? previousSelectedSession =
             SelectedRuntimeHostSession;
         multiHostSnapshot = snapshot;
+        RetainCurrentInitialModeReadAttempts(snapshot);
         if (selectedRuntimeHostProfileId is not null && !registry.TryGet(selectedRuntimeHostProfileId, out _))
             selectedRuntimeHostProfileId = null;
         ApplyRuntimeHostProjection(registry, snapshot);
@@ -240,6 +249,7 @@ public sealed class MainWindowViewModel
             ShouldClearEventOccurrences(
                 previousSelectedSession,
                 SelectedRuntimeHostSession));
+        StartInitialModeReadsIfRequired();
     }
 
     public void SelectRuntimeHost(RuntimeHostProfileId? profileId)
@@ -253,6 +263,7 @@ public sealed class MainWindowViewModel
         {
             ApplyRuntimeHostProjection(registry, multiHostSnapshot);
             ApplySelectedHostState();
+            StartInitialModeReadsIfRequired();
         }
         RaiseCommandStateChanged();
     }
@@ -274,6 +285,8 @@ public sealed class MainWindowViewModel
             RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting;
 
         confirmedReads.Clear();
+        RestoreInitialModeReadValues(
+            selectedSession);
         requestedBooleanValues.Clear();
         requestedPropertyValueTexts.Clear();
         requestedCommandArgumentTexts.Clear();
@@ -340,6 +353,184 @@ public sealed class MainWindowViewModel
 
         return firstKeys.SetEquals(
             secondKeys);
+    }
+
+    private void RetainCurrentInitialModeReadAttempts(
+        MultiHostClientSessionSnapshot snapshot)
+    {
+        foreach (RemoteRuntimeHostPropertyTarget attempt
+            in initialModeReadAttempts.Keys
+                .Where(
+                    attempt =>
+                        !snapshot.Sessions.Any(
+                            session =>
+                                session.Status.State
+                                    == RuntimeHostClientSessionState.Connected
+                                && session.Status.RuntimeHostId
+                                    == attempt.RuntimeHostId
+                                && session.CurrentState?.Snapshot?.Attachments.Any(
+                                    attachment =>
+                                        attachment.Key
+                                            == attempt.Target.Attachment)
+                                    == true))
+                .ToArray())
+        {
+            initialModeReadAttempts.Remove(attempt);
+            initialModeReadValues.Remove(attempt);
+        }
+
+        foreach (RemoteRuntimeHostPropertyTarget target
+            in initialModeReadValues.Keys
+                .Where(
+                    target =>
+                        snapshot.Sessions.Any(
+                            session =>
+                                session.Status.RuntimeHostId
+                                    == target.RuntimeHostId
+                                && session.CurrentState?.PropertyValues.TryGetValue(
+                                    target.Target,
+                                    out RemotePropertyValue? value)
+                                    == true
+                                && value.Quality
+                                    == RemotePropertyQuality.Good))
+                .ToArray())
+        {
+            initialModeReadValues.Remove(target);
+        }
+    }
+
+    private void RestoreInitialModeReadValues(
+        RuntimeHostProfileSessionSnapshot? selectedSession)
+    {
+        if (selectedSession?.Status is not
+            {
+                State: RuntimeHostClientSessionState.Connected,
+                RuntimeHostId: { } runtimeHostId
+            })
+        {
+            return;
+        }
+
+        foreach (KeyValuePair<
+            RemoteRuntimeHostPropertyTarget,
+            RemotePropertyValue> item
+            in initialModeReadValues.Where(
+                item =>
+                    item.Key.RuntimeHostId == runtimeHostId
+                    && selectedSession.CurrentState?.Snapshot?.Attachments.Any(
+                        attachment =>
+                            attachment.Key
+                                == item.Key.Target.Attachment)
+                        == true))
+        {
+            confirmedReads[item.Key.Target] =
+                item.Value;
+        }
+    }
+
+    private void StartInitialModeReadsIfRequired()
+    {
+        if (multiHostCoordinator is null
+            || SelectedRuntimeHost is not
+            {
+                SessionState: RuntimeHostClientSessionState.Connected,
+                AuthoritativeRuntimeHostId: { } runtimeHostId
+            })
+        {
+            return;
+        }
+
+        foreach (InstrumentInventoryItemViewModel instrument
+            in endpoints
+                .Where(endpoint => endpoint.IsReady)
+                .SelectMany(endpoint => endpoint.Instruments)
+                .Where(instrument =>
+                    instrument.HasModeSelectionSelector
+                    && !instrument.ModeSelectionCommands.Any(
+                        command => command.IsActiveModeSelection)))
+        {
+            PropertyInventoryItemViewModel? operatingMode =
+                instrument.Properties.SingleOrDefault(
+                    property =>
+                        property.CanRead
+                        && string.Equals(
+                            property.Path,
+                            "Operating.Mode",
+                            StringComparison.Ordinal));
+            if (operatingMode is null)
+            {
+                continue;
+            }
+
+            var target = new RemoteRuntimeHostPropertyTarget(
+                runtimeHostId,
+                operatingMode.Target);
+            if (!initialModeReadAttempts.ContainsKey(target))
+            {
+                long attemptId =
+                    checked(++nextInitialModeReadAttemptId);
+                initialModeReadAttempts.Add(
+                    target,
+                    attemptId);
+                ReadInitialModeAsync(
+                    target,
+                    attemptId);
+            }
+        }
+    }
+
+    private async void ReadInitialModeAsync(
+        RemoteRuntimeHostPropertyTarget target,
+        long attemptId)
+    {
+        RemotePropertyOperationResult result;
+        try
+        {
+            result = await multiHostCoordinator!
+                .ReadPropertyAsync(target)
+                .ConfigureAwait(true);
+        }
+        catch
+        {
+            return;
+        }
+
+        RemotePropertyValue? confirmedValue =
+            result.IsSuccess
+                ? result.ConfirmedValue
+                : null;
+        if (confirmedValue?.Quality
+                != RemotePropertyQuality.Good
+            || !initialModeReadAttempts.TryGetValue(
+                target,
+                out long currentAttemptId)
+            || currentAttemptId != attemptId
+            || SelectedRuntimeHost?.SessionState
+                != RuntimeHostClientSessionState.Connected
+            || SelectedRuntimeHost?.AuthoritativeRuntimeHostId
+                != target.RuntimeHostId
+            || currentState.Snapshot?.Attachments.Any(
+                attachment =>
+                    attachment.Key
+                        == target.Target.Attachment)
+                != true)
+        {
+            return;
+        }
+
+        confirmedReads[target.Target] =
+            confirmedValue;
+        initialModeReadValues[target] =
+            confirmedValue;
+        SetProperty(
+            ref endpoints,
+            RuntimeHostInventoryProjector.Project(
+                currentState,
+                confirmedReads,
+                requestedBooleanValues,
+                requestedCommandArgumentTexts,
+                requestedPropertyValueTexts),
+            nameof(Endpoints));
     }
 
     private static bool ShouldClearEventOccurrences(

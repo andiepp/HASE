@@ -366,8 +366,67 @@ public sealed class RuntimeHostInventoryProjectorTests
                 Assert.True(command.CanExecute));
     }
 
+    [Theory]
+    [InlineData("CC", "CC")]
+    [InlineData("CV", "CV")]
+    [InlineData("CR", "CR")]
+    [InlineData("CW", "CW")]
+    [InlineData("SHORt", "SHORT")]
+    public void Project_ModeSelection_ShouldIndicateAuthoritativeActiveCommand(
+        string operatingMode,
+        string expectedLabel)
+    {
+        RemoteObservationState state = CreateModeSelectionState(
+            Guid.Parse("60d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            operatingMode);
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(state)).Instruments);
+
+        CommandInventoryItemViewModel active = Assert.Single(
+            instrument.ModeSelectionCommands.Where(
+                command => command.IsActiveModeSelection));
+        Assert.Equal(expectedLabel, active.ModeSelectionLabel);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("unsupported")]
+    public void Project_ModeSelection_WithoutRecognizedAuthoritativeModeShouldIndicateNone(
+        string? operatingMode)
+    {
+        RemoteObservationState state = CreateModeSelectionState(
+            Guid.Parse("70d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            operatingMode);
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(state)).Instruments);
+
+        Assert.DoesNotContain(
+            instrument.ModeSelectionCommands,
+            command => command.IsActiveModeSelection);
+    }
+
+    [Theory]
+    [InlineData(RemotePropertyQuality.Uncertain)]
+    [InlineData(RemotePropertyQuality.Bad)]
+    public void Project_ModeSelection_WithoutGoodModeQualityShouldIndicateNone(
+        RemotePropertyQuality quality)
+    {
+        RemoteObservationState state = CreateModeSelectionState(
+            Guid.Parse("80d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            "CC",
+            quality);
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(state)).Instruments);
+
+        Assert.DoesNotContain(
+            instrument.ModeSelectionCommands,
+            command => command.IsActiveModeSelection);
+    }
+
     private static RemoteObservationState CreateModeSelectionState(
-        Guid generation)
+        Guid generation,
+        string? operatingMode = null,
+        RemotePropertyQuality quality = RemotePropertyQuality.Good)
     {
         var commands = new[]
         {
@@ -382,13 +441,26 @@ public sealed class RuntimeHostInventoryProjectorTests
             "Electronic Load",
             new InstrumentKind("ElectronicLoad"))
         {
-            Interface = new InstrumentInterface(commands: commands)
+            Interface = new InstrumentInterface(
+                properties:
+                [
+                    new PropertyDescriptor(
+                        new PropertyId("operating-mode"),
+                        DescriptorPath.Parse("Operating.Mode"),
+                        "Operating mode",
+                        new StringDataDescriptor())
+                    {
+                        AccessMode = PropertyAccessMode.Read
+                    }
+                ],
+                commands: commands)
         };
         var attachment = new RemoteEndpointAttachmentSnapshot(
             new RemoteEndpointAttachmentGeneration(generation),
             new EndpointDescriptor(new EndpointId("kel-01"), [instrument]),
             new RemoteEndpointConnectionStatus(RemoteEndpointConnectionState.Ready));
-        return new RemoteObservationReducer().Initialize(
+        var reducer = new RemoteObservationReducer();
+        RemoteObservationState state = reducer.Initialize(
             RemoteObservationState.Empty,
             new RemoteObservationInitialSnapshot(
                 new RemoteRuntimeHostSnapshot(
@@ -396,5 +468,23 @@ public sealed class RuntimeHostInventoryProjectorTests
                     RuntimeHostClientApiVersion.Current,
                     [attachment]),
                 new RemoteObservationSequence(1)));
+        if (operatingMode is null)
+        {
+            return state;
+        }
+
+        return reducer.Apply(
+            state,
+            new RemoteRuntimeHostObservation(
+                new RemoteObservationSequence(2),
+                attachment.Key,
+                new RemotePropertyValueChangedObservationPayload(
+                    instrument.Id,
+                    new PropertyId("operating-mode"),
+                    previousValue: null,
+                    new RemotePropertyValue(
+                        RemoteValue.FromString(operatingMode),
+                        DateTimeOffset.UnixEpoch,
+                        quality))));
     }
 }

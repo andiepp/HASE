@@ -61,9 +61,12 @@ public static class RuntimeHostInventoryProjector
                                             .Select(
                                                 command =>
                                                     ProjectCommand(
+                                                        state,
                                                         attachment,
                                                         instrument.Id,
+                                                        instrument.Interface.Properties,
                                                         command,
+                                                        confirmedReads,
                                                         requestedCommandArgumentTexts))
                                             .ToArray()))
                             .ToArray()))
@@ -72,9 +75,14 @@ public static class RuntimeHostInventoryProjector
     }
 
     private static CommandInventoryItemViewModel ProjectCommand(
+        RemoteObservationState state,
         RemoteEndpointAttachmentSnapshot attachment,
         Hase.Core.Domain.Identity.InstrumentId instrumentId,
+        IReadOnlyList<Hase.Core.Domain.Properties.PropertyDescriptor> properties,
         Hase.Core.Domain.Commands.CommandDescriptor command,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            RemotePropertyValue>? confirmedReads,
         IReadOnlyDictionary<
             RemoteCommandTarget,
             string>? requestedCommandArgumentTexts)
@@ -100,6 +108,13 @@ public static class RuntimeHostInventoryProjector
         {
             Descriptor =
                 command,
+            AuthoritativeOperatingMode =
+                FindAuthoritativeOperatingMode(
+                    state,
+                    attachment,
+                    instrumentId,
+                    properties,
+                    confirmedReads),
             RequestedArgumentText =
                 requestedText,
             RequestedBooleanArgument =
@@ -111,6 +126,57 @@ public static class RuntimeHostInventoryProjector
                     ? requestedBoolean
                     : null
         };
+    }
+
+    private static string? FindAuthoritativeOperatingMode(
+        RemoteObservationState state,
+        RemoteEndpointAttachmentSnapshot attachment,
+        Hase.Core.Domain.Identity.InstrumentId instrumentId,
+        IReadOnlyList<Hase.Core.Domain.Properties.PropertyDescriptor> properties,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            RemotePropertyValue>? confirmedReads)
+    {
+        if (attachment.ConnectionStatus.State
+            != RemoteEndpointConnectionState.Ready)
+        {
+            return null;
+        }
+
+        Hase.Core.Domain.Properties.PropertyDescriptor? operatingMode =
+            properties.SingleOrDefault(
+                property =>
+                    string.Equals(
+                        property.Path.ToString(),
+                        "Operating.Mode",
+                        StringComparison.Ordinal));
+        if (operatingMode is null)
+        {
+            return null;
+        }
+
+        var target = new RemotePropertyTarget(
+            attachment.Key,
+            instrumentId,
+            operatingMode.Id);
+        RemotePropertyValue? value = null;
+        if (confirmedReads is not null)
+        {
+            confirmedReads.TryGetValue(
+                target,
+                out value);
+        }
+
+        if (value is null)
+        {
+            state.PropertyValues.TryGetValue(
+                target,
+                out value);
+        }
+
+        return value?.Quality == RemotePropertyQuality.Good
+            ? value.Value?.StringValue
+            : null;
     }
 
     private static string? FindRequestedCommandArgumentText(

@@ -57,6 +57,22 @@ public sealed record CommandInventoryItemViewModel(
     public bool IsModeSelectionCandidate =>
         ModeSelectionLabel is not null;
 
+    public string? AuthoritativeOperatingMode
+    {
+        get;
+        init;
+    }
+
+    public bool IsActiveModeSelection =>
+        EndpointReady
+        && ModeSelectionLabel is string label
+        && NormalizeOperatingMode(
+            AuthoritativeOperatingMode) is string authoritativeMode
+        && string.Equals(
+            label,
+            authoritativeMode,
+            StringComparison.Ordinal);
+
     public string? ArgumentDisplayName =>
         Descriptor?.Argument?.DisplayName;
 
@@ -199,6 +215,19 @@ public sealed record CommandInventoryItemViewModel(
         OnPropertyChanged(
             nameof(CanExecute));
     }
+
+    private static string? NormalizeOperatingMode(
+        string? operatingMode) =>
+        operatingMode switch
+        {
+            "CC" => "CC",
+            "CV" => "CV",
+            "CR" => "CR",
+            "CW" => "CW",
+            "SHORt" => "SHORT",
+            "SHORT" => "SHORT",
+            _ => null
+        };
 
     private void OnPropertyChanged(
         [CallerMemberName] string? propertyName = null)

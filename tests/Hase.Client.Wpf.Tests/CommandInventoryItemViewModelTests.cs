@@ -233,6 +233,45 @@ public sealed class CommandInventoryItemViewModelTests
         Assert.True(selected.CanExecute);
     }
 
+    [Theory]
+    [InlineData("Mode.SelectConstantCurrent", "CC", true)]
+    [InlineData("Mode.SelectConstantVoltage", "CV", true)]
+    [InlineData("Mode.SelectConstantResistance", "CR", true)]
+    [InlineData("Mode.SelectConstantPower", "CW", true)]
+    [InlineData("Mode.SelectShortCircuit", "SHORt", true)]
+    [InlineData("Mode.SelectShortCircuit", "SHORT", true)]
+    [InlineData("Mode.SelectConstantCurrent", "CV", false)]
+    [InlineData("Mode.SelectConstantCurrent", "unsupported", false)]
+    [InlineData("Mode.SelectConstantCurrent", null, false)]
+    public void ModeSelectionCommand_ShouldIndicateOnlyAuthoritativeActiveMode(
+        string path,
+        string? operatingMode,
+        bool expected)
+    {
+        CommandInventoryItemViewModel command =
+            CreateModeCommand(path, "Select mode") with
+            {
+                AuthoritativeOperatingMode = operatingMode
+            };
+
+        Assert.Equal(expected, command.IsActiveModeSelection);
+    }
+
+    [Fact]
+    public void UnavailableModeSelectionCommand_ShouldNotIndicateActiveMode()
+    {
+        CommandInventoryItemViewModel command =
+            CreateModeCommand(
+                "Mode.SelectConstantCurrent",
+                "Select CC",
+                endpointReady: false) with
+            {
+                AuthoritativeOperatingMode = "CC"
+            };
+
+        Assert.False(command.IsActiveModeSelection);
+    }
+
     [Fact]
     public void IncompleteModeCommandSet_ShouldRemainGeneric()
     {
