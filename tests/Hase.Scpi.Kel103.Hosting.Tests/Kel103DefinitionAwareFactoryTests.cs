@@ -12,6 +12,7 @@ public sealed class Kel103DefinitionAwareFactoryTests
     [InlineData(2, 5, 0)]
     [InlineData(3, 11, 0)]
     [InlineData(4, 11, 5)]
+    [InlineData(5, 11, 8)]
     public async Task OperationalFactory_MaterializesExactSuppliedDefinition(
         int version,
         int expectedProperties,
@@ -35,6 +36,58 @@ public sealed class Kel103DefinitionAwareFactoryTests
         Assert.Equal(expectedCommands, connection.RuntimeEndpoint.Instruments.Single().Commands.Count);
         Assert.NotNull(connection.PropertyOperations);
         Assert.NotNull(connection.CommandOperations);
+    }
+
+    [Fact]
+    public async Task OperationalFactory_VersionFiveInputCommandUsesDefinitionAwarePath()
+    {
+        var stream = new ScriptedSerialByteStream(
+            Responses(version: 5)
+                .Concat(["OFF\n"])
+                .ToArray());
+        var factory = new Kel103OperationalConnectionFactory(
+            new Hase.Runtime.Runtime.RuntimeContext(),
+            new RecordingSerialFactory(stream),
+            new FixedTimeProvider());
+        await using Kel103OperationalConnection connection = await factory.OpenAsync(
+            new EndpointId("kel-test-01"),
+            Kel103ControlledInputDefinition.EndpointDefinition,
+            SupportedOptions());
+
+        EndpointAttachmentCommandOperationResult result =
+            await connection.CommandOperations.ExecuteAsync(
+                new InstrumentId("electronic-load-01"),
+                Kel103InputControlMapping.Deactivate.CommandPath,
+                argument: null);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(Assert.IsType<bool>(
+            connection.RuntimeEndpoint.Instruments.Single().Properties[6].CurrentValue!.Value));
+        Assert.Equal(1, stream.Writes.Count(value => value == ":INPut OFF\r"));
+        Assert.Equal(2, stream.Writes.Count(value => value == ":INPut?\r"));
+        Assert.Equal(8, connection.RuntimeEndpoint.Instruments.Single().Commands.Count);
+    }
+
+    [Fact]
+    public async Task OperationalFactory_ExistingVersionFiveEndpointPreservesExactDefinition()
+    {
+        var context = new Hase.Runtime.Runtime.RuntimeContext();
+        var endpoint = context.CreateEndpoint(
+            Kel103ControlledInputDefinition.EndpointDefinition.Materialize(
+                new EndpointId("kel-test-01")));
+        var stream = new ScriptedSerialByteStream(Responses(version: 5).ToArray());
+        var factory = new Kel103OperationalConnectionFactory(
+            context,
+            new RecordingSerialFactory(stream),
+            new FixedTimeProvider());
+
+        await using Kel103OperationalConnection connection =
+            await factory.OpenForEndpointAsync(endpoint, SupportedOptions());
+
+        Assert.Same(endpoint, connection.RuntimeEndpoint);
+        Assert.Equal(11, endpoint.Instruments.Single().Properties.Count);
+        Assert.Equal(8, endpoint.Instruments.Single().Commands.Count);
+        Assert.Equal(10, stream.Writes.Count);
     }
 
     [Fact]
@@ -121,6 +174,7 @@ public sealed class Kel103DefinitionAwareFactoryTests
         2 => Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
         3 => Kel103OperatingStateDefinition.EndpointDefinition,
         4 => Kel103ControlledSetpointDefinition.EndpointDefinition,
+        5 => Kel103ControlledInputDefinition.EndpointDefinition,
         _ => throw new ArgumentOutOfRangeException(nameof(version))
     };
 

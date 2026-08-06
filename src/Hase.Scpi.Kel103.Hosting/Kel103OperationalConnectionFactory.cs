@@ -209,13 +209,22 @@ public sealed class Kel103OperationalConnectionFactory
             return Kel103ControlledSetpointDefinition.Reference;
         }
 
+        if (ReferenceEquals(definition, Kel103ControlledInputDefinition.EndpointDefinition))
+        {
+            return Kel103ControlledInputDefinition.Reference;
+        }
+
         throw new InvalidDataException(
             "The supplied endpoint definition is not an exact supported KEL-103 definition.");
     }
 
     private static DescriptorReference RuntimeReference(RuntimeEndpoint endpoint) =>
-        endpoint.Instruments.Single().Commands.Count > 0
-            ? Kel103ControlledSetpointDefinition.Reference
+        endpoint.Instruments.Single().Commands.Count ==
+            Kel103ControlledInputDefinition.EndpointDefinition.Instruments.Single()
+                .Interface.Commands.Count
+            ? Kel103ControlledInputDefinition.Reference
+            : endpoint.Instruments.Single().Commands.Count > 0
+                ? Kel103ControlledSetpointDefinition.Reference
             : endpoint.Instruments.Single().Properties.Count >
                 Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()
                     .Interface.Properties.Count
@@ -223,8 +232,12 @@ public sealed class Kel103OperationalConnectionFactory
                 : Kel103ReadOnlyMeasurementDefinition.Reference;
 
     private static EndpointDescriptorDefinition RuntimeDefinition(RuntimeEndpoint endpoint) =>
-        endpoint.Instruments.Single().Commands.Count > 0
-            ? Kel103ControlledSetpointDefinition.EndpointDefinition
+        endpoint.Instruments.Single().Commands.Count ==
+            Kel103ControlledInputDefinition.EndpointDefinition.Instruments.Single()
+                .Interface.Commands.Count
+            ? Kel103ControlledInputDefinition.EndpointDefinition
+            : endpoint.Instruments.Single().Commands.Count > 0
+                ? Kel103ControlledSetpointDefinition.EndpointDefinition
             : endpoint.Instruments.Single().Properties.Count >
                 Kel103ReadOnlyMeasurementDefinition.EndpointDefinition.Instruments.Single()
                     .Interface.Properties.Count
