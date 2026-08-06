@@ -40,6 +40,7 @@ internal static class Program
                     new Kel103ReadOnlyStateCharacterizationScenario(),
                     new Kel103ReadOnlyLimitCharacterizationScenario(),
                     new Kel103ModeSelectionCharacterizationScenario(),
+                    new Kel103InputControlCharacterizationScenario(),
                     new Kel103SetpointWriteCharacterizationScenario(),
                     new Kel103SetpointChangeCharacterizationScenario(),
                     new CapabilityC001Scenario(host),
@@ -223,6 +224,8 @@ internal static class Program
             "  kel103-limit-characterize <COM port> <target-voltage|target-current|target-resistance|target-power> <lower|upper> cr 115200");
         Console.WriteLine(
             "  kel103-mode-select-characterize <COM port> <cv|cr|cw|short> cr 115200");
+        Console.WriteLine(
+            "  kel103-input-control-characterize <COM port> true cr 115200");
         Console.WriteLine(
             "  kel103-setpoint-write-characterize <COM port> <target-voltage|target-current|target-resistance|target-power> cr 115200");
         Console.WriteLine(
