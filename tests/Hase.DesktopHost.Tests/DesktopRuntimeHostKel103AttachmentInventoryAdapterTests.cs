@@ -1,8 +1,11 @@
 using System.IO;
+using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
@@ -50,24 +53,31 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         Assert.Equal(1, factory.DisposeCount);
     }
 
-    [Fact]
-    public async Task AttachAsync_VersionFourDefinitionReachesFactoryAndEndpoint()
+    [Theory]
+    [InlineData(4, 5)]
+    [InlineData(5, 8)]
+    public async Task AttachAsync_ControlledDefinitionReachesFactoryAndEndpoint(
+        ushort version,
+        int expectedCommands)
     {
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context);
         var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+        EndpointDescriptorDefinition definition = version == 4
+            ? Kel103ControlledSetpointDefinition.EndpointDefinition
+            : Kel103ControlledInputDefinition.EndpointDefinition;
         var request = new EndpointAttachmentRequest(
             new DesktopRuntimeHostKel103ConnectionDefinition(
                 new EndpointId("kel-01"),
-                Kel103ControlledSetpointDefinition.EndpointDefinition,
+                definition,
                 new SerialTransportOptions("external-target", 115200)),
             HostRepositoryDescriptorSource.Instance);
 
         await using IEndpointAttachmentSession session = await service.AttachAsync(request);
 
-        Assert.Same(Kel103ControlledSetpointDefinition.EndpointDefinition, factory.Definition);
+        Assert.Same(definition, factory.Definition);
         Assert.Equal(11, session.RuntimeEndpoint.Instruments.Single().Properties.Count);
-        Assert.Equal(5, session.RuntimeEndpoint.Instruments.Single().Commands.Count);
+        Assert.Equal(expectedCommands, session.RuntimeEndpoint.Instruments.Single().Commands.Count);
     }
 
     [Fact]
@@ -237,6 +247,101 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
                 factory.CommandOperations.CommandPath);
             Assert.Null(factory.CommandOperations.Argument);
             Assert.Equal(0, factory.PropertyOperations.CallCount);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task NorthboundCommandService_VersionFiveInputCommandPreservesInventoryAndDiagnostics(
+        int mappingIndex)
+    {
+        string directoryPath = Path.Combine(
+            Path.GetTempPath(),
+            $"hase-kel103-input-command-composition-{Guid.NewGuid():N}");
+
+        try
+        {
+            var collector = new BoundedRuntimeDiagnosticCollector(10);
+            var diagnostics = new RuntimeDiagnosticPublisher(collector);
+            var context = new RuntimeContext(diagnostics);
+            var factory = new RecordingFactory(context);
+            await using var inventory = new RuntimeEndpointAttachmentInventory(
+                new DesktopRuntimeHostKel103AttachmentService(factory));
+            var request = new EndpointAttachmentRequest(
+                new DesktopRuntimeHostKel103ConnectionDefinition(
+                    new EndpointId("kel-01"),
+                    Kel103ControlledInputDefinition.EndpointDefinition,
+                    new SerialTransportOptions("external-target", 115200)),
+                HostRepositoryDescriptorSource.Instance);
+
+            RuntimeEndpointAttachmentInventoryEntry entry =
+                await inventory.AttachAsync(request);
+            await using RuntimeHostNorthboundSnapshotComposition composition =
+                await RuntimeHostNorthboundSnapshotComposition.CreateFileBackedAsync(
+                    inventory,
+                    Path.Combine(directoryPath, "runtime-host-identity.json"),
+                    new RuntimeHostId("runtime-host-kel103-input-command-composition"),
+                    diagnostics: diagnostics);
+            PublishedRuntimeEndpointSnapshot endpoint = Assert.Single(
+                composition.InventorySnapshotProvider.List());
+            CommandDescriptor[] commands = endpoint.Descriptor.Instruments
+                .Single()
+                .Interface.Commands
+                .ToArray();
+            Kel103InputControlMapping mapping = Kel103InputControlMapping.All[mappingIndex];
+            InstrumentId instrumentId = entry.RuntimeEndpoint.Instruments
+                .Single()
+                .Descriptor.Id;
+            var target = new RuntimeHostCommandTarget(
+                endpoint.EndpointId,
+                endpoint.Generation,
+                instrumentId,
+                mapping.CommandPath);
+            object? argument = mapping.RequiresConfirmation ? true : null;
+
+            RuntimeHostCommandOperationResult result =
+                await composition.CommandService.ExecuteAsync(target, argument);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(8, commands.Length);
+            CommandDescriptor shortActivation = commands.Single(
+                command => command.Path == Kel103InputControlMapping.ShortCircuitActivate.CommandPath);
+            Assert.IsType<BooleanDataDescriptor>(shortActivation.Argument!.Data);
+            Assert.Equal(1, factory.CommandOperations.ExecuteCount);
+            Assert.Equal(instrumentId, factory.CommandOperations.InstrumentId);
+            Assert.Equal(mapping.CommandPath, factory.CommandOperations.CommandPath);
+            Assert.Equal(argument, factory.CommandOperations.Argument);
+            Assert.Equal(0, factory.PropertyOperations.CallCount);
+
+            IReadOnlyList<RuntimeDiagnosticRecord> records = collector.GetSnapshot()
+                .Where(record => record.EventName.StartsWith(
+                    "CommandExecution",
+                    StringComparison.Ordinal))
+                .ToArray();
+            Assert.Equal(
+                ["CommandExecutionStarted", "CommandExecutionCompleted"],
+                records.Select(record => record.EventName).ToArray());
+            Assert.Equal(records[0].OperationId, records[1].OperationId);
+            Assert.Equal(endpoint.EndpointId.Value, records[0].EndpointId);
+            Assert.Equal(endpoint.Generation.Value, records[0].AttachmentGeneration);
+            Assert.Equal(instrumentId.Value, records[0].Details["instrument"]);
+            Assert.Equal(mapping.CommandPath.ToString(), records[0].Details["path"]);
+            Assert.All(records, record =>
+            {
+                Assert.Equal(2, record.Details.Count);
+                Assert.DoesNotContain(
+                    record.Details.Values,
+                    value => value.Contains("True", StringComparison.OrdinalIgnoreCase));
+            });
         }
         finally
         {
