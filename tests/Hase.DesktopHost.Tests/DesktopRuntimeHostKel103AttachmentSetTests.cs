@@ -54,20 +54,28 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
         Assert.DoesNotContain("target-two", set.ToString(), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task OpenAsync_ForwardsExactVersionFourPlanDefinition()
+    [Theory]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task OpenAsync_ForwardsExactControlledPlanDefinition(ushort version)
     {
         var factory = new RecordingFactory();
+        DescriptorReference reference = version == 4
+            ? Kel103ControlledSetpointDefinition.Reference
+            : Kel103ControlledInputDefinition.Reference;
+        EndpointDescriptorDefinition definition = version == 4
+            ? Kel103ControlledSetpointDefinition.EndpointDefinition
+            : Kel103ControlledInputDefinition.EndpointDefinition;
         DesktopRuntimeHostKel103SerialEndpointProfile profile =
             new(
                 "controlled",
-                Kel103ControlledSetpointDefinition.Reference.Id.Value,
-                Kel103ControlledSetpointDefinition.Reference.Version,
+                reference.Id.Value,
+                reference.Version,
                 "external-target",
                 115200);
         var plan = new DesktopRuntimeHostKel103EndpointPlan(
             new EndpointId(profile.ExpectedEndpointId),
-            Kel103ControlledSetpointDefinition.EndpointDefinition);
+            definition);
 
         await using DesktopRuntimeHostKel103AttachmentSet set =
             await DesktopRuntimeHostKel103AttachmentSet.OpenAsync(
@@ -76,9 +84,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentSetTests
                 factory);
 
         Assert.Equal(1, set.Count);
-        Assert.Same(
-            Kel103ControlledSetpointDefinition.EndpointDefinition,
-            Assert.Single(factory.Definitions));
+        Assert.Same(definition, Assert.Single(factory.Definitions));
     }
 
     [Fact]

@@ -33,14 +33,21 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
     [Theory]
     [InlineData(3)]
     [InlineData(4)]
+    [InlineData(5)]
     public async Task ResolveAsync_ExactLaterVersionReturnsRepositoryDefinition(ushort version)
     {
-        DescriptorReference reference = version == 3
-            ? Kel103OperatingStateDefinition.Reference
-            : Kel103ControlledSetpointDefinition.Reference;
-        EndpointDescriptorDefinition definition = version == 3
-            ? Kel103OperatingStateDefinition.EndpointDefinition
-            : Kel103ControlledSetpointDefinition.EndpointDefinition;
+        DescriptorReference reference = version switch
+        {
+            3 => Kel103OperatingStateDefinition.Reference,
+            4 => Kel103ControlledSetpointDefinition.Reference,
+            _ => Kel103ControlledInputDefinition.Reference
+        };
+        EndpointDescriptorDefinition definition = version switch
+        {
+            3 => Kel103OperatingStateDefinition.EndpointDefinition,
+            4 => Kel103ControlledSetpointDefinition.EndpointDefinition,
+            _ => Kel103ControlledInputDefinition.EndpointDefinition
+        };
         var repository = new RecordingRepository(definition);
         var profile = new DesktopRuntimeHostKel103SerialEndpointProfile(
             "kel-01",
@@ -62,11 +69,11 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
     public async Task ResolveAsync_DefinitionReferenceMismatchRejects()
     {
         var repository = new RecordingRepository(
-            Kel103ReadOnlyMeasurementDefinition.EndpointDefinition);
+            Kel103ControlledSetpointDefinition.EndpointDefinition);
         var profile = new DesktopRuntimeHostKel103SerialEndpointProfile(
             "kel-01",
-            Kel103ControlledSetpointDefinition.Reference.Id.Value,
-            Kel103ControlledSetpointDefinition.Reference.Version,
+            Kel103ControlledInputDefinition.Reference.Id.Value,
+            Kel103ControlledInputDefinition.Reference.Version,
             "external-target",
             115200);
 
@@ -98,7 +105,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
 
     [Theory]
     [InlineData("unknown-definition", 2)]
-    [InlineData("kel103-identity", 5)]
+    [InlineData("kel103-identity", 6)]
     public async Task ResolveAsync_UnsupportedReference_ShouldReject(
         string definitionId,
         ushort definitionVersion)

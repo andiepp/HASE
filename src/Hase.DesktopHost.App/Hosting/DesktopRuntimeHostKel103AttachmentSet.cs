@@ -193,9 +193,13 @@ public sealed class DesktopRuntimeHostKel103AttachmentSet : IAsyncDisposable
             : profile.DefinitionReference == Kel103OperatingStateDefinition.Reference
                 ? ReferenceEquals(definition, Kel103OperatingStateDefinition.EndpointDefinition)
                 : profile.DefinitionReference == Kel103ControlledSetpointDefinition.Reference
-                    && ReferenceEquals(
+                    ? ReferenceEquals(
                         definition,
-                        Kel103ControlledSetpointDefinition.EndpointDefinition);
+                        Kel103ControlledSetpointDefinition.EndpointDefinition)
+                    : profile.DefinitionReference == Kel103ControlledInputDefinition.Reference
+                        && ReferenceEquals(
+                            definition,
+                            Kel103ControlledInputDefinition.EndpointDefinition);
 
     private async Task DisposeCoreAsync()
     {

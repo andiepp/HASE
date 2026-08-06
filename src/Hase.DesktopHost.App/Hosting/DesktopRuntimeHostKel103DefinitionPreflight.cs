@@ -44,7 +44,8 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
 
         if (profile.DefinitionReference != Kel103ReadOnlyMeasurementDefinition.Reference
             && profile.DefinitionReference != Kel103OperatingStateDefinition.Reference
-            && profile.DefinitionReference != Kel103ControlledSetpointDefinition.Reference)
+            && profile.DefinitionReference != Kel103ControlledSetpointDefinition.Reference
+            && profile.DefinitionReference != Kel103ControlledInputDefinition.Reference)
         {
             throw new InvalidDataException(
                 "The configured KEL-103 definition is not supported.");
@@ -65,7 +66,9 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
                 ? Kel103ReadOnlyMeasurementDefinition.EndpointDefinition
                 : profile.DefinitionReference == Kel103OperatingStateDefinition.Reference
                     ? Kel103OperatingStateDefinition.EndpointDefinition
-                    : Kel103ControlledSetpointDefinition.EndpointDefinition;
+                    : profile.DefinitionReference == Kel103ControlledSetpointDefinition.Reference
+                        ? Kel103ControlledSetpointDefinition.EndpointDefinition
+                        : Kel103ControlledInputDefinition.EndpointDefinition;
         if (!ReferenceEquals(definition, expectedDefinition))
         {
             throw new InvalidDataException(
