@@ -95,6 +95,39 @@ $endpointCompositionHash = Get-OptionalFileHash -Path $endpointCompositionPath
 $privateNetworkConfigurationHash = Get-OptionalFileHash -Path $privateNetworkConfigurationPath
 $shortcutHash = Get-OptionalFileHash -Path $shortcutPath
 $identityHash = Get-OptionalFileHash -Path $identityFilePath
+$applicationProfile = Get-Content `
+    -LiteralPath $applicationProfilePath `
+    -Raw `
+    -Encoding UTF8 | ConvertFrom-Json
+$applicationProfilePropertyNames = @(
+    $applicationProfile.PSObject.Properties.Name)
+$authorizationPolicyHash = $null
+$authorizationPolicyPath = $null
+if ($applicationProfilePropertyNames -contains "authorizationPolicyFilePath") {
+    if ([string]::IsNullOrWhiteSpace(
+            $applicationProfile.authorizationPolicyFilePath)) {
+        throw "The installed Runtime Host authorization-policy path is invalid."
+    }
+
+    $authorizationPolicyPath =
+        [System.IO.Path]::GetFullPath(
+            $applicationProfile.authorizationPolicyFilePath)
+    $expectedAuthorizationPolicyPath = Join-Path `
+        $configurationDirectory `
+        "runtime-host-authorization.json"
+    Assert-EqualPath `
+        -Actual $authorizationPolicyPath `
+        -Expected $expectedAuthorizationPolicyPath `
+        -Role "authorization-policy path"
+    if (-not (Test-Path `
+            -LiteralPath $authorizationPolicyPath `
+            -PathType Leaf)) {
+        throw "The installed Runtime Host authorization policy is missing."
+    }
+
+    $authorizationPolicyHash = Get-OptionalFileHash `
+        -Path $authorizationPolicyPath
+}
 
 & $publisherPath -InstallationDirectory $installationDirectory
 
@@ -102,11 +135,18 @@ if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The updated Desktop Runtime Host executable was not found."
 }
 
+$authorizationPolicyChanged = $false
+if ($null -ne $authorizationPolicyPath) {
+    $authorizationPolicyChanged =
+        $authorizationPolicyHash -ne (Get-OptionalFileHash -Path $authorizationPolicyPath)
+}
+
 if ($applicationProfileHash -ne (Get-OptionalFileHash -Path $applicationProfilePath) -or
     $endpointCompositionHash -ne (Get-OptionalFileHash -Path $endpointCompositionPath) -or
     $privateNetworkConfigurationHash -ne (Get-OptionalFileHash -Path $privateNetworkConfigurationPath) -or
     $shortcutHash -ne (Get-OptionalFileHash -Path $shortcutPath) -or
-    $identityHash -ne (Get-OptionalFileHash -Path $identityFilePath)) {
+    $identityHash -ne (Get-OptionalFileHash -Path $identityFilePath) -or
+    $authorizationPolicyChanged) {
     throw "The application update changed configuration, identity, or shortcut custody."
 }
 
