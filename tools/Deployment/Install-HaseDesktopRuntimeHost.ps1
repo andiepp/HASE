@@ -7,7 +7,11 @@ param(
     [string]$CompactProductId = "0x0043",
     [int]$CompactBaudRate = 115200,
     [int]$CompactVerificationTimeoutMilliseconds = 3000,
-    [string]$PrivateNetworkConfigurationPath
+    [string]$PrivateNetworkConfigurationPath,
+    [switch]$EnableRemoteDiagnostics,
+    [ValidateSet("Operational", "Protocol", "Bytes")]
+    [string]$RemoteDiagnosticsMaximumLevel = "Operational",
+    [string]$AuthorizationPolicyPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,6 +67,7 @@ $executableFilePath = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
 $applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-host.json"
 $endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
 $privateNetworkDestinationPath = Join-Path $configurationDirectory "desktop-private-network.json"
+$authorizationPolicyDestinationPath = Join-Path $configurationDirectory "runtime-host-authorization.json"
 $identityFilePath = Join-Path $identityDirectory "runtime-host-identity.json"
 $desktopDirectory = [Environment]::GetFolderPath(
     [Environment+SpecialFolder]::Desktop)
@@ -72,6 +77,7 @@ $protectedTargets = @(
     $applicationProfilePath,
     $endpointCompositionPath,
     $privateNetworkDestinationPath,
+    $authorizationPolicyDestinationPath,
     $shortcutPath
 )
 
@@ -96,6 +102,60 @@ $privateNetworkSourcePath = Get-FullyQualifiedFilePath `
 
 if (-not (Test-Path -LiteralPath $privateNetworkSourcePath -PathType Leaf)) {
     throw "The selected private-network configuration source file does not exist."
+}
+
+$authorizationPolicySourcePath = $null
+if ($PSBoundParameters.ContainsKey("AuthorizationPolicyPath") -and
+    [string]::IsNullOrWhiteSpace($AuthorizationPolicyPath)) {
+    throw "The authorization-policy source path must not be empty."
+}
+
+if (-not [string]::IsNullOrWhiteSpace($AuthorizationPolicyPath)) {
+    $authorizationPolicySourcePath = Get-FullyQualifiedFilePath `
+        -Path $AuthorizationPolicyPath `
+        -Role "authorization-policy source"
+
+    if (-not (Test-Path -LiteralPath $authorizationPolicySourcePath -PathType Leaf)) {
+        throw "The selected authorization-policy source file does not exist."
+    }
+
+    $policyFile = Get-Item -LiteralPath $authorizationPolicySourcePath
+    if ($policyFile.Length -gt (64 * 1024)) {
+        throw "The authorization-policy source exceeds the supported size."
+    }
+
+    try {
+        $policyDocument = Get-Content `
+            -LiteralPath $authorizationPolicySourcePath `
+            -Raw `
+            -Encoding UTF8 | ConvertFrom-Json
+    }
+    catch {
+        throw "The authorization-policy source is not valid JSON configuration."
+    }
+
+    if ($null -eq $policyDocument) {
+        throw "The authorization-policy source does not have the supported structure."
+    }
+
+    $policyPropertyNames = @(
+        $policyDocument.PSObject.Properties.Name)
+    if ($policyPropertyNames.Count -ne 2 -or
+        $policyPropertyNames -notcontains "formatVersion" -or
+        $policyPropertyNames -notcontains "grants" -or
+        $policyDocument.formatVersion -ne 1 -or
+        $policyDocument.grants -isnot [System.Array]) {
+        throw "The authorization-policy source does not have the supported structure."
+    }
+}
+
+if ($EnableRemoteDiagnostics -and $null -eq $authorizationPolicySourcePath) {
+    throw "Remote diagnostics require an explicit authorization-policy source."
+}
+
+if (-not $EnableRemoteDiagnostics -and
+    $PSBoundParameters.ContainsKey("RemoteDiagnosticsMaximumLevel")) {
+    throw "A remote diagnostics maximum level requires explicit remote diagnostics enablement."
 }
 
 $vendorId = ConvertFrom-ExactUsbIdentifier `
@@ -146,8 +206,19 @@ $applicationProfile = [ordered]@{
     maximumDiagnosticLevel = "Bytes"
     includeByteBufferSimulation = $false
     remoteDiagnosticsEnabled = $false
-    remoteDiagnosticsMaximumLevel = "Operational"
+    remoteDiagnosticsMaximumLevel = if ($EnableRemoteDiagnostics) {
+        $RemoteDiagnosticsMaximumLevel
+    }
+    else {
+        "Operational"
+    }
 }
+
+if ($null -ne $authorizationPolicySourcePath) {
+    $applicationProfile.authorizationPolicyFilePath =
+        $authorizationPolicyDestinationPath
+}
+$applicationProfile.remoteDiagnosticsEnabled = [bool]$EnableRemoteDiagnostics
 
 $endpointComposition = [ordered]@{
     formatVersion = 1
@@ -173,6 +244,13 @@ try {
         -LiteralPath $privateNetworkSourcePath `
         -Destination $privateNetworkDestinationPath
     $installedFiles.Add($privateNetworkDestinationPath)
+
+    if ($null -ne $authorizationPolicySourcePath) {
+        Copy-Item `
+            -LiteralPath $authorizationPolicySourcePath `
+            -Destination $authorizationPolicyDestinationPath
+        $installedFiles.Add($authorizationPolicyDestinationPath)
+    }
 
     Set-Content `
         -LiteralPath $endpointCompositionPath `
@@ -220,3 +298,5 @@ Write-Host "Identity file        : $identityFilePath"
 Write-Host "Desktop shortcut     : $shortcutPath"
 Write-Host "Startup arguments    : one application-profile path"
 Write-Host "Endpoint composition : $EndpointCompositionMode"
+Write-Host "Remote diagnostics   : $([bool]$EnableRemoteDiagnostics)"
+Write-Host "Authorization policy : $(if ($null -eq $authorizationPolicySourcePath) { 'not installed' } else { 'installed' })"
