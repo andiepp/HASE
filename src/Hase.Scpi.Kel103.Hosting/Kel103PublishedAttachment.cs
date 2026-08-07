@@ -33,6 +33,9 @@ public sealed class Kel103PublishedAttachment : IAsyncDisposable
     public IEndpointAttachmentCommandOperations CommandOperations =>
         connectionSlot;
 
+    internal Task ProbeHealthAsync(CancellationToken cancellationToken = default) =>
+        connectionSlot.ProbeHealthAsync(cancellationToken);
+
     public Task ReplaceAsync(
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken = default) =>

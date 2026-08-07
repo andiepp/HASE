@@ -42,6 +42,9 @@ public sealed class Kel103OperationalConnection : IAsyncDisposable
 
     public IEndpointAttachmentCommandOperations CommandOperations { get; }
 
+    internal Task ProbeHealthAsync(CancellationToken cancellationToken = default) =>
+        runtimeAdapter.ProbeHealthAsync(cancellationToken);
+
     public ValueTask DisposeAsync()
     {
         lock (disposalLock)

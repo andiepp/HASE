@@ -1,15 +1,22 @@
-HASE Increment 46J2 source overlay
+HASE — Increment 47A — Serialized KEL-103 Health-Probe Primitive
 
-Apply from the H:\Development repository root with the HASE Client and both
-Runtime Hosts stopped. Extract this archive into H:\Development and allow the
-two files under src and tests to be replaced.
+Authoritative source baseline:
+f31edf631d092036b50724d491a327142abeb3b9
 
-Build the complete solution in Visual Studio 2026 Release configuration and run
-the complete automated test suite before updating the installed HASE Client.
+Apply this overlay at the repository root so that the src and tests directories
+merge with the existing directories.
 
-After the automated suite passes, update the Client from H:\Development with:
+This increment adds no periodic monitor and causes no background SCPI traffic.
+It adds one fixed read-only health primitive using exactly one *IDN? query,
+coordinates that primitive through the existing serialized connection slot,
+projects failures with a fixed sanitized endpoint detail, and adds focused
+automated tests.
 
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-& .\tools\Deployment\Update-HaseClient.ps1
+Validation:
+1. Open HASE.slnx in Visual Studio 2026.
+2. Select Release.
+3. Build the solution.
+4. Run all automated tests.
 
-The Runtime Hosts do not require an update for this Client-only correction.
+Do not commit and do not begin physical validation until all automated tests
+pass.

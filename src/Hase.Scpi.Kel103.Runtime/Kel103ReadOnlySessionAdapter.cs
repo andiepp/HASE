@@ -21,6 +21,17 @@ public sealed class Kel103ReadOnlySessionAdapter : IAsyncDisposable
 
     public bool IsFaulted => Volatile.Read(ref state) == 1;
 
+    public async Task ProbeHealthAsync(
+        CancellationToken cancellationToken = default)
+    {
+        _ = await ExecuteAsync(async token =>
+            Kel103IdentityQuery.ParseResponse(
+                await session.QueryAsync(
+                    Kel103IdentityQuery.CommandText,
+                    token).ConfigureAwait(false)),
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<Kel103SynchronizationSnapshot> VerifyAndSynchronizeAsync(
         CancellationToken cancellationToken = default) =>
         await ExecuteAsync(async token =>

@@ -35,6 +35,35 @@ internal sealed class Kel103PublishedConnectionSlot
 
     public RuntimeEndpoint RuntimeEndpoint => runtimeEndpoint;
 
+    internal async Task ProbeHealthAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (disposed || connection is null)
+            {
+                throw new InvalidOperationException(
+                    "The KEL-103 attachment does not own an active connection.");
+            }
+
+            try
+            {
+                await connection.ProbeHealthAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                ProjectHealthFault();
+                throw;
+            }
+        }
+        finally
+        {
+            operationGate.Release();
+        }
+    }
+
     public async Task<EndpointAttachmentPropertyOperationResult> ReadAsync(
         InstrumentId instrumentId,
         PropertyId propertyId,
@@ -217,6 +246,20 @@ internal sealed class Kel103PublishedConnectionSlot
                 EndpointConnectionState.Faulted,
                 timeProvider.GetUtcNow(),
                 "The KEL-103 connection replacement failed."));
+    }
+
+    private void ProjectHealthFault()
+    {
+        if (runtimeEndpoint.ConnectionStatus.State == EndpointConnectionState.Faulted)
+        {
+            return;
+        }
+
+        runtimeEndpoint.UpdateConnectionStatus(
+            new EndpointConnectionStatus(
+                EndpointConnectionState.Faulted,
+                timeProvider.GetUtcNow(),
+                "The KEL-103 passive health probe failed."));
     }
 
     private static EndpointAttachmentPropertyOperationResult Unavailable() =>

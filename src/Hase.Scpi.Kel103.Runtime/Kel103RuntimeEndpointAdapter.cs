@@ -40,6 +40,9 @@ public sealed class Kel103RuntimeEndpointAdapter : IAsyncDisposable
 
     public bool IsFaulted => sessionAdapter.IsFaulted;
 
+    public Task ProbeHealthAsync(CancellationToken cancellationToken = default) =>
+        sessionAdapter.ProbeHealthAsync(cancellationToken);
+
     public async Task<RuntimeEndpoint> SynchronizeAsync(
         CancellationToken cancellationToken = default)
     {
