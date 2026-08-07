@@ -101,6 +101,7 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
         Assert.Equal(
             RuntimeDiagnosticLevel.Protocol,
             configuration.RemoteDiagnosticsMaximumLevel);
+        Assert.NotNull(configuration.InstallationProfile!.AuthorizationPolicyFilePath);
     }
 
     [Fact]
@@ -217,7 +218,10 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
                     maximumDiagnosticLevel = "Bytes",
                     includeByteBufferSimulation = false,
                     remoteDiagnosticsEnabled = true,
-                    remoteDiagnosticsMaximumLevel = "Protocol"
+                    remoteDiagnosticsMaximumLevel = "Protocol",
+                    authorizationPolicyFilePath = Path.Combine(
+                        directory,
+                        "runtime-host-authorization.json")
                 });
         }
 

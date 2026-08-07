@@ -22,6 +22,7 @@
     <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
+    <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Adapter\Hase.Runtime.Remote.Grpc.Adapter.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Hosting\Hase.Runtime.Remote.Grpc.Hosting.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
     <ProjectReference Include="..\Hase.Scpi.Kel103\Hase.Scpi.Kel103.csproj" />

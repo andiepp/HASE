@@ -15,7 +15,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
         bool includeByteBufferSimulation = false,
         bool remoteDiagnosticsEnabled = false,
         RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
-            RuntimeDiagnosticLevel.Operational)
+            RuntimeDiagnosticLevel.Operational,
+        string? authorizationPolicyFilePath = null)
         : this(
             identityFilePath,
             privateNetworkConfigurationFilePath,
@@ -25,7 +26,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
             maximumDiagnosticLevel,
             includeByteBufferSimulation,
             remoteDiagnosticsEnabled,
-            remoteDiagnosticsMaximumLevel)
+            remoteDiagnosticsMaximumLevel,
+            authorizationPolicyFilePath)
     {
     }
 
@@ -37,7 +39,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
         bool includeByteBufferSimulation = false,
         bool remoteDiagnosticsEnabled = false,
         RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
-            RuntimeDiagnosticLevel.Operational)
+            RuntimeDiagnosticLevel.Operational,
+        string? authorizationPolicyFilePath = null)
     {
         IdentityFilePath = NormalizeFullyQualifiedPath(identityFilePath, nameof(identityFilePath), "installation identity");
         PrivateNetworkConfigurationFilePath = NormalizeFullyQualifiedPath(
@@ -48,6 +51,12 @@ public sealed record DesktopRuntimeHostInstallationProfile
             endpointCompositionFilePath,
             nameof(endpointCompositionFilePath),
             "endpoint composition");
+        AuthorizationPolicyFilePath = authorizationPolicyFilePath is null
+            ? null
+            : NormalizeFullyQualifiedPath(
+                authorizationPolicyFilePath,
+                nameof(authorizationPolicyFilePath),
+                "authorization policy");
 
         StringComparer comparer = OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
@@ -70,6 +79,20 @@ public sealed record DesktopRuntimeHostInstallationProfile
                 nameof(endpointCompositionFilePath));
         }
 
+        if (AuthorizationPolicyFilePath is not null
+            && (comparer.Equals(AuthorizationPolicyFilePath, IdentityFilePath)
+                || comparer.Equals(
+                    AuthorizationPolicyFilePath,
+                    PrivateNetworkConfigurationFilePath)
+                || comparer.Equals(
+                    AuthorizationPolicyFilePath,
+                    EndpointCompositionFilePath)))
+        {
+            throw new ArgumentException(
+                "The authorization-policy reference must use a distinct file.",
+                nameof(authorizationPolicyFilePath));
+        }
+
         if (!Enum.IsDefined(maximumDiagnosticLevel))
         {
             throw new ArgumentOutOfRangeException(nameof(maximumDiagnosticLevel));
@@ -89,6 +112,12 @@ public sealed record DesktopRuntimeHostInstallationProfile
                 + "diagnostic capture level.",
                 nameof(remoteDiagnosticsMaximumLevel));
         }
+        if (remoteDiagnosticsEnabled && AuthorizationPolicyFilePath is null)
+        {
+            throw new ArgumentException(
+                "Remote diagnostics require an explicit authorization-policy file.",
+                nameof(authorizationPolicyFilePath));
+        }
 
         MaximumDiagnosticLevel = maximumDiagnosticLevel;
         IncludeByteBufferSimulation = includeByteBufferSimulation;
@@ -103,6 +132,7 @@ public sealed record DesktopRuntimeHostInstallationProfile
     public bool IncludeByteBufferSimulation { get; }
     public bool RemoteDiagnosticsEnabled { get; }
     public RuntimeDiagnosticLevel RemoteDiagnosticsMaximumLevel { get; }
+    public string? AuthorizationPolicyFilePath { get; }
 
     public override string ToString() => "Desktop Runtime Host installation profile";
 

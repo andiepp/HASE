@@ -17,6 +17,9 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
         string deploymentPath =
             MissingReferencedPath(
                 "desktop-private-network.json");
+        string authorizationPolicyPath =
+            MissingReferencedPath(
+                "runtime-host-authorization.json");
         string document =
             $$"""
             {
@@ -26,7 +29,8 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
               "maximumDiagnosticLevel": "Bytes",
               "includeByteBufferSimulation": true,
               "remoteDiagnosticsEnabled": true,
-              "remoteDiagnosticsMaximumLevel": "Protocol"
+              "remoteDiagnosticsMaximumLevel": "Protocol",
+              "authorizationPolicyFilePath": {{JsonSerializer.Serialize(authorizationPolicyPath)}}
             }
             """;
 
@@ -49,6 +53,9 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
         Assert.Equal(
             RuntimeDiagnosticLevel.Protocol,
             profile.RemoteDiagnosticsMaximumLevel);
+        Assert.Equal(
+            authorizationPolicyPath,
+            profile.AuthorizationPolicyFilePath);
     }
 
     [Fact]
@@ -68,6 +75,20 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
         Assert.Equal(
             RuntimeDiagnosticLevel.Operational,
             profile.RemoteDiagnosticsMaximumLevel);
+        Assert.Null(profile.AuthorizationPolicyFilePath);
+    }
+
+    [Fact]
+    public async Task LoadAsync_EnabledRemoteDiagnosticsWithoutPolicy_ShouldReject()
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            LoadDocumentAsync(
+                ValidDocument(
+                    """
+                    ,
+                      "maximumDiagnosticLevel": "Bytes",
+                      "remoteDiagnosticsEnabled": true
+                    """)));
     }
 
     [Theory]

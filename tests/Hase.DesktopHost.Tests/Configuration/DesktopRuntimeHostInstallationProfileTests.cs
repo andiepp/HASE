@@ -68,12 +68,56 @@ public sealed class DesktopRuntimeHostInstallationProfileTests
             RuntimeDiagnosticLevel.Bytes,
             includeByteBufferSimulation: false,
             remoteDiagnosticsEnabled: true,
-            remoteDiagnosticsMaximumLevel: RuntimeDiagnosticLevel.Protocol);
+            remoteDiagnosticsMaximumLevel: RuntimeDiagnosticLevel.Protocol,
+            authorizationPolicyFilePath:
+                AbsolutePath("runtime-host-authorization.json"));
 
         Assert.True(profile.RemoteDiagnosticsEnabled);
         Assert.Equal(
             RuntimeDiagnosticLevel.Protocol,
             profile.RemoteDiagnosticsMaximumLevel);
+        Assert.Equal(
+            AbsolutePath("runtime-host-authorization.json"),
+            profile.AuthorizationPolicyFilePath);
+    }
+
+    [Fact]
+    public void Constructor_EnabledRemoteDiagnosticsWithoutPolicy_ShouldThrow()
+    {
+        Assert.Throws<ArgumentException>(
+            "authorizationPolicyFilePath",
+            () => new DesktopRuntimeHostInstallationProfile(
+                AbsolutePath("runtime-host.id"),
+                AbsolutePath("desktop-private-network.json"),
+                RuntimeDiagnosticLevel.Bytes,
+                remoteDiagnosticsEnabled: true));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("runtime-host-authorization.json")]
+    public void Constructor_InvalidAuthorizationPolicyPath_ShouldThrow(
+        string path)
+    {
+        Assert.ThrowsAny<ArgumentException>(() =>
+            new DesktopRuntimeHostInstallationProfile(
+                AbsolutePath("runtime-host.id"),
+                AbsolutePath("desktop-private-network.json"),
+                authorizationPolicyFilePath: path));
+    }
+
+    [Fact]
+    public void Constructor_DuplicateAuthorizationPolicyPath_ShouldThrow()
+    {
+        string deploymentPath = AbsolutePath("desktop-private-network.json");
+
+        Assert.Throws<ArgumentException>(
+            "authorizationPolicyFilePath",
+            () => new DesktopRuntimeHostInstallationProfile(
+                AbsolutePath("runtime-host.id"),
+                deploymentPath,
+                authorizationPolicyFilePath: deploymentPath));
     }
 
     [Fact]
@@ -189,8 +233,11 @@ public sealed class DesktopRuntimeHostInstallationProfileTests
     [Fact]
     public void ToString_ShouldNotRevealPaths()
     {
-        DesktopRuntimeHostInstallationProfile profile =
-            CreateProfile();
+        var profile = new DesktopRuntimeHostInstallationProfile(
+            AbsolutePath("runtime-host.id"),
+            AbsolutePath("desktop-private-network.json"),
+            authorizationPolicyFilePath:
+                AbsolutePath("runtime-host-authorization.json"));
 
         string text =
             profile.ToString();
@@ -204,6 +251,10 @@ public sealed class DesktopRuntimeHostInstallationProfileTests
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             profile.PrivateNetworkConfigurationFilePath,
+            text,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            profile.AuthorizationPolicyFilePath!,
             text,
             StringComparison.Ordinal);
     }

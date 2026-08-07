@@ -10,6 +10,7 @@ using Hase.Protocol;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Northbound;
+using Hase.Runtime.Remote.Grpc.Adapter;
 using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
@@ -301,6 +302,13 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
         try
         {
+            RuntimeHostAuthorizationPolicy? authorizationPolicy =
+                configuration.InstallationProfile?.AuthorizationPolicyFilePath
+                    is string authorizationPolicyFilePath
+                    ? await RuntimeHostAuthorizationPolicyFile.LoadAsync(
+                        authorizationPolicyFilePath,
+                        cancellationToken)
+                    : null;
             var session =
                 new DesktopRuntimeDiagnosticSession(
                     configuration.MaximumDiagnosticLevel);
@@ -385,6 +393,17 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     composition.PropertyService,
                     composition.CommandService);
 
+            RuntimeHostDiagnosticProjectionService? projectionService = null;
+            if (configuration.RemoteDiagnosticsEnabled)
+            {
+                projectionService = session.AttachProjection(
+                    composition.IdentityResolution.RuntimeHostId,
+                    new RuntimeHostDiagnosticProjectionPolicy(
+                        isEnabled: true,
+                        maximumLevel:
+                            configuration.RemoteDiagnosticsMaximumLevel));
+            }
+
             foreach (
                 DesktopRuntimeHostNativeNetworkEndpointProfile nativeEndpoint
                 in endpointComposition.NativeNetworkEndpoints)
@@ -438,7 +457,10 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     composition.SnapshotProvider,
                     composition.PropertyService,
                     composition.CommandService,
-                    composition.ObservationService);
+                    composition.ObservationService,
+                    cancellationToken: cancellationToken,
+                    diagnosticProjectionService: projectionService,
+                    authorizationPolicy: authorizationPolicy);
 
             await deployment.Application.StartAsync(cancellationToken);
         }
