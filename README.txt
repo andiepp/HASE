@@ -1,24 +1,29 @@
-HASE — Increment 48A — Transport-Independent SCPI Diagnostic Observation
+HASE Increment 48B - SCPI Diagnostic Disclosure and Record Mapping
+=================================================================
 
-Authoritative source baseline:
-b947d7668f42e131d8ba72eb171920727997781c
+Authoritative baseline:
+  commit 5caec8a158f0bef6e9a994d20081247c5bbeaee8
+  Visual Studio 2026, Release, .NET 10
+  5,508 automated tests passing
 
-Apply this overlay at the repository root so the src and tests directories
-merge with the existing directories.
+Overlay contents:
+  src/Hase.Scpi.Kel103.Hosting/Kel103ScpiDiagnosticObserver.cs
+  tests/Hase.Scpi.Kel103.Hosting.Tests/Kel103ScpiDiagnosticObserverTests.cs
 
-This increment adds an optional dependency-free SCPI diagnostic observer,
-immutable copied byte observations, exchange start/completion/failure records,
-safe outcome and failure classification, and ScpiTextSession integration.
-
-The existing ScpiTextSession constructor remains diagnostics-disabled.
-Production KEL-103 composition is unchanged, so this increment creates no Host
-or Client diagnostic records and requires no physical validation.
+Behavior:
+  - Operational capture publishes no SCPI exchange or byte records.
+  - Protocol capture publishes correlated, payload-free exchange metadata.
+  - Bytes capture additionally publishes bounded exact-byte snapshots through
+    the existing RuntimeTransportByteDiagnosticPublisher.
+  - Sanitized failure classification and uncertain command outcome are
+    preserved.
+  - Production KEL-103 session composition is intentionally unchanged.
 
 Validation:
-1. Open HASE.slnx in Visual Studio 2026.
-2. Select Release.
-3. Build the solution.
-4. Run all automated tests.
+  1. Extract this ZIP over the repository root.
+  2. Build the complete solution in Visual Studio 2026, Release.
+  3. Run all automated tests.
+  4. Expected total: 5,520 passing tests.
 
-Eleven focused tests are added. The expected total is 5,508 passing tests.
-Do not commit until the build and all automated tests pass.
+No Runtime Host or Client update and no physical validation are required for
+this production-inactive increment.
