@@ -44,6 +44,11 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
             created.StatusChanged += SessionStatusChanged;
             if (created is IRuntimeHostEventSource eventSource)
                 eventSource.EventOccurred += SessionEventOccurred;
+            if (created is IRuntimeHostDiagnosticSource diagnosticSource)
+            {
+                diagnosticSource.DiagnosticObserved += SessionDiagnosticObserved;
+                diagnosticSource.DiagnosticStreamFaulted += SessionDiagnosticStreamFaulted;
+            }
             session = created;
             cancellation = createdCancellation;
             sessionTask = RunAsync(created, createdCancellation.Token);
@@ -86,6 +91,11 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
             active.StatusChanged -= SessionStatusChanged;
             if (active is IRuntimeHostEventSource eventSource)
                 eventSource.EventOccurred -= SessionEventOccurred;
+            if (active is IRuntimeHostDiagnosticSource diagnosticSource)
+            {
+                diagnosticSource.DiagnosticObserved -= SessionDiagnosticObserved;
+                diagnosticSource.DiagnosticStreamFaulted -= SessionDiagnosticStreamFaulted;
+            }
             await active.DisposeAsync().ConfigureAwait(false);
             activeCancellation.Dispose();
             Publish(CreateSnapshot(new(RuntimeHostClientSessionState.Disconnected)));
@@ -198,6 +208,93 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
                 profile.ProfileId,
                 current.Status.RuntimeHostId,
                 args.Observation));
+    }
+
+    private void SessionDiagnosticObserved(
+        object? sender,
+        RemoteRuntimeDiagnosticObservedEventArgs args)
+    {
+        if (diagnostics is null)
+        {
+            return;
+        }
+
+        RuntimeHostProfileSessionSnapshot current = Snapshot;
+        if (current.Status.State is RuntimeHostClientSessionState.Disconnected
+            or RuntimeHostClientSessionState.Faulted)
+        {
+            return;
+        }
+
+        try
+        {
+            RemoteRuntimeDiagnosticRecord record = args.Observation.Record;
+            if (!string.Equals(
+                    record.RuntimeHostId,
+                    profile.ExpectedRuntimeHostId.Value,
+                    StringComparison.Ordinal))
+            {
+                throw new InvalidDataException(
+                    "The projected diagnostic identity does not match the profile.");
+            }
+            RemoteRuntimeHostId runtimeHostId =
+                current.Status.RuntimeHostId
+                ?? new RemoteRuntimeHostId(record.RuntimeHostId);
+            diagnostics.Publish(
+                record.TimestampUtc,
+                RemoteRuntimeDiagnosticClientEventMapper.Map(
+                    record,
+                    profile,
+                    runtimeHostId));
+        }
+        catch
+        {
+            PublishDiagnosticStreamState(
+                "RemoteDiagnosticRecordRejected",
+                ClientDiagnosticSeverity.Warning);
+        }
+    }
+
+    private void SessionDiagnosticStreamFaulted(
+        object? sender,
+        RemoteRuntimeDiagnosticStreamFaultedEventArgs args)
+    {
+        PublishDiagnosticStreamState(
+            args.Kind switch
+            {
+                RemoteRuntimeDiagnosticStreamFailureKind.AuthorizationDenied =>
+                    "RemoteDiagnosticAuthorizationDenied",
+                RemoteRuntimeDiagnosticStreamFailureKind.AuthenticationFailed =>
+                    "RemoteDiagnosticAuthenticationFailed",
+                RemoteRuntimeDiagnosticStreamFailureKind.TransportUnavailable =>
+                    "RemoteDiagnosticTransportUnavailable",
+                RemoteRuntimeDiagnosticStreamFailureKind.Gap =>
+                    "RemoteDiagnosticGapDetected",
+                RemoteRuntimeDiagnosticStreamFailureKind.InvalidRemoteContract =>
+                    "RemoteDiagnosticContractRejected",
+                _ => "RemoteDiagnosticSubscriptionFaulted"
+            },
+            ClientDiagnosticSeverity.Warning);
+    }
+
+    private void PublishDiagnosticStreamState(
+        string eventName,
+        ClientDiagnosticSeverity severity)
+    {
+        RuntimeHostProfileSessionSnapshot current = Snapshot;
+        diagnostics?.Publish(
+            ClientDiagnosticLevel.Operational,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Operational,
+                ClientDiagnosticCategory.ClientObservation,
+                eventName,
+                severity: severity,
+                outcome: ClientDiagnosticOutcome.Failed,
+                sessionContext: new ClientDiagnosticSessionContext(
+                    profile.ProfileId,
+                    profile.DisplayName,
+                    profile.ExpectedRuntimeHostId,
+                    current.Status.RuntimeHostId)));
     }
 
     private RuntimeHostProfileSessionSnapshot CreateSnapshot(RuntimeHostClientSessionStatus status, RemoteObservationState? state = null) =>

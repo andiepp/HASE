@@ -159,6 +159,71 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
         Assert.Equal("SessionStopped", Assert.Single(collector.GetSnapshot().Records).EventName);
     }
 
+    [Fact]
+    public async Task DiagnosticSource_ObservationAndFault_ShouldForwardUnchanged()
+    {
+        var inner = new DiagnosticStubSession([]);
+        await using var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher());
+        IRuntimeHostDiagnosticSource source = session;
+        RemoteRuntimeDiagnosticObservedEventArgs? observed = null;
+        RemoteRuntimeDiagnosticStreamFaultedEventArgs? faulted = null;
+        source.DiagnosticObserved += (_, args) => observed = args;
+        source.DiagnosticStreamFaulted += (_, args) => faulted = args;
+        var observation = new RemoteRuntimeDiagnosticObservation(
+            1,
+            new RemoteRuntimeDiagnosticRecord(
+                "runtime-01",
+                1,
+                DateTimeOffset.UnixEpoch,
+                RemoteRuntimeDiagnosticLevel.Bytes,
+                RemoteRuntimeDiagnosticCategory.TransportBytes,
+                "TransportBytesReceived",
+                RemoteRuntimeDiagnosticSeverity.Information,
+                byteSnapshot: new RemoteRuntimeDiagnosticByteSnapshot(
+                    2,
+                    [0x31, 0x0A],
+                    false)));
+        var failure = new IOException("Diagnostic stream ended.");
+
+        RemoteRuntimeDiagnosticObservedEventArgs expectedObserved =
+            inner.PublishDiagnostic(observation);
+        RemoteRuntimeDiagnosticStreamFaultedEventArgs expectedFaulted =
+            inner.FailDiagnostics(
+                RemoteRuntimeDiagnosticStreamFailureKind.TransportUnavailable,
+                failure);
+
+        Assert.Same(expectedObserved, observed);
+        Assert.Same(expectedFaulted, faulted);
+        Assert.Same(observation, observed!.Observation);
+        Assert.Same(failure, faulted!.Exception);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_DiagnosticSource_ShouldUnsubscribeBeforeInnerDisposal()
+    {
+        var inner = new DiagnosticStubSession([]);
+        var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher());
+        IRuntimeHostDiagnosticSource source = session;
+        int observedCount = 0;
+        int faultedCount = 0;
+        source.DiagnosticObserved += (_, _) => observedCount++;
+        source.DiagnosticStreamFaulted += (_, _) => faultedCount++;
+
+        await session.DisposeAsync();
+        inner.PublishDiagnostic(CreateDiagnosticObservation());
+        inner.FailDiagnostics(
+            RemoteRuntimeDiagnosticStreamFailureKind.Unknown,
+            new IOException("Late failure."));
+
+        Assert.Equal(0, observedCount);
+        Assert.Equal(0, faultedCount);
+        Assert.Equal(1, inner.DisposeCount);
+    }
+
     private static async Task ReadAllAsync(IAsyncEnumerable<RemoteObservationState> states)
     {
         await foreach (RemoteObservationState _ in states)
@@ -178,7 +243,20 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
             new RemoteEndpointAttachmentGeneration(
                 Guid.Parse("0a11d9d4-7a02-43be-ae3f-eef9d11e0de8")));
 
-    private sealed class StubSession
+    private static RemoteRuntimeDiagnosticObservation
+        CreateDiagnosticObservation() =>
+        new(
+            1,
+            new RemoteRuntimeDiagnosticRecord(
+                "runtime-01",
+                1,
+                DateTimeOffset.UnixEpoch,
+                RemoteRuntimeDiagnosticLevel.Operational,
+                RemoteRuntimeDiagnosticCategory.RuntimeConnection,
+                "Connected",
+                RemoteRuntimeDiagnosticSeverity.Information));
+
+    private class StubSession
         : IRuntimeHostClientSession,
           IRuntimeHostPropertyReader,
           IRuntimeHostPropertyWriter,
@@ -252,5 +330,40 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
             RemoteCommandExecutionRequest request,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(RemoteCommandOperationResult.Successful());
+    }
+
+    private sealed class DiagnosticStubSession
+        : StubSession,
+          IRuntimeHostDiagnosticSource
+    {
+        public DiagnosticStubSession(
+            IReadOnlyList<RemoteObservationState> states)
+            : base(states)
+        {
+        }
+
+        public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
+            DiagnosticObserved;
+        public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>?
+            DiagnosticStreamFaulted;
+
+        public RemoteRuntimeDiagnosticObservedEventArgs PublishDiagnostic(
+            RemoteRuntimeDiagnosticObservation observation)
+        {
+            var args = new RemoteRuntimeDiagnosticObservedEventArgs(observation);
+            DiagnosticObserved?.Invoke(this, args);
+            return args;
+        }
+
+        public RemoteRuntimeDiagnosticStreamFaultedEventArgs FailDiagnostics(
+            RemoteRuntimeDiagnosticStreamFailureKind kind,
+            Exception exception)
+        {
+            var args = new RemoteRuntimeDiagnosticStreamFaultedEventArgs(
+                kind,
+                exception);
+            DiagnosticStreamFaulted?.Invoke(this, args);
+            return args;
+        }
     }
 }

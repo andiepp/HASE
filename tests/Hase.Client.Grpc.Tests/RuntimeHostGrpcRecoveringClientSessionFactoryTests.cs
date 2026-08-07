@@ -20,6 +20,7 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactoryTests
             @"C:\HASE\client.json");
 
         Assert.IsType<DiagnosticRuntimeHostClientSession>(result);
+        Assert.IsAssignableFrom<IRuntimeHostDiagnosticSource>(result);
         Assert.Equal(
             new[] { "ConfigurationLoadStarted", "ConfigurationLoadCompleted" },
             collector.GetSnapshot().Records.Select(record => record.EventName));

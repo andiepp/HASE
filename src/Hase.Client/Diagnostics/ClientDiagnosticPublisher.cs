@@ -36,7 +36,22 @@ public sealed class ClientDiagnosticPublisher
 
     public void Publish(ClientDiagnosticEvent diagnosticEvent)
     {
+        Publish(
+            utcNow(),
+            diagnosticEvent);
+    }
+
+    public void Publish(
+        DateTimeOffset timestampUtc,
+        ClientDiagnosticEvent diagnosticEvent)
+    {
         ArgumentNullException.ThrowIfNull(diagnosticEvent);
+        if (timestampUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Diagnostic timestamp must be UTC.",
+                nameof(timestampUtc));
+        }
 
         if (!IsEnabled(diagnosticEvent.Level))
         {
@@ -46,7 +61,7 @@ public sealed class ClientDiagnosticPublisher
         ClientDiagnosticRecord record =
             new(
                 Interlocked.Increment(ref sequence),
-                utcNow(),
+                timestampUtc,
                 diagnosticEvent);
 
         try

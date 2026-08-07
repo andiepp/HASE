@@ -120,6 +120,66 @@ public sealed class RuntimeHostProfileSessionControllerTests
         Assert.Null(record.AuthoritativeRuntimeHostId);
     }
 
+    [Fact]
+    public async Task RemoteDiagnostic_ShouldPublishWithHostTimestampAndProfileContext()
+    {
+        BoundedClientDiagnosticCollector collector =
+            new(10, ClientDiagnosticLevel.Bytes);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        var session = new FakeSession();
+        await using var controller = new RuntimeHostProfileSessionController(
+            CreateProfile("first", "host-01"),
+            new FakeFactory(session),
+            diagnostics);
+        await controller.ConnectAsync();
+        session.Publish(CreateState("host-01"));
+        await WaitUntilAsync(() =>
+            controller.Snapshot.Status.State == RuntimeHostClientSessionState.Connected);
+        DateTimeOffset timestamp = new(
+            2026, 8, 7, 10, 20, 30, TimeSpan.Zero);
+
+        session.PublishDiagnostic(
+            new RemoteRuntimeDiagnosticObservation(
+                1,
+                new RemoteRuntimeDiagnosticRecord(
+                    "host-01",
+                    2,
+                    timestamp,
+                    RemoteRuntimeDiagnosticLevel.Protocol,
+                    RemoteRuntimeDiagnosticCategory.ProtocolExchange,
+                    "ScpiQuery",
+                    RemoteRuntimeDiagnosticSeverity.Information)));
+
+        ClientDiagnosticRecord record = collector.GetSnapshot().Records.Last();
+        Assert.Equal("ScpiQuery", record.EventName);
+        Assert.Equal(timestamp, record.TimestampUtc);
+        Assert.Equal("first", record.RuntimeHostProfileId);
+        Assert.Equal("host-01", record.AuthoritativeRuntimeHostId);
+    }
+
+    [Fact]
+    public async Task DiagnosticStreamFailure_ShouldPublishSanitizedStateOnly()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        var session = new FakeSession();
+        await using var controller = new RuntimeHostProfileSessionController(
+            CreateProfile("first", "host-01"),
+            new FakeFactory(session),
+            new ClientDiagnosticPublisher(collector));
+        await controller.ConnectAsync();
+
+        session.FailDiagnostics(
+            RemoteRuntimeDiagnosticStreamFailureKind.AuthorizationDenied,
+            new IOException("sensitive transport detail"));
+
+        ClientDiagnosticRecord record = collector.GetSnapshot().Records.Last();
+        Assert.Equal("RemoteDiagnosticAuthorizationDenied", record.EventName);
+        Assert.DoesNotContain(
+            "sensitive",
+            string.Join(" ", record.Metadata.Values),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static RuntimeHostProfile CreateProfile(string id, string host) =>
         new(new RuntimeHostProfileId(id), id, new RemoteRuntimeHostId(host));
 
@@ -143,10 +203,14 @@ public sealed class RuntimeHostProfileSessionControllerTests
         { RequestedProfileId = profileId; return Task.FromResult<IRuntimeHostClientSession>(session); }
     }
 
-    private sealed class FakeSession : IRuntimeHostClientSession
+    private sealed class FakeSession
+        : IRuntimeHostClientSession,
+          IRuntimeHostDiagnosticSource
     {
         private readonly Channel<RemoteObservationState> states = Channel.CreateUnbounded<RemoteObservationState>();
         public event EventHandler<RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged;
+        public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>? DiagnosticObserved;
+        public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>? DiagnosticStreamFaulted;
         public RuntimeHostClientSessionStatus Status { get; private set; } = new(RuntimeHostClientSessionState.Disconnected);
         public RemoteObservationState? CurrentState { get; private set; }
         public bool WasCancelled { get; private set; }
@@ -159,6 +223,20 @@ public sealed class RuntimeHostProfileSessionControllerTests
             StatusChanged?.Invoke(this, new(previous, Status));
             states.Writer.TryWrite(state);
         }
+
+        public void PublishDiagnostic(RemoteRuntimeDiagnosticObservation observation) =>
+            DiagnosticObserved?.Invoke(
+                this,
+                new RemoteRuntimeDiagnosticObservedEventArgs(observation));
+
+        public void FailDiagnostics(
+            RemoteRuntimeDiagnosticStreamFailureKind kind,
+            Exception exception) =>
+            DiagnosticStreamFaulted?.Invoke(
+                this,
+                new RemoteRuntimeDiagnosticStreamFaultedEventArgs(
+                    kind,
+                    exception));
 
         public async IAsyncEnumerable<RemoteObservationState> ReadStatesAsync(
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)

@@ -1,5 +1,41 @@
 # Project Status
 
+## Completed architectural objective — ADR-0049
+
+**ADR-0049 — Authorized Remote Runtime Diagnostics — implemented, physically
+validated, and closed at 5,726 tests**
+
+- Runtime Host diagnostics are projected through an explicit, live-only,
+  bounded stream. The local capture ceiling and configured remote ceiling both
+  apply; exact byte snapshots remain bounded to 256 captured bytes.
+- Every subscription requires the authenticated principal to hold
+  `diagnostics.subscribe`. Missing or absent grants fail closed without
+  disclosing policy, identity, credential, certificate, address, or exception
+  details.
+- Each Client profile owns an independent stream and bounded recovery boundary.
+  Diagnostics never retry or replay Property writes or Commands and never
+  change uncertain mutation outcomes.
+- Projected records retain authoritative Host timestamps, profile/Host scope,
+  endpoint and generation scope, correlation metadata, and exact bounded bytes.
+  Local Client activity remains distinguishable by its absent remote profile.
+- Physical validation confirmed authorized Operational, Protocol, and Bytes
+  delivery, fragmented SCPI response preservation, request `0D`, final receive
+  chunk `0A`, reconnect without replay or duplicates, and unaffected passive
+  KEL-103 recovery.
+- Removing only `diagnostics.subscribe` produced sanitized denial while normal
+  inventory and authoritative reads continued. Atomic policy and profile
+  restoration returned the Host to remote diagnostics disabled with ordinary
+  operation intact.
+- Validation ended in authoritative CC/OFF state with the external laboratory
+  supply output OFF.
+
+### Next
+
+Select the next architectural objective through a separately approved decision
+or increment. ADR-0049 is closed.
+
+---
+
 ## Completed architectural objective — ADR-0048
 
 **ADR-0048 — SCPI Protocol and Bytes Diagnostics — implemented, physically
@@ -1440,7 +1476,7 @@ Client boundary remains unchanged. ADR-0048 closes at 5,533 tests.
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0048 are accepted.
+ADR-0001 through ADR-0049 are accepted.
 
 Relevant recent decisions:
 

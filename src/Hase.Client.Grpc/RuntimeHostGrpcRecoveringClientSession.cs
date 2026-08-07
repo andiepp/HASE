@@ -12,7 +12,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
       IRuntimeHostPropertyReader,
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
-      IRuntimeHostEventSource
+      IRuntimeHostEventSource,
+      IRuntimeHostDiagnosticSource
 {
     private readonly object gate =
         new();
@@ -34,6 +35,10 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged;
 
     public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
+    public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
+        DiagnosticObserved;
+    public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>?
+        DiagnosticStreamFaulted;
 
     public RuntimeHostGrpcRecoveringClientSession(
         RuntimeHostPrivateNetworkClientOptions options,
@@ -149,6 +154,13 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
                     {
                         eventSource.EventOccurred +=
                             SessionEventOccurred;
+                    }
+                    if (session is IRuntimeHostDiagnosticSource diagnosticSource)
+                    {
+                        diagnosticSource.DiagnosticObserved +=
+                            SessionDiagnosticObserved;
+                        diagnosticSource.DiagnosticStreamFaulted +=
+                            SessionDiagnosticStreamFaulted;
                     }
                     await session.ConnectAsync(
                             sessionToken)
@@ -480,6 +492,20 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
             eventArgs);
     }
 
+    private void SessionDiagnosticObserved(
+        object? sender,
+        RemoteRuntimeDiagnosticObservedEventArgs eventArgs)
+    {
+        DiagnosticObserved?.Invoke(this, eventArgs);
+    }
+
+    private void SessionDiagnosticStreamFaulted(
+        object? sender,
+        RemoteRuntimeDiagnosticStreamFaultedEventArgs eventArgs)
+    {
+        DiagnosticStreamFaulted?.Invoke(this, eventArgs);
+    }
+
     private void UnsubscribeEvents(
         IRuntimeHostGrpcRecoverableSession session)
     {
@@ -487,6 +513,13 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         {
             eventSource.EventOccurred -=
                 SessionEventOccurred;
+        }
+        if (session is IRuntimeHostDiagnosticSource diagnosticSource)
+        {
+            diagnosticSource.DiagnosticObserved -=
+                SessionDiagnosticObserved;
+            diagnosticSource.DiagnosticStreamFaulted -=
+                SessionDiagnosticStreamFaulted;
         }
     }
 

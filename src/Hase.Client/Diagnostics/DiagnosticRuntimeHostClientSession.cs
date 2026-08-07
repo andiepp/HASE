@@ -11,7 +11,8 @@ public sealed class DiagnosticRuntimeHostClientSession
       IRuntimeHostPropertyReader,
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
-      IRuntimeHostEventSource
+      IRuntimeHostEventSource,
+      IRuntimeHostDiagnosticSource
 {
     private readonly IRuntimeHostClientSession inner;
     private readonly ClientDiagnosticPublisher diagnostics;
@@ -29,10 +30,20 @@ public sealed class DiagnosticRuntimeHostClientSession
         {
             eventSource.EventOccurred += InnerEventOccurred;
         }
+        if (inner is IRuntimeHostDiagnosticSource diagnosticSource)
+        {
+            diagnosticSource.DiagnosticObserved += InnerDiagnosticObserved;
+            diagnosticSource.DiagnosticStreamFaulted +=
+                InnerDiagnosticStreamFaulted;
+        }
     }
 
     public event EventHandler<RuntimeHostClientSessionStatusChangedEventArgs>? StatusChanged;
     public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
+    public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
+        DiagnosticObserved;
+    public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>?
+        DiagnosticStreamFaulted;
 
     public RuntimeHostClientSessionStatus Status => inner.Status;
     public RemoteObservationState? CurrentState => inner.CurrentState;
@@ -268,6 +279,12 @@ public sealed class DiagnosticRuntimeHostClientSession
         {
             eventSource.EventOccurred -= InnerEventOccurred;
         }
+        if (inner is IRuntimeHostDiagnosticSource diagnosticSource)
+        {
+            diagnosticSource.DiagnosticObserved -= InnerDiagnosticObserved;
+            diagnosticSource.DiagnosticStreamFaulted -=
+                InnerDiagnosticStreamFaulted;
+        }
 
         await inner.DisposeAsync().ConfigureAwait(false);
         Publish(ClientDiagnosticCategory.ClientLifecycle, "SessionStopped");
@@ -397,6 +414,20 @@ public sealed class DiagnosticRuntimeHostClientSession
                 ["ObservationSequence"] = observation.Sequence.Value.ToString()
             });
         EventOccurred?.Invoke(this, eventArgs);
+    }
+
+    private void InnerDiagnosticObserved(
+        object? sender,
+        RemoteRuntimeDiagnosticObservedEventArgs eventArgs)
+    {
+        DiagnosticObserved?.Invoke(this, eventArgs);
+    }
+
+    private void InnerDiagnosticStreamFaulted(
+        object? sender,
+        RemoteRuntimeDiagnosticStreamFaultedEventArgs eventArgs)
+    {
+        DiagnosticStreamFaulted?.Invoke(this, eventArgs);
     }
 
     private void PublishPropertyTarget(

@@ -554,6 +554,28 @@ activity. Runtime Host southbound SCPI snapshots are not transferred or
 reconstructed as Client-captured bytes. The validated automated baseline is
 5,533 tests passing.
 
+## ADR-0049 authorized remote Runtime Host diagnostics
+
+ADR-0049 projects the established Runtime Host diagnostic records through an
+explicitly authorized, bounded, live-only stream. It adds no KEL-103 operation
+and does not bypass the published connection-slot or serialized SCPI-session
+gates. Local and remote capture ceilings both apply, and exact Bytes remain
+bounded to 256 captured bytes.
+
+Physical validation used one passive health exchange and one authoritative
+voltage Property read. Authorized records arrived in Laptop Client Diagnostics
+with Desktop Runtime Host and KEL-103 endpoint scope. The request ended in
+`0D`. The response arrived in exact serial chunks; only its final correlated
+chunk ended in `0A`. Protocol metadata remained payload-free.
+
+Client reconnect opened a fresh stream without replay or duplicate records.
+An externally prepared policy omitting only `diagnostics.subscribe` produced a
+sanitized denial and no projected Host records while inventory and Property
+reads remained available. Exact policy restoration and pre-migration profile
+restoration returned remote diagnostics to disabled. Passive USB loss detection
+and authoritative recovery remained unchanged. Validation ended in CC/OFF with
+the external laboratory supply output OFF at 5,726 passing tests.
+
 ## Exclusions
 
 This report does not validate:
@@ -563,7 +585,6 @@ This report does not validate:
 - saved configurations;
 - triggers;
 - LIST, protection, battery, or dynamic modes;
-- authenticated remote projection of Runtime Host southbound diagnostics;
 - automatic discovery;
 - generic VISA, USBTMC, or GPIB; or
 - arbitrary operator-entered SCPI.

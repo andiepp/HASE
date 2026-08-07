@@ -18,9 +18,14 @@ public sealed class RuntimeHostGrpcClientSession
       IRuntimeHostPropertyReader,
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
-      IRuntimeHostEventSource
+      IRuntimeHostEventSource,
+      IRuntimeHostDiagnosticSource
 {
     public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
+    public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
+        DiagnosticObserved;
+    public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>?
+        DiagnosticStreamFaulted;
 
     private readonly object gate =
         new();
@@ -48,6 +53,7 @@ public sealed class RuntimeHostGrpcClientSession
     private RemoteObservationState? currentState;
     private IRuntimeHostGrpcSessionResources? resources;
     private Task? observationTask;
+    private Task? diagnosticTask;
     private bool started;
     private bool disposed;
 
@@ -201,6 +207,10 @@ public sealed class RuntimeHostGrpcClientSession
                     ConsumeObservationsAsync(
                         createdResources,
                         initialState,
+                        sessionCancellation.Token);
+                diagnosticTask =
+                    ConsumeDiagnosticsAsync(
+                        createdResources,
                         sessionCancellation.Token);
             }
         }
@@ -389,6 +399,7 @@ public sealed class RuntimeHostGrpcClientSession
     public async Task DisconnectAsync()
     {
         Task? task;
+        Task? diagnostics;
 
         lock (gate)
         {
@@ -413,6 +424,8 @@ public sealed class RuntimeHostGrpcClientSession
 
             task =
                 observationTask;
+            diagnostics =
+                diagnosticTask;
         }
 
         sessionCancellation.Cancel();
@@ -439,6 +452,23 @@ public sealed class RuntimeHostGrpcClientSession
             await DisposeResourcesAsync()
                 .ConfigureAwait(
                     false);
+        }
+
+        if (diagnostics is not null)
+        {
+            try
+            {
+                await diagnostics.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+                when (sessionCancellation.IsCancellationRequested)
+            {
+            }
+            catch
+            {
+                // The failure was already projected through
+                // DiagnosticStreamFaulted.
+            }
         }
 
         lock (gate)
@@ -548,6 +578,110 @@ public sealed class RuntimeHostGrpcClientSession
         }
     }
 
+    private async Task ConsumeDiagnosticsAsync(
+        IRuntimeHostGrpcSessionResources ownedResources,
+        CancellationToken cancellationToken)
+    {
+        TimeSpan[] recoverySchedule =
+        [
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(2),
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(10)
+        ];
+        int recoveryAttempt = 0;
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await using IRemoteRuntimeDiagnosticStream stream =
+                    ownedResources.CreateDiagnosticStream();
+                await foreach (RemoteRuntimeDiagnosticObservation observation
+                    in stream.ReadAsync(cancellationToken)
+                        .WithCancellation(cancellationToken)
+                        .ConfigureAwait(false))
+                {
+                    DiagnosticObserved?.Invoke(
+                        this,
+                        new RemoteRuntimeDiagnosticObservedEventArgs(observation));
+                }
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new IOException(
+                        "The projected diagnostic stream ended.");
+                }
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception exception)
+            {
+                DiagnosticStreamFaulted?.Invoke(
+                    this,
+                    new RemoteRuntimeDiagnosticStreamFaultedEventArgs(
+                        ClassifyDiagnosticStreamFailure(exception),
+                        exception));
+                if (!ShouldRecoverDiagnosticStream(exception)
+                    || recoveryAttempt >= recoverySchedule.Length)
+                {
+                    return;
+                }
+
+                TimeSpan delay = recoverySchedule[recoveryAttempt++];
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+        }
+    }
+
+    private static bool ShouldRecoverDiagnosticStream(Exception exception) =>
+        exception is not global::Grpc.Core.RpcException
+        {
+            StatusCode: global::Grpc.Core.StatusCode.PermissionDenied
+                or global::Grpc.Core.StatusCode.Unauthenticated
+                or global::Grpc.Core.StatusCode.InvalidArgument
+                or global::Grpc.Core.StatusCode.Unimplemented
+        };
+
+    private static RemoteRuntimeDiagnosticStreamFailureKind
+        ClassifyDiagnosticStreamFailure(Exception exception) =>
+        exception switch
+        {
+            global::Grpc.Core.RpcException
+            {
+                StatusCode: global::Grpc.Core.StatusCode.PermissionDenied
+            } => RemoteRuntimeDiagnosticStreamFailureKind.AuthorizationDenied,
+            global::Grpc.Core.RpcException
+            {
+                StatusCode: global::Grpc.Core.StatusCode.Unauthenticated
+            } => RemoteRuntimeDiagnosticStreamFailureKind.AuthenticationFailed,
+            global::Grpc.Core.RpcException
+            {
+                StatusCode: global::Grpc.Core.StatusCode.Unavailable
+                    or global::Grpc.Core.StatusCode.DeadlineExceeded
+            } => RemoteRuntimeDiagnosticStreamFailureKind.TransportUnavailable,
+            InvalidDataException exceptionWithGap
+                when exceptionWithGap.Message.Contains(
+                    "gap",
+                    StringComparison.OrdinalIgnoreCase) =>
+                RemoteRuntimeDiagnosticStreamFailureKind.Gap,
+            InvalidDataException =>
+                RemoteRuntimeDiagnosticStreamFailureKind.InvalidRemoteContract,
+            _ => RemoteRuntimeDiagnosticStreamFailureKind.Unknown
+        };
+
     private async ValueTask DisposeResourcesAsync()
     {
         IRuntimeHostGrpcSessionResources? resourcesToDispose;
@@ -614,6 +748,8 @@ internal interface IRuntimeHostGrpcSessionResources
     {
         get;
     }
+
+    IRemoteRuntimeDiagnosticStream CreateDiagnosticStream();
 }
 
 internal interface IRuntimeHostGrpcRecoverableSession
@@ -677,6 +813,9 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
     public IRuntimeHostGrpcCommandClient CommandClient =>
         commandClient;
 
+    public IRemoteRuntimeDiagnosticStream CreateDiagnosticStream() =>
+        new RuntimeHostGrpcDiagnosticStream(deployment.Client.Client);
+
     public static RuntimeHostPrivateNetworkSessionResources Create(
         RuntimeHostPrivateNetworkClientOptions options)
     {
@@ -715,8 +854,7 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
         try
         {
             await observationStream.DisposeAsync()
-                .ConfigureAwait(
-                    false);
+                .ConfigureAwait(false);
         }
         finally
         {

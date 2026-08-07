@@ -26,7 +26,8 @@ public sealed class ClientDiagnosticEvent
         TimeSpan? duration = null,
         ClientDiagnosticOutcome? outcome = null,
         IReadOnlyDictionary<string, string>? metadata = null,
-        ClientDiagnosticSessionContext? sessionContext = null)
+        ClientDiagnosticSessionContext? sessionContext = null,
+        RemoteRuntimeDiagnosticByteSnapshot? byteSnapshot = null)
     {
         ValidateEnum(level, nameof(level));
         ValidateEnum(category, nameof(category));
@@ -46,6 +47,12 @@ public sealed class ClientDiagnosticEvent
                 duration,
                 "Duration must not be negative.");
         }
+        if (byteSnapshot is not null && level != ClientDiagnosticLevel.Bytes)
+        {
+            throw new ArgumentException(
+                "A byte snapshot requires the Bytes diagnostic level.",
+                nameof(byteSnapshot));
+        }
 
         Level = level;
         Category = category;
@@ -57,6 +64,7 @@ public sealed class ClientDiagnosticEvent
         Outcome = outcome;
         Metadata = CopyMetadata(metadata);
         SessionContext = sessionContext;
+        ByteSnapshot = byteSnapshot;
     }
 
     public ClientDiagnosticLevel Level { get; }
@@ -73,6 +81,7 @@ public sealed class ClientDiagnosticEvent
     public ClientDiagnosticOutcome? Outcome { get; }
     public IReadOnlyDictionary<string, string> Metadata { get; }
     public ClientDiagnosticSessionContext? SessionContext { get; }
+    public RemoteRuntimeDiagnosticByteSnapshot? ByteSnapshot { get; }
 
     private static IReadOnlyDictionary<string, string> CopyMetadata(
         IReadOnlyDictionary<string, string>? metadata)

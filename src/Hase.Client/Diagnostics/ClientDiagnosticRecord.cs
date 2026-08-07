@@ -34,6 +34,7 @@ public sealed record ClientDiagnosticRecord
         Outcome = diagnosticEvent.Outcome;
         Metadata = diagnosticEvent.Metadata;
         SessionContext = diagnosticEvent.SessionContext;
+        ByteSnapshot = diagnosticEvent.ByteSnapshot;
     }
 
     public long Sequence { get; }
@@ -52,6 +53,15 @@ public sealed record ClientDiagnosticRecord
     public ClientDiagnosticOutcome? Outcome { get; }
     public IReadOnlyDictionary<string, string> Metadata { get; }
     public ClientDiagnosticSessionContext? SessionContext { get; }
+    public RemoteRuntimeDiagnosticByteSnapshot? ByteSnapshot { get; }
+    public bool HasByteSnapshot => ByteSnapshot is not null;
+    public string ByteSummary => ByteSnapshot is null
+        ? string.Empty
+        : $"{ByteSnapshot.CapturedByteCount}/{ByteSnapshot.OriginalByteCount} bytes"
+            + (ByteSnapshot.IsTruncated ? " (truncated)" : string.Empty);
+    public string ByteHex => ByteSnapshot is null
+        ? string.Empty
+        : Convert.ToHexString(ByteSnapshot.ToArray());
     public string? RuntimeHostProfileId => SessionContext?.ProfileId.Value;
     public string? RuntimeHostProfileDisplayName => SessionContext?.ProfileDisplayName;
     public string? ExpectedRuntimeHostId => SessionContext?.ExpectedRuntimeHostId.Value;

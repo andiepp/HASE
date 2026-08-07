@@ -53,6 +53,21 @@ public sealed class ClientDiagnosticPublisherTests
         Assert.False(publisher.IsEnabled(ClientDiagnosticLevel.Operational));
     }
 
+    [Fact]
+    public void Publish_ExplicitUtcTimestamp_ShouldPreserveSourceTime()
+    {
+        BoundedClientDiagnosticCollector collector = new(10);
+        ClientDiagnosticPublisher publisher = new(collector);
+        DateTimeOffset timestamp = new(
+            2026, 8, 7, 10, 20, 30, TimeSpan.Zero);
+
+        publisher.Publish(timestamp, CreateEvent("Remote"));
+
+        Assert.Equal(
+            timestamp,
+            Assert.Single(collector.GetSnapshot().Records).TimestampUtc);
+    }
+
     private static ClientDiagnosticEvent CreateEvent(string name) =>
         new(
             ClientDiagnosticLevel.Operational,

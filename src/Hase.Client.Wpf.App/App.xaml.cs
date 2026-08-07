@@ -93,7 +93,7 @@ public partial class App
         containerRegistry.RegisterSingleton<MainWindowViewModel>();
         var diagnosticCollector = new BoundedClientDiagnosticCollector(
             2000,
-            ClientDiagnosticLevel.Protocol);
+            ClientDiagnosticLevel.Bytes);
         var diagnosticPublisher = new ClientDiagnosticPublisher(diagnosticCollector);
         containerRegistry.RegisterInstance(diagnosticCollector);
         containerRegistry.RegisterInstance(diagnosticPublisher);

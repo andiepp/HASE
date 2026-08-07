@@ -1,3 +1,4 @@
+using Hase.Client;
 using Hase.Client.Diagnostics;
 using Hase.Client.Wpf.ViewModels;
 
@@ -25,7 +26,7 @@ public sealed class ClientDiagnosticsViewModelTests
     }
 
     [Fact]
-    public void BytesFilter_ShowsAvailableLevelsAndExplicitUnavailableMessage()
+    public void BytesFilter_ShowsAvailableProjectedLevels()
     {
         BoundedClientDiagnosticCollector collector =
             new(10, ClientDiagnosticLevel.Protocol);
@@ -35,8 +36,8 @@ public sealed class ClientDiagnosticsViewModelTests
 
         viewModel.SelectedLevelFilter = nameof(ClientDiagnosticLevel.Bytes);
 
-        Assert.True(viewModel.IsBytesUnavailable);
-        Assert.Contains("unavailable", viewModel.BytesUnavailableMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.False(viewModel.IsBytesUnavailable);
+        Assert.Empty(viewModel.BytesUnavailableMessage);
         Assert.Single(viewModel.Records);
     }
 
@@ -212,6 +213,27 @@ public sealed class ClientDiagnosticsViewModelTests
         var viewModel = new ClientDiagnosticsViewModel(collector);
 
         Assert.Equal($"Alpha: 1{Environment.NewLine}Zeta: 2", viewModel.MetadataText);
+    }
+
+    [Fact]
+    public void SelectedRemoteBytes_ShouldExposeSummaryAndHex()
+    {
+        BoundedClientDiagnosticCollector collector =
+            new(10, ClientDiagnosticLevel.Bytes);
+        new ClientDiagnosticPublisher(collector).Publish(
+            new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Bytes,
+                ClientDiagnosticCategory.NorthboundBytes,
+                "BytesReceived",
+                byteSnapshot: new RemoteRuntimeDiagnosticByteSnapshot(
+                    4,
+                    [0x01, 0xAB],
+                    true)));
+
+        var viewModel = new ClientDiagnosticsViewModel(collector);
+
+        Assert.Equal("2/4 bytes (truncated)", viewModel.SelectedByteSummary);
+        Assert.Equal("01AB", viewModel.SelectedByteHex);
     }
 
     private static ClientDiagnosticEvent CreateEvent(

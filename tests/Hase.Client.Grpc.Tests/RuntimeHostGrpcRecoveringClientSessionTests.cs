@@ -8,6 +8,39 @@ namespace Hase.Client.Grpc.Tests;
 public sealed class RuntimeHostGrpcRecoveringClientSessionTests
 {
     [Fact]
+    public async Task DiagnosticObservation_ShouldForwardFromActiveSession()
+    {
+        ScriptedSession session = ScriptedSession.WithStates(
+            [CreateState("runtime-01")]);
+        await using RuntimeHostGrpcRecoveringClientSession recovering =
+            CreateRecoveringSession(new Queue<ScriptedSession>([session]), []);
+        var observed = new TaskCompletionSource<RemoteRuntimeDiagnosticObservation>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        recovering.DiagnosticObserved += (_, args) =>
+            observed.TrySetResult(args.Observation);
+        await using IAsyncEnumerator<RemoteObservationState> states =
+            recovering.ReadStatesAsync().GetAsyncEnumerator();
+        Assert.True(await states.MoveNextAsync());
+
+        session.PublishDiagnostic(
+            new RemoteRuntimeDiagnosticObservation(
+                1,
+                new RemoteRuntimeDiagnosticRecord(
+                    "runtime-01",
+                    1,
+                    DateTimeOffset.UnixEpoch,
+                    RemoteRuntimeDiagnosticLevel.Operational,
+                    RemoteRuntimeDiagnosticCategory.RuntimeConnection,
+                    "Connected",
+                    RemoteRuntimeDiagnosticSeverity.Information)));
+
+        Assert.Equal(
+            "Connected",
+            (await observed.Task.WaitAsync(TimeSpan.FromSeconds(2)))
+                .Record.EventName);
+    }
+
+    [Fact]
     public async Task ReadStatesAsync_ShouldPublishConnectionTransitions()
     {
         var session =
@@ -347,7 +380,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
     }
 
     private sealed class ScriptedSession
-        : IRuntimeHostGrpcRecoverableSession
+        : IRuntimeHostGrpcRecoverableSession,
+          IRuntimeHostDiagnosticSource
     {
         private readonly Exception? connectFailure;
         private readonly IReadOnlyList<RemoteObservationState> states;
@@ -380,6 +414,11 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
             private set;
         }
 
+        public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
+            DiagnosticObserved;
+        public event EventHandler<RemoteRuntimeDiagnosticStreamFaultedEventArgs>?
+            DiagnosticStreamFaulted;
+
         public Task Completion =>
             Task.CompletedTask;
 
@@ -407,6 +446,19 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
                 states,
                 streamFailure);
         }
+
+        public void PublishDiagnostic(
+            RemoteRuntimeDiagnosticObservation observation) =>
+            DiagnosticObserved?.Invoke(
+                this,
+                new RemoteRuntimeDiagnosticObservedEventArgs(observation));
+
+        public void FailDiagnostics(Exception exception) =>
+            DiagnosticStreamFaulted?.Invoke(
+                this,
+                new RemoteRuntimeDiagnosticStreamFaultedEventArgs(
+                    RemoteRuntimeDiagnosticStreamFailureKind.Unknown,
+                    exception));
 
         public Task ConnectAsync(
             CancellationToken cancellationToken = default)

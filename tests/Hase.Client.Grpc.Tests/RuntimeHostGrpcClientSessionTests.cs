@@ -138,6 +138,36 @@ public sealed class RuntimeHostGrpcClientSessionTests
     }
 
     [Fact]
+    public async Task DiagnosticObservation_ShouldPublishIndependentlyFromState()
+    {
+        var resources = new StubSessionResources(CreateInitialSnapshot());
+        await using var session = CreateSession(resources);
+        var observed = new TaskCompletionSource<RemoteRuntimeDiagnosticObservation>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        session.DiagnosticObserved += (_, args) =>
+            observed.TrySetResult(args.Observation);
+        await session.ConnectAsync();
+
+        resources.PublishDiagnostic(
+            new RemoteRuntimeDiagnosticObservation(
+                1,
+                new RemoteRuntimeDiagnosticRecord(
+                    "runtime-01",
+                    1,
+                    DateTimeOffset.UnixEpoch,
+                    RemoteRuntimeDiagnosticLevel.Operational,
+                    RemoteRuntimeDiagnosticCategory.RuntimeConnection,
+                    "Connected",
+                    RemoteRuntimeDiagnosticSeverity.Information)));
+
+        Assert.Equal(
+            "Connected",
+            (await observed.Task.WaitAsync(TimeSpan.FromSeconds(2)))
+                .Record.EventName);
+        Assert.Equal(0UL, session.CurrentState!.LastSequence!.Value);
+    }
+
+    [Fact]
     public async Task ConnectAsync_ShouldForwardConnectionCancellationToken()
     {
         var resources =
@@ -416,6 +446,7 @@ public sealed class RuntimeHostGrpcClientSessionTests
         : IRuntimeHostGrpcSessionResources
     {
         private readonly StubObservationStream observationStream;
+        private readonly StubDiagnosticStream diagnosticStream = new();
 
         public StubSessionResources(
             RemoteObservationInitialSnapshot initialSnapshot)
@@ -440,6 +471,9 @@ public sealed class RuntimeHostGrpcClientSessionTests
         } =
             new StubCommandClient();
 
+        public IRemoteRuntimeDiagnosticStream CreateDiagnosticStream() =>
+            diagnosticStream;
+
         public CancellationToken InitialCancellationToken =>
             observationStream.InitialCancellationToken;
 
@@ -459,6 +493,10 @@ public sealed class RuntimeHostGrpcClientSessionTests
                 observation);
         }
 
+        public void PublishDiagnostic(
+            RemoteRuntimeDiagnosticObservation observation) =>
+            diagnosticStream.Publish(observation);
+
         public void Complete()
         {
             observationStream.Complete();
@@ -477,6 +515,28 @@ public sealed class RuntimeHostGrpcClientSessionTests
 
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class StubDiagnosticStream
+        : IRemoteRuntimeDiagnosticStream
+    {
+        private readonly Channel<RemoteRuntimeDiagnosticObservation> observations =
+            Channel.CreateUnbounded<RemoteRuntimeDiagnosticObservation>();
+
+        public void Publish(RemoteRuntimeDiagnosticObservation observation) =>
+            observations.Writer.TryWrite(observation);
+
+        public async IAsyncEnumerable<RemoteRuntimeDiagnosticObservation> ReadAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            await foreach (RemoteRuntimeDiagnosticObservation observation
+                in observations.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return observation;
+            }
+        }
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
     private sealed class StubPropertyClient

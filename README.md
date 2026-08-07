@@ -41,8 +41,12 @@ changes.
   - Live Event feed with endpoint and instrument attribution
   - Separate bounded diagnostics window for client lifecycle and structured
     northbound activity
+  - Explicitly authorized, profile-scoped projection of bounded Runtime Host
+    Operational, Protocol, and Bytes diagnostics
+  - Exact projected byte summaries and hexadecimal content with Host timestamp,
+    endpoint scope, original length, captured length, and truncation state
   - Presentation Pause/Resume without interrupting capture or client operation
-  - Truthful Bytes-unavailable explanation at the client application boundary
+  - Independent live-only diagnostic subscriptions without mutation replay
 
 ## Validated hardware
 

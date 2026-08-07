@@ -101,6 +101,7 @@
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock FontWeight="SemiBold" Text="Operation" /><TextBlock Grid.Column="1" Text="{Binding SelectedRecord.OperationId}" />
@@ -113,6 +114,8 @@
                 <TextBlock Grid.Row="7" FontWeight="SemiBold" Text="Profile" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding SelectedRecord.RuntimeHostProfileDisplayName}" />
                 <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Expected host" /><TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding SelectedRecord.ExpectedRuntimeHostId}" />
                 <TextBlock Grid.Row="9" FontWeight="SemiBold" Text="Authoritative host" /><TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding SelectedRecord.AuthoritativeRuntimeHostId}" />
+                <TextBlock Grid.Row="10" FontWeight="SemiBold" Text="Byte snapshot" /><TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding SelectedByteSummary}" />
+                <TextBlock Grid.Row="11" FontWeight="SemiBold" Text="Bytes (hex)" /><TextBlock Grid.Row="11" Grid.Column="1" FontFamily="Consolas" Text="{Binding SelectedByteHex}" TextWrapping="Wrap" />
             </Grid>
         </ScrollViewer>
     </Grid>

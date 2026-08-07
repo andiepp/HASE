@@ -1478,5 +1478,40 @@ KEL-103 final state CC/OFF; external laboratory supply output OFF
 
 - Python Automation Boundary.
 - Diagnostic Export and Offline Analysis.
-- Authenticated Runtime Host Diagnostics Projection.
 - Remote Media Feedback.
+
+## Completed objective — ADR-0049 Authorized Remote Runtime Diagnostics
+
+**Status:** [Completed] Implemented, automated, physically validated, and closed
+at 5,726 tests
+
+ADR-0049 adds an explicitly authorized, bounded, live-only projection of
+Runtime Host diagnostics into the existing multi-host Client diagnostics
+window. Local and remote disclosure ceilings both apply. Every subscription
+requires `diagnostics.subscribe`; denial is sanitized and independent of
+inventory, Property, Command, Event, and endpoint recovery operation.
+
+The gRPC adapter strictly validates projected records and stream sequence. Each
+profile owns an independent subscription and bounded recovery schedule. Fresh
+subscriptions replay nothing, and diagnostic recovery never retries or replays
+a mutation. Projected records retain Host timestamp, profile and endpoint
+scope, correlation, original and captured byte counts, truncation, and exact
+bounded hexadecimal content.
+
+Physical validation confirmed authorized Operational, Protocol, and Bytes
+delivery for passive KEL-103 health and one authoritative voltage read. The
+request ended in `0D`; a fragmented response retained exact chunks and its final
+correlated chunk ended in `0A`. Reconnect produced no replay or duplicate.
+Removing only the diagnostic grant caused sanitized denial without affecting
+inventory or authoritative reads. Exact policy restoration and pre-migration
+profile restoration returned remote diagnostics to disabled while ordinary
+operation remained available.
+
+Current baseline:
+
+```text
+5,726 automated tests pass
+ADR-0049 Authorized Remote Runtime Diagnostics closed
+Remote diagnostics disabled after supervised profile restoration
+KEL-103 final state CC/OFF; external laboratory supply output OFF
+```

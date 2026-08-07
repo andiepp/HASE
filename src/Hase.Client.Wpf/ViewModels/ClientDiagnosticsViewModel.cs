@@ -50,9 +50,9 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public string PresentationState => IsPaused ? "Paused" : "Running";
     public int PendingRecordCount => pendingRecordCount;
     public bool IsBytesUnavailable =>
-        string.Equals(SelectedLevelFilter, nameof(ClientDiagnosticLevel.Bytes), StringComparison.Ordinal);
+        false;
     public string BytesUnavailableMessage => IsBytesUnavailable
-        ? "Exact gRPC / HTTP/2 / TLS transport bytes are unavailable at the client application boundary. No reconstructed values are presented as captured bytes."
+        ? ""
         : string.Empty;
 
     public string SelectedLevelFilter
@@ -114,9 +114,17 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
             if (SetProperty(ref selectedRecord, value))
             {
                 RaisePropertyChanged(nameof(MetadataText));
+                RaisePropertyChanged(nameof(SelectedByteSummary));
+                RaisePropertyChanged(nameof(SelectedByteHex));
             }
         }
     }
+
+    public string SelectedByteSummary =>
+        SelectedRecord?.ByteSummary ?? string.Empty;
+
+    public string SelectedByteHex =>
+        SelectedRecord?.ByteHex ?? string.Empty;
 
     public string MetadataText => SelectedRecord is null
         ? string.Empty

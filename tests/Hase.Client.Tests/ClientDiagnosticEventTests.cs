@@ -5,6 +5,21 @@ namespace Hase.Client.Tests;
 public sealed class ClientDiagnosticEventTests
 {
     [Fact]
+    public void Constructor_ByteSnapshotWithoutBytesLevel_ShouldThrow()
+    {
+        Assert.Throws<ArgumentException>(
+            "byteSnapshot",
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Protocol,
+                ClientDiagnosticCategory.NorthboundBytes,
+                "Bytes",
+                byteSnapshot: new RemoteRuntimeDiagnosticByteSnapshot(
+                    1,
+                    [0x01],
+                    false)));
+    }
+
+    [Fact]
     public void Constructor_CopiesAndExposesStructuredMetadata()
     {
         Dictionary<string, string> metadata = new()
