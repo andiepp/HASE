@@ -5,6 +5,8 @@ public sealed class ScpiTextSession : IScpiTextSession
     private readonly IScpiByteStream stream;
     private readonly ScpiTextFramingOptions options;
     private readonly ScpiTextRequestFormatter formatter;
+    private readonly IScpiDiagnosticObserver? diagnosticObserver;
+    private readonly TimeProvider timeProvider;
     private readonly SemaphoreSlim exchangeGate = new(1, 1);
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private readonly object disposalLock = new();
@@ -18,6 +20,25 @@ public sealed class ScpiTextSession : IScpiTextSession
 
         this.stream = stream;
         this.options = options;
+        diagnosticObserver = null;
+        timeProvider = TimeProvider.System;
+        formatter = new ScpiTextRequestFormatter(options);
+    }
+
+    public ScpiTextSession(
+        IScpiByteStream stream,
+        ScpiTextFramingOptions options,
+        IScpiDiagnosticObserver diagnosticObserver,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(diagnosticObserver);
+
+        this.stream = stream;
+        this.options = options;
+        this.diagnosticObserver = diagnosticObserver;
+        this.timeProvider = timeProvider ?? TimeProvider.System;
         formatter = new ScpiTextRequestFormatter(options);
     }
 
@@ -37,46 +58,72 @@ public sealed class ScpiTextSession : IScpiTextSession
 
         var gateEntered = false;
         var writeStarted = false;
+        ScpiDiagnosticExchange? diagnosticExchange = null;
         try
         {
             await exchangeGate.WaitAsync(operationCancellation.Token).ConfigureAwait(false);
             gateEntered = true;
             EnsureOpen();
             timeoutCancellation.CancelAfter(options.TotalExchangeTimeout);
+            diagnosticExchange = ScpiDiagnosticExchange.Start(
+                diagnosticObserver,
+                timeProvider,
+                ScpiDiagnosticExchangeKind.Command);
 
             writeStarted = true;
+            diagnosticExchange?.ObserveBytes(
+                ScpiDiagnosticDirection.Transmit,
+                request);
             await stream
                 .WriteAsync(request, operationCancellation.Token)
                 .AsTask()
                 .WaitAsync(operationCancellation.Token)
                 .ConfigureAwait(false);
+            diagnosticExchange?.Complete();
         }
         catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
         {
             if (writeStarted)
             {
-                throw CreateCommandFailure(
+                ScpiCommandTransmissionException failure = CreateCommandFailure(
                     "The SCPI command outcome is uncertain because the session was disposed during transmission.",
                     true,
                     new ObjectDisposedException(
                         nameof(ScpiTextSession),
                         "The SCPI text session was disposed during command transmission."));
+                diagnosticExchange?.Fail(
+                    ScpiDiagnosticOutcome.Uncertain,
+                    failure,
+                    executionMayHaveOccurred: true);
+                throw failure;
             }
 
-            throw new ObjectDisposedException(
+            var failureBeforeTransmission = new ObjectDisposedException(
                 nameof(ScpiTextSession),
                 "The SCPI text session was disposed before command transmission began.");
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Disposed,
+                failureBeforeTransmission);
+            throw failureBeforeTransmission;
         }
         catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
         {
             if (writeStarted)
             {
-                throw CreateCommandFailure(
+                ScpiCommandTransmissionException failure = CreateCommandFailure(
                     "The SCPI command outcome is uncertain because cancellation occurred during transmission.",
                     true,
                     exception);
+                diagnosticExchange?.Fail(
+                    ScpiDiagnosticOutcome.Uncertain,
+                    failure,
+                    executionMayHaveOccurred: true);
+                throw failure;
             }
 
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Canceled,
+                exception);
             throw;
         }
         catch (OperationCanceledException exception) when (timeoutCancellation.IsCancellationRequested)
@@ -84,23 +131,37 @@ public sealed class ScpiTextSession : IScpiTextSession
             var timeout = new TimeoutException("The SCPI command exceeded its total transmission timeout.", exception);
             if (writeStarted)
             {
-                throw CreateCommandFailure(
+                ScpiCommandTransmissionException failure = CreateCommandFailure(
                     "The SCPI command outcome is uncertain because transmission timed out after it began.",
                     true,
                     timeout);
+                diagnosticExchange?.Fail(
+                    ScpiDiagnosticOutcome.Uncertain,
+                    failure,
+                    executionMayHaveOccurred: true);
+                throw failure;
             }
 
-            throw new ScpiCommandTransmissionException(
+            var failureBeforeTransmission = new ScpiCommandTransmissionException(
                 "The SCPI command was not transmitted before its timeout expired.",
                 false,
                 timeout);
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.TimedOut,
+                timeout);
+            throw failureBeforeTransmission;
         }
         catch (Exception exception) when (writeStarted)
         {
-            throw CreateCommandFailure(
+            ScpiCommandTransmissionException failure = CreateCommandFailure(
                 "The SCPI command outcome is uncertain because transmission failed after it began.",
                 true,
                 exception);
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Uncertain,
+                failure,
+                executionMayHaveOccurred: true);
+            throw failure;
         }
         finally
         {
@@ -124,13 +185,21 @@ public sealed class ScpiTextSession : IScpiTextSession
             timeoutCancellation.Token);
 
         var gateEntered = false;
+        ScpiDiagnosticExchange? diagnosticExchange = null;
         try
         {
             await exchangeGate.WaitAsync(operationCancellation.Token).ConfigureAwait(false);
             gateEntered = true;
             EnsureOpen();
             timeoutCancellation.CancelAfter(options.TotalExchangeTimeout);
+            diagnosticExchange = ScpiDiagnosticExchange.Start(
+                diagnosticObserver,
+                timeProvider,
+                ScpiDiagnosticExchangeKind.Query);
 
+            diagnosticExchange?.ObserveBytes(
+                ScpiDiagnosticDirection.Transmit,
+                request);
             await stream
                 .WriteAsync(request, operationCancellation.Token)
                 .AsTask()
@@ -158,32 +227,55 @@ public sealed class ScpiTextSession : IScpiTextSession
                     throw new InvalidDataException("The SCPI byte stream returned an invalid read byte count.");
                 }
 
+                diagnosticExchange?.ObserveBytes(
+                    ScpiDiagnosticDirection.Receive,
+                    buffer.AsSpan(0, readByteCount));
                 framer.Append(buffer.AsSpan(0, readByteCount));
             }
 
-            return framer.Complete();
+            string response = framer.Complete();
+            diagnosticExchange?.Complete();
+            return response;
         }
         catch (OperationCanceledException) when (lifetimeCancellation.IsCancellationRequested)
         {
-            throw new ObjectDisposedException(nameof(ScpiTextSession));
+            var failure = new ObjectDisposedException(
+                nameof(ScpiTextSession),
+                "The SCPI text session was disposed during the query.");
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Disposed,
+                failure);
+            throw failure;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException exception) when (cancellationToken.IsCancellationRequested)
         {
             if (gateEntered)
             {
                 TransitionToFaulted();
             }
 
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Canceled,
+                exception);
             throw;
         }
         catch (OperationCanceledException exception) when (timeoutCancellation.IsCancellationRequested)
         {
             TransitionToFaulted();
-            throw new TimeoutException("The SCPI exchange exceeded its total timeout.", exception);
+            var failure = new TimeoutException(
+                "The SCPI exchange exceeded its total timeout.",
+                exception);
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.TimedOut,
+                failure);
+            throw failure;
         }
-        catch
+        catch (Exception exception)
         {
             TransitionToFaulted();
+            diagnosticExchange?.Fail(
+                ScpiDiagnosticOutcome.Failed,
+                exception);
             throw;
         }
         finally

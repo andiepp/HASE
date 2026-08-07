@@ -1,20 +1,24 @@
-HASE — Increment 47C — ADR-0047 Documentation and Closure
+HASE — Increment 48A — Transport-Independent SCPI Diagnostic Observation
 
 Authoritative source baseline:
-cef2e75e94b0f924713bf2b205a562ea4e500ea6
+b947d7668f42e131d8ba72eb171920727997781c
 
-Apply this overlay at the repository root so that the docs directory merges
-with the existing directory.
+Apply this overlay at the repository root so the src and tests directories
+merge with the existing directories.
 
-Complete files:
-- new ADR-0047 Passive SCPI Instrument Health Supervision;
-- updated KEL-103 SCPI serial characterization report;
-- updated Project Status;
-- updated Roadmap.
+This increment adds an optional dependency-free SCPI diagnostic observer,
+immutable copied byte observations, exchange start/completion/failure records,
+safe outcome and failure classification, and ScpiTextSession integration.
 
-Review the four documents, build HASE.slnx in Visual Studio 2026 Release, and
-run all automated tests. The expected unchanged result is 5,497 tests passing.
+The existing ScpiTextSession constructor remains diagnostics-disabled.
+Production KEL-103 composition is unchanged, so this increment creates no Host
+or Client diagnostic records and requires no physical validation.
 
-No Runtime Host or Client update and no additional physical validation are
-required. Do not commit until the documentation is accepted and all automated
-tests pass.
+Validation:
+1. Open HASE.slnx in Visual Studio 2026.
+2. Select Release.
+3. Build the solution.
+4. Run all automated tests.
+
+Eleven focused tests are added. The expected total is 5,508 passing tests.
+Do not commit until the build and all automated tests pass.
