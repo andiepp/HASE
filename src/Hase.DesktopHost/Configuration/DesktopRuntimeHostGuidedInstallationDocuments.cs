@@ -22,7 +22,9 @@ public static class DesktopRuntimeHostGuidedInstallationDocuments
                 privateNetworkConfigurationFilePath = plan.PrivateNetworkConfigurationFilePath,
                 endpointCompositionFilePath = plan.EndpointCompositionFilePath,
                 maximumDiagnosticLevel = "Bytes",
-                includeByteBufferSimulation = false
+                includeByteBufferSimulation = false,
+                remoteDiagnosticsEnabled = false,
+                remoteDiagnosticsMaximumLevel = "Operational"
             },
             SerializerOptions);
     }

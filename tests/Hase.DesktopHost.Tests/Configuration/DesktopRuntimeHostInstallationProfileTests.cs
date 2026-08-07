@@ -53,6 +53,55 @@ public sealed class DesktopRuntimeHostInstallationProfileTests
             profile.MaximumDiagnosticLevel);
         Assert.False(
             profile.IncludeByteBufferSimulation);
+        Assert.False(profile.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Operational,
+            profile.RemoteDiagnosticsMaximumLevel);
+    }
+
+    [Fact]
+    public void Constructor_EnabledRemoteDiagnosticsWithinLocalCeiling_ShouldPreserve()
+    {
+        var profile = new DesktopRuntimeHostInstallationProfile(
+            AbsolutePath("runtime-host.id"),
+            AbsolutePath("desktop-private-network.json"),
+            RuntimeDiagnosticLevel.Bytes,
+            includeByteBufferSimulation: false,
+            remoteDiagnosticsEnabled: true,
+            remoteDiagnosticsMaximumLevel: RuntimeDiagnosticLevel.Protocol);
+
+        Assert.True(profile.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Protocol,
+            profile.RemoteDiagnosticsMaximumLevel);
+    }
+
+    [Fact]
+    public void Constructor_EnabledRemoteCeilingAboveLocal_ShouldThrow()
+    {
+        Assert.Throws<ArgumentException>(
+            "remoteDiagnosticsMaximumLevel",
+            () => new DesktopRuntimeHostInstallationProfile(
+                AbsolutePath("runtime-host.id"),
+                AbsolutePath("desktop-private-network.json"),
+                RuntimeDiagnosticLevel.Operational,
+                includeByteBufferSimulation: false,
+                remoteDiagnosticsEnabled: true,
+                remoteDiagnosticsMaximumLevel: RuntimeDiagnosticLevel.Protocol));
+    }
+
+    [Fact]
+    public void Constructor_UndefinedRemoteDiagnosticLevel_ShouldThrow()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            "remoteDiagnosticsMaximumLevel",
+            () => new DesktopRuntimeHostInstallationProfile(
+                AbsolutePath("runtime-host.id"),
+                AbsolutePath("desktop-private-network.json"),
+                RuntimeDiagnosticLevel.Bytes,
+                includeByteBufferSimulation: false,
+                remoteDiagnosticsEnabled: false,
+                remoteDiagnosticsMaximumLevel: (RuntimeDiagnosticLevel)999));
     }
 
     [Theory]

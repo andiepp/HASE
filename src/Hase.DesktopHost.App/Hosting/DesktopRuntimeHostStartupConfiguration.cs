@@ -10,7 +10,10 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
     string? Esp32Host,
     RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions,
     bool IncludeByteBufferSimulation = false,
-    RuntimeDiagnosticLevel MaximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational)
+    RuntimeDiagnosticLevel MaximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational,
+    bool RemoteDiagnosticsEnabled = false,
+    RuntimeDiagnosticLevel RemoteDiagnosticsMaximumLevel =
+        RuntimeDiagnosticLevel.Operational)
 {
     public DesktopRuntimeHostInstallationProfile? InstallationProfile { get; init; }
     public DesktopRuntimeHostEndpointCompositionProfile? EndpointCompositionProfile { get; init; }
@@ -64,7 +67,9 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
             nativeEndpoint?.Host,
             deployment,
             installation.IncludeByteBufferSimulation,
-            installation.MaximumDiagnosticLevel)
+            installation.MaximumDiagnosticLevel,
+            installation.RemoteDiagnosticsEnabled,
+            installation.RemoteDiagnosticsMaximumLevel)
         {
             InstallationProfile = installation,
             EndpointCompositionProfile = endpoints

@@ -40,6 +40,10 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
         Assert.Equal(
             RuntimeDiagnosticLevel.Operational,
             configuration.MaximumDiagnosticLevel);
+        Assert.False(configuration.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Operational,
+            configuration.RemoteDiagnosticsMaximumLevel);
     }
 
     [Fact]
@@ -93,6 +97,10 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
         Assert.Null(configuration.Esp32Host);
         Assert.Empty(configuration.EndpointCompositionProfile!.NativeNetworkEndpoints);
         Assert.Single(configuration.EndpointCompositionProfile.CompactSerialEndpoints);
+        Assert.True(configuration.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Protocol,
+            configuration.RemoteDiagnosticsMaximumLevel);
     }
 
     [Fact]
@@ -206,8 +214,10 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
                     identityFilePath = identityPath,
                     privateNetworkConfigurationFilePath = privateNetworkPath,
                     endpointCompositionFilePath = endpointCompositionPath,
-                    maximumDiagnosticLevel = "Operational",
-                    includeByteBufferSimulation = false
+                    maximumDiagnosticLevel = "Bytes",
+                    includeByteBufferSimulation = false,
+                    remoteDiagnosticsEnabled = true,
+                    remoteDiagnosticsMaximumLevel = "Protocol"
                 });
         }
 

@@ -24,7 +24,9 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
               "identityFilePath": {{JsonSerializer.Serialize(identityPath)}},
               "privateNetworkConfigurationFilePath": {{JsonSerializer.Serialize(deploymentPath)}},
               "maximumDiagnosticLevel": "Bytes",
-              "includeByteBufferSimulation": true
+              "includeByteBufferSimulation": true,
+              "remoteDiagnosticsEnabled": true,
+              "remoteDiagnosticsMaximumLevel": "Protocol"
             }
             """;
 
@@ -43,6 +45,10 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
             profile.MaximumDiagnosticLevel);
         Assert.True(
             profile.IncludeByteBufferSimulation);
+        Assert.True(profile.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Protocol,
+            profile.RemoteDiagnosticsMaximumLevel);
     }
 
     [Fact]
@@ -58,6 +64,62 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
             profile.MaximumDiagnosticLevel);
         Assert.False(
             profile.IncludeByteBufferSimulation);
+        Assert.False(profile.RemoteDiagnosticsEnabled);
+        Assert.Equal(
+            RuntimeDiagnosticLevel.Operational,
+            profile.RemoteDiagnosticsMaximumLevel);
+    }
+
+    [Theory]
+    [InlineData("Operational", RuntimeDiagnosticLevel.Operational)]
+    [InlineData("Protocol", RuntimeDiagnosticLevel.Protocol)]
+    [InlineData("Bytes", RuntimeDiagnosticLevel.Bytes)]
+    public async Task LoadAsync_ExactRemoteDiagnosticName_ShouldSucceed(
+        string name,
+        RuntimeDiagnosticLevel expected)
+    {
+        DesktopRuntimeHostInstallationProfile profile =
+            await LoadDocumentAsync(
+                ValidDocument(
+                    $"""
+                    ,
+                      "maximumDiagnosticLevel": "Bytes",
+                      "remoteDiagnosticsEnabled": false,
+                      "remoteDiagnosticsMaximumLevel": "{name}"
+                    """));
+
+        Assert.False(profile.RemoteDiagnosticsEnabled);
+        Assert.Equal(expected, profile.RemoteDiagnosticsMaximumLevel);
+    }
+
+    [Theory]
+    [InlineData("operational")]
+    [InlineData("bytes")]
+    [InlineData("Unknown")]
+    public async Task LoadAsync_InvalidRemoteDiagnosticName_ShouldReject(
+        string name)
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            LoadDocumentAsync(
+                ValidDocument(
+                    $"""
+                    ,
+                      "remoteDiagnosticsMaximumLevel": "{name}"
+                    """)));
+    }
+
+    [Fact]
+    public async Task LoadAsync_EnabledRemoteCeilingAboveLocal_ShouldReject()
+    {
+        await Assert.ThrowsAsync<InvalidDataException>(() =>
+            LoadDocumentAsync(
+                ValidDocument(
+                    """
+                    ,
+                      "maximumDiagnosticLevel": "Operational",
+                      "remoteDiagnosticsEnabled": true,
+                      "remoteDiagnosticsMaximumLevel": "Protocol"
+                    """)));
     }
 
     [Fact]

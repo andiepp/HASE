@@ -70,6 +70,10 @@ public sealed class DesktopRuntimeHostGuidedInstallationDocumentsTests
             Assert.Equal(plan.EndpointCompositionFilePath, profile.EndpointCompositionFilePath);
             Assert.Equal(RuntimeDiagnosticLevel.Bytes, profile.MaximumDiagnosticLevel);
             Assert.False(profile.IncludeByteBufferSimulation);
+            Assert.False(profile.RemoteDiagnosticsEnabled);
+            Assert.Equal(
+                RuntimeDiagnosticLevel.Operational,
+                profile.RemoteDiagnosticsMaximumLevel);
         }
         finally
         {

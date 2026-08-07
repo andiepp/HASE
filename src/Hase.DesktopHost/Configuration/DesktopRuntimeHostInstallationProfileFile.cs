@@ -104,13 +104,19 @@ public static class DesktopRuntimeHostInstallationProfileFile
                     identityFilePath,
                     privateNetworkFilePath,
                     ParseDiagnosticLevel(parsed.MaximumDiagnosticLevel),
-                    parsed.IncludeByteBufferSimulation)
+                    parsed.IncludeByteBufferSimulation,
+                    parsed.RemoteDiagnosticsEnabled,
+                    ParseRemoteDiagnosticLevel(
+                        parsed.RemoteDiagnosticsMaximumLevel))
                 : new DesktopRuntimeHostInstallationProfile(
                     identityFilePath,
                     privateNetworkFilePath,
                     parsed.EndpointCompositionFilePath,
                     ParseDiagnosticLevel(parsed.MaximumDiagnosticLevel),
-                    parsed.IncludeByteBufferSimulation);
+                    parsed.IncludeByteBufferSimulation,
+                    parsed.RemoteDiagnosticsEnabled,
+                    ParseRemoteDiagnosticLevel(
+                        parsed.RemoteDiagnosticsMaximumLevel));
         }
         catch (JsonException exception)
         {
@@ -130,6 +136,19 @@ public static class DesktopRuntimeHostInstallationProfileFile
         _ => throw new InvalidDataException("The maximum diagnostic level is invalid.")
     };
 
+    private static RuntimeDiagnosticLevel ParseRemoteDiagnosticLevel(
+        string? value) => value switch
+    {
+        null or nameof(RuntimeDiagnosticLevel.Operational) =>
+            RuntimeDiagnosticLevel.Operational,
+        nameof(RuntimeDiagnosticLevel.Protocol) =>
+            RuntimeDiagnosticLevel.Protocol,
+        nameof(RuntimeDiagnosticLevel.Bytes) =>
+            RuntimeDiagnosticLevel.Bytes,
+        _ => throw new InvalidDataException(
+            "The remote diagnostics maximum level is invalid.")
+    };
+
     private sealed class InstallationDocument
     {
         [JsonPropertyName("formatVersion")]
@@ -144,5 +163,9 @@ public static class DesktopRuntimeHostInstallationProfileFile
         public string? MaximumDiagnosticLevel { get; set; }
         [JsonPropertyName("includeByteBufferSimulation")]
         public bool IncludeByteBufferSimulation { get; set; }
+        [JsonPropertyName("remoteDiagnosticsEnabled")]
+        public bool RemoteDiagnosticsEnabled { get; set; }
+        [JsonPropertyName("remoteDiagnosticsMaximumLevel")]
+        public string? RemoteDiagnosticsMaximumLevel { get; set; }
     }
 }

@@ -145,6 +145,8 @@ $applicationProfile = [ordered]@{
     endpointCompositionFilePath = $endpointCompositionPath
     maximumDiagnosticLevel = "Bytes"
     includeByteBufferSimulation = $false
+    remoteDiagnosticsEnabled = $false
+    remoteDiagnosticsMaximumLevel = "Operational"
 }
 
 $endpointComposition = [ordered]@{

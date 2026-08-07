@@ -12,7 +12,10 @@ public sealed record DesktopRuntimeHostInstallationProfile
         string identityFilePath,
         string privateNetworkConfigurationFilePath,
         RuntimeDiagnosticLevel maximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational,
-        bool includeByteBufferSimulation = false)
+        bool includeByteBufferSimulation = false,
+        bool remoteDiagnosticsEnabled = false,
+        RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
+            RuntimeDiagnosticLevel.Operational)
         : this(
             identityFilePath,
             privateNetworkConfigurationFilePath,
@@ -20,7 +23,9 @@ public sealed record DesktopRuntimeHostInstallationProfile
                 Path.GetDirectoryName(Path.GetFullPath(privateNetworkConfigurationFilePath))!,
                 "desktop-runtime-endpoints.json"),
             maximumDiagnosticLevel,
-            includeByteBufferSimulation)
+            includeByteBufferSimulation,
+            remoteDiagnosticsEnabled,
+            remoteDiagnosticsMaximumLevel)
     {
     }
 
@@ -29,7 +34,10 @@ public sealed record DesktopRuntimeHostInstallationProfile
         string privateNetworkConfigurationFilePath,
         string endpointCompositionFilePath,
         RuntimeDiagnosticLevel maximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational,
-        bool includeByteBufferSimulation = false)
+        bool includeByteBufferSimulation = false,
+        bool remoteDiagnosticsEnabled = false,
+        RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
+            RuntimeDiagnosticLevel.Operational)
     {
         IdentityFilePath = NormalizeFullyQualifiedPath(identityFilePath, nameof(identityFilePath), "installation identity");
         PrivateNetworkConfigurationFilePath = NormalizeFullyQualifiedPath(
@@ -67,8 +75,25 @@ public sealed record DesktopRuntimeHostInstallationProfile
             throw new ArgumentOutOfRangeException(nameof(maximumDiagnosticLevel));
         }
 
+        if (!Enum.IsDefined(remoteDiagnosticsMaximumLevel))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(remoteDiagnosticsMaximumLevel));
+        }
+
+        if (remoteDiagnosticsEnabled
+            && remoteDiagnosticsMaximumLevel > maximumDiagnosticLevel)
+        {
+            throw new ArgumentException(
+                "Remote diagnostic projection cannot exceed the local "
+                + "diagnostic capture level.",
+                nameof(remoteDiagnosticsMaximumLevel));
+        }
+
         MaximumDiagnosticLevel = maximumDiagnosticLevel;
         IncludeByteBufferSimulation = includeByteBufferSimulation;
+        RemoteDiagnosticsEnabled = remoteDiagnosticsEnabled;
+        RemoteDiagnosticsMaximumLevel = remoteDiagnosticsMaximumLevel;
     }
 
     public string IdentityFilePath { get; }
@@ -76,6 +101,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
     public string EndpointCompositionFilePath { get; }
     public RuntimeDiagnosticLevel MaximumDiagnosticLevel { get; }
     public bool IncludeByteBufferSimulation { get; }
+    public bool RemoteDiagnosticsEnabled { get; }
+    public RuntimeDiagnosticLevel RemoteDiagnosticsMaximumLevel { get; }
 
     public override string ToString() => "Desktop Runtime Host installation profile";
 
