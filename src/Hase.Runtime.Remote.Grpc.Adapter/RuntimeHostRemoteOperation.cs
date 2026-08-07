@@ -39,5 +39,10 @@ public enum RuntimeHostRemoteOperation
     /// <summary>
     /// Open one live-observation subscription.
     /// </summary>
-    Observe = 6
+    Observe = 6,
+
+    /// <summary>
+    /// Open one live diagnostic projection subscription.
+    /// </summary>
+    ObserveDiagnostics = 7
 }

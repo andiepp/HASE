@@ -26,6 +26,10 @@ public sealed class RuntimeHostRemoteApiService
         observationService;
     private readonly IObservationInitialSnapshotMapper? initialSnapshotMapper;
     private readonly IRuntimeHostObservationMapper? observationMapper;
+    private readonly Northbound.RuntimeHostDiagnosticProjectionService?
+        diagnosticProjectionService;
+    private readonly RuntimeHostProjectedDiagnosticObservationMapper?
+        diagnosticObservationMapper;
     private readonly IHostApplicationLifetime? applicationLifetime;
     private readonly IRuntimeHostClientPrincipalProvider? principalProvider;
     private readonly IRuntimeHostRemoteAuthorizationGate? authorizationGate;
@@ -49,7 +53,11 @@ public sealed class RuntimeHostRemoteApiService
         IRuntimeHostObservationMapper? observationMapper = null,
         IHostApplicationLifetime? applicationLifetime = null,
         IRuntimeHostClientPrincipalProvider? principalProvider = null,
-        IRuntimeHostRemoteAuthorizationGate? authorizationGate = null)
+        IRuntimeHostRemoteAuthorizationGate? authorizationGate = null,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService = null,
+        RuntimeHostProjectedDiagnosticObservationMapper?
+            diagnosticObservationMapper = null)
     {
         this.snapshotProvider =
             snapshotProvider
@@ -78,6 +86,9 @@ public sealed class RuntimeHostRemoteApiService
         bool authorizationConfigured =
             principalProvider is not null
             || authorizationGate is not null;
+        bool diagnosticsConfigured =
+            diagnosticProjectionService is not null
+            || diagnosticObservationMapper is not null;
 
         if (propertyAccessConfigured)
         {
@@ -155,6 +166,18 @@ public sealed class RuntimeHostRemoteApiService
                 authorizationGate
                 ?? throw new ArgumentNullException(
                     nameof(authorizationGate));
+        }
+
+        if (diagnosticsConfigured)
+        {
+            this.diagnosticProjectionService =
+                diagnosticProjectionService
+                ?? throw new ArgumentNullException(
+                    nameof(diagnosticProjectionService));
+            this.diagnosticObservationMapper =
+                diagnosticObservationMapper
+                ?? throw new ArgumentNullException(
+                    nameof(diagnosticObservationMapper));
         }
 
         this.applicationLifetime =
@@ -475,6 +498,78 @@ public sealed class RuntimeHostRemoteApiService
                         new Status(
                             StatusCode.DataLoss,
                             "The observation stream has a gap. "
+                            + "Open a new subscription."));
+                }
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public override async Task ObserveDiagnostics(
+        GrpcV1.ObserveDiagnosticsRequest request,
+        IServerStreamWriter<GrpcV1.ProjectedDiagnosticObservation>
+            responseStream,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(responseStream);
+
+        AuthorizeOperation(
+            context,
+            RuntimeHostRemoteOperation.ObserveDiagnostics);
+
+        Northbound.RuntimeHostDiagnosticProjectionService projectionService =
+            diagnosticProjectionService
+            ?? throw new InvalidOperationException(
+                "Runtime-host diagnostic projection is not configured.");
+        RuntimeHostProjectedDiagnosticObservationMapper mapper =
+            diagnosticObservationMapper
+            ?? throw new InvalidOperationException(
+                "Runtime-host diagnostic projection is not configured.");
+        CancellationToken requestCancellationToken =
+            context?.CancellationToken
+            ?? CancellationToken.None;
+        CancellationTokenSource? linkedCancellationSource =
+            applicationLifetime is null
+                ? null
+                : CancellationTokenSource.CreateLinkedTokenSource(
+                    requestCancellationToken,
+                    applicationLifetime.ApplicationStopping);
+        using (linkedCancellationSource)
+        {
+            CancellationToken cancellationToken =
+                linkedCancellationSource?.Token
+                ?? requestCancellationToken;
+            Northbound.RuntimeHostDiagnosticProjectionSubscription subscription =
+                await projectionService.OpenSubscriptionAsync(
+                    new Northbound.RuntimeHostDiagnosticProjectionSubscriptionOptions(),
+                    cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "The runtime-host diagnostic projection service returned null.");
+
+            await using (subscription)
+            {
+                try
+                {
+                    await foreach (
+                        Northbound.RuntimeHostProjectedDiagnosticObservation
+                            observation
+                        in subscription.ReadAllAsync(cancellationToken))
+                    {
+                        GrpcV1.ProjectedDiagnosticObservation response =
+                            mapper.Map(observation)
+                            ?? throw new InvalidOperationException(
+                                "The diagnostic observation mapper returned null.");
+
+                        await responseStream.WriteAsync(response);
+                    }
+                }
+                catch (Northbound.RuntimeHostDiagnosticProjectionGapException)
+                {
+                    throw new RpcException(
+                        new Status(
+                            StatusCode.DataLoss,
+                            "The diagnostic stream has a gap. "
                             + "Open a new subscription."));
                 }
             }

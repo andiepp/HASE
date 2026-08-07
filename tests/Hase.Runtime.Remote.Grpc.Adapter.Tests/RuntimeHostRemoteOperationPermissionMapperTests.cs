@@ -103,6 +103,10 @@ public sealed class RuntimeHostRemoteOperationPermissionMapperTests
             {
                 RuntimeHostRemoteOperation.Observe,
                 RuntimeHostPermission.SubscribeObservation
+            },
+            {
+                RuntimeHostRemoteOperation.ObserveDiagnostics,
+                RuntimeHostPermission.SubscribeDiagnostics
             }
         };
 }

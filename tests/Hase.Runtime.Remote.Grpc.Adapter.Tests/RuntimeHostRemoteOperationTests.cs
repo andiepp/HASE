@@ -26,6 +26,9 @@ public sealed class RuntimeHostRemoteOperationTests
         Assert.Equal(
             6,
             (int)RuntimeHostRemoteOperation.Observe);
+        Assert.Equal(
+            7,
+            (int)RuntimeHostRemoteOperation.ObserveDiagnostics);
     }
 
     [Fact]
@@ -42,7 +45,8 @@ public sealed class RuntimeHostRemoteOperationTests
                 RuntimeHostRemoteOperation.ReadAuthoritativeProperty,
                 RuntimeHostRemoteOperation.WriteProperty,
                 RuntimeHostRemoteOperation.ExecuteCommand,
-                RuntimeHostRemoteOperation.Observe
+                RuntimeHostRemoteOperation.Observe,
+                RuntimeHostRemoteOperation.ObserveDiagnostics
             ],
             values);
     }

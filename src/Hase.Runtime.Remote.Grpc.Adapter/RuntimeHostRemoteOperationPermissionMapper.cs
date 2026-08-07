@@ -31,6 +31,9 @@ public sealed class RuntimeHostRemoteOperationPermissionMapper
             RuntimeHostRemoteOperation.Observe =>
                 RuntimeHostPermission.SubscribeObservation,
 
+            RuntimeHostRemoteOperation.ObserveDiagnostics =>
+                RuntimeHostPermission.SubscribeDiagnostics,
+
             RuntimeHostRemoteOperation.Unspecified =>
                 throw new ArgumentOutOfRangeException(
                     nameof(operation),

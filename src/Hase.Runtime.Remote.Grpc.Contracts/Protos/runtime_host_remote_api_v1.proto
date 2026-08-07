@@ -15,6 +15,7 @@ service RuntimeHostRemoteApi {
   rpc WriteProperty (WritePropertyRequest) returns (PropertyOperationResult);
   rpc ExecuteCommand (ExecuteCommandRequest) returns (CommandOperationResult);
   rpc Observe (ObserveRequest) returns (stream ObserveResponse);
+  rpc ObserveDiagnostics (ObserveDiagnosticsRequest) returns (stream ProjectedDiagnosticObservation);
 }
 
 message GetSnapshotRequest {
@@ -139,6 +140,9 @@ message CommandOperationResult {
 }
 
 message ObserveRequest {
+}
+
+message ObserveDiagnosticsRequest {
 }
 
 message ProjectedDiagnosticObservation {

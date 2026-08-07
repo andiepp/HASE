@@ -58,6 +58,13 @@ public readonly record struct RuntimeHostPermission
     public static RuntimeHostPermission SubscribeObservation { get; } =
         new("observation.subscribe");
 
+    /// <summary>
+    /// Gets the permission required to open a diagnostic projection
+    /// subscription.
+    /// </summary>
+    public static RuntimeHostPermission SubscribeDiagnostics { get; } =
+        new("diagnostics.subscribe");
+
     /// <inheritdoc />
     public override string ToString()
     {
