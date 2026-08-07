@@ -97,6 +97,11 @@ public sealed class RuntimeHostDiagnosticProjector
         return true;
     }
 
+    public bool IsEnabled(RuntimeDiagnosticLevel level)
+    {
+        return policy.Allows(level);
+    }
+
     private static IReadOnlyDictionary<string, string> FilterDetails(
         IReadOnlyDictionary<string, string> details)
     {
