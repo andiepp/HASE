@@ -43,7 +43,9 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         Northbound.IRuntimeHostCommandService? commandService = null,
         Northbound.IRuntimeHostObservationService? observationService = null,
         TimeProvider? timeProvider = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService = null)
     {
         ArgumentNullException.ThrowIfNull(
             options);
@@ -81,6 +83,7 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                     propertyService,
                     commandService,
                     observationService,
+                    diagnosticProjectionService,
                     certificateAuthenticationService,
                     timeProvider);
 
@@ -123,10 +126,26 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         Northbound.IRuntimeHostPropertyService? propertyService,
         Northbound.IRuntimeHostCommandService? commandService,
         Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
     {
+        if (diagnosticProjectionService is not null)
+        {
+            return MutualTlsPrivateNetworkGrpcHostFactory.Create(
+                binding,
+                mutualTlsOptions,
+                snapshotProvider,
+                propertyService,
+                commandService,
+                observationService,
+                diagnosticProjectionService,
+                certificateAuthenticationService,
+                timeProvider);
+        }
+
         if (observationService is not null)
         {
             return MutualTlsPrivateNetworkGrpcHostFactory.Create(

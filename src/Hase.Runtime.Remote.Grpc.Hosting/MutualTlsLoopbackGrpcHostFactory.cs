@@ -37,6 +37,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             propertyService: null,
             commandService: null,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -69,6 +70,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             propertyService,
             commandService: null,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -102,6 +104,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             propertyService,
             commandService,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -136,10 +139,45 @@ public static class MutualTlsLoopbackGrpcHostFactory
             propertyService,
             commandService,
             observationService,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
                 false);
+    }
+
+    /// <summary>
+    /// Creates an unstarted mutual-TLS loopback gRPC application with optional
+    /// runtime operations and an explicitly supplied diagnostic projection.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService
+            diagnosticProjectionService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
+
+        return CreateCore(
+            binding.Address,
+            binding.Port,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService,
+            commandService,
+            observationService,
+            diagnosticProjectionService,
+            certificateAuthenticationService,
+            timeProvider,
+            clearLoggingProviders: false);
     }
 
     internal static WebApplication CreateCore(
@@ -150,6 +188,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
         Northbound.IRuntimeHostPropertyService? propertyService,
         Northbound.IRuntimeHostCommandService? commandService,
         Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider,
@@ -261,6 +301,13 @@ public static class MutualTlsLoopbackGrpcHostFactory
                 observationMappers.InitialSnapshotMapper);
             builder.Services.AddSingleton(
                 observationMappers.ObservationMapper);
+        }
+
+        if (diagnosticProjectionService is not null)
+        {
+            builder.Services.AddSingleton(diagnosticProjectionService);
+            builder.Services.AddSingleton<
+                RuntimeHostProjectedDiagnosticObservationMapper>();
         }
 
         builder.Services.AddSingleton(

@@ -1,11 +1,30 @@
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using System.Reflection;
 using Northbound = global::Hase.Runtime.Northbound;
 
 namespace Hase.Runtime.Remote.Grpc.Hosting.Tests;
 
 public sealed class RuntimeHostPrivateNetworkDeploymentTests
 {
+    [Fact]
+    public void CreateAsync_DiagnosticProjection_ShouldRemainOptionalAndLast()
+    {
+        MethodInfo method = Assert.Single(
+            typeof(RuntimeHostPrivateNetworkDeployment)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static),
+            candidate => candidate.Name == nameof(
+                RuntimeHostPrivateNetworkDeployment.CreateAsync));
+        ParameterInfo parameter = method.GetParameters().Last();
+
+        Assert.Equal("diagnosticProjectionService", parameter.Name);
+        Assert.Equal(
+            typeof(Northbound.RuntimeHostDiagnosticProjectionService),
+            parameter.ParameterType);
+        Assert.True(parameter.HasDefaultValue);
+        Assert.Null(parameter.DefaultValue);
+    }
+
     [Fact]
     public async Task CreateAsync_MissingOptions_ShouldThrow()
     {

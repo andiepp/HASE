@@ -30,6 +30,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             propertyService: null,
             commandService: null,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -57,6 +58,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             propertyService,
             commandService: null,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -85,6 +87,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             propertyService,
             commandService,
             observationService: null,
+            diagnosticProjectionService: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -114,6 +117,38 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             propertyService,
             commandService,
             observationService,
+            diagnosticProjectionService: null,
+            certificateAuthenticationService,
+            timeProvider);
+    }
+
+    /// <summary>
+    /// Creates an unstarted private-network host with optional runtime
+    /// operations and an explicitly supplied diagnostic projection.
+    /// </summary>
+    public static WebApplication Create(
+        PrivateNetworkGrpcBinding binding,
+        RuntimeHostMutualTlsOptions mutualTlsOptions,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService
+            diagnosticProjectionService,
+        IRuntimeHostCertificateAuthenticationService
+            certificateAuthenticationService,
+        TimeProvider? timeProvider = null)
+    {
+        ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
+
+        return CreateCore(
+            binding,
+            mutualTlsOptions,
+            snapshotProvider,
+            propertyService,
+            commandService,
+            observationService,
+            diagnosticProjectionService,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -125,6 +160,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         Northbound.IRuntimeHostPropertyService? propertyService,
         Northbound.IRuntimeHostCommandService? commandService,
         Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
@@ -158,6 +195,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             propertyService,
             commandService,
             observationService,
+            diagnosticProjectionService,
             certificateAuthenticationService,
             effectiveTimeProvider,
             clearLoggingProviders:

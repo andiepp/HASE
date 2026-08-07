@@ -1,8 +1,10 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Northbound = global::Hase.Runtime.Northbound;
 
 namespace Hase.Runtime.Remote.Grpc.Hosting.Tests;
@@ -102,6 +104,38 @@ public sealed class MutualTlsPrivateNetworkGrpcHostFactoryTests
 
         Assert.NotNull(
             application);
+    }
+
+    [Fact]
+    public async Task Create_DiagnosticProjection_ShouldRegisterOptionalComposition()
+    {
+        using X509Certificate2 certificate = CreateServerCertificate();
+        await using var projection =
+            new Northbound.RuntimeHostDiagnosticProjectionService(
+                new Northbound.RuntimeHostId("runtime-host-diagnostics"),
+                new BoundedRuntimeDiagnosticCollector(8),
+                RuntimeDiagnosticLevel.Operational,
+                new Northbound.RuntimeHostDiagnosticProjectionPolicy());
+
+        await using WebApplication application =
+            MutualTlsPrivateNetworkGrpcHostFactory.Create(
+                CreateBinding(),
+                RuntimeHostMutualTlsOptions.EnabledWith(certificate),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService: null,
+                projection,
+                new TestAuthenticationService(),
+                new FixedTimeProvider());
+
+        Assert.Same(
+            projection,
+            application.Services.GetRequiredService<
+                Northbound.RuntimeHostDiagnosticProjectionService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                RuntimeHostProjectedDiagnosticObservationMapper>());
     }
 
     private static PrivateNetworkGrpcBinding CreateBinding()

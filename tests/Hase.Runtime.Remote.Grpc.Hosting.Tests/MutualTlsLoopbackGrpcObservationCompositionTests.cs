@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -63,6 +64,38 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 IRuntimeHostObservationMapper>());
+    }
+
+    [Fact]
+    public async Task Create_WithDiagnosticProjection_ShouldRegisterDiagnosticComposition()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+        await using var projection =
+            new Northbound.RuntimeHostDiagnosticProjectionService(
+                new Northbound.RuntimeHostId("runtime-host-diagnostics"),
+                new BoundedRuntimeDiagnosticCollector(8),
+                RuntimeDiagnosticLevel.Operational,
+                new Northbound.RuntimeHostDiagnosticProjectionPolicy());
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(IPAddress.Loopback, 0),
+                RuntimeHostMutualTlsOptions.EnabledWith(certificate),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService: null,
+                projection,
+                new TestCertificateAuthenticationService());
+
+        Assert.Same(
+            projection,
+            application.Services.GetRequiredService<
+                Northbound.RuntimeHostDiagnosticProjectionService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                RuntimeHostProjectedDiagnosticObservationMapper>());
     }
 
     private static X509Certificate2 CreateSelfSignedServerCertificate()

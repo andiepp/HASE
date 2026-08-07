@@ -1,4 +1,5 @@
 using System.Net;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
@@ -104,6 +105,84 @@ public sealed class LoopbackGrpcHostFactoryTests
 
         Assert.NotEmpty(
             routeBuilder.DataSources);
+        Assert.Null(
+            application.Services.GetService<
+                Northbound.RuntimeHostDiagnosticProjectionService>());
+        Assert.Null(
+            application.Services.GetService<
+                RuntimeHostProjectedDiagnosticObservationMapper>());
+    }
+
+    [Fact]
+    public void Create_NullDiagnosticProjectionService_ShouldThrow()
+    {
+        Assert.Throws<ArgumentNullException>(
+            "diagnosticProjectionService",
+            () => LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(IPAddress.Loopback, 0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService: null,
+                diagnosticProjectionService: null!));
+    }
+
+    [Fact]
+    public async Task Create_DiagnosticProjection_ShouldRegisterExactServiceAndMapper()
+    {
+        await using Northbound.RuntimeHostDiagnosticProjectionService projection =
+            CreateDiagnosticProjectionService();
+        await using WebApplication application =
+            LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(IPAddress.Loopback, 0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService: null,
+                projection);
+
+        Assert.Same(
+            projection,
+            application.Services.GetRequiredService<
+                Northbound.RuntimeHostDiagnosticProjectionService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                RuntimeHostProjectedDiagnosticObservationMapper>());
+        Assert.NotNull(
+            ActivatorUtilities.CreateInstance<RuntimeHostRemoteApiService>(
+                application.Services));
+    }
+
+    [Fact]
+    public async Task Create_DiagnosticProjection_ShouldRemainExternallyOwned()
+    {
+        Northbound.RuntimeHostDiagnosticProjectionService projection =
+            CreateDiagnosticProjectionService();
+        await using (
+            WebApplication application = LoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(IPAddress.Loopback, 0),
+                new TestSnapshotProvider(),
+                propertyService: null,
+                commandService: null,
+                observationService: null,
+                projection))
+        {
+        }
+
+        await using Northbound.RuntimeHostDiagnosticProjectionSubscription subscription =
+            await projection.OpenSubscriptionAsync(
+                new Northbound.RuntimeHostDiagnosticProjectionSubscriptionOptions());
+        await projection.DisposeAsync();
+    }
+
+    private static Northbound.RuntimeHostDiagnosticProjectionService
+        CreateDiagnosticProjectionService()
+    {
+        return new Northbound.RuntimeHostDiagnosticProjectionService(
+            new Northbound.RuntimeHostId("runtime-host-1"),
+            new BoundedRuntimeDiagnosticCollector(8),
+            RuntimeDiagnosticLevel.Operational,
+            new Northbound.RuntimeHostDiagnosticProjectionPolicy());
     }
 
     [Fact]

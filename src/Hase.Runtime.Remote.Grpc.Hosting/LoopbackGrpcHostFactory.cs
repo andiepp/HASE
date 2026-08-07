@@ -25,7 +25,8 @@ public static class LoopbackGrpcHostFactory
             snapshotProvider,
             propertyService: null,
             commandService: null,
-            observationService: null);
+            observationService: null,
+            diagnosticProjectionService: null);
     }
 
     /// <summary>
@@ -45,7 +46,8 @@ public static class LoopbackGrpcHostFactory
             snapshotProvider,
             propertyService,
             commandService: null,
-            observationService: null);
+            observationService: null,
+            diagnosticProjectionService: null);
     }
 
     /// <summary>
@@ -66,7 +68,8 @@ public static class LoopbackGrpcHostFactory
             snapshotProvider,
             propertyService,
             commandService,
-            observationService: null);
+            observationService: null,
+            diagnosticProjectionService: null);
     }
 
     /// <summary>
@@ -88,7 +91,32 @@ public static class LoopbackGrpcHostFactory
             snapshotProvider,
             propertyService,
             commandService,
-            observationService);
+            observationService,
+            diagnosticProjectionService: null);
+    }
+
+    /// <summary>
+    /// Creates an unstarted loopback-only gRPC application with optional
+    /// runtime operations and an explicitly supplied diagnostic projection.
+    /// </summary>
+    public static WebApplication Create(
+        LoopbackGrpcBinding binding,
+        Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
+        Northbound.IRuntimeHostPropertyService? propertyService,
+        Northbound.IRuntimeHostCommandService? commandService,
+        Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService
+            diagnosticProjectionService)
+    {
+        ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
+
+        return CreateCore(
+            binding,
+            snapshotProvider,
+            propertyService,
+            commandService,
+            observationService,
+            diagnosticProjectionService);
     }
 
     private static WebApplication CreateCore(
@@ -96,7 +124,9 @@ public static class LoopbackGrpcHostFactory
         Northbound.IRuntimeHostSnapshotProvider snapshotProvider,
         Northbound.IRuntimeHostPropertyService? propertyService,
         Northbound.IRuntimeHostCommandService? commandService,
-        Northbound.IRuntimeHostObservationService? observationService)
+        Northbound.IRuntimeHostObservationService? observationService,
+        Northbound.RuntimeHostDiagnosticProjectionService?
+            diagnosticProjectionService)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -175,6 +205,13 @@ public static class LoopbackGrpcHostFactory
                 observationMappers.InitialSnapshotMapper);
             builder.Services.AddSingleton(
                 observationMappers.ObservationMapper);
+        }
+
+        if (diagnosticProjectionService is not null)
+        {
+            builder.Services.AddSingleton(diagnosticProjectionService);
+            builder.Services.AddSingleton<
+                RuntimeHostProjectedDiagnosticObservationMapper>();
         }
 
         WebApplication application =
