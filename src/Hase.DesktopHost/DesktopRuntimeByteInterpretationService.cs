@@ -52,7 +52,8 @@ public sealed class DesktopRuntimeByteInterpretationService
         return new DesktopRuntimeByteInterpretationService(
             [
                 new NativeProtocolV1DesktopRuntimeByteInterpreter(),
-                new CompactSerialProtocolV1DesktopRuntimeByteInterpreter()
+                new CompactSerialProtocolV1DesktopRuntimeByteInterpreter(),
+                new ScpiTextDesktopRuntimeByteInterpreter()
             ]);
     }
 
