@@ -14,6 +14,10 @@ namespace Hase.Runtime.Transport.Tests;
 
 public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
 {
+    private static readonly TimeSpan TestTimeout =
+        TimeSpan.FromSeconds(
+            15);
+
     private static readonly InstrumentId ControllerInstrumentId =
         new(
             "controller-01");
@@ -50,24 +54,28 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         EventNotification expectedNotification =
             CreateNotification();
 
-        await using (
-            var coordinator =
-                new RuntimeEndpointConnectionCoordinator(
-                    connectionManager,
-                    runtimeEndpoint,
-                    synchronizer))
+        var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                connectionManager,
+                runtimeEndpoint,
+                synchronizer);
+        try
         {
             coordinator.SubscribeNotification(
                 observer);
 
             await coordinator.ConnectAsync();
 
+            await transportConnection.ReceiveStarted.WaitAsync(
+                TestTimeout);
+
             // Act
             transportConnection.QueueReceivedMessage(
                 expectedNotification);
 
             ProtocolMessage actualNotification =
-                await observer.NotificationReceived;
+                await observer.NotificationReceived.WaitAsync(
+                    TestTimeout);
 
             // Assert
             Assert.Equal(
@@ -82,8 +90,14 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
                 EndpointConnectionState.Ready,
                 runtimeEndpoint.ConnectionStatus.State);
         }
+        finally
+        {
+            await coordinator.DisposeAsync().AsTask().WaitAsync(
+                TestTimeout);
+        }
 
-        await transportConnection.ReceiveStopped;
+        await transportConnection.ReceiveStopped.WaitAsync(
+            TestTimeout);
     }
 
     [Fact]
@@ -120,21 +134,25 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         EventNotification notification =
             CreateNotification();
 
-        await using (
-            var coordinator =
-                new RuntimeEndpointConnectionCoordinator(
-                    connectionManager,
-                    runtimeEndpoint,
-                    synchronizer))
+        var coordinator =
+            new RuntimeEndpointConnectionCoordinator(
+                connectionManager,
+                runtimeEndpoint,
+                synchronizer);
+        try
         {
             await coordinator.ConnectAsync();
+
+            await transportConnection.ReceiveStarted.WaitAsync(
+                TestTimeout);
 
             // Act
             transportConnection.QueueReceivedMessage(
                 notification);
 
             RuntimeEventOccurrence occurrence =
-                await eventObserver.EventOccurred;
+                await eventObserver.EventOccurred.WaitAsync(
+                    TestTimeout);
 
             // Assert
             Assert.Same(
@@ -156,11 +174,17 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
                 EndpointConnectionState.Ready,
                 runtimeEndpoint.ConnectionStatus.State);
         }
+        finally
+        {
+            await coordinator.DisposeAsync().AsTask().WaitAsync(
+                TestTimeout);
+        }
 
         runtimeEvent.Unsubscribe(
             eventObserver);
 
-        await transportConnection.ReceiveStopped;
+        await transportConnection.ReceiveStopped.WaitAsync(
+            TestTimeout);
     }
 
     private static EventNotification CreateNotification()
@@ -384,6 +408,10 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             new(
                 TaskCreationOptions.RunContinuationsAsynchronously);
 
+        private readonly TaskCompletionSource _receiveStarted =
+            new(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
         public event EventHandler<
             TransportConnectionStateChangedEventArgs>?
             StateChanged
@@ -402,6 +430,9 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
 
         public Task ReceiveStopped =>
             _receiveStopped.Task;
+
+        public Task ReceiveStarted =>
+            _receiveStarted.Task;
 
         public Task<byte[]> ExchangeAsync(
             byte[] request,
@@ -422,6 +453,8 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
         public async Task<byte[]> ReceiveAsync(
             CancellationToken cancellationToken = default)
         {
+            _receiveStarted.TrySetResult();
+
             try
             {
                 return await _receivedFrames.Reader.ReadAsync(
@@ -429,6 +462,12 @@ public sealed class RuntimeEndpointConnectionCoordinatorNotificationTests
             }
             catch (OperationCanceledException)
                 when (cancellationToken.IsCancellationRequested)
+            {
+                _receiveStopped.TrySetResult();
+
+                throw;
+            }
+            catch
             {
                 _receiveStopped.TrySetResult();
 
