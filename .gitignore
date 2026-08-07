@@ -20,5 +20,14 @@ TestResults/
 ## Logs
 *.log
 
+## Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+/python/hase-client/.venv/
+/python/hase-client/.pytest_cache/
+/python/hase-client/build/
+/python/hase-client/dist/
+
 ## Local secrets
 HaseEndpoint/HaseSecrets.h

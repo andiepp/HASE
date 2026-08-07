@@ -1,0 +1,6 @@
+setuptools==80.9.0
+grpcio==1.83.0
+protobuf==7.35.1
+grpcio-tools==1.83.0
+pytest==9.1.1
+
