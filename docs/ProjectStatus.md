@@ -1,5 +1,46 @@
 # Project Status
 
+## Completed architectural objective — ADR-0048
+
+**ADR-0048 — SCPI Protocol and Bytes Diagnostics — implemented, physically
+validated, and closed at 5,533 tests**
+
+- Increment 48A added optional transport-independent observation inside the
+  serialized SCPI exchange without changing the existing constructor or
+  production composition.
+- Increment 48B mapped Query, Command, byte, completion, classified failure,
+  and uncertain-outcome observations into the established runtime diagnostic
+  levels.
+- Operational capture publishes no SCPI Protocol or Bytes records. Protocol
+  capture is correlated and payload-free. Bytes capture additionally owns exact
+  snapshots bounded by the existing 256-byte diagnostic limit.
+- Increment 48C composed one observer into every production KEL-103 session,
+  including replacement sessions. Synchronization, Properties, Commands, and
+  passive health continue through the same serialized SCPI gate.
+- Increment 48D registered read-only `ScpiText` structured interpretation in
+  the Runtime Host for CR-terminated Query and Command requests and
+  LF-terminated responses.
+- Failure mapping publishes no exception message, serial-port assignment,
+  instrument serial identity, Property value, requested value, credential, or
+  deployment address at Protocol level.
+- Explicit uncertain Command outcome and whether execution may have occurred
+  remain visible without retry or replay.
+- Physical passive-health and Property-read validation confirmed KEL-103
+  endpoint scope, shared correlation, transmitted `0D`, received `0A`, valid
+  structured Query/response presentation, unchanged raw bytes, and continued
+  `Ready` state.
+- The Client boundary is unchanged. Client Diagnostics does not receive or
+  reconstruct Runtime Host southbound byte snapshots.
+- Validation ended in authoritative CC/OFF state with the external laboratory
+  supply output OFF.
+
+### Next
+
+Select the next architectural objective through a separately approved decision
+or increment. ADR-0048 is closed.
+
+---
+
 ## Completed architectural objective — ADR-0047
 
 **ADR-0047 — Passive SCPI Instrument Health Supervision — implemented,
@@ -168,8 +209,9 @@ physically validated, and closed at 4,772 tests**
   attachment generation.
 - Host, Client, gRPC, diagnostics, and multi-host contracts remain unchanged and
   correctly scoped.
-- Operational diagnostics are useful and sanitized; Protocol and Bytes SCPI
-  diagnostics remain deferred.
+- Operational diagnostics are useful and sanitized. ADR-0048 subsequently adds
+  level-controlled SCPI Protocol and Bytes diagnostics without changing this
+  publication boundary.
 - Physical validation covered simultaneous Desktop Arduino, ESP32, and KEL-103
   operation plus a MiniPC Arduino through two authenticated Client sessions.
 
@@ -1378,11 +1420,27 @@ SCPI Command and Event coexistence, simultaneous Desktop and MiniPC Runtime
 Hosts, independent Client-session reconnection, sanitized diagnostics, orderly
 shutdown, and deterministic port release. ADR-0045 closes at 4,772 tests.
 
+## ADR-0048 — SCPI Protocol and Bytes Diagnostics
+
+The dependency-free SCPI session now offers optional, failure-isolated
+observation inside its serialized exchange. The production KEL-103 composition
+maps observations into payload-free Protocol records and bounded exact Bytes
+records under the established Runtime Host capture policy. Correlation,
+sanitized terminal classification, and uncertain Command outcomes remain
+explicit without retry or replay.
+
+The Runtime Host recognizes the `ScpiText` byte family and structures printable
+message bodies, Query/Command/response classification, and CR/LF terminators.
+Physical passive-health and Property-read validation confirmed correlation,
+endpoint scope, `0D` request termination, `0A` response termination, agreement
+between raw and structured presentation, and continued `Ready` state. The
+Client boundary remains unchanged. ADR-0048 closes at 5,533 tests.
+
 ---
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0047 are accepted.
+ADR-0001 through ADR-0048 are accepted.
 
 Relevant recent decisions:
 
@@ -1420,6 +1478,7 @@ Relevant recent decisions:
 - ADR-0045 - Runtime-Hosted SCPI Instrument Publication.
 - ADR-0046 - Controlled KEL-103 Operating State and Setpoints.
 - ADR-0047 - Passive SCPI Instrument Health Supervision.
+- ADR-0048 - SCPI Protocol and Bytes Diagnostics.
 
 ---
 
@@ -1445,8 +1504,9 @@ The current implementation intentionally excludes:
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery;
-- SCPI Protocol and Bytes diagnostics;
 - automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
+- authenticated projection of Runtime Host southbound diagnostics to remote
+  Clients;
 - Python automation;
 - diagnostic export and offline analysis;
 - remote media feedback.
@@ -1456,7 +1516,8 @@ The current implementation intentionally excludes:
 # Immediate Next Steps
 
 1. Select the next architectural objective through explicit approval while
-   preserving the closed ADR-0046 safety and no-replay guarantees.
+   preserving the closed ADR-0046 safety, ADR-0047 health, and ADR-0048
+   diagnostics guarantees.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.

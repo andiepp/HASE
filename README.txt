@@ -1,23 +1,25 @@
-HASE Increment 48D - Structured SCPI Text Interpretation
-=========================================================
+HASE Increment 48E - ADR-0048 Documentation and Closure
+========================================================
 
 Authoritative baseline:
-  commit f4ab63cf2a25283f29a74b8849462adcbd006cf1
+  commit f20210d819d87d369e9626fa8e950358ee611bc1
   Visual Studio 2026, Release, .NET 10
-  5,522 automated tests passing
+  5,533 automated tests passing
 
 Overlay contents:
-  src/Hase.DesktopHost/DesktopRuntimeByteInterpretationService.cs
-  src/Hase.DesktopHost/ScpiTextDesktopRuntimeByteInterpreter.cs
-  tests/Hase.DesktopHost.Tests/ScpiTextDesktopRuntimeByteInterpreterTests.cs
+  docs/adr/ADR-0048-SCPI-Protocol-and-Bytes-Diagnostics.md
+  docs/ProjectStatus.md
+  docs/Roadmap.md
+  docs/KEL-103-SCPI-Serial-Characterization.md
 
 Behavior:
-  - The existing Host structured-byte service recognizes the ScpiText family.
-  - CR-terminated Query and Command requests and LF-terminated responses are
-    projected as read-only structured fields.
-  - Missing, malformed, trailing, non-ASCII, and truncated snapshots are
-    reported safely without affecting runtime behavior.
-  - The generic Host diagnostics UI requires no modification.
+  - ADR-0048 records the optional serialized observation boundary, established
+    disclosure levels, production composition, and Host structured presentation.
+  - Project status and roadmap record the validated 5,533-test baseline and
+    physical evidence.
+  - The KEL-103 report records exact CR/LF diagnostic evidence without
+    deployment-sensitive values.
+  - Runtime Host southbound diagnostic projection to Clients remains separate.
 
 Automated validation:
   1. Extract this ZIP over the repository root.
@@ -25,10 +27,5 @@ Automated validation:
   3. Run all automated tests.
   4. Expected total: 5,533 passing tests.
 
-Deployment before physical validation:
-  Stop the Desktop Runtime Host, then run:
-
-    cd H:\Development
-    & .\tools\Deployment\Update-HaseDesktopRuntimeHost.ps1
-
-No Client update is required for Increment 48D.
+No source, deployment, Runtime Host, Client, or further physical validation is
+required for Increment 48E.

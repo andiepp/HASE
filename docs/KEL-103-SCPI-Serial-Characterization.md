@@ -3,8 +3,8 @@
 - Related decisions: ADR-0044 — SCPI Instrument Adapter Boundary; ADR-0045 —
   Runtime-Hosted SCPI Instrument Publication; ADR-0046 — Controlled KEL-103
   Operating State and Setpoints; ADR-0047 — Passive SCPI Instrument Health
-  Supervision
-- Increment: 47C — ADR-0047 documentation and closure
+  Supervision; ADR-0048 — SCPI Protocol and Bytes Diagnostics
+- Increment: 48E — ADR-0048 documentation and closure
 - Initial date: 2026-08-03
 - Runtime closure date: 2026-08-04
 - State-characterization date: 2026-08-04
@@ -508,6 +508,52 @@ Orderly disposal stops the passive monitor before recovery supervision and the
 published attachment. Lifecycle cancellation is not reported as communication
 failure. The validated automated baseline is 5,497 tests passing.
 
+## ADR-0048 SCPI Protocol and Bytes diagnostics
+
+Increment 48A added an optional transport-independent observation boundary to
+the serialized SCPI text session. The established constructor remains inactive.
+When supplied, the observer receives one opaque exchange identifier, Query or
+Command kind, owned copies of exact transmitted and received chunks, duration,
+and sanitized terminal outcome. Observation starts only after the session gate
+is acquired, cannot overlap another exchange, and cannot affect SCPI execution
+if an observer fails.
+
+Increment 48B maps observations into the existing Runtime Host disclosure
+levels. Operational capture emits no SCPI Protocol or Bytes records. Protocol
+capture emits payload-free endpoint, family, kind, correlation, length,
+duration, outcome, and fixed failure metadata. Bytes capture additionally emits
+exact snapshots through the established 256-byte capture bound, retaining the
+original byte count and truncation status. Explicit uncertain Command outcome
+and whether execution may have occurred remain visible without retry or replay.
+
+Increment 48C composes one observer into each production KEL-103 session. The
+same serialized path therefore covers initial synchronization, Property reads
+and writes, Commands, passive health, and authoritative recovery
+synchronization. A recovered connection owns a new session and observer.
+Serial framing, total timeout, maximum response, health cadence, replacement,
+and attachment-generation behavior remain unchanged.
+
+Increment 48D registers the `ScpiText` family with the Runtime Host structured
+byte interpreter. Printable ASCII body, Query/Command/response classification,
+and terminator are presented without modifying raw capture. CR (`0D`) denotes a
+request; LF (`0A`) denotes a response. Missing or trailing terminators, empty
+bodies, unsupported control or non-ASCII bytes, and truncated snapshots are
+reported as malformed or incomplete.
+
+Physical validation began and ended with the KEL-103 in authoritative CC/OFF
+state and the external laboratory supply output OFF. One passive-health exchange
+and one authoritative measurement Property read produced correlated records
+scoped to the KEL-103 endpoint. Transmitted snapshots ended in `0D`; received
+snapshots ended in `0A`. Protocol details contained no SCPI payload,
+machine-specific port assignment, instrument serial identity, or exception
+message. Structured Query and response presentation agreed with raw bytes, the
+Property read succeeded, and the endpoint remained `Ready`.
+
+The Client Diagnostics window remains scoped to Client-side northbound
+activity. Runtime Host southbound SCPI snapshots are not transferred or
+reconstructed as Client-captured bytes. The validated automated baseline is
+5,533 tests passing.
+
 ## Exclusions
 
 This report does not validate:
@@ -517,7 +563,7 @@ This report does not validate:
 - saved configurations;
 - triggers;
 - LIST, protection, battery, or dynamic modes;
-- SCPI Protocol or Bytes diagnostics;
+- authenticated remote projection of Runtime Host southbound diagnostics;
 - automatic discovery;
 - generic VISA, USBTMC, or GPIB; or
 - arbitrary operator-entered SCPI.

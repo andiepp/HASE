@@ -1089,6 +1089,11 @@ The northbound runtime-host API begins in Phase 7 under ADR-0023.
 - ADR-0044 — SCPI Instrument Adapter Boundary — complete at 4,515 tests.
 - ADR-0045 — Runtime-Hosted SCPI Instrument Publication — complete at 4,772
   tests after physical recovery and simultaneous multi-host validation.
+- ADR-0046 — Controlled KEL-103 Operating State and Setpoints — complete at
+  5,479 tests.
+- ADR-0047 — Passive SCPI Instrument Health Supervision — complete at 5,497
+  tests.
+- ADR-0048 — SCPI Protocol and Bytes Diagnostics — complete at 5,533 tests.
 
 ADR-0042 closed at 4,017 automated tests with all thirty-seven combined
 physical ESP32 and Arduino Uno validation checks passing without deviation.
@@ -1361,10 +1366,11 @@ uncertainty, or no-replay semantics.
 Current baseline:
 
 ```text
-5,497 automated tests pass
+5,533 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
 ADR-0046 controlled operating state, setpoints, and input control closed
 ADR-0047 passive SCPI health supervision closed
+ADR-0048 SCPI Protocol and Bytes diagnostics closed
 Runtime Hosts and Client stopped
 ```
 
@@ -1409,8 +1415,68 @@ Host and Client state remained truthful
 No mutation retry or recovery replay occurred
 ```
 
+## Completed objective — ADR-0048 SCPI Protocol and Bytes Diagnostics
+
+**Status:** [Completed] Implemented, automated, physically validated, and closed
+at 5,533 tests
+
+ADR-0048 observes existing serialized SCPI exchanges without adding a second
+transport path or instrument operation. Existing session construction remains
+diagnostically inactive. Production KEL-103 sessions use one endpoint-scoped
+observer, including sessions created during supervised recovery.
+
+The established diagnostic disclosure levels apply:
+
+- Operational capture emits no SCPI Protocol or Bytes records;
+- Protocol capture emits correlated payload-free exchange metadata; and
+- Bytes capture additionally emits exact snapshots bounded to 256 captured
+  bytes with original length and truncation status.
+
+Query and Command kind, transmit and receive direction, duration, sanitized
+failure classification, and explicit uncertain Command outcome remain
+available without changing timeout, framing, serialization, recovery, or
+no-replay semantics. The `ScpiText` discriminator enables generic Runtime Host
+structured presentation of printable ASCII body, Query/Command/response kind,
+and the characterized CR request or LF response terminator.
+
+Completed increments:
+
+1. 48A — Transport-independent SCPI observation foundation — complete at
+   5,508 tests.
+2. 48B — Diagnostic disclosure and runtime record mapping — complete at 5,520
+   tests.
+3. 48C — Production KEL-103 composition and Host validation — complete at
+   5,522 tests.
+4. 48D — Structured SCPI text interpretation in the Runtime Host — complete at
+   5,533 tests.
+5. 48E — ADR-0048 documentation and closure — complete at 5,533 tests.
+
+Physical validation used passive health and one authoritative measurement
+Property read. Each exchange produced correlated Protocol and Bytes records
+scoped to the KEL-103 endpoint. Transmitted bytes ended in `0D`, received bytes
+ended in `0A`, Protocol details remained payload-free, structured presentation
+agreed with raw capture, and the endpoint remained `Ready`. Validation required
+no mutation and ended in authoritative CC/OFF state with the external
+laboratory supply output OFF.
+
+The Client Diagnostics window remains a truthful view of Client-side
+northbound activity. It neither receives Runtime Host southbound snapshots nor
+reconstructs them as Client-captured bytes. Authenticated remote Runtime Host
+diagnostic projection requires a separate decision.
+
+Current baseline:
+
+```text
+5,533 automated tests pass
+ADR-0048 SCPI Protocol and Bytes diagnostics closed
+Runtime Host raw and structured SCPI Bytes presentation verified
+SCPI mutation uncertainty and no-replay behavior unchanged
+KEL-103 final state CC/OFF; external laboratory supply output OFF
+```
+
 ## Agreed later objectives
 
 - Python Automation Boundary.
 - Diagnostic Export and Offline Analysis.
+- Authenticated Runtime Host Diagnostics Projection.
 - Remote Media Feedback.
