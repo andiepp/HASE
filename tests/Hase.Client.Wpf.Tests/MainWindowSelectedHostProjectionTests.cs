@@ -241,6 +241,166 @@ public sealed class MainWindowSelectedHostProjectionTests
     }
 
     [Fact]
+    public void SameGenerationRefresh_ActivePropertyEditor_ShouldRetainInstanceAndText()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("33d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = PropertyState(
+            "host-01",
+            generation,
+            1,
+            0.125);
+        RemoteObservationState secondState = PropertyState(
+            "host-01",
+            generation,
+            2,
+            0.25);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        PropertyInventoryItemViewModel property = TargetProperty(viewModel);
+        property.RequestedValueText = "0.2";
+        property.IsEditingRequestedValue = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.Same(secondState, viewModel.CurrentState);
+        Assert.Same(property, TargetProperty(viewModel));
+        Assert.Equal("0.2", property.RequestedValueText);
+    }
+
+    [Fact]
+    public void SameGenerationRefresh_CompletedPropertyEdit_ShouldSurviveProjection()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("43d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = PropertyState(
+            "host-01",
+            generation,
+            1,
+            0.125);
+        RemoteObservationState secondState = PropertyState(
+            "host-01",
+            generation,
+            2,
+            0.25);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        PropertyInventoryItemViewModel previous = TargetProperty(viewModel);
+        previous.RequestedValueText = "0.2";
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        PropertyInventoryItemViewModel projected = TargetProperty(viewModel);
+        Assert.NotSame(previous, projected);
+        Assert.Equal("0.2", projected.RequestedValueText);
+        Assert.True(projected.CanSubmitWrite);
+        Assert.Equal("0.25", projected.Value);
+    }
+
+    [Fact]
+    public void GenerationChange_ActivePropertyEditor_ShouldDiscardRequestedText()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        RemoteObservationState firstState = PropertyState(
+            "host-01",
+            Guid.Parse("53d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            1,
+            0.125);
+        RemoteObservationState replacementState = PropertyState(
+            "host-01",
+            Guid.Parse("63d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            2,
+            0.25);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        PropertyInventoryItemViewModel previous = TargetProperty(viewModel);
+        previous.RequestedValueText = "0.2";
+        previous.IsEditingRequestedValue = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, replacementState)]));
+
+        PropertyInventoryItemViewModel projected = TargetProperty(viewModel);
+        Assert.NotSame(previous, projected);
+        Assert.Equal("0.25", projected.RequestedValueText);
+        Assert.False(projected.IsEditingRequestedValue);
+    }
+
+    [Fact]
+    public void Reconnecting_ActivePropertyEditor_ShouldDiscardRequestedText()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        RemoteObservationState state = PropertyState(
+            "host-01",
+            Guid.Parse("73d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            1,
+            0.125);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, state));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        PropertyInventoryItemViewModel previous = TargetProperty(viewModel);
+        previous.RequestedValueText = "0.2";
+        previous.IsEditingRequestedValue = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Reconnecting, state)]));
+
+        PropertyInventoryItemViewModel projected = TargetProperty(viewModel);
+        Assert.NotSame(previous, projected);
+        Assert.Equal("0.125", projected.RequestedValueText);
+        Assert.Contains(
+            "read-only",
+            viewModel.PropertyReadMessage);
+    }
+
+    [Fact]
+    public void HostSelectionChange_ActivePropertyEditor_ShouldDiscardRequestedText()
+    {
+        RuntimeHostProfile first = Profile("first", "host-01");
+        RuntimeHostProfile second = Profile("second", "host-02");
+        var viewModel = new MainWindowViewModel();
+        viewModel.ConfigureRuntimeHosts(
+            new RuntimeHostProfileRegistry([first, second]));
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(
+                first,
+                RuntimeHostClientSessionState.Connected,
+                PropertyState(
+                    "host-01",
+                    Guid.Parse("83d9ef89-267a-4de4-9ed1-04848635e6ab"),
+                    1,
+                    0.125)),
+            Session(
+                second,
+                RuntimeHostClientSessionState.Connected,
+                PropertyState(
+                    "host-02",
+                    Guid.Parse("93d9ef89-267a-4de4-9ed1-04848635e6ab"),
+                    1,
+                    0.25))]));
+        viewModel.SelectRuntimeHost(first.ProfileId);
+        PropertyInventoryItemViewModel previous = TargetProperty(viewModel);
+        previous.RequestedValueText = "0.2";
+        previous.IsEditingRequestedValue = true;
+
+        viewModel.SelectRuntimeHost(second.ProfileId);
+
+        PropertyInventoryItemViewModel projected = TargetProperty(viewModel);
+        Assert.NotSame(previous, projected);
+        Assert.Equal("0.25", projected.RequestedValueText);
+        Assert.False(projected.IsEditingRequestedValue);
+    }
+
+    [Fact]
     public void NoSelection_ShouldExposeEmptyStateAndGuidance()
     {
         RuntimeHostProfile profile = Profile("first", "host-01");
@@ -380,6 +540,66 @@ public sealed class MainWindowSelectedHostProjectionTests
         Assert.IsType<CommandInventoryItemViewModel>(
             SelectedInstrument(viewModel)
                 .ConfirmedShortCircuitActivationCommand);
+
+    private static PropertyInventoryItemViewModel TargetProperty(
+        MainWindowViewModel viewModel) =>
+        Assert.Single(
+            SelectedInstrument(viewModel)
+                .Properties);
+
+    private static RemoteObservationState PropertyState(
+        string host,
+        Guid generation,
+        ulong sequence,
+        double value)
+    {
+        var property = new PropertyDescriptor(
+            new PropertyId("target-current"),
+            DescriptorPath.Parse("Target.Current"),
+            "Target current",
+            new NumericDataDescriptor(
+                Quantities.Current,
+                Units.Ampere,
+                new ValueRange(
+                    0,
+                    30)))
+        {
+            AccessMode = PropertyAccessMode.ReadWrite
+        };
+        var instrument = new InstrumentDescriptor(
+            new InstrumentId("electronic-load-01"),
+            "Electronic Load",
+            new InstrumentKind("ElectronicLoad"))
+        {
+            Interface = new InstrumentInterface(properties: [property])
+        };
+        var attachment = new RemoteEndpointAttachmentSnapshot(
+            new RemoteEndpointAttachmentGeneration(generation),
+            new EndpointDescriptor(new EndpointId("kel-01"), [instrument]),
+            new RemoteEndpointConnectionStatus(RemoteEndpointConnectionState.Ready));
+        var reducer = new RemoteObservationReducer();
+        RemoteObservationState state = reducer.Initialize(
+            RemoteObservationState.Empty,
+            new RemoteObservationInitialSnapshot(
+                new RemoteRuntimeHostSnapshot(
+                    new RemoteRuntimeHostId(host),
+                    RuntimeHostClientApiVersion.Current,
+                    [attachment]),
+                new RemoteObservationSequence(0)));
+        return reducer.Apply(
+            state,
+            new RemoteRuntimeHostObservation(
+                new RemoteObservationSequence(sequence),
+                attachment.Key,
+                new RemotePropertyValueChangedObservationPayload(
+                    instrument.Id,
+                    property.Id,
+                    previousValue: null,
+                    new RemotePropertyValue(
+                        RemoteValue.FromNumeric(value),
+                        DateTimeOffset.UnixEpoch,
+                        RemotePropertyQuality.Good))));
+    }
 
     private static RemoteObservationState ModeState(
         string host,

@@ -284,6 +284,11 @@ public sealed class MainWindowViewModel
         Dictionary<RemoteCommandTarget, string>
             retainedShortCircuitConfirmations =
                 CaptureConfirmedShortCircuitConfirmations();
+        Dictionary<RemotePropertyTarget, string>
+            retainedRequestedPropertyValueTexts =
+                CaptureRequestedPropertyValueTexts();
+        bool hadActivePropertyValueEditor =
+            HasActivePropertyValueEditor();
         RemoteObservationState previousState =
             currentState;
         bool mayPresentState = selectedSession?.Status.State is
@@ -303,22 +308,31 @@ public sealed class MainWindowViewModel
             mayPresentState && selectedSession!.CurrentState is not null
                 ? selectedSession.CurrentState
                 : RemoteObservationState.Empty;
-        if (selectedSession?.Status.State
+        bool mayRetainInteractiveState =
+            selectedSession?.Status.State
                 == RuntimeHostClientSessionState.Connected
             && HaveSameRuntimeHostAndAttachmentKeys(
                 previousState,
-                selectedState))
+                selectedState);
+        if (mayRetainInteractiveState)
         {
             RestoreConfirmedShortCircuitConfirmations(
                 selectedState,
                 retainedShortCircuitConfirmations);
+            foreach (KeyValuePair<
+                RemotePropertyTarget,
+                string> item
+                in retainedRequestedPropertyValueTexts)
+            {
+                requestedPropertyValueTexts[item.Key] =
+                    item.Value;
+            }
         }
         bool deferEndpointProjection =
             !clearEventOccurrences
-            && HasActiveDirectCommandInteraction()
-            && HaveSameAttachmentKeys(
-                currentState,
-                selectedState);
+            && mayRetainInteractiveState
+            && (HasActiveDirectCommandInteraction()
+                || hadActivePropertyValueEditor);
         SetProperty(ref currentState, selectedState, nameof(CurrentState));
         if (!deferEndpointProjection)
         {
@@ -1399,21 +1413,32 @@ public sealed class MainWindowViewModel
     {
         requestedPropertyValueTexts.Clear();
 
-        foreach (PropertyInventoryItemViewModel property
-            in endpoints
-                .SelectMany(
-                    endpoint =>
-                        endpoint.Instruments)
-                .SelectMany(
-                    instrument =>
-                        instrument.Properties)
-                .Where(
-                    property =>
-                        property.HasTextEditor))
+        foreach (KeyValuePair<RemotePropertyTarget, string> item
+            in CaptureRequestedPropertyValueTexts())
         {
-            requestedPropertyValueTexts[property.Target] =
-                property.RequestedValueText;
+            requestedPropertyValueTexts[item.Key] =
+                item.Value;
         }
+    }
+
+    private Dictionary<RemotePropertyTarget, string>
+        CaptureRequestedPropertyValueTexts()
+    {
+        return endpoints
+            .SelectMany(
+                endpoint =>
+                    endpoint.Instruments)
+            .SelectMany(
+                instrument =>
+                    instrument.Properties)
+            .Where(
+                property =>
+                    property.HasTextEditor)
+            .ToDictionary(
+                property =>
+                    property.Target,
+                property =>
+                    property.RequestedValueText);
     }
 
     private void PreserveRequestedCommandArgumentTexts()
