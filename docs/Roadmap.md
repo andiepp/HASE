@@ -1354,17 +1354,59 @@ baseline is 5,479 tests.
 
 Increment 46J reconciled ADR-0046, the characterization report, project status,
 and this roadmap with the accepted version-5 implementation and physical
-evidence. ADR-0046 is closed. Passive idle serial-health probing remains a
-separate backlog item because the current attachment detects USB loss on the
-next attempted Property or Command operation.
+evidence. ADR-0046 is closed. Its operation-detected idle-loss limitation was
+subsequently resolved by ADR-0047 without changing ADR-0046 mutation,
+uncertainty, or no-replay semantics.
 
 Current baseline:
 
 ```text
-5,479 automated tests pass
+5,497 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
 ADR-0046 controlled operating state, setpoints, and input control closed
+ADR-0047 passive SCPI health supervision closed
 Runtime Hosts and Client stopped
+```
+
+## Completed objective — ADR-0047 Passive SCPI Instrument Health Supervision
+
+**Status:** [Completed] Implemented, automated, physically validated, and closed
+at 5,497 tests
+
+ADR-0047 adds one fixed, characterized, read-only `*IDN?` health operation
+through the existing published connection-slot and serialized SCPI-session
+gates. The operation validates KEL-103 identity without changing Property
+cache state or exposing identity content.
+
+Each supervised attachment owns one monitor. It waits five seconds before the
+first probe, probes only while Ready, and waits a complete interval after every
+completed probe. It performs no catch-up and never accumulates or overlaps
+probes. Failure projects sanitized Faulted state and delegates replacement and
+complete authoritative read-only synchronization to existing recovery
+supervision. No mutation is retried or replayed.
+
+Completed increments:
+
+1. 47A — Serialized KEL-103 health-probe primitive — complete at 5,491 tests.
+2. 47B — Passive idle monitor lifecycle and physical validation — complete at
+   5,497 tests.
+3. 47C — ADR-0047 documentation and closure — complete at 5,497 tests.
+
+Physical validation removed the KEL-103 USB connection without an operator
+Property or Command operation. Host and Client left Ready, the same published
+endpoint entered supervised recovery, and reconnection returned both to Ready
+through authoritative synchronization. State remained CC/OFF, other endpoints
+remained operational, diagnostics remained sanitized, and no state-changing
+operation was retried or replayed.
+
+Current baseline:
+
+```text
+5,497 automated tests pass
+ADR-0047 passive SCPI instrument health supervision closed
+KEL-103 passive USB-loss detection and authoritative recovery verified
+Host and Client state remained truthful
+No mutation retry or recovery replay occurred
 ```
 
 ## Agreed later objectives

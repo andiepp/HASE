@@ -2,8 +2,9 @@
 
 - Related decisions: ADR-0044 — SCPI Instrument Adapter Boundary; ADR-0045 —
   Runtime-Hosted SCPI Instrument Publication; ADR-0046 — Controlled KEL-103
-  Operating State and Setpoints
-- Increment: 46J — ADR-0046 documentation and closure
+  Operating State and Setpoints; ADR-0047 — Passive SCPI Instrument Health
+  Supervision
+- Increment: 47C — ADR-0047 documentation and closure
 - Initial date: 2026-08-03
 - Runtime closure date: 2026-08-04
 - State-characterization date: 2026-08-04
@@ -426,11 +427,12 @@ synchronization sequence. The replacement session contains no setter or mode
 Command, and its authoritative reads replace the cached operating state and all
 four targets. Recovery diagnostics retain only sanitized operation metadata.
 
-Physical USB-disconnect validation established that this KEL-103 attachment
-does not passively probe an otherwise idle serial connection. The endpoint can
-therefore remain displayed as Ready after USB removal until the next Property
-or Command operation detects the unavailable transport. Once detected, the
-session faults and supervised replacement proceeds normally.
+Increment 46H physical USB-disconnect validation established that the
+then-current KEL-103 attachment did not passively probe an otherwise idle
+serial connection. The endpoint could therefore remain displayed as Ready
+after USB removal until the next Property or Command operation detected the
+unavailable transport. Once detected, the session faulted and supervised
+replacement proceeded normally. ADR-0047 subsequently closes this known gap.
 
 With USB disconnected, the operator changed the physical mode and one target
 while input and the external laboratory supply output remained OFF. On
@@ -479,6 +481,33 @@ ended in authoritative CC/OFF state. This establishes the control and safety
 gates without claiming energized electrical-load performance. The validated
 automated baseline is 5,479 tests passing.
 
+## ADR-0047 passive idle health supervision
+
+Increment 47A added one fixed read-only health primitive. It sends exactly one
+characterized `*IDN?` query, requires the expected KEL-103 identity, changes no
+Property cache, and enters through both the published connection-slot gate and
+the serialized SCPI-session gate. It therefore cannot overlap a Property read,
+Property write, Command, another probe, or connection replacement.
+
+Increment 47B added exactly one passive monitor to each supervised KEL-103
+attachment. It waits five seconds before its first probe, probes only while the
+endpoint is Ready, and waits a complete interval after each probe completes.
+It performs no catch-up and accumulates no probes. A failure projects fixed
+sanitized Faulted state and leaves the established recovery supervisor
+responsible for replacement and complete read-only authoritative
+synchronization. No mutation is retried or replayed.
+
+Physical validation began in authoritative CC/OFF state with the external
+laboratory supply output OFF. USB removal, without any operator Property or
+Command operation, caused both Host and Client to leave Ready. Reconnecting the
+same USB connection returned both to Ready through complete synchronization.
+Authoritative state remained CC/OFF, other endpoints remained operational,
+diagnostics remained sanitized, and no state-changing operation occurred.
+
+Orderly disposal stops the passive monitor before recovery supervision and the
+published attachment. Lifecycle cancellation is not reported as communication
+failure. The validated automated baseline is 5,497 tests passing.
+
 ## Exclusions
 
 This report does not validate:
@@ -492,9 +521,5 @@ This report does not validate:
 - automatic discovery;
 - generic VISA, USBTMC, or GPIB; or
 - arbitrary operator-entered SCPI.
-
-Immediate idle connection-loss detection is also excluded. The current
-attachment detects USB loss through the next attempted Property or Command
-operation; passive health queries require a separate design and approval.
 
 Each requires a later explicitly approved increment.

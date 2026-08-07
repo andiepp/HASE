@@ -1,5 +1,37 @@
 # Project Status
 
+## Completed architectural objective — ADR-0047
+
+**ADR-0047 — Passive SCPI Instrument Health Supervision — implemented,
+physically validated, and closed at 5,497 tests**
+
+- Each supervised KEL-103 attachment owns exactly one passive monitor.
+- The monitor waits five seconds before the first probe and after every
+  completed probe; it performs no catch-up and accumulates no probes.
+- Probing occurs only while the endpoint is Ready.
+- The fixed health operation sends exactly one characterized read-only
+  `*IDN?`, requires valid KEL-103 identity, and changes no Property cache.
+- The published connection-slot gate and serialized SCPI-session gate prevent
+  overlap with Property reads, writes, Commands, probes, or replacement.
+- Probe failure projects fixed sanitized Faulted state. Existing supervision
+  owns replacement and complete authoritative read-only synchronization.
+- No mode, setpoint, input, or SHORT mutation is retried or replayed.
+- Orderly shutdown stops the monitor before recovery supervision and
+  attachment disposal; lifecycle cancellation is not reported as a
+  communication failure.
+- Physical USB removal without an operator operation caused Host and Client to
+  leave Ready. Reconnection returned both to Ready with authoritative CC/OFF
+  state, other endpoints operational, and sanitized diagnostics.
+- Host, Client, northbound, definition, profile, and deployment contracts
+  remain unchanged.
+
+### Next
+
+Select the next architectural objective through a separately approved decision
+or increment. ADR-0047 is closed.
+
+---
+
 ## Completed architectural objective — ADR-0046
 
 **ADR-0046 — Controlled KEL-103 Operating State and Setpoints — implemented,
@@ -88,9 +120,9 @@ physically validated, and closed at 5,479 tests**
 - Physical USB-disconnect validation confirmed that offline front-panel mode
   and target changes are adopted on recovery without replay, with unchanged
   endpoint identity and attachment generation.
-- Idle USB removal is operation-detected rather than passively monitored: the
-  endpoint can remain Ready until the next Property or Command operation
-  encounters the unavailable transport and faults the session.
+- Increment 46H established the former operation-detected idle-loss limitation;
+  ADR-0047 subsequently adds passive idle detection without changing ADR-0046
+  mutation or recovery semantics.
 - All post-recovery reads and explicit mode Commands succeeded, diagnostics
   remained scoped and sanitized, and final state was CC/OFF with the external
   supply output off.
@@ -1350,7 +1382,7 @@ shutdown, and deterministic port release. ADR-0045 closes at 4,772 tests.
 
 # Architecture Decision Records
 
-ADR-0001 through ADR-0046 are accepted.
+ADR-0001 through ADR-0047 are accepted.
 
 Relevant recent decisions:
 
@@ -1387,6 +1419,7 @@ Relevant recent decisions:
 - ADR-0044 - SCPI Instrument Adapter Boundary.
 - ADR-0045 - Runtime-Hosted SCPI Instrument Publication.
 - ADR-0046 - Controlled KEL-103 Operating State and Setpoints.
+- ADR-0047 - Passive SCPI Instrument Health Supervision.
 
 ---
 
@@ -1412,7 +1445,6 @@ The current implementation intentionally excludes:
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery;
-- passive KEL-103 serial health probing;
 - SCPI Protocol and Bytes diagnostics;
 - automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
 - Python automation;
