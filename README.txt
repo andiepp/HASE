@@ -1,31 +1,31 @@
-HASE Increment 48E - ADR-0048 Documentation and Closure
-========================================================
+HASE Increment 49A - Diagnostic Projection Contract and Policy Foundation
+=========================================================================
 
 Authoritative baseline:
-  commit f20210d819d87d369e9626fa8e950358ee611bc1
+  commit 088bc65bc1d584ae9aa210757eadfd68f57fdc82
   Visual Studio 2026, Release, .NET 10
   5,533 automated tests passing
 
 Overlay contents:
-  docs/adr/ADR-0048-SCPI-Protocol-and-Bytes-Diagnostics.md
-  docs/ProjectStatus.md
-  docs/Roadmap.md
-  docs/KEL-103-SCPI-Serial-Characterization.md
+  src/Hase.Runtime.Northbound/RuntimeHostDiagnosticProjectionPolicy.cs
+  src/Hase.Runtime.Northbound/RuntimeHostDiagnosticProjector.cs
+  src/Hase.Runtime.Northbound/RuntimeHostProjectedDiagnosticByteSnapshot.cs
+  src/Hase.Runtime.Northbound/RuntimeHostProjectedDiagnosticRecord.cs
+  tests/Hase.Runtime.Tests.Northbound/RuntimeHostDiagnosticProjectionContractTests.cs
 
 Behavior:
-  - ADR-0048 records the optional serialized observation boundary, established
-    disclosure levels, production composition, and Host structured presentation.
-  - Project status and roadmap record the validated 5,533-test baseline and
-    physical evidence.
-  - The KEL-103 report records exact CR/LF diagnostic evidence without
-    deployment-sensitive values.
-  - Runtime Host southbound diagnostic projection to Clients remains separate.
+  - Remote Runtime Host diagnostic projection is disabled by default.
+  - Enabling without an explicit level permits Operational records only.
+  - The remote ceiling cannot exceed the Host capture level.
+  - Projected records own immutable structure, safe allowlisted details, and
+    optional exact bounded byte snapshots.
+  - No production Host, gRPC, Client, configuration, or UI path is activated.
 
 Automated validation:
   1. Extract this ZIP over the repository root.
   2. Build the complete solution in Visual Studio 2026, Release.
   3. Run all automated tests.
-  4. Expected total: 5,533 passing tests.
+  4. Expected total: 5,545 passing tests.
 
-No source, deployment, Runtime Host, Client, or further physical validation is
-required for Increment 48E.
+No Runtime Host or Client update and no physical validation are required for
+this production-inactive Increment 49A foundation.
