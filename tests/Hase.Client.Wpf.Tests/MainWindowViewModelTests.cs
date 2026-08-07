@@ -1,5 +1,6 @@
 using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
+using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
@@ -1153,6 +1154,110 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ExecuteCommandAsync_ConfirmedShortCircuit_ShouldSendTrueOnceAndClearConfirmation()
+    {
+        var controller = new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(controller, null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(RuntimeHostClientSessionState.Connected));
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation(true);
+
+        await viewModel.ExecuteCommandAsync(command);
+
+        Assert.Equal(1, controller.CommandCount);
+        Assert.Equal(
+            RemoteValueKind.Boolean,
+            controller.CommandRequest!.Argument!.Kind);
+        Assert.True(controller.CommandRequest.Argument.BooleanValue);
+        Assert.Null(command.RequestedBooleanArgument);
+        Assert.Equal(
+            "Activate short circuit: Command completed.",
+            viewModel.PropertyReadMessage);
+        Assert.False(viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task ExecuteCommandAsync_UnconfirmedShortCircuit_ShouldRemainLocal()
+    {
+        var controller = new StubController();
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(controller, null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(RuntimeHostClientSessionState.Connected));
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation(false);
+
+        await viewModel.ExecuteCommandAsync(command);
+
+        Assert.Equal(0, controller.CommandCount);
+        Assert.False(command.RequestedBooleanArgument);
+        Assert.Equal(
+            "Activate short circuit: explicit Boolean confirmation true is required.",
+            viewModel.PropertyReadMessage);
+        Assert.False(viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task ExecuteCommandAsync_FailedShortCircuit_ShouldClearConfirmation()
+    {
+        var controller = new StubController
+        {
+            CommandResult =
+                RemoteCommandOperationResult.Failed(
+                    RemoteCommandOperationStatus.EndpointRejected)
+        };
+        MainWindowViewModel viewModel =
+            CreateConfiguredViewModel(controller, null);
+        viewModel.ApplySessionStatus(
+            CreateStatus(RuntimeHostClientSessionState.Connected));
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation(true);
+
+        await viewModel.ExecuteCommandAsync(command);
+
+        Assert.Equal(1, controller.CommandCount);
+        Assert.Null(command.RequestedBooleanArgument);
+        Assert.Equal(
+            "Activate short circuit: Command failed (EndpointRejected).",
+            viewModel.PropertyReadMessage);
+    }
+
+    private static CommandInventoryItemViewModel CreateConfirmedShortCircuitActivation(
+        bool requestedConfirmation)
+    {
+        DescriptorPath path =
+            DescriptorPath.Parse("ShortCircuit.Activate");
+        var target =
+            new RemoteCommandTarget(
+                new RemoteEndpointAttachmentKey(
+                    new EndpointId("endpoint-01"),
+                    new RemoteEndpointAttachmentGeneration(
+                        Guid.Parse(
+                            "9f88a60b-ff77-420f-bc7d-73ad82c718e9"))),
+                new InstrumentId("electronic-load-01"),
+                path);
+
+        return new CommandInventoryItemViewModel(
+            target,
+            path.ToString(),
+            "Activate short circuit",
+            null,
+            true)
+        {
+            Descriptor =
+                new CommandDescriptor(
+                    path,
+                    "Activate short circuit",
+                    new CommandArgumentDescriptor(
+                        "Confirmation",
+                        new BooleanDataDescriptor())),
+            RequestedBooleanArgument = requestedConfirmation
+        };
+    }
+
+    [Fact]
     public void Configure_SecondCall_ShouldThrow()
     {
         var viewModel =
@@ -1429,6 +1534,12 @@ public sealed class MainWindowViewModelTests
             private set;
         }
 
+        public RemoteCommandOperationResult? CommandResult
+        {
+            get;
+            init;
+        }
+
         public Task ConnectAsync(
             string configurationFilePath,
             CancellationToken cancellationToken = default)
@@ -1487,7 +1598,8 @@ public sealed class MainWindowViewModelTests
                 request;
 
             return Task.FromResult(
-                RemoteCommandOperationResult.Successful());
+                CommandResult
+                ?? RemoteCommandOperationResult.Successful());
         }
 
         public ValueTask DisposeAsync() =>

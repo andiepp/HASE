@@ -281,6 +281,11 @@ public sealed class MainWindowViewModel
     {
         RuntimeHostProfileSessionSnapshot? selectedSession =
             SelectedRuntimeHostSession;
+        Dictionary<RemoteCommandTarget, string>
+            retainedShortCircuitConfirmations =
+                CaptureConfirmedShortCircuitConfirmations();
+        RemoteObservationState previousState =
+            currentState;
         bool mayPresentState = selectedSession?.Status.State is
             RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting;
 
@@ -298,9 +303,19 @@ public sealed class MainWindowViewModel
             mayPresentState && selectedSession!.CurrentState is not null
                 ? selectedSession.CurrentState
                 : RemoteObservationState.Empty;
+        if (selectedSession?.Status.State
+                == RuntimeHostClientSessionState.Connected
+            && HaveSameRuntimeHostAndAttachmentKeys(
+                previousState,
+                selectedState))
+        {
+            RestoreConfirmedShortCircuitConfirmations(
+                selectedState,
+                retainedShortCircuitConfirmations);
+        }
         bool deferEndpointProjection =
             !clearEventOccurrences
-            && HasActiveModeCommandInteraction()
+            && HasActiveDirectCommandInteraction()
             && HaveSameAttachmentKeys(
                 currentState,
                 selectedState);
@@ -353,6 +368,62 @@ public sealed class MainWindowViewModel
 
         return firstKeys.SetEquals(
             secondKeys);
+    }
+
+    private static bool HaveSameRuntimeHostAndAttachmentKeys(
+        RemoteObservationState first,
+        RemoteObservationState second) =>
+        first.Snapshot is not null
+        && second.Snapshot is not null
+        && first.Snapshot.RuntimeHostId
+            == second.Snapshot.RuntimeHostId
+        && HaveSameAttachmentKeys(
+            first,
+            second);
+
+    private Dictionary<RemoteCommandTarget, string>
+        CaptureConfirmedShortCircuitConfirmations()
+    {
+        return endpoints
+            .SelectMany(endpoint => endpoint.Instruments)
+            .Where(instrument =>
+                instrument.HasConfirmedShortCircuitActivation)
+            .Select(instrument =>
+                instrument.ConfirmedShortCircuitActivationCommand!)
+            .Where(command =>
+                command.IsShortCircuitActivationConfirmed)
+            .ToDictionary(
+                command => command.Target,
+                _ => bool.TrueString);
+    }
+
+    private void RestoreConfirmedShortCircuitConfirmations(
+        RemoteObservationState selectedState,
+        IReadOnlyDictionary<RemoteCommandTarget, string> retained)
+    {
+        if (retained.Count == 0)
+        {
+            return;
+        }
+
+        HashSet<RemoteCommandTarget> exactReadyTargets =
+            RuntimeHostInventoryProjector.Project(
+                    selectedState)
+                .SelectMany(endpoint => endpoint.Instruments)
+                .SelectMany(instrument => instrument.Commands)
+                .Where(command =>
+                    command.EndpointReady
+                    && command.IsConfirmedShortCircuitActivation)
+                .Select(command => command.Target)
+                .ToHashSet();
+
+        foreach (KeyValuePair<RemoteCommandTarget, string> item
+            in retained.Where(item =>
+                exactReadyTargets.Contains(item.Key)))
+        {
+            requestedCommandArgumentTexts[item.Key] =
+                item.Value;
+        }
     }
 
     private void RetainCurrentInitialModeReadAttempts(
@@ -828,7 +899,7 @@ public sealed class MainWindowViewModel
 
         if (HasActiveCommandArgumentEditor()
             || HasActivePropertyValueEditor()
-            || (HasActiveModeCommandInteraction()
+            || (HasActiveDirectCommandInteraction()
                 && HaveSameAttachmentKeys(
                     currentState,
                     value)))
@@ -1190,7 +1261,20 @@ public sealed class MainWindowViewModel
 
         if (command.RequiresArgument)
         {
-            if (command.ArgumentDataType != "ByteArray"
+            if (command.IsConfirmedShortCircuitActivation)
+            {
+                if (command.RequestedBooleanArgument is not true)
+                {
+                    PropertyReadMessage =
+                        $"{command.DisplayName}: explicit Boolean confirmation true is required.";
+                    return;
+                }
+
+                argument =
+                    RemoteValue.FromBoolean(
+                        true);
+            }
+            else if (command.ArgumentDataType != "ByteArray"
                 || !Hase.Operator.Input.ByteArrayHexadecimalParser.TryParse(
                     command.RequestedArgumentText,
                     out Hase.Core.Domain.Data.ByteArrayValue?
@@ -1200,10 +1284,12 @@ public sealed class MainWindowViewModel
                     $"{command.DisplayName}: enter valid hexadecimal bytes.";
                 return;
             }
-
-            argument =
-                RemoteValue.FromByteArray(
-                    byteArrayArgument);
+            else
+            {
+                argument =
+                    RemoteValue.FromByteArray(
+                        byteArrayArgument);
+            }
         }
 
         IsBusy =
@@ -1247,8 +1333,36 @@ public sealed class MainWindowViewModel
         }
         finally
         {
+            ClearSingleUseCommandConfirmation(
+                command);
             IsBusy =
                 false;
+        }
+    }
+
+    private void ClearSingleUseCommandConfirmation(
+        CommandInventoryItemViewModel command)
+    {
+        if (!command.IsConfirmedShortCircuitActivation)
+        {
+            return;
+        }
+
+        requestedCommandArgumentTexts.Remove(
+            command.Target);
+        command.RequestedBooleanArgument =
+            null;
+
+        foreach (CommandInventoryItemViewModel current
+            in endpoints
+                .SelectMany(endpoint => endpoint.Instruments)
+                .SelectMany(instrument => instrument.Commands)
+                .Where(current =>
+                    current.Target == command.Target
+                    && current.IsConfirmedShortCircuitActivation))
+        {
+            current.RequestedBooleanArgument =
+                null;
         }
     }
 
@@ -1337,7 +1451,7 @@ public sealed class MainWindowViewModel
                     command.IsEditingArgument);
     }
 
-    private bool HasActiveModeCommandInteraction()
+    private bool HasActiveDirectCommandInteraction()
     {
         return endpoints
             .SelectMany(
@@ -1345,7 +1459,9 @@ public sealed class MainWindowViewModel
                     endpoint.Instruments)
             .Any(
                 instrument =>
-                    instrument.IsInvokingModeCommand);
+                    instrument.IsInvokingModeCommand
+                    || instrument.IsInvokingInputCommand
+                    || instrument.IsInvokingShortCircuitCommand);
     }
 
     private bool HasActivePropertyValueEditor()

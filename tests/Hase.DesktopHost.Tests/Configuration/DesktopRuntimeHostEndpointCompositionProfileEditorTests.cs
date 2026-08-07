@@ -9,6 +9,73 @@ namespace Hase.DesktopHost.Tests.Configuration;
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
 {
     [Fact]
+    public async Task MigrateKel103DefinitionAsync_VersionFourToFivePreservesIdentityTransportAndBackup()
+    {
+        using Files files = new();
+        files.Write(
+            Native("native"),
+            Compact("compact"),
+            Kel103Version("preserved", 4, "external-target-preserved"),
+            Kel103Version("selected", 4, "external-target-selected"));
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor()
+            .MigrateKel103DefinitionAsync(
+                files.Profile,
+                files.Backup,
+                "selected",
+                Kel103ControlledSetpointDefinition.Reference,
+                Kel103ControlledInputDefinition.Reference);
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        DesktopRuntimeHostKel103SerialEndpointProfile selected =
+            active.Kel103SerialEndpoints.Single(endpoint =>
+                endpoint.ExpectedEndpointId == "selected");
+        Assert.Equal("selected", selected.ExpectedEndpointId);
+        Assert.Equal(
+            Kel103ControlledInputDefinition.Reference,
+            selected.DefinitionReference);
+        Assert.Equal("external-target-selected", selected.SerialPort);
+        Assert.Equal(115200, selected.BaudRate);
+        Assert.Equal(
+            Kel103ControlledSetpointDefinition.Reference,
+            active.Kel103SerialEndpoints.Single(endpoint =>
+                endpoint.ExpectedEndpointId == "preserved").DefinitionReference);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.CompactSerialEndpoints);
+
+        DesktopRuntimeHostEndpointCompositionProfile backup =
+            await files.Load(files.Backup);
+        Assert.All(
+            backup.Kel103SerialEndpoints,
+            endpoint => Assert.Equal(
+                Kel103ControlledSetpointDefinition.Reference,
+                endpoint.DefinitionReference));
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(5)]
+    public async Task MigrateKel103DefinitionAsync_VersionFiveMigrationRejectsWrongCurrentVersion(
+        ushort version)
+    {
+        using Files files = new();
+        files.Write(Kel103Version("selected", version, "external-target"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor()
+                .MigrateKel103DefinitionAsync(
+                    files.Profile,
+                    files.Backup,
+                    "selected",
+                    Kel103ControlledSetpointDefinition.Reference,
+                    Kel103ControlledInputDefinition.Reference));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
     public async Task MigrateKel103DefinitionAsync_ChangesOnlyExactDefinitionAndRetainsBackup()
     {
         using Files files = new();

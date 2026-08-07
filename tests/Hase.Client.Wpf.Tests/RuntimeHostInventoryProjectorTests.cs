@@ -366,6 +366,40 @@ public sealed class RuntimeHostInventoryProjectorTests
                 Assert.True(command.CanExecute));
     }
 
+    [Fact]
+    public void Project_InputControl_ShouldExposeOrderedDirectCommands()
+    {
+        RemoteObservationState state = CreateModeSelectionState(
+            Guid.Parse("55d9ef89-267a-4de4-9ed1-04848635e6ab"));
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(state)).Instruments);
+
+        Assert.Equal(
+            ["Activate input", "Deactivate input"],
+            instrument.InputControlCommands
+                .Select(command => command.InputControlLabel)
+                .ToArray());
+        Assert.All(
+            instrument.InputControlCommands,
+            command => Assert.True(command.CanExecute));
+    }
+
+    [Fact]
+    public void Project_ConfirmedShortCircuitActivation_ShouldExposeDedicatedCommand()
+    {
+        RemoteObservationState state = CreateModeSelectionState(
+            Guid.Parse("58d9ef89-267a-4de4-9ed1-04848635e6ab"));
+        InstrumentInventoryItemViewModel instrument = Assert.Single(
+            Assert.Single(RuntimeHostInventoryProjector.Project(state)).Instruments);
+
+        Assert.True(instrument.HasConfirmedShortCircuitActivation);
+        CommandInventoryItemViewModel command =
+            Assert.IsType<CommandInventoryItemViewModel>(
+                instrument.ConfirmedShortCircuitActivationCommand);
+        Assert.False(command.CanExecute);
+        Assert.DoesNotContain(command, instrument.GeneralCommands);
+    }
+
     [Theory]
     [InlineData("CC", "CC")]
     [InlineData("CV", "CV")]
@@ -434,7 +468,15 @@ public sealed class RuntimeHostInventoryProjectorTests
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT")
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT"),
+            new CommandDescriptor(DescriptorPath.Parse("Input.Activate"), "Activate input"),
+            new CommandDescriptor(DescriptorPath.Parse("Input.Deactivate"), "Deactivate input"),
+            new CommandDescriptor(
+                DescriptorPath.Parse("ShortCircuit.Activate"),
+                "Activate short circuit",
+                new CommandArgumentDescriptor(
+                    "Confirmation",
+                    new BooleanDataDescriptor()))
         };
         var instrument = new InstrumentDescriptor(
             new InstrumentId("electronic-load-01"),

@@ -25,6 +25,14 @@ public sealed record CommandInventoryItemViewModel(
                 ["Mode.SelectShortCircuit"] = "SHORT"
             };
 
+    private static readonly IReadOnlyDictionary<string, string>
+        Kel103InputControlLabels =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Input.Activate"] = "Activate input",
+                ["Input.Deactivate"] = "Deactivate input"
+            };
+
     private string requestedArgumentText =
         string.Empty;
 
@@ -56,6 +64,43 @@ public sealed record CommandInventoryItemViewModel(
 
     public bool IsModeSelectionCandidate =>
         ModeSelectionLabel is not null;
+
+    public string? InputControlLabel =>
+        Descriptor is not null
+        && !RequiresArgument
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            Path,
+            Target.CommandPath.ToString(),
+            StringComparison.Ordinal)
+        && Kel103InputControlLabels.TryGetValue(
+            Path,
+            out string? label)
+                ? label
+                : null;
+
+    public bool IsInputControlCandidate =>
+        InputControlLabel is not null;
+
+    public bool IsConfirmedShortCircuitActivation =>
+        string.Equals(
+            Path,
+            "ShortCircuit.Activate",
+            StringComparison.Ordinal)
+        && Descriptor is not null
+        && string.Equals(
+            Path,
+            Descriptor.Path.ToString(),
+            StringComparison.Ordinal)
+        && string.Equals(
+            Path,
+            Target.CommandPath.ToString(),
+            StringComparison.Ordinal)
+        && Descriptor.Argument?.Data
+            is BooleanDataDescriptor;
 
     public string? AuthoritativeOperatingMode
     {
@@ -146,8 +191,21 @@ public sealed record CommandInventoryItemViewModel(
             OnPropertyChanged();
             OnPropertyChanged(
                 nameof(RequestedArgumentText));
+            OnPropertyChanged(
+                nameof(IsShortCircuitActivationConfirmed));
             RaiseInputStateChanged();
         }
+    }
+
+    public bool IsShortCircuitActivationConfirmed
+    {
+        get =>
+            RequestedBooleanArgument is true;
+        set =>
+            RequestedBooleanArgument =
+                value
+                    ? true
+                    : null;
     }
 
     public string RequestedArgumentText
@@ -169,6 +227,8 @@ public sealed record CommandInventoryItemViewModel(
             OnPropertyChanged();
             OnPropertyChanged(
                 nameof(RequestedBooleanArgument));
+            OnPropertyChanged(
+                nameof(IsShortCircuitActivationConfirmed));
             RaiseInputStateChanged();
         }
     }
@@ -190,13 +250,18 @@ public sealed record CommandInventoryItemViewModel(
 
     public bool HasValidArgument =>
         HasArgumentEditor
-        && InputResult.IsSuccess;
+        && InputResult.IsSuccess
+        && (!IsConfirmedShortCircuitActivation
+            || RequestedBooleanArgument is true);
 
     public string ValidationMessage =>
-        RequiresArgument
-        && !InputResult.IsSuccess
-            ? InputResult.Message
-            : string.Empty;
+        IsConfirmedShortCircuitActivation
+        && RequestedBooleanArgument is not true
+            ? "SHORT activation requires explicit Boolean confirmation true."
+            : RequiresArgument
+              && !InputResult.IsSuccess
+                ? InputResult.Message
+                : string.Empty;
 
     public bool CanExecute =>
         EndpointReady

@@ -1,6 +1,7 @@
 using Hase.Client.Configuration;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
@@ -60,6 +61,183 @@ public sealed class MainWindowSelectedHostProjectionTests
             Session(profile, RuntimeHostClientSessionState.Connected, replacementState)]));
 
         Assert.NotSame(instrument, SelectedInstrument(viewModel));
+    }
+
+    [Fact]
+    public void SameGenerationRefresh_ActiveInputPress_ShouldDeferEndpointProjection()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("f1d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = ModeState("host-01", generation, 1);
+        RemoteObservationState secondState = ModeState("host-01", generation, 2);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        InstrumentInventoryItemViewModel instrument = SelectedInstrument(viewModel);
+        instrument.IsInvokingInputCommand = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.Same(secondState, viewModel.CurrentState);
+        Assert.Same(instrument, SelectedInstrument(viewModel));
+
+        instrument.IsInvokingInputCommand = false;
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.NotSame(instrument, SelectedInstrument(viewModel));
+    }
+
+    [Fact]
+    public void GenerationChange_ActiveInputPress_ShouldReplaceImmediately()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        RemoteObservationState firstState = ModeState(
+            "host-01",
+            Guid.Parse("a2d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            1);
+        RemoteObservationState replacementState = ModeState(
+            "host-01",
+            Guid.Parse("b2d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            2);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        InstrumentInventoryItemViewModel instrument = SelectedInstrument(viewModel);
+        instrument.IsInvokingInputCommand = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, replacementState)]));
+
+        Assert.NotSame(instrument, SelectedInstrument(viewModel));
+    }
+
+    [Fact]
+    public void SameGenerationRefresh_ActiveShortCircuitPress_ShouldDeferEndpointProjection()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("c2d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = ModeState("host-01", generation, 1);
+        RemoteObservationState secondState = ModeState("host-01", generation, 2);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        InstrumentInventoryItemViewModel instrument = SelectedInstrument(viewModel);
+        instrument.IsInvokingShortCircuitCommand = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.Same(secondState, viewModel.CurrentState);
+        Assert.Same(instrument, SelectedInstrument(viewModel));
+
+        instrument.IsInvokingShortCircuitCommand = false;
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.NotSame(instrument, SelectedInstrument(viewModel));
+    }
+
+    [Fact]
+    public void SameGenerationRefresh_ConfirmedShortCircuit_ShouldRetainConfirmation()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("d2d9ef89-267a-4de4-9ed1-04848635e6ab");
+        RemoteObservationState firstState = ModeState("host-01", generation, 1);
+        RemoteObservationState secondState = ModeState("host-01", generation, 2);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
+
+        Assert.True(
+            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+    }
+
+    [Fact]
+    public void GenerationChange_ConfirmedShortCircuit_ShouldClearConfirmation()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        RemoteObservationState firstState = ModeState(
+            "host-01",
+            Guid.Parse("e2d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            1);
+        RemoteObservationState replacementState = ModeState(
+            "host-01",
+            Guid.Parse("f2d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            2);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, firstState));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, replacementState)]));
+
+        Assert.False(
+            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+    }
+
+    [Fact]
+    public void Reconnecting_ConfirmedShortCircuit_ShouldClearConfirmation()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        RemoteObservationState state = ModeState(
+            "host-01",
+            Guid.Parse("03d9ef89-267a-4de4-9ed1-04848635e6ab"),
+            1);
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, state));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Reconnecting, state)]));
+
+        Assert.False(
+            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+    }
+
+    [Fact]
+    public void HostSelectionChange_ConfirmedShortCircuit_ShouldClearConfirmation()
+    {
+        RuntimeHostProfile first = Profile("first", "host-01");
+        RuntimeHostProfile second = Profile("second", "host-02");
+        var viewModel = new MainWindowViewModel();
+        viewModel.ConfigureRuntimeHosts(
+            new RuntimeHostProfileRegistry([first, second]));
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(
+                first,
+                RuntimeHostClientSessionState.Connected,
+                ModeState(
+                    "host-01",
+                    Guid.Parse("13d9ef89-267a-4de4-9ed1-04848635e6ab"),
+                    1)),
+            Session(
+                second,
+                RuntimeHostClientSessionState.Connected,
+                ModeState(
+                    "host-02",
+                    Guid.Parse("23d9ef89-267a-4de4-9ed1-04848635e6ab"),
+                    1))]));
+        viewModel.SelectRuntimeHost(first.ProfileId);
+        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+
+        viewModel.SelectRuntimeHost(second.ProfileId);
+
+        Assert.False(
+            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
     }
 
     [Fact]
@@ -197,6 +375,12 @@ public sealed class MainWindowSelectedHostProjectionTests
                 viewModel.Endpoints)
             .Instruments);
 
+    private static CommandInventoryItemViewModel ShortCircuitCommand(
+        MainWindowViewModel viewModel) =>
+        Assert.IsType<CommandInventoryItemViewModel>(
+            SelectedInstrument(viewModel)
+                .ConfirmedShortCircuitActivationCommand);
+
     private static RemoteObservationState ModeState(
         string host,
         Guid generation,
@@ -208,7 +392,13 @@ public sealed class MainWindowSelectedHostProjectionTests
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
             new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT")
+            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT"),
+            new CommandDescriptor(
+                DescriptorPath.Parse("ShortCircuit.Activate"),
+                "Activate short circuit",
+                new CommandArgumentDescriptor(
+                    "Confirmation",
+                    new BooleanDataDescriptor()))
         ];
         var instrument = new InstrumentDescriptor(
             new InstrumentId("electronic-load-01"),

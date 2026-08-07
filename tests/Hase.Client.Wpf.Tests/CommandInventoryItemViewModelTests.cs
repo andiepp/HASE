@@ -332,6 +332,186 @@ public sealed class CommandInventoryItemViewModelTests
                 Assert.False(command.CanExecute));
     }
 
+    [Fact]
+    public void CompleteInputCommandSet_ShouldExposeOrderedControlsAndRemainExecutable()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [
+                CreateInputCommand("Input.Deactivate", "Deactivate input"),
+                CreateCommand(new CommandDescriptor(
+                    DescriptorPath.Parse("System.Reset"),
+                    "Reset")),
+                CreateInputCommand("Input.Activate", "Activate input")
+            ]);
+
+        Assert.True(instrument.HasInputControls);
+        Assert.Equal(
+            ["Activate input", "Deactivate input"],
+            instrument.InputControlCommands
+                .Select(command => command.InputControlLabel)
+                .ToArray());
+        Assert.All(
+            instrument.InputControlCommands,
+            command => Assert.True(command.CanExecute));
+        Assert.Equal(
+            ["System.Reset"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void IncompleteInputCommandSet_ShouldRemainGeneric()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [CreateInputCommand("Input.Activate", "Activate input")]);
+
+        Assert.False(instrument.HasInputControls);
+        Assert.Empty(instrument.InputControlCommands);
+        Assert.Single(instrument.GeneralCommands);
+    }
+
+    [Fact]
+    public void ArgumentBearingInputLookalike_ShouldRemainGeneric()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [
+                CreateCommand(
+                    new CommandDescriptor(
+                        DescriptorPath.Parse("Input.Activate"),
+                        "Activate input",
+                        new CommandArgumentDescriptor(
+                            "Unexpected",
+                            new BooleanDataDescriptor()))),
+                CreateInputCommand("Input.Deactivate", "Deactivate input")
+            ]);
+
+        Assert.False(instrument.HasInputControls);
+        Assert.Equal(2, instrument.GeneralCommands.Count);
+    }
+
+    [Fact]
+    public void ConfirmedShortCircuitActivation_ShouldRequireTrueAndUseDedicatedPresentation()
+    {
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation();
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [command]);
+
+        Assert.True(command.IsConfirmedShortCircuitActivation);
+        Assert.False(command.CanExecute);
+        Assert.Equal(
+            "SHORT activation requires explicit Boolean confirmation true.",
+            command.ValidationMessage);
+        Assert.True(instrument.HasConfirmedShortCircuitActivation);
+        Assert.Same(command, instrument.ConfirmedShortCircuitActivationCommand);
+        Assert.Empty(instrument.GeneralCommands);
+
+        command.RequestedBooleanArgument = true;
+
+        Assert.True(command.CanExecute);
+        Assert.Equal(string.Empty, command.ValidationMessage);
+    }
+
+    [Fact]
+    public void ConfirmedShortCircuitActivation_TwoStatePropertyShouldNeverExposeIndeterminate()
+    {
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation();
+
+        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.Null(command.RequestedBooleanArgument);
+
+        command.IsShortCircuitActivationConfirmed = true;
+
+        Assert.True(command.IsShortCircuitActivationConfirmed);
+        Assert.True(command.RequestedBooleanArgument);
+
+        command.IsShortCircuitActivationConfirmed = false;
+
+        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.Null(command.RequestedBooleanArgument);
+    }
+
+    [Fact]
+    public void ConfirmedShortCircuitActivation_ResetShouldNotifyTwoStateProperty()
+    {
+        CommandInventoryItemViewModel command =
+            CreateConfirmedShortCircuitActivation();
+        var changedProperties = new List<string?>();
+        command.PropertyChanged += (_, eventArgs) =>
+            changedProperties.Add(eventArgs.PropertyName);
+        command.IsShortCircuitActivationConfirmed = true;
+        changedProperties.Clear();
+
+        command.RequestedBooleanArgument = null;
+
+        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.Contains(
+            nameof(CommandInventoryItemViewModel.IsShortCircuitActivationConfirmed),
+            changedProperties);
+        Assert.Contains(
+            nameof(CommandInventoryItemViewModel.CanExecute),
+            changedProperties);
+    }
+
+    [Fact]
+    public void ShortCircuitActivationWithWrongArgumentType_ShouldRemainGeneric()
+    {
+        CommandInventoryItemViewModel command =
+            CreateCommand(
+                new CommandDescriptor(
+                    DescriptorPath.Parse("ShortCircuit.Activate"),
+                    "Activate short circuit",
+                    new CommandArgumentDescriptor(
+                        "Confirmation",
+                        new StringDataDescriptor())));
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [command]);
+
+        Assert.False(command.IsConfirmedShortCircuitActivation);
+        Assert.False(instrument.HasConfirmedShortCircuitActivation);
+        Assert.Same(command, Assert.Single(instrument.GeneralCommands));
+    }
+
+    [Fact]
+    public void DuplicateConfirmedShortCircuitActivation_ShouldRemainGeneric()
+    {
+        CommandInventoryItemViewModel first =
+            CreateConfirmedShortCircuitActivation();
+        CommandInventoryItemViewModel second =
+            CreateConfirmedShortCircuitActivation();
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [first, second]);
+
+        Assert.False(instrument.HasConfirmedShortCircuitActivation);
+        Assert.Equal(2, instrument.GeneralCommands.Count);
+    }
+
     private static CommandInventoryItemViewModel CreateTypedCommand(
         DataDescriptor data)
     {
@@ -370,6 +550,25 @@ public sealed class CommandInventoryItemViewModelTests
                 DescriptorPath.Parse(path),
                 displayName),
             endpointReady);
+
+    private static CommandInventoryItemViewModel CreateInputCommand(
+        string path,
+        string displayName,
+        bool endpointReady = true) =>
+        CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse(path),
+                displayName),
+            endpointReady);
+
+    private static CommandInventoryItemViewModel CreateConfirmedShortCircuitActivation() =>
+        CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse("ShortCircuit.Activate"),
+                "Activate short circuit",
+                new CommandArgumentDescriptor(
+                    "Confirmation",
+                    new BooleanDataDescriptor())));
 
     private static CommandInventoryItemViewModel[] CreateCompleteModeCommandSet() =>
     [

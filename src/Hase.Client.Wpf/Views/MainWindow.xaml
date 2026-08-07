@@ -356,6 +356,7 @@
                                                                         CommandParameter="{Binding}"
                                                                         Content="{Binding ModeSelectionLabel}"
                                                                         IsEnabled="{Binding CanExecute}"
+                                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                         LostMouseCapture="OnModeCommandLostMouseCapture"
                                                                         PreviewKeyDown="OnModeCommandPreviewKeyDown"
                                                                         PreviewKeyUp="OnModeCommandPreviewKeyUp"
@@ -380,6 +381,121 @@
                                                                 </DataTemplate>
                                                             </ItemsControl.ItemTemplate>
                                                         </ItemsControl>
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border
+                                                    Margin="16,4,0,8"
+                                                    Padding="8"
+                                                    Background="#FFF5F5F5"
+                                                    BorderBrush="#FFD0D0D0"
+                                                    BorderThickness="1">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasInputControls}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="SemiBold" Text="Input control" />
+                                                        <ItemsControl
+                                                            Margin="0,6,0,0"
+                                                            ItemsSource="{Binding InputControlCommands}">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel />
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button
+                                                                        MinWidth="110"
+                                                                        Margin="0,0,6,6"
+                                                                        Padding="10,4"
+                                                                        Command="{Binding DataContext.ExecuteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        CommandParameter="{Binding}"
+                                                                        Content="{Binding InputControlLabel}"
+                                                                        IsEnabled="{Binding CanExecute}"
+                                                                        LostMouseCapture="OnInputCommandLostMouseCapture"
+                                                                        PreviewKeyDown="OnInputCommandPreviewKeyDown"
+                                                                        PreviewKeyUp="OnInputCommandPreviewKeyUp"
+                                                                        PreviewMouseLeftButtonDown="OnInputCommandPreviewMouseLeftButtonDown"
+                                                                        PreviewMouseLeftButtonUp="OnInputCommandPreviewMouseLeftButtonUp"
+                                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                        ToolTip="{Binding DisplayName}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </StackPanel>
+                                                </Border>
+                                                <Border
+                                                    Margin="16,4,0,8"
+                                                    Padding="8"
+                                                    Background="#FFFFF2CC"
+                                                    BorderBrush="#FFC55A11"
+                                                    BorderThickness="2">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasConfirmedShortCircuitActivation}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <StackPanel>
+                                                        <TextBlock
+                                                            FontWeight="Bold"
+                                                            Foreground="#FF9C0006"
+                                                            Text="Confirmed SHORT activation" />
+                                                        <TextBlock
+                                                            Margin="0,4,0,0"
+                                                            Text="This command can activate the electronic load in SHORT mode. Confirm deliberately before transmission."
+                                                            TextWrapping="Wrap" />
+                                                        <ContentControl
+                                                            Margin="0,6,0,0"
+                                                            Content="{Binding ConfirmedShortCircuitActivationCommand}">
+                                                            <ContentControl.ContentTemplate>
+                                                                <DataTemplate>
+                                                                    <StackPanel>
+                                                                        <CheckBox
+                                                                            Content="I explicitly confirm SHORT activation"
+                                                                            IsChecked="{Binding IsShortCircuitActivationConfirmed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                            IsThreeState="False"
+                                                                            LostMouseCapture="OnShortCircuitCommandLostMouseCapture"
+                                                                            PreviewKeyDown="OnShortCircuitCommandPreviewKeyDown"
+                                                                            PreviewKeyUp="OnShortCircuitCommandPreviewKeyUp"
+                                                                            PreviewMouseLeftButtonDown="OnShortCircuitCommandPreviewMouseLeftButtonDown"
+                                                                            PreviewMouseLeftButtonUp="OnShortCircuitCommandPreviewMouseLeftButtonUp"
+                                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
+                                                                        <TextBlock
+                                                                            Margin="0,4,0,0"
+                                                                            Foreground="#FFB00020"
+                                                                            Text="{Binding ValidationMessage}"
+                                                                            TextWrapping="Wrap" />
+                                                                        <Button
+                                                                            MinWidth="140"
+                                                                            Margin="0,6,0,0"
+                                                                            HorizontalAlignment="Left"
+                                                                            Padding="10,4"
+                                                                            Command="{Binding DataContext.ExecuteCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                            CommandParameter="{Binding}"
+                                                                            Content="Activate SHORT"
+                                                                            IsEnabled="{Binding CanExecute}"
+                                                                            LostMouseCapture="OnShortCircuitCommandLostMouseCapture"
+                                                                            PreviewKeyDown="OnShortCircuitCommandPreviewKeyDown"
+                                                                            PreviewKeyUp="OnShortCircuitCommandPreviewKeyUp"
+                                                                            PreviewMouseLeftButtonDown="OnShortCircuitCommandPreviewMouseLeftButtonDown"
+                                                                            PreviewMouseLeftButtonUp="OnShortCircuitCommandPreviewMouseLeftButtonUp"
+                                                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ContentControl}}" />
+                                                                    </StackPanel>
+                                                                </DataTemplate>
+                                                            </ContentControl.ContentTemplate>
+                                                        </ContentControl>
                                                     </StackPanel>
                                                 </Border>
                                                 <ItemsControl

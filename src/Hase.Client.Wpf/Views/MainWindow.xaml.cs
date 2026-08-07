@@ -86,13 +86,171 @@ public partial class MainWindow
         object sender,
         bool isActive)
     {
-        if (sender is FrameworkElement
-            {
-                DataContext:
-                    InstrumentInventoryItemViewModel instrument
-            })
+        if (TryGetInstrument(
+                sender) is { } instrument)
         {
             instrument.IsInvokingModeCommand =
+                isActive;
+        }
+    }
+
+    private void OnInputCommandPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        SetInputCommandInteractionState(
+            sender,
+            true);
+    }
+
+    private void OnInputCommandPreviewMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        ScheduleInputCommandInteractionRelease(
+            sender);
+    }
+
+    private void OnInputCommandLostMouseCapture(
+        object sender,
+        MouseEventArgs eventArgs)
+    {
+        ScheduleInputCommandInteractionRelease(
+            sender);
+    }
+
+    private void OnInputCommandPreviewKeyDown(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (IsModeCommandActivationKey(
+                eventArgs.Key))
+        {
+            SetInputCommandInteractionState(
+                sender,
+                true);
+        }
+    }
+
+    private void OnInputCommandPreviewKeyUp(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (IsModeCommandActivationKey(
+                eventArgs.Key))
+        {
+            ScheduleInputCommandInteractionRelease(
+                sender);
+        }
+    }
+
+    private static void ScheduleInputCommandInteractionRelease(
+        object sender)
+    {
+        if (sender is FrameworkElement element)
+        {
+            element.Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(
+                    () =>
+                        SetInputCommandInteractionState(
+                            element,
+                            false)));
+        }
+    }
+
+    private static void SetInputCommandInteractionState(
+        object sender,
+        bool isActive)
+    {
+        if (TryGetInstrument(
+                sender) is { } instrument)
+        {
+            instrument.IsInvokingInputCommand =
+                isActive;
+        }
+    }
+
+    private static InstrumentInventoryItemViewModel? TryGetInstrument(
+        object sender) =>
+        sender is FrameworkElement element
+            ? element.Tag as InstrumentInventoryItemViewModel
+                ?? element.DataContext as InstrumentInventoryItemViewModel
+            : null;
+
+    private void OnShortCircuitCommandPreviewMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        SetShortCircuitCommandInteractionState(
+            sender,
+            true);
+    }
+
+    private void OnShortCircuitCommandPreviewMouseLeftButtonUp(
+        object sender,
+        MouseButtonEventArgs eventArgs)
+    {
+        ScheduleShortCircuitCommandInteractionRelease(
+            sender);
+    }
+
+    private void OnShortCircuitCommandLostMouseCapture(
+        object sender,
+        MouseEventArgs eventArgs)
+    {
+        ScheduleShortCircuitCommandInteractionRelease(
+            sender);
+    }
+
+    private void OnShortCircuitCommandPreviewKeyDown(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (IsModeCommandActivationKey(
+                eventArgs.Key))
+        {
+            SetShortCircuitCommandInteractionState(
+                sender,
+                true);
+        }
+    }
+
+    private void OnShortCircuitCommandPreviewKeyUp(
+        object sender,
+        KeyEventArgs eventArgs)
+    {
+        if (IsModeCommandActivationKey(
+                eventArgs.Key))
+        {
+            ScheduleShortCircuitCommandInteractionRelease(
+                sender);
+        }
+    }
+
+    private static void ScheduleShortCircuitCommandInteractionRelease(
+        object sender)
+    {
+        if (sender is FrameworkElement element)
+        {
+            element.Dispatcher.BeginInvoke(
+                DispatcherPriority.ContextIdle,
+                new Action(
+                    () =>
+                        SetShortCircuitCommandInteractionState(
+                            element,
+                            false)));
+        }
+    }
+
+    private static void SetShortCircuitCommandInteractionState(
+        object sender,
+        bool isActive)
+    {
+        if (TryGetInstrument(
+                sender) is { } instrument)
+        {
+            instrument.IsInvokingShortCircuitCommand =
                 isActive;
         }
     }
