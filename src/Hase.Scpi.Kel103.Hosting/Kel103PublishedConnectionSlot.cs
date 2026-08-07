@@ -52,6 +52,10 @@ internal sealed class Kel103PublishedConnectionSlot
             {
                 await connection.ProbeHealthAsync(cancellationToken).ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
             catch
             {
                 ProjectHealthFault();

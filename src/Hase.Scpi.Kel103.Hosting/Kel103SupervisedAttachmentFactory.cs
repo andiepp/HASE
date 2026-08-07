@@ -63,11 +63,18 @@ public sealed class Kel103SupervisedAttachmentFactory
                 timeProvider);
             var supervisionLifetime = new EndpointConnectionSupervisionLifetime(
                 supervisor.RunAsync);
+            var passiveHealthMonitor = new Kel103PassiveHealthMonitor(
+                publishedAttachment,
+                timeProvider);
+            var passiveHealthLifetime = new EndpointConnectionSupervisionLifetime(
+                passiveHealthMonitor.RunAsync);
             _ = supervisionLifetime.RunAsync();
+            _ = passiveHealthLifetime.RunAsync();
 
             var attachment = new Kel103SupervisedAttachment(
                 publishedAttachment,
                 supervisionLifetime,
+                passiveHealthLifetime,
                 supervisor);
             publishedAttachment = null;
             return attachment;
