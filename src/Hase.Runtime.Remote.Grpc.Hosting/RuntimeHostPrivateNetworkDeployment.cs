@@ -45,7 +45,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         TimeProvider? timeProvider = null,
         CancellationToken cancellationToken = default,
         Northbound.RuntimeHostDiagnosticProjectionService?
-            diagnosticProjectionService = null)
+            diagnosticProjectionService = null,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(
             options);
@@ -84,6 +85,7 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                     commandService,
                     observationService,
                     diagnosticProjectionService,
+                    authorizationPolicy,
                     certificateAuthenticationService,
                     timeProvider);
 
@@ -128,6 +130,7 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         Northbound.IRuntimeHostObservationService? observationService,
         Northbound.RuntimeHostDiagnosticProjectionService?
             diagnosticProjectionService,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
@@ -143,7 +146,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                 observationService,
                 diagnosticProjectionService,
                 certificateAuthenticationService,
-                timeProvider);
+                timeProvider,
+                authorizationPolicy);
         }
 
         if (observationService is not null)
@@ -156,7 +160,15 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                 commandService,
                 observationService,
                 certificateAuthenticationService,
-                timeProvider);
+                timeProvider,
+                authorizationPolicy);
+        }
+
+        if (authorizationPolicy is not null)
+        {
+            throw new InvalidOperationException(
+                "Semantic authorization requires observation or explicitly "
+                + "composed diagnostic projection hosting in this increment.");
         }
 
         if (commandService is not null)

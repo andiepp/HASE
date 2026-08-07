@@ -116,6 +116,7 @@ public sealed class MutualTlsPrivateNetworkGrpcHostFactoryTests
                 new BoundedRuntimeDiagnosticCollector(8),
                 RuntimeDiagnosticLevel.Operational,
                 new Northbound.RuntimeHostDiagnosticProjectionPolicy());
+        var authorizationPolicy = new RuntimeHostAuthorizationPolicy([]);
 
         await using WebApplication application =
             MutualTlsPrivateNetworkGrpcHostFactory.Create(
@@ -127,7 +128,8 @@ public sealed class MutualTlsPrivateNetworkGrpcHostFactoryTests
                 observationService: null,
                 projection,
                 new TestAuthenticationService(),
-                new FixedTimeProvider());
+                new FixedTimeProvider(),
+                authorizationPolicy);
 
         Assert.Same(
             projection,
@@ -136,6 +138,12 @@ public sealed class MutualTlsPrivateNetworkGrpcHostFactoryTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 RuntimeHostProjectedDiagnosticObservationMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostClientPrincipalProvider>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostRemoteAuthorizationGate>());
     }
 
     private static PrivateNetworkGrpcBinding CreateBinding()

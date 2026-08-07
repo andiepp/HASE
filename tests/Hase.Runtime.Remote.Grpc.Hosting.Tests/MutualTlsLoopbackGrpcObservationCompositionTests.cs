@@ -64,6 +64,12 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 IRuntimeHostObservationMapper>());
+        Assert.Null(
+            application.Services.GetService<
+                IRuntimeHostClientPrincipalProvider>());
+        Assert.Null(
+            application.Services.GetService<
+                IRuntimeHostRemoteAuthorizationGate>());
     }
 
     [Fact]
@@ -77,6 +83,7 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
                 new BoundedRuntimeDiagnosticCollector(8),
                 RuntimeDiagnosticLevel.Operational,
                 new Northbound.RuntimeHostDiagnosticProjectionPolicy());
+        var authorizationPolicy = new RuntimeHostAuthorizationPolicy([]);
 
         await using WebApplication application =
             MutualTlsLoopbackGrpcHostFactory.Create(
@@ -87,7 +94,8 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
                 commandService: null,
                 observationService: null,
                 projection,
-                new TestCertificateAuthenticationService());
+                new TestCertificateAuthenticationService(),
+                authorizationPolicy: authorizationPolicy);
 
         Assert.Same(
             projection,
@@ -96,6 +104,18 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 RuntimeHostProjectedDiagnosticObservationMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostClientPrincipalProvider>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostRemoteOperationPermissionMapper>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostAuthorizationService>());
+        Assert.NotNull(
+            application.Services.GetRequiredService<
+                IRuntimeHostRemoteAuthorizationGate>());
     }
 
     private static X509Certificate2 CreateSelfSignedServerCertificate()

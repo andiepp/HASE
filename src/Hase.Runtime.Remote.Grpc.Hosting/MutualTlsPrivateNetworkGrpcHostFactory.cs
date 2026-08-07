@@ -31,6 +31,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService: null,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -59,6 +60,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService: null,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -88,6 +90,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -105,7 +108,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         Northbound.IRuntimeHostObservationService observationService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(
             observationService);
@@ -118,6 +122,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService,
             observationService,
             diagnosticProjectionService: null,
+            authorizationPolicy,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -137,7 +142,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             diagnosticProjectionService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
 
@@ -149,6 +155,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService,
             observationService,
             diagnosticProjectionService,
+            authorizationPolicy,
             certificateAuthenticationService,
             timeProvider);
     }
@@ -162,6 +169,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         Northbound.IRuntimeHostObservationService? observationService,
         Northbound.RuntimeHostDiagnosticProjectionService?
             diagnosticProjectionService,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider)
@@ -196,6 +204,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             commandService,
             observationService,
             diagnosticProjectionService,
+            authorizationPolicy,
             certificateAuthenticationService,
             effectiveTimeProvider,
             clearLoggingProviders:

@@ -38,6 +38,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             commandService: null,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -71,6 +72,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             commandService: null,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -105,6 +107,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             commandService,
             observationService: null,
             diagnosticProjectionService: null,
+            authorizationPolicy: null,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -124,7 +127,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
         Northbound.IRuntimeHostObservationService observationService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -140,6 +144,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             commandService,
             observationService,
             diagnosticProjectionService: null,
+            authorizationPolicy,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
@@ -161,7 +166,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
             diagnosticProjectionService,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
@@ -175,6 +181,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
             commandService,
             observationService,
             diagnosticProjectionService,
+            authorizationPolicy,
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders: false);
@@ -190,6 +197,7 @@ public static class MutualTlsLoopbackGrpcHostFactory
         Northbound.IRuntimeHostObservationService? observationService,
         Northbound.RuntimeHostDiagnosticProjectionService?
             diagnosticProjectionService,
+        RuntimeHostAuthorizationPolicy? authorizationPolicy,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider,
@@ -308,6 +316,28 @@ public static class MutualTlsLoopbackGrpcHostFactory
             builder.Services.AddSingleton(diagnosticProjectionService);
             builder.Services.AddSingleton<
                 RuntimeHostProjectedDiagnosticObservationMapper>();
+        }
+
+        if (authorizationPolicy is not null)
+        {
+            var authorizationService =
+                new PolicyRuntimeHostAuthorizationService(
+                    authorizationPolicy);
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddSingleton<IRuntimeHostClientPrincipalProvider,
+                HttpContextRuntimeHostClientPrincipalProvider>();
+            builder.Services.AddSingleton<
+                IRuntimeHostRemoteOperationPermissionMapper,
+                RuntimeHostRemoteOperationPermissionMapper>();
+            builder.Services.AddSingleton<IRuntimeHostAuthorizationService>(
+                authorizationService);
+            builder.Services.AddSingleton<IRuntimeHostRemoteAuthorizationGate>(
+                serviceProvider =>
+                    new RuntimeHostRemoteAuthorizationGate(
+                        serviceProvider.GetRequiredService<
+                            IRuntimeHostRemoteOperationPermissionMapper>(),
+                        serviceProvider.GetRequiredService<
+                            IRuntimeHostAuthorizationService>()));
         }
 
         builder.Services.AddSingleton(

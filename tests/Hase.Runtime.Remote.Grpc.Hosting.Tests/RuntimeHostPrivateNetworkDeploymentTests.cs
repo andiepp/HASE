@@ -8,21 +8,29 @@ namespace Hase.Runtime.Remote.Grpc.Hosting.Tests;
 public sealed class RuntimeHostPrivateNetworkDeploymentTests
 {
     [Fact]
-    public void CreateAsync_DiagnosticProjection_ShouldRemainOptionalAndLast()
+    public void CreateAsync_OptionalComposition_ShouldRemainAtEnd()
     {
         MethodInfo method = Assert.Single(
             typeof(RuntimeHostPrivateNetworkDeployment)
                 .GetMethods(BindingFlags.Public | BindingFlags.Static),
             candidate => candidate.Name == nameof(
                 RuntimeHostPrivateNetworkDeployment.CreateAsync));
-        ParameterInfo parameter = method.GetParameters().Last();
+        ParameterInfo[] parameters = method.GetParameters();
+        ParameterInfo diagnosticParameter = parameters[^2];
+        ParameterInfo authorizationParameter = parameters[^1];
 
-        Assert.Equal("diagnosticProjectionService", parameter.Name);
+        Assert.Equal("diagnosticProjectionService", diagnosticParameter.Name);
         Assert.Equal(
             typeof(Northbound.RuntimeHostDiagnosticProjectionService),
-            parameter.ParameterType);
-        Assert.True(parameter.HasDefaultValue);
-        Assert.Null(parameter.DefaultValue);
+            diagnosticParameter.ParameterType);
+        Assert.True(diagnosticParameter.HasDefaultValue);
+        Assert.Null(diagnosticParameter.DefaultValue);
+        Assert.Equal("authorizationPolicy", authorizationParameter.Name);
+        Assert.Equal(
+            typeof(Hase.Runtime.Remote.Grpc.Adapter.RuntimeHostAuthorizationPolicy),
+            authorizationParameter.ParameterType);
+        Assert.True(authorizationParameter.HasDefaultValue);
+        Assert.Null(authorizationParameter.DefaultValue);
     }
 
     [Fact]
