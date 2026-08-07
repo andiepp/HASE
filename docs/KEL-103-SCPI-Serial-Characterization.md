@@ -3,7 +3,7 @@
 - Related decisions: ADR-0044 — SCPI Instrument Adapter Boundary; ADR-0045 —
   Runtime-Hosted SCPI Instrument Publication; ADR-0046 — Controlled KEL-103
   Operating State and Setpoints
-- Increment: 46B — Read-only mode, input-state, and setpoint characterization
+- Increment: 46J — ADR-0046 documentation and closure
 - Initial date: 2026-08-03
 - Runtime closure date: 2026-08-04
 - State-characterization date: 2026-08-04
@@ -441,12 +441,50 @@ Commands succeeded. The run ended in authoritative CC/OFF state with the
 external supply output OFF. The validated automated baseline is 5,285 tests
 passing.
 
+## ADR-0046 version-5 input-control validation
+
+Increment 46I preserved immutable definition versions 1 through 4 and added
+definition version 5. Version 5 retains the complete version-4 inventory and
+adds parameterless `Input.Activate` and `Input.Deactivate` Commands plus
+`ShortCircuit.Activate` with one required Boolean confirmation argument. Only
+normalized `true` authorizes the SHORT activation path; missing, false,
+malformed, or unsupported arguments are rejected without SCPI transmission.
+
+The installed endpoint moved explicitly and offline from definition version 4
+to version 5. The migration required exact endpoint and definition preflight,
+atomically replaced the active composition, retained the version-4 backup, and
+preserved endpoint identity, serial target, baud rate, and endpoint count. No
+automatic definition migration occurs during startup or recovery.
+
+Ordinary activation verifies authoritative input and mode immediately before
+one transmission and rejects SHORT. Confirmed SHORT activation verifies
+authoritative SHORT/OFF state immediately before one transmission.
+Deactivation has no mode precondition and transmits one OFF command. Every path
+requires authoritative input-state readback, exposes uncertain outcomes, makes
+no speculative cache update, and is never retried or replayed by recovery.
+
+The Runtime Host and Client both expose dedicated Activate input and Deactivate
+input controls. Confirmed SHORT activation is separate from SHORT mode
+selection. The Client uses a strict two-state confirmation control whose value
+is retained only during connected same-host, same-generation observation
+refreshes. It clears after execution and across host, connection, fault, and
+attachment-generation boundaries.
+
+Physical validation exercised ordinary activation, deactivation, and
+separately confirmed SHORT activation through the Host and Client. Displayed
+state and physical instrument state agreed, each accepted mutation produced
+one Command execution, and no automatic retry or recovery replay occurred. The
+external laboratory supply output remained OFF throughout, and validation
+ended in authoritative CC/OFF state. This establishes the control and safety
+gates without claiming energized electrical-load performance. The validated
+automated baseline is 5,479 tests passing.
+
 ## Exclusions
 
 This report does not validate:
 
 - resistance measurement publication;
-- load input enablement;
+- energized electrical-load performance during input or SHORT activation;
 - saved configurations;
 - triggers;
 - LIST, protection, battery, or dynamic modes;

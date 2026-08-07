@@ -1,10 +1,9 @@
 # Project Status
 
-## Current architectural objective — ADR-0046
+## Completed architectural objective — ADR-0046
 
-**ADR-0046 — Controlled KEL-103 Operating State and Setpoints — active;
-Increment 46H hosting recovery and no-replay validation complete at 5,285
-tests**
+**ADR-0046 — Controlled KEL-103 Operating State and Setpoints — implemented,
+physically validated, and closed at 5,479 tests**
 
 - The objective adds authoritative mode, input state, and voltage, current,
   resistance, and power targets above the completed ADR-0045 attachment.
@@ -52,15 +51,18 @@ tests**
 - Every successful setter probe closed in CC/OFF state with all original
   targets restored while the external supply output remained off.
 - No value or bound was disclosed, and no mutation was retried or replayed.
-- Definition versions 1 and 2 remain immutable; the installed KEL-103 profile
-  migrated explicitly and offline to version 4 with its version-2 backup
-  retained.
+- Definition versions 1 through 4 remain immutable. Definition version 5 adds
+  only the three controlled input Commands to the version-4 inventory.
 - Definition version 3 adds read-only mode, input state, and all four target
   Properties to the existing identity and measurement inventory.
 - Definition version 4 makes only the four targets read/write and adds five
   parameterless mode-selection Commands for CC, CV, CR, CW, and SHORT.
-- SHORT mode selection does not activate the input. Input activation,
-  deactivation, and separately confirmed SHORT activation remain excluded.
+- Definition version 5 adds parameterless `Input.Activate` and
+  `Input.Deactivate`, plus `ShortCircuit.Activate` with one required Boolean
+  confirmation argument whose normalized value must be `true`.
+- SHORT mode selection does not activate the input. Generic activation rejects
+  SHORT, while confirmed SHORT activation requires authoritative SHORT/OFF
+  state immediately before its single transmission.
 - Version-3 state reads and version-4 setpoint writes and mode Commands now
   cross the serialized runtime, hosting, attachment, Host, and Client paths.
 - The installed profile migrated explicitly and offline from version 2 to
@@ -92,12 +94,28 @@ tests**
 - All post-recovery reads and explicit mode Commands succeeded, diagnostics
   remained scoped and sanitized, and final state was CC/OFF with the external
   supply output off.
+- The installed profile migrated explicitly and offline from version 4 to
+  version 5 with strict preflight validation, atomic replacement, retained
+  version-4 backup, and preserved endpoint and serial-profile custody.
+- Input activation and deactivation now cross the runtime, hosting, attachment,
+  Runtime Host, and Client paths. The Host and Client expose dedicated Activate
+  input and Deactivate input controls.
+- The Client exposes confirmed SHORT activation separately from mode selection.
+  Its strict two-state confirmation is retained only across connected
+  same-host, same-generation observation refreshes and is cleared after
+  execution or any host, connection, or attachment-generation boundary.
+- Physical Host and Client validation confirmed ordinary activation,
+  deactivation, and separately confirmed SHORT activation with authoritative
+  readback and matching instrument state. Each accepted mutation produced one
+  Command execution; no retry or recovery replay occurred.
+- Validation kept the external laboratory supply output OFF and ended in
+  authoritative CC/OFF state. It validates the complete control path without
+  claiming energized electrical-load performance.
 
 ### Next
 
-Proceed only after explicit approval with the next narrowly scoped ADR-0046
-increment. Controlled activation, deactivation, and separately confirmed SHORT
-activation remain unpublished.
+Select the next architectural objective through a separately approved decision
+or increment. ADR-0046 is closed.
 
 ---
 
@@ -1394,7 +1412,6 @@ The current implementation intentionally excludes:
 - automatic Desktop Event-subscription recovery;
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery;
-- KEL-103 input activation, deactivation, and confirmed SHORT activation;
 - passive KEL-103 serial health probing;
 - SCPI Protocol and Bytes diagnostics;
 - automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
@@ -1406,8 +1423,8 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Proceed with ADR-0046 only through separately approved, characterized, and
-   restorable increments.
+1. Select the next architectural objective through explicit approval while
+   preserving the closed ADR-0046 safety and no-replay guarantees.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.

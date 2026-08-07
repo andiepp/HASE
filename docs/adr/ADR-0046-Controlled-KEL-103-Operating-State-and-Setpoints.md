@@ -1,6 +1,6 @@
 # ADR-0046 — Controlled KEL-103 Operating State and Setpoints
 
-- Status: Accepted — Increment 46H hosting recovery and no-replay validation complete
+- Status: Implemented, physically validated, and closed at 5,479 tests
 - Date: 2026-08-04
 
 ## Context
@@ -221,9 +221,9 @@ Protocol and Bytes diagnostics remain deferred.
    complete at 5,283 tests.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration — complete
    at 5,285 tests.
-9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
-   physical validation.
-10. 46J — Documentation and closure.
+9. 46I — Controlled activation, deactivation, SHORT, recovery, and presentation
+   validation — complete at 5,479 tests.
+10. 46J — Documentation and closure — complete at 5,479 tests.
 
 Every increment requires explicit approval and remains independently buildable
 and testable.
@@ -477,3 +477,62 @@ Increment 46H closes at 5,285 automated tests passing in Visual Studio 2026
 Release configuration on .NET 10. Immediate idle USB-removal indication remains
 outside this increment; adding it would require an explicit passive-health-
 query design that preserves serialized access and no-replay guarantees.
+
+## Increment 46I controlled input result
+
+Definition versions 1 through 4 remain immutable. Definition version 5 retains
+the complete version-4 inventory and adds parameterless `Input.Activate` and
+`Input.Deactivate` Commands plus `ShortCircuit.Activate` with one required
+Boolean confirmation argument. Only normalized `true` authorizes confirmed
+SHORT activation. Missing, false, malformed, or unsupported arguments are
+rejected before SCPI transmission.
+
+The installed KEL-103 endpoint migrated explicitly and offline from definition
+version 4 to version 5. Strict preflight required the expected endpoint and
+definition reference, atomic replacement retained a version-4 backup, and the
+operation preserved endpoint identity, serial target, baud rate, and endpoint
+count. Startup and recovery never migrate a definition automatically.
+
+Ordinary activation verifies authoritative input state and mode immediately
+before one transmission and rejects SHORT. Confirmed SHORT activation verifies
+authoritative SHORT/OFF state immediately before one transmission.
+Deactivation remains available in every mode and sends one OFF command. Every
+mutation requires authoritative input-state readback, exposes uncertainty
+without speculative cache updates, and is never retried or replayed during
+recovery.
+
+The Runtime Host and Client expose dedicated Activate input and Deactivate
+input controls. The Client presents confirmed SHORT activation separately from
+the five mode buttons. Its strict two-state confirmation is retained only
+across connected same-host, same-generation observation refreshes and is
+cleared after execution or any host, connection, fault, or attachment-
+generation boundary.
+
+Physical Host and Client validation confirmed ordinary activation,
+deactivation, and separately confirmed SHORT activation with matching
+authoritative display and physical instrument state. Each accepted mutation
+produced one Command execution, no retry or recovery replay occurred, and the
+external laboratory supply output remained OFF. Validation ended in
+authoritative CC/OFF state. It validates the complete control and safety path
+without claiming energized electrical-load performance.
+
+Increment 46I closes at 5,479 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10.
+
+## Increment 46J closure result
+
+ADR-0046 is implemented, physically validated, and closed. The accepted scope
+now spans authoritative CC, CV, CR, CW, and SHORT display; authoritative input
+state; read/write voltage, current, resistance, and power targets; five explicit
+mode Commands; generic activation and deactivation; and separately confirmed
+SHORT activation.
+
+All mutations retain authoritative interlocks, exactly one transmission,
+authoritative readback, explicit uncertain outcomes, and no automatic retry or
+recovery replay. Definition migration remains offline, explicit, validated,
+atomic, and backed up. Immediate idle USB-removal indication remains a separate
+backlog item; the next Property or Command operation currently detects loss.
+
+The closure baseline is 5,479 automated tests passing in Visual Studio 2026
+Release configuration on .NET 10. Machine-specific reachability, instrument
+serial identity, serial target, and deployment security values remain external.

@@ -1208,10 +1208,10 @@ Operational diagnostics remained sanitized
 Runtime Hosts and Client stopped; serial port independently reopened
 ```
 
-## Current objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
+## Completed objective — ADR-0046 Controlled KEL-103 Operating State and Setpoints
 
-**Status:** [Active] Increment 46H hosting recovery and no-replay validation
-complete at 5,285 tests
+**Status:** [Completed] Implemented, automated, physically validated, and closed
+at 5,479 tests
 
 ADR-0046 extends the completed read-only KEL-103 attachment with authoritative
 display of CC, CV, CR, CW, and SHORT mode; input ON/OFF state; and voltage,
@@ -1241,9 +1241,9 @@ Completed and planned increments:
    complete at 5,283 tests.
 8. 46H — Hosting, recovery, diagnostics, Host, and Client integration — complete
    at 5,285 tests.
-9. 46I — Controlled activation, deactivation, SHORT, recovery, and multi-host
-   physical validation.
-10. 46J — Documentation and closure.
+9. 46I — Controlled activation, deactivation, SHORT, recovery, and presentation
+   validation — complete at 5,479 tests.
+10. 46J — Documentation and closure — complete at 5,479 tests.
 
 Increment 46B physically established exact `:FUNCtion?` responses `CC`, `CV`,
 `CR`, `CW`, and case-sensitive `SHORt`; exact `:INPut?` responses `OFF` and
@@ -1323,12 +1323,47 @@ CC/OFF with the external supply output off. USB removal is detected by the next
 Property or Command operation rather than by a passive idle health probe. The
 validated automated baseline is 5,285 tests.
 
+Increment 46I added immutable definition version 5 above version 4. Version 5
+retains the eleven Properties, four writable targets, and five mode-selection
+Commands, then adds parameterless `Input.Activate` and `Input.Deactivate` plus
+`ShortCircuit.Activate` with one required Boolean confirmation argument. The
+installed profile moved explicitly and offline from version 4 to version 5
+through strict validation, atomic replacement, and a retained version-4 backup
+without changing endpoint or serial-profile custody.
+
+Ordinary activation authoritatively verifies input state and rejects SHORT.
+Confirmed SHORT activation requires normalized Boolean `true` and verifies
+authoritative SHORT/OFF state immediately before transmission. Deactivation is
+available in every mode. Every accepted mutation is transmitted once, requires
+authoritative readback, reports uncertainty without speculative cache changes,
+and is never retried or replayed during recovery.
+
+The Runtime Host and Client expose dedicated Activate input and Deactivate
+input controls. The Client presents confirmed SHORT activation separately from
+the five mode buttons. Its strict two-state confirmation survives only
+connected same-host, same-generation observation refreshes and clears after
+execution or any host, connection, or attachment-generation boundary.
+
+Physical Host and Client validation confirmed activation, deactivation, and
+separately confirmed SHORT activation with matching authoritative display and
+instrument state. The external laboratory supply output remained OFF, each
+accepted operation produced one Command execution, and the final state was
+authoritative CC/OFF. The validation establishes the complete control path and
+does not claim energized electrical-load performance. The validated automated
+baseline is 5,479 tests.
+
+Increment 46J reconciled ADR-0046, the characterization report, project status,
+and this roadmap with the accepted version-5 implementation and physical
+evidence. ADR-0046 is closed. Passive idle serial-health probing remains a
+separate backlog item because the current attachment detects USB loss on the
+next attempted Property or Command operation.
+
 Current baseline:
 
 ```text
-5,285 automated tests pass
+5,479 automated tests pass
 ADR-0045 Runtime Host publication and recovery remain the production base
-ADR-0046 hosting recovery and no-replay validation complete through 46H
+ADR-0046 controlled operating state, setpoints, and input control closed
 Runtime Hosts and Client stopped
 ```
 
