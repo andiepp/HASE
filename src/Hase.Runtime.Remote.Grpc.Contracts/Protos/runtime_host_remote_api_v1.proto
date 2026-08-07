@@ -3,6 +3,7 @@ syntax = "proto3";
 package hase.runtime.remote.v1;
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 option csharp_namespace = "Hase.Runtime.Remote.Grpc.V1";
 
@@ -138,6 +139,77 @@ message CommandOperationResult {
 }
 
 message ObserveRequest {
+}
+
+message ProjectedDiagnosticObservation {
+  uint64 sequence = 1;
+  ProjectedDiagnosticRecord record = 2;
+}
+
+message ProjectedDiagnosticRecord {
+  string runtime_host_id = 1;
+  uint64 source_sequence = 2;
+  google.protobuf.Timestamp timestamp_utc = 3;
+  RuntimeDiagnosticLevel level = 4;
+  RuntimeDiagnosticCategory category = 5;
+  string event_name = 6;
+  RuntimeDiagnosticSeverity severity = 7;
+  optional string endpoint_id = 8;
+  optional string attachment_generation = 9;
+  optional RuntimeDiagnosticDirection direction = 10;
+  optional string operation_id = 11;
+  google.protobuf.Duration duration = 12;
+  optional RuntimeDiagnosticOutcome outcome = 13;
+  map<string, string> details = 14;
+  ProjectedDiagnosticByteSnapshot byte_snapshot = 15;
+}
+
+message ProjectedDiagnosticByteSnapshot {
+  uint64 original_byte_count = 1;
+  bytes captured_bytes = 2;
+  bool is_truncated = 3;
+}
+
+enum RuntimeDiagnosticLevel {
+  RUNTIME_DIAGNOSTIC_LEVEL_UNSPECIFIED = 0;
+  RUNTIME_DIAGNOSTIC_LEVEL_OPERATIONAL = 1;
+  RUNTIME_DIAGNOSTIC_LEVEL_PROTOCOL = 2;
+  RUNTIME_DIAGNOSTIC_LEVEL_BYTES = 3;
+}
+
+enum RuntimeDiagnosticCategory {
+  RUNTIME_DIAGNOSTIC_CATEGORY_UNSPECIFIED = 0;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_ATTACHMENT = 1;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_CONNECTION = 2;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_SYNCHRONIZATION = 3;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_RECOVERY = 4;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_PROPERTY = 5;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_COMMAND = 6;
+  RUNTIME_DIAGNOSTIC_CATEGORY_RUNTIME_EVENT = 7;
+  RUNTIME_DIAGNOSTIC_CATEGORY_PROTOCOL_EXCHANGE = 8;
+  RUNTIME_DIAGNOSTIC_CATEGORY_TRANSPORT_BYTES = 9;
+}
+
+enum RuntimeDiagnosticSeverity {
+  RUNTIME_DIAGNOSTIC_SEVERITY_UNSPECIFIED = 0;
+  RUNTIME_DIAGNOSTIC_SEVERITY_TRACE = 1;
+  RUNTIME_DIAGNOSTIC_SEVERITY_INFORMATION = 2;
+  RUNTIME_DIAGNOSTIC_SEVERITY_WARNING = 3;
+  RUNTIME_DIAGNOSTIC_SEVERITY_ERROR = 4;
+}
+
+enum RuntimeDiagnosticDirection {
+  RUNTIME_DIAGNOSTIC_DIRECTION_UNSPECIFIED = 0;
+  RUNTIME_DIAGNOSTIC_DIRECTION_OUTBOUND = 1;
+  RUNTIME_DIAGNOSTIC_DIRECTION_INBOUND = 2;
+}
+
+enum RuntimeDiagnosticOutcome {
+  RUNTIME_DIAGNOSTIC_OUTCOME_UNSPECIFIED = 0;
+  RUNTIME_DIAGNOSTIC_OUTCOME_SUCCEEDED = 1;
+  RUNTIME_DIAGNOSTIC_OUTCOME_FAILED = 2;
+  RUNTIME_DIAGNOSTIC_OUTCOME_CANCELLED = 3;
+  RUNTIME_DIAGNOSTIC_OUTCOME_TIMED_OUT = 4;
 }
 
 message ObserveResponse {
