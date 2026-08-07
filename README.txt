@@ -1,29 +1,34 @@
-HASE Increment 48B - SCPI Diagnostic Disclosure and Record Mapping
-=================================================================
+HASE Increment 48C - Production KEL-103 SCPI Diagnostic Composition
+==================================================================
 
 Authoritative baseline:
-  commit 5caec8a158f0bef6e9a994d20081247c5bbeaee8
+  commit d866554d0c2facd3b3886ded05371026c177eb7a
   Visual Studio 2026, Release, .NET 10
-  5,508 automated tests passing
+  5,520 automated tests passing
 
 Overlay contents:
-  src/Hase.Scpi.Kel103.Hosting/Kel103ScpiDiagnosticObserver.cs
-  tests/Hase.Scpi.Kel103.Hosting.Tests/Kel103ScpiDiagnosticObserverTests.cs
+  src/Hase.Scpi.Kel103.Hosting/Kel103OperationalConnectionFactory.cs
+  tests/Hase.Scpi.Kel103.Hosting.Tests/Kel103SynchronizationDiagnosticTests.cs
+  tests/Hase.Scpi.Kel103.Hosting.Tests/Kel103ScpiProductionDiagnosticCompositionTests.cs
 
 Behavior:
-  - Operational capture publishes no SCPI exchange or byte records.
-  - Protocol capture publishes correlated, payload-free exchange metadata.
-  - Bytes capture additionally publishes bounded exact-byte snapshots through
-    the existing RuntimeTransportByteDiagnosticPublisher.
-  - Sanitized failure classification and uncertain command outcome are
-    preserved.
-  - Production KEL-103 session composition is intentionally unchanged.
+  - Every production KEL-103 SCPI session receives one runtime diagnostic
+    observer scoped to the authoritative endpoint identity.
+  - Initial synchronization, operations, passive health, and recovered sessions
+    use the same established Protocol and Bytes disclosure policy.
+  - SCPI framing, timeout, serialization, mutation, and recovery behavior are
+    unchanged.
 
-Validation:
+Automated validation:
   1. Extract this ZIP over the repository root.
   2. Build the complete solution in Visual Studio 2026, Release.
   3. Run all automated tests.
-  4. Expected total: 5,520 passing tests.
+  4. Expected total: 5,522 passing tests.
 
-No Runtime Host or Client update and no physical validation are required for
-this production-inactive increment.
+Deployment before physical validation:
+  Stop the Desktop Runtime Host, then run:
+
+    cd H:\Development
+    & .\tools\Deployment\Update-HaseDesktopRuntimeHost.ps1
+
+No Client update is required for Increment 48C.

@@ -114,6 +114,7 @@ public sealed class Kel103OperationalConnectionFactory
         return await operation.RunAsync(
             token => OpenConnectionCoreAsync(
                 createRuntimeEndpoint,
+                endpointId.Value,
                 serialOptions,
                 token),
             cancellationToken).ConfigureAwait(false);
@@ -121,6 +122,7 @@ public sealed class Kel103OperationalConnectionFactory
 
     private async Task<Kel103OperationalConnection> OpenConnectionCoreAsync(
         Func<RuntimeEndpoint> createRuntimeEndpoint,
+        string endpointId,
         SerialTransportOptions serialOptions,
         CancellationToken cancellationToken)
     {
@@ -134,7 +136,14 @@ public sealed class Kel103OperationalConnectionFactory
                 .ConfigureAwait(false);
             owner = byteStream;
 
-            var textSession = new ScpiTextSession(byteStream, Framing);
+            var diagnosticObserver = new Kel103ScpiDiagnosticObserver(
+                endpointId,
+                runtimeContext.Diagnostics);
+            var textSession = new ScpiTextSession(
+                byteStream,
+                Framing,
+                diagnosticObserver,
+                timeProvider);
             owner = textSession;
 
             var sessionAdapter = new Kel103ReadOnlySessionAdapter(textSession, timeProvider);

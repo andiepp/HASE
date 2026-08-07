@@ -13,7 +13,7 @@ public sealed class Kel103SynchronizationDiagnosticTests
     {
         var collector = new BoundedRuntimeDiagnosticCollector(
             10,
-            RuntimeDiagnosticLevel.Bytes);
+            RuntimeDiagnosticLevel.Operational);
         var context = new RuntimeContext(new RuntimeDiagnosticPublisher(collector));
         var timeProvider = new ManualTimeProvider();
         var stream = new TimedSerialByteStream(
