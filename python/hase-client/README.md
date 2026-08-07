@@ -48,6 +48,12 @@ The generator uses a virtual protobuf source mapping so generated imports use
 generated modules are committed so package consumers do not require
 `grpcio-tools`.
 
+Descriptor-level parity tests additionally lock the reviewed service methods,
+streaming shapes, value union, generation-qualified targets, observation
+unions, descriptor payloads, imported duration type, and enum assignments. An
+intentional version-1 contract change therefore requires regeneration and an
+explicit review of the Python parity expectations.
+
 Generated contract types remain internal. The public `hase` namespace exposes
 no Runtime Host operation yet. Although the complete wire contract includes
 the separately authorized diagnostic stream, ADR-0050 excludes it from the
@@ -60,8 +66,9 @@ The package currently provides:
 - distribution name `hase-client`;
 - import namespace `hase`;
 - an isolated and repeatable development dependency set;
-- reproducible version-1 protobuf and gRPC bindings; and
-- package and generated-module import tests.
+- reproducible version-1 protobuf and gRPC bindings;
+- byte-exact freshness verification; and
+- package, generated-module, and descriptor-level contract-parity tests.
 
 Secure sessions, snapshots, Properties, Commands, observations, deployment
 profiles, and certificate handling are added only by later approved increments.
