@@ -113,6 +113,19 @@ retained journal blocks another publication until the exact five targets are
 supplied to the explicit `recover` operation. The operator does not connect to
 a Runtime Host or modify a certificate store.
 
+Before physical publication, run
+`tools\Initialize-HasePythonPhysicalProvisioningValidation.ps1` with explicit
+absolute paths for the retained Desktop configuration, source profile,
+authorization policy, provisioning directory, three Python output files, and a
+new rollback directory outside both the repository and provisioning directory.
+The script requires the Runtime Host and Client to be stopped and the default
+branch to be clean and synchronized. It reuses the strict readiness probe,
+rejects transaction artifacts and reparse points, and creates a Current-User-
+only rollback capture containing exact content, SHA-256, security descriptors,
+and the withheld operator input document. Only fixed Boolean readiness results
+are displayed. The rollback directory is external security state and must not
+be committed, copied into a source archive, or displayed.
+
 ## Current scope
 
 The package currently provides:
