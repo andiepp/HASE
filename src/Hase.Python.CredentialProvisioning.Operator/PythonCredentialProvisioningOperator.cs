@@ -278,7 +278,8 @@ internal sealed class SystemPythonCredentialProvisioningOperations
             throw new PlatformNotSupportedException();
         }
         cancellationToken.ThrowIfCancellationRequested();
-        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+        DateTimeOffset utcNow = NormalizeCertificateTimestamp(
+            DateTimeOffset.UtcNow);
         using PythonClientCredentialMaterial material = CreateMaterial(
             command.SigningRootThumbprint, utcNow, command.Validity);
         var request = new PythonCredentialProvisioningPlanRequest(
@@ -329,6 +330,14 @@ internal sealed class SystemPythonCredentialProvisioningOperations
                 command.ProfilePath,
                 command.EnrollmentPath,
                 command.AuthorizationPolicyPath));
+    }
+
+    internal static DateTimeOffset NormalizeCertificateTimestamp(
+        DateTimeOffset timestamp)
+    {
+        DateTimeOffset utc = timestamp.ToUniversalTime();
+        long ticks = utc.Ticks - utc.Ticks % TimeSpan.TicksPerSecond;
+        return new DateTimeOffset(ticks, TimeSpan.Zero);
     }
 
     private static PythonClientCredentialMaterial CreateMaterial(

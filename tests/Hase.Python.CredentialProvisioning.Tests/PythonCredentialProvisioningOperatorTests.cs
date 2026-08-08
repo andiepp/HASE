@@ -5,6 +5,25 @@ namespace Hase.Python.CredentialProvisioning.Tests;
 public sealed class PythonCredentialProvisioningOperatorTests
 {
     [Fact]
+    public void NormalizeCertificateTimestamp_FractionalOffsetValue_ReturnsWholeUtcSecond()
+    {
+        var timestamp = new DateTimeOffset(
+            2026, 8, 8, 17, 23, 41, 987,
+            TimeSpan.FromHours(2)).AddTicks(6543);
+
+        DateTimeOffset normalized =
+            SystemPythonCredentialProvisioningOperations
+                .NormalizeCertificateTimestamp(timestamp);
+
+        Assert.Equal(
+            new DateTimeOffset(
+                2026, 8, 8, 15, 23, 41,
+                TimeSpan.Zero),
+            normalized);
+        Assert.Equal(0, normalized.Ticks % TimeSpan.TicksPerSecond);
+    }
+
+    [Fact]
     public async Task RunAsync_Provision_DelegatesAndWithholdsInputs()
     {
         string[] args = ProvisionArguments(allowReplacement: true);
