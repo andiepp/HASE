@@ -13,6 +13,8 @@ public sealed record PythonCredentialProvisioningPlan(
     string ProfilePath,
     string EnrollmentPath,
     string AuthorizationPolicyPath,
+    string SourceProfileSha256,
+    string EnrollmentSha256,
     string AuthorizationPolicySha256,
     DateTimeOffset NotBeforeUtc,
     DateTimeOffset NotAfterUtc,

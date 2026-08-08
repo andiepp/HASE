@@ -55,6 +55,12 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
             first.AuthorizationGrants);
         Assert.Equal(Now.AddMinutes(-5), first.NotBeforeUtc);
         Assert.Equal(Now.AddMinutes(-5).AddDays(30), first.NotAfterUtc);
+        Assert.Equal(
+            HashFile(fixture.Request.SourceProfilePath),
+            first.SourceProfileSha256);
+        Assert.Equal(
+            HashFile(fixture.Request.EnrollmentPath),
+            first.EnrollmentSha256);
         Assert.Equal(fixture.PolicyHash, first.AuthorizationPolicySha256);
         Assert.False(first.AllowReplacement);
         AssertNoMutation(fixture);
@@ -150,12 +156,10 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
         using X509Certificate2 root = CreateRsaRoot();
         using X509Certificate2 trusted = X509CertificateLoader.LoadCertificate(root.RawData);
         Fixture fixture = CreateFixture(root.Thumbprint);
+        File.AppendAllText(fixture.Request.AuthorizationPolicyPath, " ");
 
         await AssertFailure(
-            fixture.Request with
-            {
-                ExpectedAuthorizationPolicySha256 = new string('b', 64),
-            },
+            fixture.Request,
             Now,
             [root],
             [trusted],
@@ -282,6 +286,44 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
             [root],
             [trusted],
             "source-profile-invalid");
+        AssertNoMutation(fixture);
+    }
+
+    [Theory]
+    [InlineData("source-profile")]
+    [InlineData("enrollment")]
+    public async Task CreateAsync_ChangedInputBytes_ChangesPlanIdentity(
+        string input)
+    {
+        using X509Certificate2 root = CreateRsaRoot();
+        using X509Certificate2 trusted = X509CertificateLoader.LoadCertificate(root.RawData);
+        Fixture fixture = CreateFixture(root.Thumbprint);
+        var builder = new PythonCredentialProvisioningPlanBuilder();
+        PythonCredentialProvisioningPlan original = await builder.CreateAsync(
+            fixture.Request,
+            Now,
+            [root],
+            [trusted]);
+
+        string changedPath = input == "source-profile"
+            ? fixture.Request.SourceProfilePath
+            : fixture.Request.EnrollmentPath;
+        File.AppendAllText(changedPath, " ");
+
+        PythonCredentialProvisioningPlan changed = await builder.CreateAsync(
+            fixture.Request,
+            Now,
+            [root],
+            [trusted]);
+
+        Assert.NotEqual(original.PlanId, changed.PlanId);
+        Assert.NotEqual(
+            input == "source-profile"
+                ? original.SourceProfileSha256
+                : original.EnrollmentSha256,
+            input == "source-profile"
+                ? changed.SourceProfileSha256
+                : changed.EnrollmentSha256);
         AssertNoMutation(fixture);
     }
 
@@ -425,6 +467,10 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
                 trusted));
         Assert.Equal(code, exception.Code);
     }
+
+    private static string HashFile(string path) =>
+        Convert.ToHexStringLower(
+            SHA256.HashData(File.ReadAllBytes(path)));
 
     private void AssertNoMutation(Fixture fixture)
     {

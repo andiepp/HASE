@@ -100,10 +100,19 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             notAfter);
 
         cancellationToken.ThrowIfCancellationRequested();
+        string sourceProfileHash = await HashFileAsync(
+                validated.SourceProfilePath,
+                cancellationToken)
+            .ConfigureAwait(false);
+        string enrollmentHash = await HashFileAsync(
+                validated.EnrollmentPath,
+                cancellationToken)
+            .ConfigureAwait(false);
         string actualPolicyHash = await HashFileAsync(
                 validated.AuthorizationPolicyPath,
                 cancellationToken)
             .ConfigureAwait(false);
+        ValidateSourceProfile(validated.SourceProfilePath);
         if (!string.Equals(
             actualPolicyHash,
             validated.ExpectedAuthorizationPolicySha256,
@@ -151,8 +160,26 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             Fail("credential-already-enrolled");
         }
 
+        await EnsureFileHashAsync(
+                validated.SourceProfilePath,
+                sourceProfileHash,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await EnsureFileHashAsync(
+                validated.EnrollmentPath,
+                enrollmentHash,
+                cancellationToken)
+            .ConfigureAwait(false);
+        await EnsureFileHashAsync(
+                validated.AuthorizationPolicyPath,
+                actualPolicyHash,
+                cancellationToken)
+            .ConfigureAwait(false);
+
         string planId = CreatePlanId(
             validated,
+            sourceProfileHash,
+            enrollmentHash,
             actualPolicyHash,
             notBefore,
             notAfter,
@@ -171,6 +198,8 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             validated.ProfilePath,
             validated.EnrollmentPath,
             validated.AuthorizationPolicyPath,
+            sourceProfileHash,
+            enrollmentHash,
             actualPolicyHash,
             notBefore,
             notAfter,
@@ -508,20 +537,46 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
         string path,
         CancellationToken cancellationToken)
     {
-        await using FileStream stream = File.OpenRead(path);
-        byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken).ConfigureAwait(false);
         try
         {
-            return Convert.ToHexStringLower(hash);
+            await using FileStream stream = File.OpenRead(path);
+            byte[] hash = await SHA256.HashDataAsync(stream, cancellationToken)
+                .ConfigureAwait(false);
+            try
+            {
+                return Convert.ToHexStringLower(hash);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(hash);
+            }
         }
-        finally
+        catch (Exception exception) when (
+            exception is IOException
+            or UnauthorizedAccessException)
         {
-            CryptographicOperations.ZeroMemory(hash);
+            throw new PythonCredentialProvisioningPlanException(
+                "input-unavailable");
+        }
+    }
+
+    private static async Task EnsureFileHashAsync(
+        string path,
+        string expectedHash,
+        CancellationToken cancellationToken)
+    {
+        string actualHash = await HashFileAsync(path, cancellationToken)
+            .ConfigureAwait(false);
+        if (!string.Equals(actualHash, expectedHash, StringComparison.Ordinal))
+        {
+            Fail("input-revision-changed");
         }
     }
 
     private static string CreatePlanId(
         ValidatedRequest request,
+        string sourceProfileHash,
+        string enrollmentHash,
         string policyHash,
         DateTimeOffset notBefore,
         DateTimeOffset notAfter,
@@ -540,6 +595,8 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             request.ProfilePath,
             request.EnrollmentPath,
             request.AuthorizationPolicyPath,
+            sourceProfileHash,
+            enrollmentHash,
             policyHash,
             notBefore.ToString("O"),
             notAfter.ToString("O"),
