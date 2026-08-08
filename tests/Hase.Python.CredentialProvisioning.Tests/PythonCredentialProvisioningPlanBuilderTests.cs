@@ -66,6 +66,31 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
         AssertNoMutation(fixture);
     }
 
+    [Fact]
+    public async Task CreateAsync_ReplacementAuthorization_ChangesPlanIdentity()
+    {
+        using X509Certificate2 root = CreateRsaRoot();
+        using X509Certificate2 trusted =
+            X509CertificateLoader.LoadCertificate(root.RawData);
+        Fixture fixture = CreateFixture(root.Thumbprint);
+        var builder = new PythonCredentialProvisioningPlanBuilder();
+
+        PythonCredentialProvisioningPlan withoutReplacement =
+            await builder.CreateAsync(
+                fixture.Request,
+                Now,
+                [root],
+                [trusted]);
+        PythonCredentialProvisioningPlan withReplacement =
+            await builder.CreateAsync(
+                fixture.Request with { AllowReplacement = true },
+                Now,
+                [root],
+                [trusted]);
+
+        Assert.NotEqual(withoutReplacement.PlanId, withReplacement.PlanId);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

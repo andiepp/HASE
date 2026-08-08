@@ -78,6 +78,15 @@ policy, and Python profile before returning five disposable candidate buffers.
 This preparation step does not publish files, create backups or a journal,
 modify certificate stores, or connect to a Runtime Host.
 
+An approved prepared set can now be published through a durable five-file
+transaction. A bounded metadata-only journal is made durable before staging,
+then updated after the candidate files have been staged and flushed and after
+every publication boundary. Authorization is published last. Ordinary failures
+restore the exact pre-transaction files and security metadata. A retained
+journal represents an interrupted or committed-cleanup case; automatic
+discovery and recovery of such a journal remains a separate increment and must
+occur before another publication is attempted.
+
 ## Current scope
 
 The package currently provides:

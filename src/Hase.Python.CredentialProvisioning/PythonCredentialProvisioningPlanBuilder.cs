@@ -183,6 +183,7 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             actualPolicyHash,
             notBefore,
             notAfter,
+            request.AllowReplacement,
             signingRoot.RawData);
 
         return new PythonCredentialProvisioningPlan(
@@ -580,6 +581,7 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
         string policyHash,
         DateTimeOffset notBefore,
         DateTimeOffset notAfter,
+        bool allowReplacement,
         byte[] rootDer)
     {
         string rootHash = Convert.ToHexStringLower(SHA256.HashData(rootDer));
@@ -600,6 +602,7 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             policyHash,
             notBefore.ToString("O"),
             notAfter.ToString("O"),
+            allowReplacement ? "allowReplacement=true" : "allowReplacement=false",
             rootHash);
         byte[] bytes = Encoding.UTF8.GetBytes(canonical);
         try

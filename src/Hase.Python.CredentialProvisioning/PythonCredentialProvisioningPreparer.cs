@@ -166,7 +166,7 @@ public sealed class PythonCredentialProvisioningPreparer
         }
     }
 
-    private static void ValidatePlan(PythonCredentialProvisioningPlan plan)
+    internal static void ValidatePlan(PythonCredentialProvisioningPlan plan)
     {
         if (plan.PrincipalId != PrincipalId
             || plan.LeafRsaKeySize != 2048
@@ -215,6 +215,9 @@ public sealed class PythonCredentialProvisioningPreparer
             plan.AuthorizationPolicySha256,
             plan.NotBeforeUtc.ToString("O"),
             plan.NotAfterUtc.ToString("O"),
+            plan.AllowReplacement
+                ? "allowReplacement=true"
+                : "allowReplacement=false",
             rootHash);
         byte[] canonicalBytes = Encoding.UTF8.GetBytes(canonical);
         byte[]? planHash = null;
@@ -257,7 +260,7 @@ public sealed class PythonCredentialProvisioningPreparer
         }
     }
 
-    private static X509Certificate2 SelectExactRoot(
+    internal static X509Certificate2 SelectExactRoot(
         string thumbprint,
         IEnumerable<X509Certificate2> certificates,
         bool requirePrivateKey)
@@ -276,7 +279,7 @@ public sealed class PythonCredentialProvisioningPreparer
         return matches[0];
     }
 
-    private static void ValidateCredential(
+    internal static void ValidateCredential(
         PythonCredentialProvisioningPlan plan,
         byte[] certificatePem,
         byte[] privateKeyPem,
