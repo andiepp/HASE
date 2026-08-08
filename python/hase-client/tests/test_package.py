@@ -1,7 +1,12 @@
 import hase
 
 
-def test_package_exposes_only_the_initial_version() -> None:
+def test_package_exposes_the_approved_profile_surface() -> None:
     assert hase.__version__ == "0.1.0"
-    assert hase.__all__ == ["__version__"]
+    assert hase.__all__ == [
+        "ProfileValidationError",
+        "RuntimeHostProfile",
+        "__version__",
+        "load_runtime_host_profile",
+    ]
 

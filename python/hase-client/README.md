@@ -1,10 +1,10 @@
 # HASE Python Client
 
 This directory contains the asyncio-native Python Client for the HASE Runtime
-Host. The current implementation establishes an isolated package toolchain and
-package-internal generated Python bindings for the authoritative Runtime Host
-protobuf contract. It does not yet open a Runtime Host connection, load
-credentials, or invoke hardware.
+Host. The current implementation establishes an isolated package toolchain,
+package-internal generated Python bindings, and a strict external Runtime Host
+profile model. It does not yet open a Runtime Host connection, parse credential
+bytes, or invoke hardware.
 
 ## Development environment
 
@@ -31,15 +31,10 @@ The only authoritative protobuf source is:
 src\Hase.Runtime.Remote.Grpc.Contracts\Protos\runtime_host_remote_api_v1.proto
 ```
 
-Generate package-internal Python bindings from the repository root contract:
+Generate package-internal Python bindings and verify freshness:
 
 ```powershell
 .\tools\Generate-HasePythonContracts.ps1
-```
-
-Verify that committed bindings match a fresh generation byte for byte:
-
-```powershell
 .\tools\Test-HasePythonContractsCurrent.ps1
 ```
 
@@ -48,28 +43,41 @@ The generator uses a virtual protobuf source mapping so generated imports use
 generated modules are committed so package consumers do not require
 `grpcio-tools`.
 
-Descriptor-level parity tests additionally lock the reviewed service methods,
-streaming shapes, value union, generation-qualified targets, observation
-unions, descriptor payloads, imported duration type, and enum assignments. An
-intentional version-1 contract change therefore requires regeneration and an
-explicit review of the Python parity expectations.
+Descriptor-level parity tests lock the reviewed service methods, streaming
+shapes, value union, generation-qualified targets, observation unions,
+descriptor payloads, imported duration type, and enum assignments.
 
-Generated contract types remain internal. The public `hase` namespace exposes
-no Runtime Host operation yet. Although the complete wire contract includes
-the separately authorized diagnostic stream, ADR-0050 excludes it from the
-initial public Python API.
+## Strict external profile
+
+`load_runtime_host_profile` reads one versioned JSON profile by absolute path.
+The profile contains an explicit HTTPS IP address and absolute paths to three
+distinct external files: the Client certificate chain, Client private key, and
+exact trusted-server certificate.
+
+The loader rejects oversized, malformed, duplicate, unknown, missing, or
+incorrectly cased JSON content. It also rejects DNS names, absent ports,
+non-HTTPS addresses, URI paths, queries, fragments, user information, relative
+credential paths, directories, and missing or aliased credential files.
+
+Increment 50C1 checks file custody only. It does not read or parse credential
+bytes. Validation failures expose fixed reason codes without including profile
+content, addresses, paths, or underlying exception text.
+
+The profile file and every referenced credential remain external deployment
+state. They must not be committed, included in source archives, printed, or
+logged.
 
 ## Current scope
 
 The package currently provides:
 
-- distribution name `hase-client`;
-- import namespace `hase`;
+- distribution name `hase-client` and import namespace `hase`;
 - an isolated and repeatable development dependency set;
 - reproducible version-1 protobuf and gRPC bindings;
-- byte-exact freshness verification; and
-- package, generated-module, and descriptor-level contract-parity tests.
+- byte-exact freshness and descriptor-level parity validation; and
+- an immutable strict external Runtime Host profile model.
 
-Secure sessions, snapshots, Properties, Commands, observations, deployment
-profiles, and certificate handling are added only by later approved increments.
+Credential characterization, offline PEM provisioning, mutual-TLS channels,
+snapshots, Properties, Commands, and observations require later approved
+increments.
 

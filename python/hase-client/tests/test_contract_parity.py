@@ -234,5 +234,5 @@ def test_diagnostic_enums_retain_exact_numeric_assignments() -> None:
 
 
 def test_generated_contract_remains_outside_the_public_package_surface() -> None:
-    assert hase.__all__ == ["__version__"]
-
+    assert "runtime_host_remote_api_v1_pb2" not in hase.__all__
+    assert "runtime_host_remote_api_v1_pb2_grpc" not in hase.__all__
