@@ -352,10 +352,10 @@ public sealed class PythonCredentialProvisionerTests : IDisposable
 
     private void AssertNoTransactionArtifacts()
     {
-        Assert.Empty(
-            Directory.EnumerateFiles(testDirectory)
-                .Where(path => path.Contains(".stage-", StringComparison.Ordinal)
-                    || path.Contains(".backup-", StringComparison.Ordinal)));
+        Assert.DoesNotContain(
+            Directory.EnumerateFiles(testDirectory),
+            path => path.Contains(".stage-", StringComparison.Ordinal)
+                || path.Contains(".backup-", StringComparison.Ordinal));
     }
 
     private sealed record Fixture(
