@@ -71,6 +71,13 @@ The configuration, enrollment, profile, and every credential remain external
 deployment state. They must not be committed, included in archives, printed,
 or logged.
 
+The .NET provisioning boundary can now prepare a revision-locked candidate set
+entirely in memory after an approved plan has been created. It revalidates the
+dedicated credential, signing root, source revisions, enrollment, authorization
+policy, and Python profile before returning five disposable candidate buffers.
+This preparation step does not publish files, create backups or a journal,
+modify certificate stores, or connect to a Runtime Host.
+
 ## Current scope
 
 The package currently provides:
@@ -81,7 +88,6 @@ The package currently provides:
 - an immutable strict external Runtime Host profile model; and
 - read-only dedicated-Python-identity provisioning readiness characterization.
 
-Dedicated identity creation, enrollment, protected PEM delivery, mutual-TLS
-channels, snapshots, Properties, Commands, and observations require later
-approved increments.
-
+Durable enrollment publication, protected PEM delivery, mutual-TLS channels,
+snapshots, Properties, Commands, and observations require later approved
+increments.
