@@ -43,7 +43,9 @@ function Resolve-ExactAbsolutePath
     if (
         [string]::IsNullOrWhiteSpace($Value) `
         -or $Value -ne $Value.Trim() `
-        -or -not [System.IO.Path]::IsPathFullyQualified($Value))
+        -or -not (
+            $Value -match '^[A-Za-z]:[\\/]' `
+            -or $Value -match '^\\\\[^\\/]+[\\/][^\\/]+(?:[\\/]|$)'))
     {
         throw "Invalid"
     }
@@ -58,13 +60,27 @@ function Test-PathWithin
         [string] $Candidate
     )
 
-    $relative = [System.IO.Path]::GetRelativePath($Parent, $Candidate)
-    return -not (
-        [System.IO.Path]::IsPathRooted($relative) `
-        -or $relative -eq ".." `
-        -or $relative.StartsWith(
-            ".." + [System.IO.Path]::DirectorySeparatorChar,
-            [System.StringComparison]::Ordinal))
+    $parentPath = [System.IO.Path]::GetFullPath($Parent)
+    $candidatePath = [System.IO.Path]::GetFullPath($Candidate)
+    if ($candidatePath.Equals(
+        $parentPath,
+        [System.StringComparison]::OrdinalIgnoreCase))
+    {
+        return $true
+    }
+
+    if (
+        -not $parentPath.EndsWith(
+            [System.IO.Path]::DirectorySeparatorChar.ToString()) `
+        -and -not $parentPath.EndsWith(
+            [System.IO.Path]::AltDirectorySeparatorChar.ToString()))
+    {
+        $parentPath += [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    return $candidatePath.StartsWith(
+        $parentPath,
+        [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Assert-NoReparsePoint
