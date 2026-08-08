@@ -4,9 +4,6 @@ param(
     [string] $DesktopConfigurationPath,
 
     [Parameter(Mandatory = $true)]
-    [string] $ClientConfigurationPath,
-
-    [Parameter(Mandatory = $true)]
     [string] $SourceProfilePath,
 
     [Parameter(Mandatory = $true)]
@@ -42,6 +39,7 @@ $rollbackCreated = $false
 $sourceProfileCreated = $false
 $personalStore = $null
 $rootStore = $null
+$selectedServerCertificate = $null
 
 function Resolve-ExactAbsolutePath
 {
@@ -217,7 +215,6 @@ try
         Split-Path -Parent $pythonDirectory)
 
     $desktopConfiguration = Resolve-ExactAbsolutePath $DesktopConfigurationPath
-    $clientConfiguration = Resolve-ExactAbsolutePath $ClientConfigurationPath
     $sourceProfile = Resolve-ExactAbsolutePath $SourceProfilePath
     $trustedServerCertificatePath = Resolve-ExactAbsolutePath (
         $TrustedServerCertificatePath)
@@ -266,7 +263,6 @@ try
 
     foreach ($requiredFile in @(
         $desktopConfiguration,
-        $clientConfiguration,
         $trustedServerCertificatePath,
         $authorizationPolicy))
     {
@@ -297,34 +293,30 @@ try
     }
     Assert-NoReparsePoint -Path $sourceProfileParent
 
-    $clientConfigurationDocument = Get-Content `
-        -LiteralPath $clientConfiguration `
-        -Raw | ConvertFrom-Json
-    $clientAddress = [string]$clientConfigurationDocument.address
-    $clientUri = $null
-    $clientIpAddress = $null
+    $configuration = Get-Content -LiteralPath $desktopConfiguration -Raw |
+        ConvertFrom-Json
+    $bindingAddress = [string]$configuration.binding.address
+    $bindingPort = [int]$configuration.binding.port
+    $bindingIpAddress = $null
     if (
-        [string]::IsNullOrWhiteSpace($clientAddress) `
-        -or $clientAddress -ne $clientAddress.Trim() `
-        -or -not [System.Uri]::TryCreate(
-            $clientAddress,
-            [System.UriKind]::Absolute,
-            [ref]$clientUri) `
-        -or $clientUri.Scheme -ne [System.Uri]::UriSchemeHttps `
-        -or $clientUri.IsDefaultPort `
-        -or -not [string]::IsNullOrEmpty($clientUri.UserInfo) `
-        -or -not [string]::IsNullOrEmpty($clientUri.Query) `
-        -or -not [string]::IsNullOrEmpty($clientUri.Fragment) `
-        -or $clientAddress -ne ("https://" + $clientUri.Authority) `
+        [string]::IsNullOrWhiteSpace($bindingAddress) `
         -or -not [System.Net.IPAddress]::TryParse(
-            $clientUri.Host.Trim([char[]]"[]"),
-            [ref]$clientIpAddress))
+            $bindingAddress,
+            [ref]$bindingIpAddress) `
+        -or $bindingPort -lt 1 `
+        -or $bindingPort -gt 65535 `
+        -or $bindingPort -eq 443)
     {
         throw "Inputs"
     }
-
-    $configuration = Get-Content -LiteralPath $desktopConfiguration -Raw |
-        ConvertFrom-Json
+    $authorityHost = $bindingIpAddress.ToString()
+    if (
+        $bindingIpAddress.AddressFamily -eq
+        [System.Net.Sockets.AddressFamily]::InterNetworkV6)
+    {
+        $authorityHost = "[" + $authorityHost + "]"
+    }
+    $clientAddress = "https://" + $authorityHost + ":" + $bindingPort
     $serverThumbprint = [string]$configuration.serverCertificate.thumbprint
     $enrollment = Resolve-ExactAbsolutePath (
         [string]$configuration.clientEnrollmentFilePath)
@@ -371,6 +363,27 @@ try
     {
         throw "Inputs"
     }
+    $selectedServerCertificate = Get-PfxCertificate `
+        -FilePath $trustedServerCertificatePath
+    $selectedServerCertificateBytes =
+        if ($null -eq $selectedServerCertificate)
+        {
+            [string]::Empty
+        }
+        else
+        {
+            [System.Convert]::ToBase64String(
+                $selectedServerCertificate.RawData)
+        }
+    $activeServerCertificateBytes = [System.Convert]::ToBase64String(
+        $serverCertificates[0].RawData)
+    if (
+        $null -eq $selectedServerCertificate `
+        -or $selectedServerCertificate.HasPrivateKey `
+        -or $selectedServerCertificateBytes -ne $activeServerCertificateBytes)
+    {
+        throw "Inputs"
+    }
     $serverIssuer = [System.Convert]::ToBase64String(
         $serverCertificates[0].IssuerName.RawData)
     $signingRoots = @(
@@ -401,7 +414,6 @@ try
 
     $allPublicationPaths = @(
         $desktopConfiguration,
-        $clientConfiguration,
         $sourceProfile,
         $trustedServerCertificatePath,
         $enrollment,
@@ -409,7 +421,7 @@ try
         $certificate,
         $privateKey,
         $profile)
-    if (@($allPublicationPaths | Sort-Object -Unique).Count -ne 9)
+    if (@($allPublicationPaths | Sort-Object -Unique).Count -ne 8)
     {
         throw "Targets"
     }
@@ -563,6 +575,7 @@ try
     Write-Host "Runtime processes stopped       : True"
     Write-Host "Provisioning readiness ready    : True"
     Write-Host "Authoritative inputs ready      : True"
+    Write-Host "Public server certificate ready : True"
     Write-Host "Python profile template ready   : True"
     Write-Host "Publication targets ready       : True"
     Write-Host "Transaction directory clean     : True"
@@ -592,5 +605,9 @@ finally
     if ($null -ne $rootStore)
     {
         $rootStore.Dispose()
+    }
+    if ($null -ne $selectedServerCertificate)
+    {
+        $selectedServerCertificate.Dispose()
     }
 }
