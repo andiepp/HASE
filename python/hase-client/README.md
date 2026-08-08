@@ -83,9 +83,12 @@ transaction. A bounded metadata-only journal is made durable before staging,
 then updated after the candidate files have been staged and flushed and after
 every publication boundary. Authorization is published last. Ordinary failures
 restore the exact pre-transaction files and security metadata. A retained
-journal represents an interrupted or committed-cleanup case; automatic
-discovery and recovery of such a journal remains a separate increment and must
-occur before another publication is attempted.
+journal represents an interrupted or committed-cleanup case; another
+publication remains blocked until the explicit recovery boundary validates the
+expected five target paths and all retained hashes. Uncommitted transactions
+are rolled back; committed transactions retain their published candidates and
+complete cleanup. Ambiguous, corrupt, substituted, or hash-mismatched evidence
+is left untouched for operator review.
 
 ## Current scope
 
@@ -95,8 +98,8 @@ The package currently provides:
 - reproducible version-1 protobuf and gRPC bindings;
 - byte-exact freshness and descriptor-level parity validation;
 - an immutable strict external Runtime Host profile model; and
-- read-only dedicated-Python-identity provisioning readiness characterization.
+- dedicated-Python-identity provisioning, durable five-file publication, and
+  explicit interrupted-publication recovery boundaries.
 
-Durable enrollment publication, protected PEM delivery, mutual-TLS channels,
-snapshots, Properties, Commands, and observations require later approved
-increments.
+Mutual-TLS channels, snapshots, Properties, Commands, and observations require
+later approved increments.
