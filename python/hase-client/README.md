@@ -3,9 +3,8 @@
 This directory contains the asyncio-native Python Client for the HASE Runtime
 Host. The current implementation establishes an isolated package toolchain,
 package-internal generated Python bindings, a strict external Runtime Host
-profile model, and read-only Windows credential-provisioning readiness
-characterization. It does not yet open a Runtime Host connection, export a
-credential, or invoke hardware.
+profile model, and explicit Windows credential provisioning and recovery. It
+does not yet open a Runtime Host connection or invoke hardware.
 
 ## Development environment
 
@@ -90,6 +89,30 @@ are rolled back; committed transactions retain their published candidates and
 complete cleanup. Ambiguous, corrupt, substituted, or hash-mismatched evidence
 is left untouched for operator review.
 
+## Credential-provisioning operator
+
+The Windows-only .NET operator composes the reviewed planning, preparation,
+publication, and recovery boundaries without exposing credential or deployment
+contents. Every path and deployment identifier is explicit; no security path is
+discovered or defaulted. Successful provisioning reports only the plan and
+transaction identifiers, replacement status, and a fixed withholding marker.
+Failures report only a sanitized error code.
+
+Run the operator from the repository root with `dotnet run --project
+src/Hase.Python.CredentialProvisioning.Operator -c Release --`, followed by one
+of these operations:
+
+```text
+provision --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90> [--allow-replacement]
+
+recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>
+```
+
+`--allow-replacement` authorizes replacement only for that invocation. A
+retained journal blocks another publication until the exact five targets are
+supplied to the explicit `recover` operation. The operator does not connect to
+a Runtime Host or modify a certificate store.
+
 ## Current scope
 
 The package currently provides:
@@ -99,7 +122,7 @@ The package currently provides:
 - byte-exact freshness and descriptor-level parity validation;
 - an immutable strict external Runtime Host profile model; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
-  explicit interrupted-publication recovery boundaries.
+  an explicit operator and interrupted-publication recovery boundaries.
 
 Mutual-TLS channels, snapshots, Properties, Commands, and observations require
 later approved increments.

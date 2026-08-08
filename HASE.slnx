@@ -17,6 +17,7 @@
   <Project Path="src/Hase.Operator.Input/Hase.Operator.Input.csproj" />
   <Project Path="src/Hase.Operator.Presentation/Hase.Operator.Presentation.csproj" />
   <Project Path="src/Hase.Python.CredentialProvisioning/Hase.Python.CredentialProvisioning.csproj" />
+  <Project Path="src/Hase.Python.CredentialProvisioning.Operator/Hase.Python.CredentialProvisioning.Operator.csproj" />
   <Project Path="src/Hase.Protocol/Hase.Protocol.csproj" Id="b1d3a42a-bb92-4737-bc05-6012645d1709" />
   <Project Path="src/HASE.ProtocolExplorer/HASE.ProtocolExplorer.csproj" Id="31754301-ad31-4a2f-a426-0f595c0d07f7" />
   <Project Path="src/Hase.Runtime.Northbound/Hase.Runtime.Northbound.csproj" Id="741b73c6-1045-4dfc-8394-4a3597cd5321" />
@@ -59,6 +60,5 @@
   <Project Path="tests/Hase.Simulation.Tests/Hase.Simulation.Tests.csproj" Id="247f97b0-a24e-4397-a135-9202844299d2" />
   <Project Path="tests/Hase.Transport.Tests/Hase.Transport.Tests.csproj" Id="704608b2-a88f-450b-a9a9-9cbd9f327268" />
 </Solution>
-
 
 
