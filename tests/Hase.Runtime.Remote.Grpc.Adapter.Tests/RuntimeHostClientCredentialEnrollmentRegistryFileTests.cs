@@ -20,6 +20,42 @@ public sealed class RuntimeHostClientCredentialEnrollmentRegistryFileTests
             TimeSpan.Zero);
 
     [Fact]
+    public async Task Load_InMemoryAndFileDocuments_ShouldHaveExactParity()
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(ValidDocument());
+        using var document = await EnrollmentDocument.CreateAsync(ValidDocument());
+
+        RuntimeHostClientCredentialEnrollmentRegistry fromMemory =
+            RuntimeHostClientCredentialEnrollmentRegistryFile.Load(bytes);
+        RuntimeHostClientCredentialEnrollmentRegistry fromFile =
+            await RuntimeHostClientCredentialEnrollmentRegistryFile.LoadAsync(
+                document.FilePath);
+
+        Assert.Equal(
+            ResolvePrincipal(fromFile).PrincipalId,
+            ResolvePrincipal(fromMemory).PrincipalId);
+    }
+
+    [Fact]
+    public void Load_OversizedInMemoryDocument_ShouldThrow()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            RuntimeHostClientCredentialEnrollmentRegistryFile.Load(
+                new byte[(64 * 1024) + 1]));
+    }
+
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("{\"formatVersion\":1,\"enrollments\":[],\"unknown\":true}")]
+    [InlineData("{\"formatVersion\":1,\"enrollments\":[null]}")]
+    public void Load_InvalidInMemoryDocument_ShouldThrow(string contents)
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            RuntimeHostClientCredentialEnrollmentRegistryFile.Load(
+                Encoding.UTF8.GetBytes(contents)));
+    }
+
+    [Fact]
     public async Task LoadAsync_NullPath_ShouldThrow()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(
@@ -175,6 +211,16 @@ public sealed class RuntimeHostClientCredentialEnrollmentRegistryFileTests
             RuntimeHostAuthenticationMechanism.MutualTls,
             new RuntimeHostClientCredentialId(
                 CredentialId));
+    }
+
+    private static RuntimeHostClientPrincipal ResolvePrincipal(
+        RuntimeHostClientCredentialEnrollmentRegistry registry)
+    {
+        Assert.True(registry.TryResolve(
+            CreateCredentialIdentity(),
+            AuthenticationTimeUtc,
+            out RuntimeHostClientPrincipal? principal));
+        return Assert.IsType<RuntimeHostClientPrincipal>(principal);
     }
 
     private static string ValidDocument()

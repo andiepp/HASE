@@ -5,6 +5,40 @@ namespace Hase.Runtime.Remote.Grpc.Adapter.Tests;
 public sealed class RuntimeHostAuthorizationPolicyFileTests
 {
     [Fact]
+    public async Task Load_InMemoryAndFileDocuments_ShouldHaveExactParity()
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(ValidDocument());
+        using var document = await PolicyDocument.CreateAsync(ValidDocument());
+
+        RuntimeHostAuthorizationPolicy fromMemory =
+            RuntimeHostAuthorizationPolicyFile.Load(bytes);
+        RuntimeHostAuthorizationPolicy fromFile =
+            await RuntimeHostAuthorizationPolicyFile.LoadAsync(document.FilePath);
+
+        Assert.Equal(
+            fromFile.IsGranted("remote-client", RuntimeHostPermission.SubscribeDiagnostics),
+            fromMemory.IsGranted("remote-client", RuntimeHostPermission.SubscribeDiagnostics));
+    }
+
+    [Fact]
+    public void Load_OversizedInMemoryDocument_ShouldThrow()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            RuntimeHostAuthorizationPolicyFile.Load(new byte[(64 * 1024) + 1]));
+    }
+
+    [Theory]
+    [InlineData("not-json")]
+    [InlineData("{\"formatVersion\":1,\"grants\":[],\"unknown\":true}")]
+    [InlineData("{\"formatVersion\":1,\"grants\":[null]}")]
+    public void Load_InvalidInMemoryDocument_ShouldThrow(string contents)
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            RuntimeHostAuthorizationPolicyFile.Load(
+                Encoding.UTF8.GetBytes(contents)));
+    }
+
+    [Fact]
     public async Task LoadAsync_NullPath_ShouldThrow()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(

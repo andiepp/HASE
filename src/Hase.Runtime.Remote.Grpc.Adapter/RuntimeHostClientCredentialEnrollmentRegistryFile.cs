@@ -102,15 +102,25 @@ public static class RuntimeHostClientCredentialEnrollmentRegistryFile
                 "The client-enrollment document exceeds the supported size.");
         }
 
-        return Parse(
+        return Load(
             document.AsSpan(
                 0,
                 documentLength));
     }
 
-    private static RuntimeHostClientCredentialEnrollmentRegistry Parse(
+    /// <summary>
+    /// Loads and validates a complete enrollment registry from bounded
+    /// in-memory UTF-8 JSON without accessing the file system.
+    /// </summary>
+    public static RuntimeHostClientCredentialEnrollmentRegistry Load(
         ReadOnlySpan<byte> document)
     {
+        if (document.Length > MaximumDocumentByteCount)
+        {
+            throw new InvalidDataException(
+                "The client-enrollment document exceeds the supported size.");
+        }
+
         try
         {
             ReadOnlySpan<byte> jsonDocument =

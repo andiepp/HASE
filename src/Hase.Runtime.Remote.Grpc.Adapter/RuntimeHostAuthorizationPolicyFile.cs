@@ -99,15 +99,26 @@ public static class RuntimeHostAuthorizationPolicyFile
                 + "size.");
         }
 
-        return Parse(
+        return Load(
             document.AsSpan(
                 0,
                 documentLength));
     }
 
-    private static RuntimeHostAuthorizationPolicy Parse(
+    /// <summary>
+    /// Loads and validates a complete authorization policy from bounded
+    /// in-memory UTF-8 JSON without accessing the file system.
+    /// </summary>
+    public static RuntimeHostAuthorizationPolicy Load(
         ReadOnlySpan<byte> document)
     {
+        if (document.Length > MaximumDocumentByteCount)
+        {
+            throw new InvalidDataException(
+                "The authorization-policy document exceeds the supported "
+                + "size.");
+        }
+
         try
         {
             ReadOnlySpan<byte> jsonDocument =
