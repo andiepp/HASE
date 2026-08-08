@@ -250,7 +250,15 @@ try
 
     $readinessScript = Join-Path $toolDirectory (
         "Test-HasePythonCredentialProvisioningReadiness.ps1")
-    & powershell.exe `
+    $windowsPowerShell = Join-Path `
+        ([System.Environment]::GetFolderPath(
+            [System.Environment+SpecialFolder]::System)) `
+        "WindowsPowerShell\v1.0\powershell.exe"
+    if (-not (Test-Path -LiteralPath $windowsPowerShell -PathType Leaf))
+    {
+        throw "Readiness"
+    }
+    & $windowsPowerShell `
         -NoProfile `
         -ExecutionPolicy Bypass `
         -File $readinessScript `
