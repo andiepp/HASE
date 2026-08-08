@@ -115,9 +115,16 @@ a Runtime Host or modify a certificate store.
 
 Before physical publication, run
 `tools\Initialize-HasePythonPhysicalProvisioningValidation.ps1` with explicit
-absolute paths for the retained Desktop configuration, source profile,
-authorization policy, provisioning directory, three Python output files, and a
-new rollback directory outside both the repository and provisioning directory.
+absolute paths for the retained Desktop configuration, installed Client
+configuration, an existing public Runtime Host certificate, authorization
+policy, provisioning directory, three Python output files, a new external
+Python profile-template path, and a new rollback directory outside both the
+repository and provisioning directory. The template path must not already
+exist and must remain outside the repository. The script creates that template
+from only the Client endpoint address, the explicitly selected public trusted-
+server certificate path, and the planned new Python certificate and private-key
+output paths. It never opens, exports, copies, or references the WPF Client
+certificate or private key.
 The script requires the Runtime Host and Client to be stopped and the default
 branch to be clean and synchronized. It reuses the strict readiness probe,
 rejects transaction artifacts and reparse points, and creates a Current-User-

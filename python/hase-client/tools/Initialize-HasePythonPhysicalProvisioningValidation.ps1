@@ -4,7 +4,13 @@ param(
     [string] $DesktopConfigurationPath,
 
     [Parameter(Mandatory = $true)]
+    [string] $ClientConfigurationPath,
+
+    [Parameter(Mandatory = $true)]
     [string] $SourceProfilePath,
+
+    [Parameter(Mandatory = $true)]
+    [string] $TrustedServerCertificatePath,
 
     [Parameter(Mandatory = $true)]
     [string] $AuthorizationPolicyPath,
@@ -33,6 +39,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $rollbackCreated = $false
+$sourceProfileCreated = $false
 $personalStore = $null
 $rootStore = $null
 
@@ -210,7 +217,10 @@ try
         Split-Path -Parent $pythonDirectory)
 
     $desktopConfiguration = Resolve-ExactAbsolutePath $DesktopConfigurationPath
+    $clientConfiguration = Resolve-ExactAbsolutePath $ClientConfigurationPath
     $sourceProfile = Resolve-ExactAbsolutePath $SourceProfilePath
+    $trustedServerCertificatePath = Resolve-ExactAbsolutePath (
+        $TrustedServerCertificatePath)
     $authorizationPolicy = Resolve-ExactAbsolutePath $AuthorizationPolicyPath
     $provisioningRoot = Resolve-ExactAbsolutePath $ProvisioningDirectory
     $certificate = Resolve-ExactAbsolutePath $CertificatePath
@@ -256,7 +266,8 @@ try
 
     foreach ($requiredFile in @(
         $desktopConfiguration,
-        $sourceProfile,
+        $clientConfiguration,
+        $trustedServerCertificatePath,
         $authorizationPolicy))
     {
         if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf))
@@ -270,6 +281,47 @@ try
         throw "Targets"
     }
     Assert-NoReparsePoint -Path $provisioningRoot
+
+    $sourceProfileParent = Split-Path -Parent $sourceProfile
+    if (
+        [string]::IsNullOrWhiteSpace($sourceProfileParent) `
+        -or -not (Test-Path `
+            -LiteralPath $sourceProfileParent `
+            -PathType Container) `
+        -or (Test-Path -LiteralPath $sourceProfile) `
+        -or (Test-PathWithin `
+            -Parent $repositoryRoot `
+            -Candidate $sourceProfile))
+    {
+        throw "Inputs"
+    }
+    Assert-NoReparsePoint -Path $sourceProfileParent
+
+    $clientConfigurationDocument = Get-Content `
+        -LiteralPath $clientConfiguration `
+        -Raw | ConvertFrom-Json
+    $clientAddress = [string]$clientConfigurationDocument.address
+    $clientUri = $null
+    $clientIpAddress = $null
+    if (
+        [string]::IsNullOrWhiteSpace($clientAddress) `
+        -or $clientAddress -ne $clientAddress.Trim() `
+        -or -not [System.Uri]::TryCreate(
+            $clientAddress,
+            [System.UriKind]::Absolute,
+            [ref]$clientUri) `
+        -or $clientUri.Scheme -ne [System.Uri]::UriSchemeHttps `
+        -or $clientUri.IsDefaultPort `
+        -or -not [string]::IsNullOrEmpty($clientUri.UserInfo) `
+        -or -not [string]::IsNullOrEmpty($clientUri.Query) `
+        -or -not [string]::IsNullOrEmpty($clientUri.Fragment) `
+        -or $clientAddress -ne ("https://" + $clientUri.Authority) `
+        -or -not [System.Net.IPAddress]::TryParse(
+            $clientUri.Host.Trim([char[]]"[]"),
+            [ref]$clientIpAddress))
+    {
+        throw "Inputs"
+    }
 
     $configuration = Get-Content -LiteralPath $desktopConfiguration -Raw |
         ConvertFrom-Json
@@ -348,13 +400,16 @@ try
     }
 
     $allPublicationPaths = @(
+        $desktopConfiguration,
+        $clientConfiguration,
         $sourceProfile,
+        $trustedServerCertificatePath,
         $enrollment,
         $authorizationPolicy,
         $certificate,
         $privateKey,
         $profile)
-    if (@($allPublicationPaths | Sort-Object -Unique).Count -ne 6)
+    if (@($allPublicationPaths | Sort-Object -Unique).Count -ne 9)
     {
         throw "Targets"
     }
@@ -445,6 +500,25 @@ try
             }
     ).Count -ne 0
 
+    $sourceProfileDocument = [ordered]@{
+        formatVersion = 1
+        address = $clientAddress
+        clientCertificate = [ordered]@{
+            certificateChainPath = $certificate
+            privateKeyPath = $privateKey
+        }
+        trustedServerCertificate = [ordered]@{
+            certificatePath = $trustedServerCertificatePath
+        }
+    }
+    $utf8 = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllText(
+        $sourceProfile,
+        ($sourceProfileDocument | ConvertTo-Json -Depth 8),
+        $utf8)
+    $sourceProfileCreated = $true
+    Set-PrivateFileSecurity -Path $sourceProfile
+
     $operatorInputs = [ordered]@{
         formatVersion = 1
         signingRootThumbprint = $signingRoots[0].Thumbprint.ToUpperInvariant()
@@ -466,7 +540,6 @@ try
         repositoryHead = $head
         entries = $entries
     }
-    $utf8 = [System.Text.UTF8Encoding]::new($false)
     [System.IO.File]::WriteAllText(
         (Join-Path $script:rollbackDirectoryPath "operator-inputs.json"),
         ($operatorInputs | ConvertTo-Json -Depth 8),
@@ -490,6 +563,7 @@ try
     Write-Host "Runtime processes stopped       : True"
     Write-Host "Provisioning readiness ready    : True"
     Write-Host "Authoritative inputs ready      : True"
+    Write-Host "Python profile template ready   : True"
     Write-Host "Publication targets ready       : True"
     Write-Host "Transaction directory clean     : True"
     Write-Host "Rollback content captured       : True"
@@ -498,6 +572,10 @@ try
 }
 catch
 {
+    if ($sourceProfileCreated -and (Test-Path -LiteralPath $sourceProfile))
+    {
+        [System.IO.File]::Delete($sourceProfile)
+    }
     if ($rollbackCreated -and (Test-Path -LiteralPath $script:rollbackDirectoryPath))
     {
         [System.IO.Directory]::Delete($script:rollbackDirectoryPath, $true)

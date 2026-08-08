@@ -315,6 +315,53 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
     }
 
     [Theory]
+    [InlineData("certificate")]
+    [InlineData("private-key")]
+    public async Task CreateAsync_SourceProfileClientPathDoesNotMatchTarget_Rejects(
+        string path)
+    {
+        using X509Certificate2 root = CreateRsaRoot();
+        using X509Certificate2 trusted =
+            X509CertificateLoader.LoadCertificate(root.RawData);
+        Fixture fixture = CreateFixture(root.Thumbprint);
+        RewriteSourceProfile(
+            fixture,
+            path == "certificate"
+                ? Path.Combine(directory, "other-client.pem")
+                : fixture.CertificatePath,
+            path == "private-key"
+                ? Path.Combine(directory, "other-key.pem")
+                : fixture.PrivateKeyPath,
+            fixture.TrustedServerPath);
+
+        await AssertFailure(
+            fixture.Request,
+            Now,
+            [root],
+            [trusted],
+            "source-profile-invalid");
+        AssertNoMutation(fixture);
+    }
+
+    [Fact]
+    public async Task CreateAsync_MissingTrustedServerCertificate_Rejects()
+    {
+        using X509Certificate2 root = CreateRsaRoot();
+        using X509Certificate2 trusted =
+            X509CertificateLoader.LoadCertificate(root.RawData);
+        Fixture fixture = CreateFixture(root.Thumbprint);
+        File.Delete(fixture.TrustedServerPath);
+
+        await AssertFailure(
+            fixture.Request,
+            Now,
+            [root],
+            [trusted],
+            "source-profile-invalid");
+        AssertNoMutation(fixture);
+    }
+
+    [Theory]
     [InlineData("source-profile")]
     [InlineData("enrollment")]
     public async Task CreateAsync_ChangedInputBytes_ChangesPlanIdentity(
@@ -365,8 +412,6 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
     {
         string sourceProfile = Path.Combine(directory, "source-profile.json");
         string trustedServer = Path.Combine(directory, "trusted-server.pem");
-        string oldCertificate = Path.Combine(directory, "old-client.pem");
-        string oldPrivateKey = Path.Combine(directory, "old-key.pem");
         string enrollment = Path.Combine(directory, "enrollment.json");
         string policy = Path.Combine(directory, "authorization.json");
         string certificate = Path.Combine(directory, "python-client.pem");
@@ -374,16 +419,14 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
         string profile = Path.Combine(directory, "python-profile.json");
 
         File.WriteAllText(trustedServer, "trusted server");
-        File.WriteAllText(oldCertificate, "old certificate");
-        File.WriteAllText(oldPrivateKey, "old key");
         File.WriteAllText(sourceProfile, JsonSerializer.Serialize(new
         {
             formatVersion = 1,
             address = "https://192.0.2.10:50443",
             clientCertificate = new
             {
-                certificateChainPath = oldCertificate,
-                privateKeyPath = oldPrivateKey,
+                certificateChainPath = certificate,
+                privateKeyPath = privateKey,
             },
             trustedServerCertificate = new { certificatePath = trustedServer },
         }));
@@ -441,8 +484,31 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
             policyHash,
             certificate,
             privateKey,
-            profile);
+            profile,
+            trustedServer);
     }
+
+    private static void RewriteSourceProfile(
+        Fixture fixture,
+        string certificatePath,
+        string privateKeyPath,
+        string trustedServerPath) =>
+        File.WriteAllText(
+            fixture.Request.SourceProfilePath,
+            JsonSerializer.Serialize(new
+            {
+                formatVersion = 1,
+                address = "https://192.0.2.10:50443",
+                clientCertificate = new
+                {
+                    certificateChainPath = certificatePath,
+                    privateKeyPath,
+                },
+                trustedServerCertificate = new
+                {
+                    certificatePath = trustedServerPath,
+                },
+            }));
 
     private static X509Certificate2 CreateRsaRoot(
         bool certificateAuthority = true,
@@ -513,5 +579,6 @@ public sealed class PythonCredentialProvisioningPlanBuilderTests : IDisposable
         string PolicyHash,
         string CertificatePath,
         string PrivateKeyPath,
-        string ProfilePath);
+        string ProfilePath,
+        string TrustedServerPath);
 }

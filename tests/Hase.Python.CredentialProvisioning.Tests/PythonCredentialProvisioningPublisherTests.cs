@@ -310,8 +310,9 @@ public sealed class PythonCredentialProvisioningPublisherTests : IDisposable
         PythonClientCredentialMaterial material = PythonClientCredentialFactory.Create(
             root, Now, TimeSpan.FromDays(30));
         string trusted = Write("trusted.pem", "trusted");
-        string oldCertificate = Write("old-client.pem", "old certificate");
-        string oldKey = Write("old-key.pem", "old key");
+        string certificatePath = Path.Combine(directory, "python-client.pem");
+        string privateKeyPath = Path.Combine(directory, "python-key.pem");
+        string profilePath = Path.Combine(directory, "python-profile.json");
         string sourceProfile = Path.Combine(directory, "source-profile.json");
         File.WriteAllText(sourceProfile, JsonSerializer.Serialize(new
         {
@@ -319,8 +320,8 @@ public sealed class PythonCredentialProvisioningPublisherTests : IDisposable
             address = "https://192.0.2.10:50443",
             clientCertificate = new
             {
-                certificateChainPath = oldCertificate,
-                privateKeyPath = oldKey,
+                certificateChainPath = certificatePath,
+                privateKeyPath,
             },
             trustedServerCertificate = new { certificatePath = trusted },
         }));
@@ -351,9 +352,6 @@ public sealed class PythonCredentialProvisioningPublisherTests : IDisposable
                 },
             },
         }));
-        string certificatePath = Path.Combine(directory, "python-client.pem");
-        string privateKeyPath = Path.Combine(directory, "python-key.pem");
-        string profilePath = Path.Combine(directory, "python-profile.json");
         if (allowReplacement)
         {
             File.WriteAllText(certificatePath, "old output certificate");

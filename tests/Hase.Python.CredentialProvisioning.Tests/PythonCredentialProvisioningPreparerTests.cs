@@ -32,6 +32,10 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
         Assert.Equal(fixture.Plan.CertificatePath,
             profile.ClientCertificateChainPath);
         Assert.Equal(fixture.Plan.PrivateKeyPath, profile.ClientPrivateKeyPath);
+        Assert.Equal("https://192.0.2.10:50443", profile.Address);
+        Assert.Equal(
+            Path.Combine(directory, "trusted.pem"),
+            profile.TrustedServerCertificatePath);
 
         var identity = new RuntimeHostClientCredentialIdentity(
             RuntimeHostAuthenticationMechanism.MutualTls,
@@ -205,8 +209,9 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
         PythonClientCredentialMaterial material = PythonClientCredentialFactory.Create(
             root, Now, TimeSpan.FromDays(30));
         string trusted = Write("trusted.pem", "trusted");
-        string oldCertificate = Write("old-client.pem", "old certificate");
-        string oldKey = Write("old-key.pem", "old key");
+        string certificatePath = Path.Combine(directory, "python-client.pem");
+        string privateKeyPath = Path.Combine(directory, "python-key.pem");
+        string generatedProfilePath = Path.Combine(directory, "python-profile.json");
         string profile = Path.Combine(directory, "source-profile.json");
         File.WriteAllText(profile, JsonSerializer.Serialize(new
         {
@@ -214,8 +219,8 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
             address = "https://192.0.2.10:50443",
             clientCertificate = new
             {
-                certificateChainPath = oldCertificate,
-                privateKeyPath = oldKey,
+                certificateChainPath = certificatePath,
+                privateKeyPath,
             },
             trustedServerCertificate = new { certificatePath = trusted },
         }));
@@ -253,9 +258,9 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
             "private-network-validation-v1",
             profile,
             directory,
-            Path.Combine(directory, "python-client.pem"),
-            Path.Combine(directory, "python-key.pem"),
-            Path.Combine(directory, "python-profile.json"),
+            certificatePath,
+            privateKeyPath,
+            generatedProfilePath,
             enrollment,
             policy,
             HashFile(policy),

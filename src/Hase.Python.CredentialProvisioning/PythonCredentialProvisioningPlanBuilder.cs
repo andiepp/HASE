@@ -112,7 +112,10 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
                 validated.AuthorizationPolicyPath,
                 cancellationToken)
             .ConfigureAwait(false);
-        ValidateSourceProfile(validated.SourceProfilePath);
+        ValidateSourceProfile(
+            validated.SourceProfilePath,
+            validated.CertificatePath,
+            validated.PrivateKeyPath);
         if (!string.Equals(
             actualPolicyHash,
             validated.ExpectedAuthorizationPolicySha256,
@@ -253,12 +256,12 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
 
         string root = RequireDirectory(request.ProvisioningDirectory);
         string sourceProfile = RequireFile(request.SourceProfilePath, "source-profile-invalid");
-        ValidateSourceProfile(sourceProfile);
         string enrollment = RequireFile(request.EnrollmentPath, "enrollment-invalid");
         string policy = RequireFile(request.AuthorizationPolicyPath, "authorization-policy-invalid");
         string certificate = RequireTarget(root, request.CertificatePath, request.AllowReplacement);
         string privateKey = RequireTarget(root, request.PrivateKeyPath, request.AllowReplacement);
         string profile = RequireTarget(root, request.ProfilePath, request.AllowReplacement);
+        ValidateSourceProfile(sourceProfile, certificate, privateKey);
 
         string[] allPaths = [sourceProfile, enrollment, policy, certificate, privateKey, profile];
         if (allPaths.Distinct(PathComparer).Count() != allPaths.Length)
@@ -359,7 +362,10 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
         return path;
     }
 
-    private static void ValidateSourceProfile(string path)
+    private static void ValidateSourceProfile(
+        string path,
+        string expectedCertificatePath,
+        string expectedPrivateKeyPath)
     {
         try
         {
@@ -396,19 +402,23 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
                 JsonElement trusted = root.GetProperty("trustedServerCertificate");
                 RequireJsonProperties(client, "certificateChainPath", "privateKeyPath");
                 RequireJsonProperties(trusted, "certificatePath");
+                string certificatePath = RequireAbsoluteProfilePath(
+                    client.GetProperty("certificateChainPath"));
+                string privateKeyPath = RequireAbsoluteProfilePath(
+                    client.GetProperty("privateKeyPath"));
+                string trustedCertificatePath = RequireAbsoluteProfilePath(
+                    trusted.GetProperty("certificatePath"));
                 string[] credentialPaths =
-                [
-                    RequireJsonString(client.GetProperty("certificateChainPath")),
-                    RequireJsonString(client.GetProperty("privateKeyPath")),
-                    RequireJsonString(trusted.GetProperty("certificatePath")),
-                ];
-                if (credentialPaths.Any(value =>
-                        !Path.IsPathFullyQualified(value)
-                        || !File.Exists(value)
-                        || IsReparsePoint(value))
-                    || credentialPaths.Select(Path.GetFullPath)
-                        .Distinct(PathComparer)
-                        .Count() != 3)
+                    [certificatePath, privateKeyPath, trustedCertificatePath];
+                if (!PathComparer.Equals(
+                        certificatePath,
+                        expectedCertificatePath)
+                    || !PathComparer.Equals(
+                        privateKeyPath,
+                        expectedPrivateKeyPath)
+                    || !File.Exists(trustedCertificatePath)
+                    || IsReparsePoint(trustedCertificatePath)
+                    || credentialPaths.Distinct(PathComparer).Count() != 3)
                 {
                     Fail("source-profile-invalid");
                 }
@@ -457,6 +467,16 @@ public sealed partial class PythonCredentialProvisioningPlanBuilder
             Fail("source-profile-invalid");
         }
         return value;
+    }
+
+    private static string RequireAbsoluteProfilePath(JsonElement element)
+    {
+        string value = RequireJsonString(element);
+        if (!Path.IsPathFullyQualified(value))
+        {
+            Fail("source-profile-invalid");
+        }
+        return Path.GetFullPath(value);
     }
 
     private static bool IsStrictAddress(string address)
