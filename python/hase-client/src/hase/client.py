@@ -20,6 +20,7 @@ from hase.mutation import _project_property_mutation_result
 from hase.property import PropertyOperationResult
 from hase.property import PropertyTarget
 from hase.property import project_property_operation_result
+from hase.property import CachedPropertyResult, project_cached_property_result
 from hase.snapshot import RuntimeHostSnapshot
 from hase.snapshot import project_runtime_host_snapshot
 from hase.command import CommandOperationResult, CommandTarget
@@ -132,6 +133,19 @@ class RuntimeHostClient:
             rpc_timeout,
         )
         return project_property_operation_result(response)
+
+    async def read_cached_property(self, target: PropertyTarget, *,
+        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS) -> CachedPropertyResult:
+        """Read one Runtime Host cache entry without endpoint fallback."""
+        if not isinstance(target, PropertyTarget):
+            raise RuntimeHostClientError("property-target-invalid")
+        request = contract.ReadCachedPropertyRequest(target=contract.PropertyTarget(
+            endpoint_id=target.endpoint_id,
+            attachment_generation=target.attachment_generation,
+            instrument_id=target.instrument_id, property_id=target.property_id))
+        response = await self._invoke(self._stub.ReadCachedProperty, request,
+            _timeout(timeout))
+        return project_cached_property_result(response)
 
     async def write_property(
         self,

@@ -5,6 +5,8 @@ def test_package_exposes_the_approved_profile_surface() -> None:
     assert hase.__version__ == "0.1.0"
     assert hase.__all__ == [
         "BooleanDataDescriptor",
+        "CachedPropertyResult",
+        "CachedPropertySnapshot",
         "ByteArrayDataDescriptor",
         "CommandArgumentDescriptor",
         "CommandDescriptor",
@@ -52,6 +54,7 @@ def test_package_exposes_the_approved_profile_surface() -> None:
         "normalize_mutation_value",
         "open_runtime_host_channel",
         "project_property_operation_result",
+        "project_cached_property_result",
         "project_command_operation_result",
         "project_property_target",
         "project_runtime_host_snapshot",

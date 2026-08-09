@@ -376,5 +376,8 @@ public sealed class PythonCredentialProvisioningOperatorTests
                 "0123456789abcdef0123456789abcdef", new string('e', 64),
                 command.RollbackPath));
         }
+        public Task<PythonCachedPropertyAuthorizationResult> AuthorizeCachedPropertyAsync(
+            AuthorizeCachedPropertyCommand command,CancellationToken token)=>
+            Task.FromResult(new PythonCachedPropertyAuthorizationResult("id",new string('f',64),command.RollbackPath));
     }
 }

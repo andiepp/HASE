@@ -363,3 +363,10 @@ Live observations require the independent `observation.subscribe` permission.
 that grant to the exact Python principal, preserves effective access control,
 and retains the exact previous policy as rollback evidence. Diagnostic streams
 remain outside this increment and remote diagnostics remain disabled.
+
+## Cached Property reads
+
+`RuntimeHostClient.read_cached_property()` reads exactly one Runtime Host cache
+entry without contacting the endpoint and without authoritative fallback. The
+typed result preserves target, descriptor, connection state, value, timestamp,
+and quality. It requires the independent `property.cached.read` permission.

@@ -131,6 +131,20 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
+                case "authorize-cached-property":
+                {
+                    ParsedArguments parsed=Parse(args[1..], AuthorizeObservationValueNames,false);
+                    string hash=parsed.Values["expected-authorization-policy-sha256"];
+                    if(!IsHex(hash,64,false)) throw new ArgumentException();
+                    var command=new AuthorizeCachedPropertyCommand(
+                        RequireAbsolute(parsed.Values["authorization-policy"]),hash,
+                        RequireAbsolute(parsed.Values["rollback"]));
+                    _=await operations.AuthorizeCachedPropertyAsync(command,cancellationToken);
+                    output.WriteLine("Operation            : Authorize cached Property read");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine("Permission           : property.cached.read");
+                    output.WriteLine("Rollback retained    : True"); return 0;
+                }
                 default:
                     return Usage(error);
             }
@@ -173,6 +187,8 @@ internal static class PythonCredentialProvisioningOperator
         {
             return Failure(error, exception.Code);
         }
+        catch (PythonCachedPropertyAuthorizationException exception)
+        { return Failure(error,exception.Code); }
         catch (Exception exception) when (exception is SystemException)
         {
             return Failure(error, "operation-failed");
@@ -473,6 +489,10 @@ internal sealed class SystemPythonCredentialProvisioningOperations
             command.AuthorizationPolicyPath,
             command.ExpectedAuthorizationPolicySha256,
             command.RollbackPath), cancellationToken);
+    public Task<PythonCachedPropertyAuthorizationResult> AuthorizeCachedPropertyAsync(
+        AuthorizeCachedPropertyCommand command,CancellationToken token)=>
+        new PythonCachedPropertyAuthorizer().AuthorizeAsync(new(command.PolicyPath,
+            command.ExpectedSha256,command.RollbackPath),token);
 
     internal static DateTimeOffset NormalizeCertificateTimestamp(
         DateTimeOffset timestamp)
@@ -529,6 +549,8 @@ internal interface IPythonCredentialProvisioningOperations
         CancellationToken cancellationToken);
     Task<PythonObservationAuthorizationResult> AuthorizeObservationAsync(
         AuthorizeObservationCommand command, CancellationToken cancellationToken);
+    Task<PythonCachedPropertyAuthorizationResult> AuthorizeCachedPropertyAsync(
+        AuthorizeCachedPropertyCommand command,CancellationToken cancellationToken);
 }
 
 internal sealed record ProvisionCommand(
@@ -570,6 +592,8 @@ internal sealed record AuthorizeObservationCommand(
     string AuthorizationPolicyPath,
     string ExpectedAuthorizationPolicySha256,
     string RollbackPath);
+internal sealed record AuthorizeCachedPropertyCommand(string PolicyPath,
+    string ExpectedSha256,string RollbackPath);
 
 internal sealed record OperatorProvisioningResult(
     string PlanId,

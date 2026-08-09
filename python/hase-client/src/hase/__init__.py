@@ -21,6 +21,8 @@ from hase.observation import __all__ as _observation_exports
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
 from hase.property import PropertyOperationResult
+from hase.property import CachedPropertyResult
+from hase.property import CachedPropertySnapshot
 from hase.property import PropertyOperationStatus
 from hase.property import PropertyProjectionError
 from hase.property import PropertyQuality
@@ -28,6 +30,7 @@ from hase.property import PropertyScalar
 from hase.property import PropertyTarget
 from hase.property import PropertyValue
 from hase.property import project_property_operation_result
+from hase.property import project_cached_property_result
 from hase.property import project_property_target
 from hase.snapshot import BooleanDataDescriptor
 from hase.snapshot import ByteArrayDataDescriptor
@@ -58,6 +61,8 @@ __version__ = "0.1.0"
 
 __all__ = [
     "BooleanDataDescriptor",
+    "CachedPropertyResult",
+    "CachedPropertySnapshot",
     "ByteArrayDataDescriptor",
     "CommandArgumentDescriptor",
     "CommandDescriptor",
@@ -105,6 +110,7 @@ __all__ = [
     "normalize_mutation_value",
     "open_runtime_host_channel",
     "project_property_operation_result",
+    "project_cached_property_result",
     "project_command_operation_result",
     "project_property_target",
     "project_runtime_host_snapshot",

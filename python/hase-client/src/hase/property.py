@@ -9,6 +9,8 @@ import math
 from typing import TypeAlias
 
 from hase._generated import runtime_host_remote_api_v1_pb2 as contract
+from hase.snapshot import (EndpointConnectionStatus, PropertyDescriptor,
+    _property, _status)
 
 
 class PropertyProjectionError(ValueError):
@@ -75,6 +77,22 @@ class PropertyOperationResult:
     confirmed_value: PropertyValue | None
     diagnostic: str | None
 
+    @property
+    def is_success(self) -> bool:
+        return self.status is PropertyOperationStatus.SUCCESS
+
+@dataclass(frozen=True, slots=True)
+class CachedPropertySnapshot:
+    target: PropertyTarget
+    descriptor: PropertyDescriptor
+    connection_status: EndpointConnectionStatus
+    current_value: PropertyValue | None
+
+@dataclass(frozen=True, slots=True)
+class CachedPropertyResult:
+    status: PropertyOperationStatus
+    snapshot: CachedPropertySnapshot | None
+    diagnostic: str | None
     @property
     def is_success(self) -> bool:
         return self.status is PropertyOperationStatus.SUCCESS
@@ -182,9 +200,38 @@ def project_property_operation_result(
     )
     return PropertyOperationResult(status, confirmed_value, diagnostic)
 
+def project_cached_property_result(source: contract.CachedPropertyResult) -> CachedPropertyResult:
+    if not isinstance(source, contract.CachedPropertyResult):
+        raise PropertyProjectionError("cached-property-result-type-invalid")
+    try: status = _STATUSES[source.status]
+    except KeyError: raise PropertyProjectionError("property-status-invalid") from None
+    has_snapshot = source.HasField("snapshot")
+    diagnostic = source.diagnostic if source.HasField("diagnostic") else None
+    if status is PropertyOperationStatus.SUCCESS:
+        if not has_snapshot or diagnostic is not None:
+            raise PropertyProjectionError("cached-property-success-shape-invalid")
+    elif has_snapshot:
+        raise PropertyProjectionError("cached-property-failure-shape-invalid")
+    snapshot = None
+    if has_snapshot:
+        item = source.snapshot
+        if not item.HasField("target") or not item.HasField("descriptor") \
+                or not item.HasField("connection_status"):
+            raise PropertyProjectionError("cached-property-snapshot-invalid")
+        target = project_property_target(item.target)
+        descriptor = _property(item.descriptor)
+        if descriptor.property_id != target.property_id:
+            raise PropertyProjectionError("cached-property-id-mismatch")
+        current = _property_value(item.current_value) if item.HasField("current_value") else None
+        snapshot = CachedPropertySnapshot(target, descriptor,
+            _status(item.connection_status), current)
+    return CachedPropertyResult(status, snapshot, diagnostic)
+
 
 __all__ = [
     "PropertyOperationResult",
+    "CachedPropertyResult",
+    "CachedPropertySnapshot",
     "PropertyOperationStatus",
     "PropertyProjectionError",
     "PropertyQuality",
@@ -192,5 +239,6 @@ __all__ = [
     "PropertyTarget",
     "PropertyValue",
     "project_property_operation_result",
+    "project_cached_property_result",
     "project_property_target",
 ]
