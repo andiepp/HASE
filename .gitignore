@@ -28,6 +28,7 @@ __pycache__/
 /python/hase-client/.pytest_cache/
 /python/hase-client/build/
 /python/hase-client/dist/
+/python/hase-client/package-validation/
 
 ## Local secrets
 HaseEndpoint/HaseSecrets.h

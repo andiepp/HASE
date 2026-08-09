@@ -19,6 +19,41 @@ Initialization requires 64-bit CPython 3.12 or 3.13 and creates `.venv` only
 inside this directory. The virtual environment is excluded from Git and must
 not be copied into source or deployment archives.
 
+## Local wheel distribution
+
+Build the versioned wheel into an empty output directory after the complete
+regression suites pass:
+
+```powershell
+.\tools\Build-HasePythonPackage.ps1 `
+    -OutputDirectory "<absolute-empty-output-directory>"
+```
+
+The tool builds without an editable installation or dependency payload,
+requires the generated message and gRPC modules, rejects credential, profile,
+rollback, cache, certificate, key, and repository content, and writes adjacent
+sorted package-content and SHA-256 records. The wheel remains local; the tool
+does not upload it or install it globally.
+
+With the Runtime Host initially stopped, create the wheel first. Then keep the
+KEL-103 connected and `Ready` in CC/OFF state with the external laboratory
+supply output OFF, start only the Desktop Runtime Host, and run:
+
+```powershell
+.\tools\Test-HasePythonInstalledPackage.ps1 `
+    -PackagePath "<absolute-hase-client-wheel-path>" `
+    -ProfilePath "<absolute-published-python-profile-path>"
+```
+
+The validator creates a fresh isolated environment, installs only from the
+wheel (dependencies may be obtained from the configured package index), clears
+source-path injection, proves that the package import belongs to that
+environment, checks every declared public export and all seven version-1 RPCs,
+and performs exactly one read-only snapshot using the installed package. It
+does not mutate hardware, retry, reconnect, change authorization, enable
+diagnostics, print deployment values, or retain the validation environment.
+Stop the Runtime Host immediately afterward.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
