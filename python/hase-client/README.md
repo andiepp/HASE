@@ -146,6 +146,43 @@ SHORT and never activates or deactivates the input. The retained ADR-0050
 authorization already includes `command.execute`; physical use must not modify
 the authorization policy or application profile.
 
+## Independent multi-host security readiness
+
+Desktop and MiniPC automation use independent Runtime Host identities,
+server-certificate pins, Python client credentials, private keys, enrollment
+records, authorization policy state, profiles, channels, attachment
+generations, cancellation, and failure lifecycles. They may share the logical
+principal `hase-python-automation`, but never a client private key or profile.
+No workflow discovers profiles, redirects a target between hosts, fans out,
+fails over, reconnects, or retries automatically.
+
+Before provisioning a dedicated MiniPC Python identity, copy the current source
+increment to the clean synchronized MiniPC repository, keep its Runtime Host
+and installed Client stopped, and run the read-only readiness probe locally:
+
+```powershell
+.\tools\Test-HaseMiniPcPythonProvisioningReadiness.ps1 `
+    -MiniPcConfigurationPath "<absolute-minipc-private-network-path>" `
+    -TrustedServerCertificatePath "<absolute-public-minipc-certificate-path>" `
+    -AuthorizationPolicyPath "<absolute-minipc-authorization-policy-path>" `
+    -ProvisioningDirectory "<absolute-existing-minipc-python-security-directory>" `
+    -ProfileTemplatePath "<absolute-new-minipc-profile-template-path>" `
+    -CertificatePath "<absolute-new-minipc-python-certificate-path>" `
+    -PrivateKeyPath "<absolute-new-minipc-python-private-key-path>" `
+    -ProfilePath "<absolute-new-minipc-python-profile-path>" `
+    -RollbackDirectory "<absolute-new-external-rollback-directory>"
+```
+
+The probe reuses the strict credential-readiness boundary, verifies the chosen
+public certificate exactly matches the active MiniPC server credential,
+requires both enrollment and authorization state to contain no existing
+`hase-python-automation` entry, rejects reparse points and retained transaction
+artifacts, and requires every planned output to be absent, external, and
+distinct. Certificate, key, profile, template, rollback, enrollment,
+authorization, or repository content is never created, copied, edited, or
+deleted. Only fixed Boolean outcomes are printed. Credential creation,
+publication, authorization, and Runtime Host connection remain deferred.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
