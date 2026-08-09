@@ -208,6 +208,20 @@ and removes only its own new runtime/environment targets if installation fails.
 The repository must be clean and synchronized. Credential and authorization
 state is not read or changed.
 
+### Dedicated MiniPC Python client authority
+
+The MiniPC's self-signed Runtime Host server leaf remains unchanged and is
+never used to issue client credentials. A separate MiniPC-only client CA may be
+created with `New-HaseMiniPcPythonClientAuthority.ps1`. Its RSA-3072 private key
+is non-exportable in Current User `My`; only its public certificate is added to
+Current User `Root`. Explicit manifest and rollback-evidence paths are required.
+The companion `Remove-HaseMiniPcPythonClientAuthority.ps1` removes the two exact
+certificate-store records only after both evidence files and the certificate
+SHA-256 agree. Authority creation does not create a Python leaf credential or
+change enrollment, authorization, profiles, server identity, diagnostics, or
+hardware state. MiniPC readiness receives the manifest thumbprint explicitly;
+Desktop readiness retains its existing server-issuer selection behavior.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:

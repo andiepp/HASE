@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $DesktopConfigurationPath
+    [string] $DesktopConfigurationPath,
+
+    [string] $SigningRootThumbprint
 )
 
 $ErrorActionPreference = "Stop"
@@ -115,19 +117,27 @@ try
         }
 
         $failureClassification = "SigningRootUnavailable"
-        $serverIssuer =
-            [System.Convert]::ToBase64String($serverCertificate.IssuerName.RawData)
-        $signingRoots =
-            @(
-                $personalStore.Certificates |
-                    Where-Object {
-                        $subject = [System.Convert]::ToBase64String($_.SubjectName.RawData)
-                        $issuer = [System.Convert]::ToBase64String($_.IssuerName.RawData)
-                        $subject -eq $serverIssuer `
-                            -and $subject -eq $issuer `
-                            -and $_.HasPrivateKey
-                    }
-            )
+        if ([string]::IsNullOrWhiteSpace($SigningRootThumbprint))
+        {
+            $serverIssuer = [System.Convert]::ToBase64String(
+                $serverCertificate.IssuerName.RawData)
+            $signingRoots = @($personalStore.Certificates | Where-Object {
+                $subject = [System.Convert]::ToBase64String($_.SubjectName.RawData)
+                $issuer = [System.Convert]::ToBase64String($_.IssuerName.RawData)
+                $subject -eq $serverIssuer -and $subject -eq $issuer `
+                    -and $_.HasPrivateKey })
+        }
+        else
+        {
+            if ($SigningRootThumbprint -notmatch '^[0-9A-Fa-f]{40}$')
+            {
+                throw "Unavailable"
+            }
+            $signingRoots = @($personalStore.Certificates | Where-Object {
+                [string]::Equals($_.Thumbprint, $SigningRootThumbprint,
+                    [System.StringComparison]::OrdinalIgnoreCase) `
+                    -and $_.HasPrivateKey })
+        }
 
         if ($signingRoots.Count -ne 1)
         {

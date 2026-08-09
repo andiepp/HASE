@@ -10,6 +10,9 @@ param(
     [string] $ApplicationProfilePath,
 
     [Parameter(Mandatory = $true)]
+    [string] $SigningRootThumbprint,
+
+    [Parameter(Mandatory = $true)]
     [string] $ProvisioningDirectory,
 
     [Parameter(Mandatory = $true)]
@@ -126,6 +129,7 @@ try
     & $windowsPowerShell -NoProfile -ExecutionPolicy Bypass `
         -File $readinessScript `
         -DesktopConfigurationPath $configurationPath `
+        -SigningRootThumbprint $SigningRootThumbprint `
         1>$null 2>$null 3>$null 4>$null 5>$null 6>$null
     if ($LASTEXITCODE -ne 0) { throw "credential-readiness" }
 
