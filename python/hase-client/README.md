@@ -246,7 +246,8 @@ requires its recorded commit to remain an ancestor of the clean synchronized
 repository, and revalidates every protected source hash and absent target. It
 creates private custody, publishes the prepared initial policy, invokes the
 reviewed credential operator for the certificate, key, profile, enrollment and
-minimal Python grants, and atomically replaces the application profile last.
+minimal Python grants, and revision-locks, writes, and verifies the application
+profile last while the Runtime Host remains stopped.
 An external outer journal makes partial completion explicit; failures never
 start the Runtime Host and require the companion
 `Recover-HaseMiniPcPythonCredentialPublication.ps1`. Recovery composes the
