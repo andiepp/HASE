@@ -348,3 +348,18 @@ Command execution is independently authorized with `command.execute`. The
 policy, appends only that grant to the exact Python principal, publishes by
 replacement, preserves effective access control, and retains the exact prior
 policy as rollback evidence.
+
+## Observation streaming
+
+`RuntimeHostClient.observe()` returns one caller-owned async stream. Its first
+item is a typed authoritative snapshot boundary; subsequent items are typed,
+strictly contiguous attachment, connection, Property, or event observations.
+Malformed messages, repeated or missing snapshots, sequence gaps, and sanitized
+RPC failures terminate the stream. Closing or cancelling the iterator cancels
+that subscription; the client never reconnects, replays, or resubscribes.
+
+Live observations require the independent `observation.subscribe` permission.
+`Enable-HasePythonObservation.ps1` revision-locks the active policy, appends only
+that grant to the exact Python principal, preserves effective access control,
+and retains the exact previous policy as rollback evidence. Diagnostic streams
+remain outside this increment and remote diagnostics remain disabled.

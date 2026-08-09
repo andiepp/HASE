@@ -131,6 +131,20 @@ public sealed class PythonCredentialProvisioningOperatorTests
         AssertInputsWithheld(args, output.ToString());
     }
 
+    [Fact]
+    public async Task RunAsync_AuthorizeObservation_Delegates()
+    {
+        string[] args = ["authorize-observation", "--authorization-policy",
+            P("authorization.json"), "--expected-authorization-policy-sha256",
+            new string('a', 64), "--rollback", P("observation.rollback.json")];
+        var operations = new StubOperations(); var output = new StringWriter();
+        int code = await PythonCredentialProvisioningOperator.RunAsync(args,
+            output, TextWriter.Null, operations, CancellationToken.None);
+        Assert.Equal(0, code); Assert.NotNull(operations.ObservationCommand);
+        Assert.Contains("Permission           : observation.subscribe",
+            output.ToString()); AssertInputsWithheld(args, output.ToString());
+    }
+
     [Theory]
     [MemberData(nameof(InvalidCommands))]
     public async Task RunAsync_InvalidArguments_DoNotInvokeOperations(string[] args)
@@ -300,6 +314,7 @@ public sealed class PythonCredentialProvisioningOperatorTests
         public AuthorizePropertyWriteCommand? AuthorizeCommand { get; private set; }
         public AuthorizeCommandExecutionCommand? CommandExecutionCommand
             { get; private set; }
+        public AuthorizeObservationCommand? ObservationCommand { get; private set; }
         public Exception? ProvisionException { get; init; }
         public OperatorProvisioningResult ProvisioningResult { get; init; } =
             new("python-provisioning-plan-sha256:" + new string('1', 64),
@@ -349,6 +364,16 @@ public sealed class PythonCredentialProvisioningOperatorTests
             CommandExecutionCommand = command;
             return Task.FromResult(new PythonCommandExecutionAuthorizationResult(
                 "0123456789abcdef0123456789abcdef", new string('d', 64),
+                command.RollbackPath));
+        }
+
+        public Task<PythonObservationAuthorizationResult> AuthorizeObservationAsync(
+            AuthorizeObservationCommand command,
+            CancellationToken cancellationToken)
+        {
+            ObservationCommand = command;
+            return Task.FromResult(new PythonObservationAuthorizationResult(
+                "0123456789abcdef0123456789abcdef", new string('e', 64),
                 command.RollbackPath));
         }
     }

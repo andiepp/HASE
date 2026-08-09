@@ -16,6 +16,8 @@ from hase.mutation import MutationValue
 from hase.mutation import RuntimeHostMutationError
 from hase.mutation import normalize_mutation_value
 from hase.profile import ProfileValidationError
+from hase.observation import *
+from hase.observation import __all__ as _observation_exports
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
 from hase.property import PropertyOperationResult
@@ -106,4 +108,4 @@ __all__ = [
     "project_command_operation_result",
     "project_property_target",
     "project_runtime_host_snapshot",
-]
+] + _observation_exports

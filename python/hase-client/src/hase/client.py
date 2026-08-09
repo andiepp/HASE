@@ -24,6 +24,9 @@ from hase.snapshot import RuntimeHostSnapshot
 from hase.snapshot import project_runtime_host_snapshot
 from hase.command import CommandOperationResult, CommandTarget
 from hase.mutation import _project_command_mutation_result
+from hase.observation import (ObservationInitialSnapshot, ObservationMessage,
+    ObservationProjectionError, RuntimeHostObservation, project_observe_response)
+from collections.abc import AsyncIterator
 
 
 _DEFAULT_RPC_TIMEOUT_SECONDS: Final = 10.0
@@ -190,6 +193,48 @@ class RuntimeHostClient:
         response = await _invoke_mutation_once(
             self._stub.ExecuteCommand, request, rpc_timeout)
         return _project_command_mutation_result(response)
+
+    async def observe(self) -> AsyncIterator[ObservationMessage]:
+        """Open one observation stream; never reconnect or resubscribe."""
+        try:
+            call = self._stub.Observe(contract.ObserveRequest())
+        except Exception:
+            raise RuntimeHostClientError("observation-not-opened") from None
+        first = True
+        sequence: int | None = None
+        try:
+            async for response in call:
+                try: projected = project_observe_response(response)
+                except ObservationProjectionError:
+                    raise RuntimeHostClientError("observation-message-invalid") from None
+                if first:
+                    if not isinstance(projected, ObservationInitialSnapshot):
+                        raise RuntimeHostClientError("observation-initial-snapshot-missing")
+                    sequence = projected.snapshot_sequence
+                    first = False
+                else:
+                    if not isinstance(projected, RuntimeHostObservation):
+                        raise RuntimeHostClientError("observation-initial-snapshot-repeated")
+                    assert sequence is not None
+                    if projected.sequence != sequence + 1:
+                        raise RuntimeHostClientError("observation-sequence-gap")
+                    sequence = projected.sequence
+                yield projected
+            if first:
+                raise RuntimeHostClientError("observation-initial-snapshot-missing")
+        except asyncio.CancelledError: raise
+        except RuntimeHostClientError: raise
+        except grpc.RpcError as failure:
+            try: status = failure.code()
+            except Exception: status = None
+            code = "observation-gap" if status is grpc.StatusCode.DATA_LOSS else \
+                _RPC_ERROR_CODES.get(status, "observation-failed")
+            raise RuntimeHostClientError(code) from None
+        except Exception:
+            raise RuntimeHostClientError("observation-failed") from None
+        finally:
+            try: call.cancel()
+            except Exception: pass
 
 
 __all__ = [

@@ -41,6 +41,8 @@ internal static class PythonCredentialProvisioningOperator
     ];
     private static readonly string[] AuthorizeCommandValueNames =
     ["authorization-policy", "expected-authorization-policy-sha256", "rollback"];
+    private static readonly string[] AuthorizeObservationValueNames =
+    ["authorization-policy", "expected-authorization-policy-sha256", "rollback"];
 
     internal static async Task<int> RunAsync(
         string[] args,
@@ -116,6 +118,19 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
+                case "authorize-observation":
+                {
+                    AuthorizeObservationCommand command =
+                        ParseAuthorizeObservation(args[1..]);
+                    _ = await operations.AuthorizeObservationAsync(command,
+                        cancellationToken).ConfigureAwait(false);
+                    output.WriteLine("Operation            : Authorize observation");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine("Permission           : observation.subscribe");
+                    output.WriteLine("Rollback retained    : True");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
                 default:
                     return Usage(error);
             }
@@ -151,6 +166,10 @@ internal static class PythonCredentialProvisioningOperator
             return Failure(error, exception.Code);
         }
         catch (PythonCommandExecutionAuthorizationException exception)
+        {
+            return Failure(error, exception.Code);
+        }
+        catch (PythonObservationAuthorizationException exception)
         {
             return Failure(error, exception.Code);
         }
@@ -292,6 +311,16 @@ internal static class PythonCredentialProvisioningOperator
         return new(policy, hash, rollback);
     }
 
+    private static AuthorizeObservationCommand ParseAuthorizeObservation(string[] args)
+    {
+        ParsedArguments parsed = Parse(args, AuthorizeObservationValueNames, false);
+        string hash = parsed.Values["expected-authorization-policy-sha256"];
+        if (!IsHex(hash, 64, false)) throw new ArgumentException();
+        string policy = RequireAbsolute(parsed.Values["authorization-policy"]);
+        string rollback = RequireAbsolute(parsed.Values["rollback"]);
+        RequireDistinct(policy, rollback); return new(policy, hash, rollback);
+    }
+
     private static string RequireValue(string value)
     {
         if (string.IsNullOrWhiteSpace(value) || value != value.Trim())
@@ -335,6 +364,7 @@ internal static class PythonCredentialProvisioningOperator
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
         error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
         error.WriteLine("  authorize-command-execution --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
+        error.WriteLine("  authorize-observation --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
         return 2;
     }
 
@@ -437,6 +467,13 @@ internal sealed class SystemPythonCredentialProvisioningOperations
                 command.ExpectedAuthorizationPolicySha256,
                 command.RollbackPath), cancellationToken);
 
+    public Task<PythonObservationAuthorizationResult> AuthorizeObservationAsync(
+        AuthorizeObservationCommand command, CancellationToken cancellationToken) =>
+        new PythonObservationAuthorizer().AuthorizeAsync(new(
+            command.AuthorizationPolicyPath,
+            command.ExpectedAuthorizationPolicySha256,
+            command.RollbackPath), cancellationToken);
+
     internal static DateTimeOffset NormalizeCertificateTimestamp(
         DateTimeOffset timestamp)
     {
@@ -490,6 +527,8 @@ internal interface IPythonCredentialProvisioningOperations
     Task<PythonCommandExecutionAuthorizationResult> AuthorizeCommandExecutionAsync(
         AuthorizeCommandExecutionCommand command,
         CancellationToken cancellationToken);
+    Task<PythonObservationAuthorizationResult> AuthorizeObservationAsync(
+        AuthorizeObservationCommand command, CancellationToken cancellationToken);
 }
 
 internal sealed record ProvisionCommand(
@@ -523,6 +562,11 @@ internal sealed record AuthorizePropertyWriteCommand(
     string ProfileRollbackPath);
 
 internal sealed record AuthorizeCommandExecutionCommand(
+    string AuthorizationPolicyPath,
+    string ExpectedAuthorizationPolicySha256,
+    string RollbackPath);
+
+internal sealed record AuthorizeObservationCommand(
     string AuthorizationPolicyPath,
     string ExpectedAuthorizationPolicySha256,
     string RollbackPath);
