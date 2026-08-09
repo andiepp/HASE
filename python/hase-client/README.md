@@ -56,6 +56,21 @@ concurrent and repeated close behavior. Channel failures expose only sanitized
 codes and never include credential bytes or deployment paths. Increment 50D1
 does not invoke an RPC or connect during automated validation.
 
+After automated validation succeeds with the Runtime Host stopped, one
+explicit Desktop-only physical handshake can be performed with:
+
+```powershell
+.\tools\Test-HasePythonPhysicalChannel.ps1 `
+    -ProfilePath "<absolute-published-python-profile-path>"
+```
+
+The tool loads the strict external profile, opens one bounded mutual-TLS
+channel, waits for HTTP/2 readiness, and closes it exactly once. It prints only
+four fixed Boolean outcomes. It does not invoke an RPC, retry, reconnect,
+operate hardware, modify deployment state, or print deployment values. Start
+only the Desktop Runtime Host immediately before this physical check and stop
+it again immediately afterward.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -158,5 +173,5 @@ The package currently provides:
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Mutual-TLS channels, snapshots, Properties, Commands, and observations require
-later approved increments.
+Runtime Host snapshots, Properties, Commands, and observations require later
+approved increments.
