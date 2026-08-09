@@ -185,6 +185,29 @@ authorization, or repository content is never created, copied, edited, or
 deleted. Only fixed Boolean outcomes are printed. Credential creation,
 publication, authorization, and Runtime Host connection remain deferred.
 
+### Private MiniPC CPython prerequisite
+
+The MiniPC uses a machine-local CPython 3.13.1 runtime and a freshly created
+repository-local environment. It never reuses the Desktop `.venv`, invokes a
+Python installer, registers Python, changes PATH, creates file associations, or
+uses the Visual Studio Python 3.9 runtime. Download the official
+`python-3.13.1-amd64.zip` artifact referenced by Python.org's Windows release
+metadata, then run the private installer with its explicit external path:
+
+```powershell
+.\tools\Install-HaseMiniPcPrivatePython.ps1 `
+    -RuntimeArchivePath "<absolute-python-3.13.1-amd64.zip-path>" `
+    -InstallationDirectory "<absolute-new-private-runtime-directory>"
+```
+
+The tool requires SHA-256
+`9877d0d24f7978407bde1b50ab1023b0f5c67ff6c9816b834e5258db1a636249`,
+validates CPython 3.13.1 64-bit before publication, creates the local `.venv`,
+installs only the pinned development requirements and editable HASE package,
+and removes only its own new runtime/environment targets if installation fails.
+The repository must be clean and synchronized. Credential and authorization
+state is not read or changed.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:

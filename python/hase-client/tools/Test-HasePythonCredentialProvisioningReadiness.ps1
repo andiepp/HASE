@@ -20,6 +20,13 @@ try
     {
         throw "Unavailable"
     }
+    & $virtualEnvironmentPython -c `
+        "import platform,sys; raise SystemExit(0 if sys.version_info[:2] == (3,13) and platform.architecture()[0] == '64bit' else 1)" `
+        1>$null 2>$null
+    if ($LASTEXITCODE -ne 0)
+    {
+        throw "Unavailable"
+    }
 
     $failureClassification = "ConfigurationInvalid"
     $configurationResult =
@@ -203,4 +210,3 @@ catch
     Write-Error ("Python credential readiness failed: {0}." -f $failureClassification)
     exit 1
 }
-
