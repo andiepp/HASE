@@ -138,11 +138,14 @@ try
         }
         Assert-NoReparsePoint $inputPath
     }
-    if (-not (Test-Path -LiteralPath $provisioningRoot -PathType Container))
+    $provisioningParent = Split-Path -Parent $provisioningRoot
+    if ((Test-Path -LiteralPath $provisioningRoot) `
+        -or -not (Test-Path -LiteralPath $provisioningParent -PathType Container) `
+        -or (Test-PathWithin $repositoryRoot $provisioningRoot))
     {
         throw "provisioning-directory"
     }
-    Assert-NoReparsePoint $provisioningRoot
+    Assert-NoReparsePoint $provisioningParent
 
     $configuration = Get-Content -LiteralPath $configurationPath -Raw |
         ConvertFrom-Json
@@ -230,12 +233,18 @@ try
     {
         $parent = Split-Path -Parent $planned
         if ((Test-Path -LiteralPath $planned) `
-            -or -not (Test-Path -LiteralPath $parent -PathType Container) `
             -or (Test-PathWithin $repositoryRoot $planned))
         {
             throw "planned-output"
         }
-        Assert-NoReparsePoint $parent
+        if ($planned -eq $templatePath)
+        {
+            if (-not (Test-Path -LiteralPath $parent -PathType Container))
+            {
+                throw "planned-output"
+            }
+            Assert-NoReparsePoint $parent
+        }
     }
     foreach ($planned in @(
         $certificateOutput, $privateKeyOutput, $profileOutput))
@@ -260,19 +269,22 @@ try
     }
     Assert-NoReparsePoint $rollbackParent
 
-    $journals = @(Get-ChildItem -LiteralPath $provisioningRoot `
-        -Filter ".hase-python-provisioning-*.journal.json*" -File)
+    $journals = @()
     $artifacts = @()
     foreach ($target in @(
         $certificateOutput, $privateKeyOutput, $profileOutput,
         $enrollmentPath, $applicationProfilePath))
     {
-        $artifacts += @(Get-ChildItem -LiteralPath (Split-Path -Parent $target) `
-            -File | Where-Object {
-                $_.FullName.StartsWith($target + ".stage-",
-                    [System.StringComparison]::OrdinalIgnoreCase) `
-                -or $_.FullName.StartsWith($target + ".backup-",
-                    [System.StringComparison]::OrdinalIgnoreCase) })
+        $targetParent = Split-Path -Parent $target
+        if (Test-Path -LiteralPath $targetParent -PathType Container)
+        {
+            $artifacts += @(Get-ChildItem -LiteralPath $targetParent `
+                -File | Where-Object {
+                    $_.FullName.StartsWith($target + ".stage-",
+                        [System.StringComparison]::OrdinalIgnoreCase) `
+                    -or $_.FullName.StartsWith($target + ".backup-",
+                        [System.StringComparison]::OrdinalIgnoreCase) })
+        }
     }
     if ($null -ne $authorizationPath)
     {

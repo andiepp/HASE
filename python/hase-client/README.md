@@ -165,7 +165,7 @@ and installed Client stopped, and run the read-only readiness probe locally:
     -MiniPcConfigurationPath "<absolute-minipc-private-network-path>" `
     -TrustedServerCertificatePath "<absolute-public-minipc-certificate-path>" `
     -ApplicationProfilePath "<absolute-minipc-application-profile-path>" `
-    -ProvisioningDirectory "<absolute-existing-minipc-python-security-directory>" `
+    -ProvisioningDirectory "<absolute-new-minipc-python-security-directory>" `
     -ProfileTemplatePath "<absolute-new-minipc-profile-template-path>" `
     -CertificatePath "<absolute-new-minipc-python-certificate-path>" `
     -PrivateKeyPath "<absolute-new-minipc-python-private-key-path>" `
@@ -179,7 +179,8 @@ requires enrollment and any configured authorization policy to contain no
 existing `hase-python-automation` entry, accepts an active MiniPC profile with
 no optional authorization policy, rejects reparse points and retained transaction
 artifacts, and requires every planned output to be absent, external, and
-distinct. Certificate, key, profile, template, rollback, enrollment,
+distinct. The dedicated Python security directory must also be absent while its
+external parent already exists. Certificate, key, profile, template, rollback, enrollment,
 authorization, or repository content is never created, copied, edited, or
 deleted. Only fixed Boolean outcomes are printed. Credential creation,
 publication, authorization, and Runtime Host connection remain deferred.

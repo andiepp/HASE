@@ -47,6 +47,9 @@ def test_tool_requires_independent_external_outputs() -> None:
     assert "paths-not-distinct" in source
     assert "output-outside-provisioning" in source
     assert "template-inside-provisioning" in source
+    assert "$provisioningParent = Split-Path -Parent $provisioningRoot" in source
+    assert "(Test-Path -LiteralPath $provisioningRoot)" in source
+    assert "New-Item" not in source
 
 
 def test_tool_rejects_existing_python_identity_and_grants() -> None:
@@ -77,7 +80,7 @@ def test_tool_matches_public_and_active_server_certificates() -> None:
 
 def test_tool_rejects_retained_transaction_artifacts() -> None:
     source = _source()
-    assert '".hase-python-provisioning-*.journal.json*"' in source
+    assert "$journals = @()" in source
     assert '$target + ".stage-"' in source
     assert '$target + ".backup-"' in source
 
