@@ -5,6 +5,12 @@ from hase.channel import RuntimeHostChannelError
 from hase.channel import open_runtime_host_channel
 from hase.client import RuntimeHostClient
 from hase.client import RuntimeHostClientError
+from hase.command import CommandOperationResult
+from hase.command import CommandOperationStatus
+from hase.command import CommandProjectionError
+from hase.command import CommandScalar
+from hase.command import CommandTarget
+from hase.command import project_command_operation_result
 from hase.mutation import MutationFailureClassification
 from hase.mutation import MutationValue
 from hase.mutation import RuntimeHostMutationError
@@ -53,6 +59,11 @@ __all__ = [
     "ByteArrayDataDescriptor",
     "CommandArgumentDescriptor",
     "CommandDescriptor",
+    "CommandOperationResult",
+    "CommandOperationStatus",
+    "CommandProjectionError",
+    "CommandScalar",
+    "CommandTarget",
     "DataDescriptor",
     "EndpointConnectionState",
     "EndpointConnectionStatus",
@@ -92,6 +103,7 @@ __all__ = [
     "normalize_mutation_value",
     "open_runtime_host_channel",
     "project_property_operation_result",
+    "project_command_operation_result",
     "project_property_target",
     "project_runtime_host_snapshot",
 ]

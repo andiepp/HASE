@@ -114,6 +114,23 @@ public sealed class PythonCredentialProvisioningOperatorTests
         AssertInputsWithheld(args, output.ToString());
     }
 
+    [Fact]
+    public async Task RunAsync_AuthorizeCommandExecution_Delegates()
+    {
+        string[] args = ["authorize-command-execution",
+            "--authorization-policy", P("authorization.json"),
+            "--expected-authorization-policy-sha256", new string('a', 64),
+            "--rollback", P("authorization.command.rollback.json")];
+        var operations = new StubOperations();
+        var output = new StringWriter();
+        int code = await PythonCredentialProvisioningOperator.RunAsync(args,
+            output, TextWriter.Null, operations, CancellationToken.None);
+        Assert.Equal(0, code);
+        Assert.NotNull(operations.CommandExecutionCommand);
+        Assert.Contains("Permission           : command.execute", output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
     [Theory]
     [MemberData(nameof(InvalidCommands))]
     public async Task RunAsync_InvalidArguments_DoNotInvokeOperations(string[] args)
@@ -281,6 +298,8 @@ public sealed class PythonCredentialProvisioningOperatorTests
         public ProvisionCommand? ProvisionCommand { get; private set; }
         public RecoveryCommand? RecoveryCommand { get; private set; }
         public AuthorizePropertyWriteCommand? AuthorizeCommand { get; private set; }
+        public AuthorizeCommandExecutionCommand? CommandExecutionCommand
+            { get; private set; }
         public Exception? ProvisionException { get; init; }
         public OperatorProvisioningResult ProvisioningResult { get; init; } =
             new("python-provisioning-plan-sha256:" + new string('1', 64),
@@ -320,6 +339,17 @@ public sealed class PythonCredentialProvisioningOperatorTests
         {
             AuthorizeCommand = command;
             return Task.FromResult(AuthorizationResult);
+        }
+
+        public Task<PythonCommandExecutionAuthorizationResult>
+            AuthorizeCommandExecutionAsync(
+                AuthorizeCommandExecutionCommand command,
+                CancellationToken cancellationToken)
+        {
+            CommandExecutionCommand = command;
+            return Task.FromResult(new PythonCommandExecutionAuthorizationResult(
+                "0123456789abcdef0123456789abcdef", new string('d', 64),
+                command.RollbackPath));
         }
     }
 }

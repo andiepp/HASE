@@ -22,6 +22,8 @@ from hase.property import PropertyTarget
 from hase.property import project_property_operation_result
 from hase.snapshot import RuntimeHostSnapshot
 from hase.snapshot import project_runtime_host_snapshot
+from hase.command import CommandOperationResult, CommandTarget
+from hase.mutation import _project_command_mutation_result
 
 
 _DEFAULT_RPC_TIMEOUT_SECONDS: Final = 10.0
@@ -160,6 +162,34 @@ class RuntimeHostClient:
             rpc_timeout,
         )
         return _project_property_mutation_result(response)
+
+    async def execute_command(
+        self,
+        target: CommandTarget,
+        argument: MutationValue | None = None,
+        *,
+        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS,
+    ) -> CommandOperationResult:
+        """Execute one command exactly once without retry or replay."""
+        if not isinstance(target, CommandTarget):
+            raise _not_sent("mutation-command-target-invalid")
+        rpc_timeout = _mutation_timeout(timeout)
+        try:
+            request = contract.ExecuteCommandRequest(
+                target=contract.CommandTarget(
+                    endpoint_id=target.endpoint_id,
+                    attachment_generation=target.attachment_generation,
+                    instrument_id=target.instrument_id,
+                    command_path_segments=target.command_path_segments,
+                ),
+            )
+            if argument is not None:
+                request.argument.CopyFrom(_encode_mutation_value(argument))
+        except Exception:
+            raise _not_sent("mutation-command-request-invalid") from None
+        response = await _invoke_mutation_once(
+            self._stub.ExecuteCommand, request, rpc_timeout)
+        return _project_command_mutation_result(response)
 
 
 __all__ = [

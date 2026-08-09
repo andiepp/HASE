@@ -332,4 +332,19 @@ The package currently provides:
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Property writes, Commands, and observations require later approved increments.
+Observations require a later approved increment.
+
+## Command execution
+
+`RuntimeHostClient.execute_command` accepts an immutable `CommandTarget` and
+an optional typed argument. It invokes `ExecuteCommand` exactly once with a
+bounded timeout. It never retries, replays, reconnects, or exposes remote
+diagnostic text. Returned rejections are explicit; transport loss, timeout,
+cancellation, endpoint failure, and malformed results are classified as an
+uncertain mutation outcome.
+
+Command execution is independently authorized with `command.execute`. The
+`Enable-HasePythonCommandExecution.ps1` operator tool revision-locks the active
+policy, appends only that grant to the exact Python principal, publishes by
+replacement, preserves effective access control, and retains the exact prior
+policy as rollback evidence.

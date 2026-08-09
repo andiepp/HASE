@@ -14,6 +14,8 @@ from hase.property import PropertyOperationResult
 from hase.property import PropertyOperationStatus
 from hase.property import PropertyProjectionError
 from hase.property import project_property_operation_result
+from hase.command import CommandOperationResult, CommandOperationStatus
+from hase.command import CommandProjectionError, project_command_operation_result
 
 
 class MutationFailureClassification(Enum):
@@ -235,6 +237,37 @@ def _project_property_mutation_result(
         code,
         MutationFailureClassification.OUTCOME_UNCERTAIN,
     )
+
+
+_REJECTED_COMMAND_STATUSES = {
+    CommandOperationStatus.ATTACHMENT_NOT_CURRENT: "mutation-command-attachment-not-current",
+    CommandOperationStatus.INSTRUMENT_NOT_FOUND: "mutation-command-instrument-not-found",
+    CommandOperationStatus.COMMAND_NOT_FOUND: "mutation-command-not-found",
+    CommandOperationStatus.ARGUMENT_NOT_SUPPORTED: "mutation-command-argument-not-supported",
+    CommandOperationStatus.ENDPOINT_UNAVAILABLE: "mutation-command-endpoint-unavailable",
+    CommandOperationStatus.ENDPOINT_REJECTED: "mutation-command-endpoint-rejected",
+}
+
+
+def _project_command_mutation_result(
+    source: contract.CommandOperationResult,
+) -> CommandOperationResult:
+    try:
+        result = project_command_operation_result(source)
+    except (CommandProjectionError, TypeError, ValueError):
+        raise RuntimeHostMutationError("mutation-command-result-invalid",
+            MutationFailureClassification.OUTCOME_UNCERTAIN) from None
+    if result.status is CommandOperationStatus.SUCCESS:
+        return result
+    code = _REJECTED_COMMAND_STATUSES.get(result.status)
+    if code is not None:
+        raise RuntimeHostMutationError(code, MutationFailureClassification.REJECTED)
+    code = ("mutation-command-endpoint-failure"
+        if result.status is CommandOperationStatus.ENDPOINT_FAILURE
+        else "mutation-command-timed-out" if result.status is CommandOperationStatus.TIMED_OUT
+        else "mutation-command-result-invalid")
+    raise RuntimeHostMutationError(code,
+        MutationFailureClassification.OUTCOME_UNCERTAIN)
 
 
 __all__ = [
