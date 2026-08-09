@@ -59,7 +59,7 @@ from hase.snapshot import ValueRange
 from hase.snapshot import project_runtime_host_snapshot
 
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "BooleanDataDescriptor",

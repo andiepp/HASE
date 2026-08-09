@@ -1,7 +1,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ProfilePath
+    [string] $ProfilePath,
+
+    [ValidateSet("Health", "Kel103SameValuePropertyWrite")]
+    [string] $Workflow = "Health",
+
+    [switch] $ConfirmSameValueWrite
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,6 +43,17 @@ if (-not (Test-Path -LiteralPath $automationPython -PathType Leaf) `
     Write-Error "HASE automation failed: installation-invalid."
     exit 1
 }
+if ($Workflow -eq "Kel103SameValuePropertyWrite" `
+    -and -not $ConfirmSameValueWrite.IsPresent)
+{
+    Write-Error "HASE automation failed: same-value-write-confirmation-required."
+    exit 1
+}
+if ($Workflow -eq "Health" -and $ConfirmSameValueWrite.IsPresent)
+{
+    Write-Error "HASE automation failed: confirmation-not-applicable."
+    exit 1
+}
 if (-not (Test-AbsolutePath -Path $ProfilePath) `
     -or -not (Test-Path -LiteralPath $ProfilePath -PathType Leaf))
 {
@@ -52,7 +68,17 @@ try
     Push-Location $PSScriptRoot
     $locationPushed = $true
     $env:PYTHONPATH = $null
-    & $automationPython -m hase._automation_health $ProfilePath
+    if ($Workflow -eq "Health")
+    {
+        & $automationPython -m hase._automation_health $ProfilePath
+    }
+    else
+    {
+        & $automationPython `
+            -m hase._automation_same_value_property_write `
+            $ProfilePath `
+            "confirm-same-value-write"
+    }
     if ($LASTEXITCODE -ne 0)
     {
         exit 1

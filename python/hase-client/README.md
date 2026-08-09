@@ -89,6 +89,35 @@ writes a Property, executes a Command, observes events or diagnostics, changes
 authorization, copies credentials, or changes instrument state. Stop the
 Runtime Host immediately afterward.
 
+### Guarded same-value KEL-103 Property workflow
+
+Version 0.3.0 adds one explicitly confirmed mutation workflow to a newly
+installed persistent automation environment:
+
+```powershell
+& "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
+    -Workflow Kel103SameValuePropertyWrite `
+    -ProfilePath "<absolute-published-python-profile-path>" `
+    -ConfirmSameValueWrite
+```
+
+The launcher rejects the workflow unless the dedicated confirmation switch is
+present, and passes a second fixed confirmation token to the package-internal
+module. The workflow obtains one current snapshot, resolves exactly one ready
+`electronic-load-01`, authoritatively verifies CC mode and input OFF, reads
+`target-current`, writes that exact numeric value once, requires the returned
+confirmation to match, and performs one authoritative reconciliation read.
+Values, identities, generations, addresses, paths, and raw diagnostics are
+withheld.
+
+No failure path retries, replays, reconnects, falls back to cached data, or
+issues a second write. An uncertain outcome stops immediately and requires
+operator reconciliation outside the workflow. The workflow never changes a
+setpoint, selects a mode, activates the input, or executes a Command. Physical
+use requires the reviewed temporary `property.write` authorization transaction
+and exact restoration of its retained policy and application-profile rollback
+files after the Runtime Host is stopped.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:

@@ -53,6 +53,7 @@ def test_launcher_uses_only_installed_environment() -> None:
     assert '$PSScriptRoot ".venv\\Scripts\\python.exe"' in source
     assert "$env:PYTHONPATH = $null" in source
     assert "hase._automation_health" in source
+    assert "hase._automation_same_value_property_write" in source
 
 
 def test_launcher_rejects_invalid_external_profile() -> None:
@@ -60,3 +61,14 @@ def test_launcher_rejects_invalid_external_profile() -> None:
     assert "profile-path-invalid" in source
     assert "Test-AbsolutePath -Path $ProfilePath" in source
     assert "HASE automation failed: unexpected-failure." in source
+
+
+def test_launcher_requires_explicit_confirmation_only_for_write() -> None:
+    source = _source("Invoke-HasePythonAutomation.ps1")
+    assert '[ValidateSet("Health", "Kel103SameValuePropertyWrite")]' in source
+    assert "same-value-write-confirmation-required" in source
+    assert "confirmation-not-applicable" in source
+    assert '"confirm-same-value-write"' in source
+    assert source.index("same-value-write-confirmation-required") < source.index(
+        "profile-path-invalid"
+    )
