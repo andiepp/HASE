@@ -5,6 +5,10 @@ from hase.channel import RuntimeHostChannelError
 from hase.channel import open_runtime_host_channel
 from hase.client import RuntimeHostClient
 from hase.client import RuntimeHostClientError
+from hase.mutation import MutationFailureClassification
+from hase.mutation import MutationValue
+from hase.mutation import RuntimeHostMutationError
+from hase.mutation import normalize_mutation_value
 from hase.profile import ProfileValidationError
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
@@ -56,6 +60,8 @@ __all__ = [
     "EventDescriptor",
     "EventPayloadDescriptor",
     "InstrumentDescriptor",
+    "MutationFailureClassification",
+    "MutationValue",
     "NumericDataDescriptor",
     "ProfileValidationError",
     "PropertyOperationResult",
@@ -71,6 +77,7 @@ __all__ = [
     "RuntimeEndpointSnapshot",
     "RuntimeHostClient",
     "RuntimeHostClientError",
+    "RuntimeHostMutationError",
     "RuntimeHostChannel",
     "RuntimeHostChannelError",
     "RuntimeHostApiVersion",
@@ -82,6 +89,7 @@ __all__ = [
     "ValueRange",
     "__version__",
     "load_runtime_host_profile",
+    "normalize_mutation_value",
     "open_runtime_host_channel",
     "project_property_operation_result",
     "project_property_target",

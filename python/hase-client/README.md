@@ -160,6 +160,23 @@ measurement values, timestamps, paths, addresses, and credential information.
 It never retries, reconnects, reads cached data, writes, executes a Command, or
 changes KEL-103 state.
 
+## Mutation safety foundation
+
+`normalize_mutation_value` accepts only Boolean, string, immutable byte-array,
+and finite numeric values. Integers are converted to the version-1 wire
+`double` only when the conversion is exact. Absent values, mutable byte arrays,
+unsupported types, non-finite numbers, overflow, and lossy integers fail before
+any transport object or RPC exists. The exact generated `RemoteValue` encoder
+remains package-internal.
+
+`RuntimeHostMutationError` classifies mutation failures as `NOT_SENT`,
+`REJECTED`, or `OUTCOME_UNCERTAIN`, exposes only a stable sanitized code, and
+never permits automatic retry. An uncertain outcome must be reconciled by an
+authoritative read or explicit operator action before another mutation is
+considered. Increment 50E1A defines only these value and failure semantics; it
+does not invoke `WriteProperty` or `ExecuteCommand`, change authorization,
+connect, or operate hardware.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -263,7 +280,8 @@ The package currently provides:
 - one bounded, non-retrying asynchronous Runtime Host snapshot operation; and
 - immutable authoritative Property-operation models and strict projection; and
 - one bounded, non-retrying authoritative Property-read operation; and
+- strict mutation values and explicit uncertain-outcome semantics; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Commands and observations require later approved increments.
+Property writes, Commands, and observations require later approved increments.
