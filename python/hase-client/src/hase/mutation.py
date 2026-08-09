@@ -10,6 +10,10 @@ from typing import Any, Awaitable, Callable, TypeAlias
 import grpc
 
 from hase._generated import runtime_host_remote_api_v1_pb2 as contract
+from hase.property import PropertyOperationResult
+from hase.property import PropertyOperationStatus
+from hase.property import PropertyProjectionError
+from hase.property import project_property_operation_result
 
 
 class MutationFailureClassification(Enum):
@@ -163,6 +167,59 @@ async def _invoke_mutation_once(
             "mutation-rpc-outcome-uncertain",
             MutationFailureClassification.OUTCOME_UNCERTAIN,
         ) from None
+
+
+_REJECTED_PROPERTY_STATUSES = {
+    PropertyOperationStatus.ATTACHMENT_NOT_CURRENT:
+        "mutation-property-attachment-not-current",
+    PropertyOperationStatus.INSTRUMENT_NOT_FOUND:
+        "mutation-property-instrument-not-found",
+    PropertyOperationStatus.PROPERTY_NOT_FOUND:
+        "mutation-property-not-found",
+    PropertyOperationStatus.WRITE_NOT_SUPPORTED:
+        "mutation-property-write-not-supported",
+    PropertyOperationStatus.INVALID_VALUE:
+        "mutation-property-invalid-value",
+    PropertyOperationStatus.ENDPOINT_UNAVAILABLE:
+        "mutation-property-endpoint-unavailable",
+    PropertyOperationStatus.ENDPOINT_REJECTED:
+        "mutation-property-endpoint-rejected",
+}
+
+
+def _project_property_mutation_result(
+    source: contract.PropertyOperationResult,
+) -> PropertyOperationResult:
+    """Project one returned write result without exposing failure diagnostics."""
+
+    try:
+        result = project_property_operation_result(source)
+    except (PropertyProjectionError, TypeError, ValueError):
+        raise RuntimeHostMutationError(
+            "mutation-property-result-invalid",
+            MutationFailureClassification.OUTCOME_UNCERTAIN,
+        ) from None
+
+    if result.status is PropertyOperationStatus.SUCCESS:
+        return result
+
+    rejection_code = _REJECTED_PROPERTY_STATUSES.get(result.status)
+    if rejection_code is not None:
+        raise RuntimeHostMutationError(
+            rejection_code,
+            MutationFailureClassification.REJECTED,
+        )
+
+    if result.status is PropertyOperationStatus.ENDPOINT_FAILURE:
+        code = "mutation-property-endpoint-failure"
+    elif result.status is PropertyOperationStatus.TIMED_OUT:
+        code = "mutation-property-timed-out"
+    else:
+        code = "mutation-property-result-invalid"
+    raise RuntimeHostMutationError(
+        code,
+        MutationFailureClassification.OUTCOME_UNCERTAIN,
+    )
 
 
 __all__ = [

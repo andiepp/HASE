@@ -186,6 +186,16 @@ remain sanitized and no classification permits automatic retry. Increment
 50E1B still exposes no public mutation operation and invokes neither
 `WriteProperty` nor `ExecuteCommand`.
 
+Returned `WriteProperty` results also have package-internal mutation semantics.
+A valid success preserves its confirmed authoritative value. Attachment, target,
+write-access, value, endpoint-unavailable, and endpoint-rejected results are
+sanitized `REJECTED` failures. Endpoint failure and timeout are
+`OUTCOME_UNCERTAIN`. A malformed result, unspecified status, or the impossible
+write result `READ_NOT_SUPPORTED` is also uncertain because it cannot prove
+execution or non-execution. Raw Runtime Host diagnostics are never exposed by
+mutation exceptions. Increment 50E2A adds only this projector and does not make
+`WriteProperty` publicly callable.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
