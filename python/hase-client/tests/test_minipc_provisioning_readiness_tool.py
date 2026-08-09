@@ -51,6 +51,10 @@ def test_tool_requires_independent_external_outputs() -> None:
 
 def test_tool_rejects_existing_python_identity_and_grants() -> None:
     source = _source()
+    assert "$ApplicationProfilePath" in source
+    assert "$AuthorizationPolicyPath" not in source
+    assert '"privateNetworkConfigurationFilePath"' in source
+    assert '"authorizationPolicyFilePath"' in source
     assert 'principalId -eq "hase-python-automation"' in source
     assert "python-identity-present" in source
     assert "python-grants-present" in source

@@ -7,7 +7,7 @@ param(
     [string] $TrustedServerCertificatePath,
 
     [Parameter(Mandatory = $true)]
-    [string] $AuthorizationPolicyPath,
+    [string] $ApplicationProfilePath,
 
     [Parameter(Mandatory = $true)]
     [string] $ProvisioningDirectory,
@@ -94,7 +94,7 @@ try
     $configurationPath = Resolve-ExactAbsolutePath $MiniPcConfigurationPath
     $trustedCertificatePath = Resolve-ExactAbsolutePath (
         $TrustedServerCertificatePath)
-    $authorizationPath = Resolve-ExactAbsolutePath $AuthorizationPolicyPath
+    $applicationProfilePath = Resolve-ExactAbsolutePath $ApplicationProfilePath
     $provisioningRoot = Resolve-ExactAbsolutePath $ProvisioningDirectory
     $templatePath = Resolve-ExactAbsolutePath $ProfileTemplatePath
     $certificateOutput = Resolve-ExactAbsolutePath $CertificatePath
@@ -130,7 +130,7 @@ try
     if ($LASTEXITCODE -ne 0) { throw "credential-readiness" }
 
     foreach ($inputPath in @(
-        $configurationPath, $trustedCertificatePath, $authorizationPath))
+        $configurationPath, $trustedCertificatePath, $applicationProfilePath))
     {
         if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf))
         {
@@ -146,6 +146,16 @@ try
 
     $configuration = Get-Content -LiteralPath $configurationPath -Raw |
         ConvertFrom-Json
+    $applicationProfile = Get-Content -LiteralPath $applicationProfilePath -Raw |
+        ConvertFrom-Json
+    $applicationProperties = @($applicationProfile.PSObject.Properties.Name)
+    if ($applicationProperties -notcontains "privateNetworkConfigurationFilePath" `
+        -or (Resolve-ExactAbsolutePath (
+            [string]$applicationProfile.privateNetworkConfigurationFilePath)) `
+            -ne $configurationPath)
+    {
+        throw "application-profile"
+    }
     $enrollmentPath = Resolve-ExactAbsolutePath (
         [string]$configuration.clientEnrollmentFilePath)
     if (-not (Test-Path -LiteralPath $enrollmentPath -PathType Leaf))
@@ -160,12 +170,23 @@ try
             Where-Object { $_.principalId -eq "hase-python-automation" })
     if ($existingEnrollment.Count -ne 0) { throw "python-identity-present" }
 
-    $authorization = Get-Content -LiteralPath $authorizationPath -Raw |
-        ConvertFrom-Json
-    $existingGrants = @(
-        $authorization.grants |
-            Where-Object { $_.principalId -eq "hase-python-automation" })
-    if ($existingGrants.Count -ne 0) { throw "python-grants-present" }
+    $authorizationPath = $null
+    if ($applicationProperties -contains "authorizationPolicyFilePath")
+    {
+        $authorizationPath = Resolve-ExactAbsolutePath (
+            [string]$applicationProfile.authorizationPolicyFilePath)
+        if (-not (Test-Path -LiteralPath $authorizationPath -PathType Leaf))
+        {
+            throw "authorization-policy"
+        }
+        Assert-NoReparsePoint $authorizationPath
+        $authorization = Get-Content -LiteralPath $authorizationPath -Raw |
+            ConvertFrom-Json
+        $existingGrants = @(
+            $authorization.grants |
+                Where-Object { $_.principalId -eq "hase-python-automation" })
+        if ($existingGrants.Count -ne 0) { throw "python-grants-present" }
+    }
 
     $personalStore = [System.Security.Cryptography.X509Certificates.X509Store]::new(
         [System.Security.Cryptography.X509Certificates.StoreName]::My,
@@ -197,9 +218,10 @@ try
     $plannedFiles = @(
         $templatePath, $certificateOutput, $privateKeyOutput, $profileOutput)
     $allPaths = @(
-        $configurationPath, $trustedCertificatePath, $authorizationPath,
+        $configurationPath, $trustedCertificatePath, $applicationProfilePath,
         $enrollmentPath, $templatePath, $certificateOutput,
         $privateKeyOutput, $profileOutput, $rollbackPath)
+    if ($null -ne $authorizationPath) { $allPaths += $authorizationPath }
     if (@($allPaths | Sort-Object -Unique).Count -ne $allPaths.Count)
     {
         throw "paths-not-distinct"
@@ -243,13 +265,23 @@ try
     $artifacts = @()
     foreach ($target in @(
         $certificateOutput, $privateKeyOutput, $profileOutput,
-        $enrollmentPath, $authorizationPath))
+        $enrollmentPath, $applicationProfilePath))
     {
         $artifacts += @(Get-ChildItem -LiteralPath (Split-Path -Parent $target) `
             -File | Where-Object {
                 $_.FullName.StartsWith($target + ".stage-",
                     [System.StringComparison]::OrdinalIgnoreCase) `
                 -or $_.FullName.StartsWith($target + ".backup-",
+                    [System.StringComparison]::OrdinalIgnoreCase) })
+    }
+    if ($null -ne $authorizationPath)
+    {
+        $artifacts += @(Get-ChildItem `
+            -LiteralPath (Split-Path -Parent $authorizationPath) `
+            -File | Where-Object {
+                $_.FullName.StartsWith($authorizationPath + ".stage-",
+                    [System.StringComparison]::OrdinalIgnoreCase) `
+                -or $_.FullName.StartsWith($authorizationPath + ".backup-",
                     [System.StringComparison]::OrdinalIgnoreCase) })
     }
     if ($journals.Count -ne 0 -or $artifacts.Count -ne 0)

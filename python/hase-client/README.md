@@ -164,7 +164,7 @@ and installed Client stopped, and run the read-only readiness probe locally:
 .\tools\Test-HaseMiniPcPythonProvisioningReadiness.ps1 `
     -MiniPcConfigurationPath "<absolute-minipc-private-network-path>" `
     -TrustedServerCertificatePath "<absolute-public-minipc-certificate-path>" `
-    -AuthorizationPolicyPath "<absolute-minipc-authorization-policy-path>" `
+    -ApplicationProfilePath "<absolute-minipc-application-profile-path>" `
     -ProvisioningDirectory "<absolute-existing-minipc-python-security-directory>" `
     -ProfileTemplatePath "<absolute-new-minipc-profile-template-path>" `
     -CertificatePath "<absolute-new-minipc-python-certificate-path>" `
@@ -175,8 +175,9 @@ and installed Client stopped, and run the read-only readiness probe locally:
 
 The probe reuses the strict credential-readiness boundary, verifies the chosen
 public certificate exactly matches the active MiniPC server credential,
-requires both enrollment and authorization state to contain no existing
-`hase-python-automation` entry, rejects reparse points and retained transaction
+requires enrollment and any configured authorization policy to contain no
+existing `hase-python-automation` entry, accepts an active MiniPC profile with
+no optional authorization policy, rejects reparse points and retained transaction
 artifacts, and requires every planned output to be absent, external, and
 distinct. Certificate, key, profile, template, rollback, enrollment,
 authorization, or repository content is never created, copied, edited, or
