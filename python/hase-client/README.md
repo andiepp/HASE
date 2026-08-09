@@ -71,6 +71,21 @@ operate hardware, modify deployment state, or print deployment values. Start
 only the Desktop Runtime Host immediately before this physical check and stop
 it again immediately afterward.
 
+## Runtime Host snapshot model
+
+`project_runtime_host_snapshot` converts the package-internal generated
+`GetSnapshotResponse` into a deeply immutable public model. Runtime Host API
+version, endpoint and attachment identity, connection state and UTC timestamp,
+and the complete ordered Instrument, Property, Command, Event, and data
+descriptor graphs are preserved. Optional transport fields remain distinct
+from present empty strings. Unspecified enums, incomplete nested messages,
+unknown data kinds, invalid numeric descriptors, and inconsistent endpoint
+identity are rejected with sanitized error codes.
+
+Increment 50D3A defines and tests only this transport-independent projection.
+It does not invoke `GetSnapshot`, start the Runtime Host, connect, retry,
+reconnect, read a Property, or interact with hardware.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -170,8 +185,9 @@ The package currently provides:
 - byte-exact freshness and descriptor-level parity validation;
 - an immutable strict external Runtime Host profile model; and
 - an asyncio mutual-TLS channel lifecycle with bounded readiness; and
+- immutable Runtime Host snapshot models with strict transport projection; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Runtime Host snapshots, Properties, Commands, and observations require later
+Snapshot RPC invocation, Properties, Commands, and observations require later
 approved increments.

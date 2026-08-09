@@ -6,16 +6,62 @@ from hase.channel import open_runtime_host_channel
 from hase.profile import ProfileValidationError
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
+from hase.snapshot import BooleanDataDescriptor
+from hase.snapshot import ByteArrayDataDescriptor
+from hase.snapshot import CommandArgumentDescriptor
+from hase.snapshot import CommandDescriptor
+from hase.snapshot import DataDescriptor
+from hase.snapshot import EndpointConnectionState
+from hase.snapshot import EndpointConnectionStatus
+from hase.snapshot import EndpointDescriptor
+from hase.snapshot import EventDescriptor
+from hase.snapshot import EventPayloadDescriptor
+from hase.snapshot import InstrumentDescriptor
+from hase.snapshot import NumericDataDescriptor
+from hase.snapshot import PropertyAccessMode
+from hase.snapshot import PropertyDescriptor
+from hase.snapshot import Quantity
+from hase.snapshot import RuntimeEndpointSnapshot
+from hase.snapshot import RuntimeHostApiVersion
+from hase.snapshot import RuntimeHostSnapshot
+from hase.snapshot import SnapshotProjectionError
+from hase.snapshot import StringDataDescriptor
+from hase.snapshot import Unit
+from hase.snapshot import ValueRange
+from hase.snapshot import project_runtime_host_snapshot
 
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "BooleanDataDescriptor",
+    "ByteArrayDataDescriptor",
+    "CommandArgumentDescriptor",
+    "CommandDescriptor",
+    "DataDescriptor",
+    "EndpointConnectionState",
+    "EndpointConnectionStatus",
+    "EndpointDescriptor",
+    "EventDescriptor",
+    "EventPayloadDescriptor",
+    "InstrumentDescriptor",
+    "NumericDataDescriptor",
     "ProfileValidationError",
+    "PropertyAccessMode",
+    "PropertyDescriptor",
+    "Quantity",
+    "RuntimeEndpointSnapshot",
     "RuntimeHostChannel",
     "RuntimeHostChannelError",
+    "RuntimeHostApiVersion",
     "RuntimeHostProfile",
+    "RuntimeHostSnapshot",
+    "SnapshotProjectionError",
+    "StringDataDescriptor",
+    "Unit",
+    "ValueRange",
     "__version__",
     "load_runtime_host_profile",
     "open_runtime_host_channel",
+    "project_runtime_host_snapshot",
 ]
