@@ -58,4 +58,4 @@ def test_package_exposes_the_approved_profile_surface() -> None:
         "project_command_operation_result",
         "project_property_target",
         "project_runtime_host_snapshot",
-    ] + hase._observation_exports
+    ] + hase._observation_exports + hase._diagnostic_exports

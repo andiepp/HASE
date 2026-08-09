@@ -370,3 +370,20 @@ remain outside this increment and remote diagnostics remain disabled.
 entry without contacting the endpoint and without authoritative fallback. The
 typed result preserves target, descriptor, connection state, value, timestamp,
 and quality. It requires the independent `property.cached.read` permission.
+
+## Diagnostic observation
+
+`RuntimeHostClient.observe_diagnostics()` opens exactly one caller-owned,
+authorized diagnostic stream. Immutable records preserve stream and source
+sequence, Runtime Host and endpoint/generation scope, level, category,
+severity, direction, operation correlation, duration, outcome, details, and
+captured byte fragments with their original length and truncation state.
+Malformed records, gaps, sanitized authorization failures, and cancellation
+terminate that stream. The client never retries, reconnects, resubscribes,
+replays, or synthesizes a diagnostic record.
+
+Remote diagnostics require both the independent `diagnostics.subscribe` grant
+and explicit Runtime Host profile enablement. The paired 50I enable and restore
+tools revision-lock both files, preserve their access control, retain exact
+rollback bytes, and return the validated installation to disabled state after
+the bounded physical validation.

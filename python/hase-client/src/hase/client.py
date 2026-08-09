@@ -28,6 +28,8 @@ from hase.mutation import _project_command_mutation_result
 from hase.observation import (ObservationInitialSnapshot, ObservationMessage,
     ObservationProjectionError, RuntimeHostObservation, project_observe_response)
 from collections.abc import AsyncIterator
+from hase.diagnostics import (DiagnosticObservation, DiagnosticProjectionError,
+    project_diagnostic_observation)
 
 
 _DEFAULT_RPC_TIMEOUT_SECONDS: Final = 10.0
@@ -246,6 +248,36 @@ class RuntimeHostClient:
             raise RuntimeHostClientError(code) from None
         except Exception:
             raise RuntimeHostClientError("observation-failed") from None
+        finally:
+            try: call.cancel()
+            except Exception: pass
+
+    async def observe_diagnostics(self) -> AsyncIterator[DiagnosticObservation]:
+        """Open exactly one authorized diagnostic stream without resubscription."""
+        try:
+            call = self._stub.ObserveDiagnostics(contract.ObserveDiagnosticsRequest())
+        except Exception:
+            raise RuntimeHostClientError("diagnostics-not-opened") from None
+        sequence: int | None = None
+        try:
+            async for response in call:
+                try: item = project_diagnostic_observation(response)
+                except DiagnosticProjectionError:
+                    raise RuntimeHostClientError("diagnostics-message-invalid") from None
+                if sequence is not None and item.sequence != sequence + 1:
+                    raise RuntimeHostClientError("diagnostics-sequence-gap")
+                sequence = item.sequence
+                yield item
+        except asyncio.CancelledError: raise
+        except RuntimeHostClientError: raise
+        except grpc.RpcError as failure:
+            try: status = failure.code()
+            except Exception: status = None
+            code = "diagnostics-sequence-gap" if status is grpc.StatusCode.DATA_LOSS else \
+                _RPC_ERROR_CODES.get(status, "diagnostics-failed")
+            raise RuntimeHostClientError(code) from None
+        except Exception:
+            raise RuntimeHostClientError("diagnostics-failed") from None
         finally:
             try: call.cancel()
             except Exception: pass

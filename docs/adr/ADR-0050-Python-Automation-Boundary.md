@@ -1,6 +1,6 @@
 # ADR-0050 — Python Automation Boundary
 
-- Status: Accepted; Increment 50A decision and environment characterization
+- Status: Accepted; Increment 50I implementation and closure validation
 - Date: 2026-08-07
 
 ## Context
@@ -63,8 +63,8 @@ provisioning increment; the operational API never provisions credentials.
 
 Authentication does not imply authorization. The existing permission for each
 RPC continues to be evaluated by the Runtime Host. Remote diagnostics retain
-their separate `diagnostics.subscribe` authorization and are excluded from the
-initial Python implementation.
+their separate `diagnostics.subscribe` authorization and explicit Runtime Host
+enablement. The Python diagnostic stream never weakens either gate.
 
 ### Targeting and descriptor access
 
@@ -127,14 +127,10 @@ committed or included in source or deployment archives.
 
 ## Increment plan
 
-1. 50A — Decision and Python environment characterization.
-2. 50B — Reproducible version-1 protobuf and gRPC contract package.
-3. 50C — Strict profile and mutual-TLS session foundation.
-4. 50D — Snapshot, descriptor projection, cached reads, and authoritative reads.
-5. 50E — Explicit Property writes and Commands with uncertain outcomes.
-6. 50F — Live observation, sequence validation, and fresh-subscription recovery.
-7. 50G — Packaging, examples, deployment, and physical validation.
-8. 50H — Documentation reconciliation and closure.
+1. 50A–50C — Decision, generated contract, profile, channel, and credential provisioning.
+2. 50D–50H — Snapshot, reads, mutations, Commands, observations, and cached reads.
+3. 50I — Strict diagnostic observation, temporary authorization, physical validation,
+   exact disabled-state restoration, documentation reconciliation, and closure.
 
 ## Consequences
 
@@ -149,9 +145,35 @@ committed or included in source or deployment archives.
   reconciliation.
 - Pure-Python mTLS requires externally provisioned certificate and private-key
   files; Windows certificate-store export is not implicit.
-- Remote diagnostics, synchronous convenience APIs, notebooks, persistent data
-  logging, Linux provisioning, and public package publication remain later
-  decisions.
+- Synchronous convenience APIs, notebooks, persistent data logging, Linux
+  provisioning, and public package publication remain later decisions.
+
+## Diagnostic observation and closure
+
+`RuntimeHostClient.observe_diagnostics()` exposes the seventh and final
+version-1 Runtime Host RPC as one caller-owned asynchronous stream. Every
+record is projected strictly into immutable values and retains both sequence
+domains, exact Runtime Host and endpoint/generation scope, optional direction
+and operation correlation, immutable details, and exact captured byte
+fragments with original-count and truncation evidence. A malformed record,
+sequence gap, authorization denial, transport failure, or cancellation ends
+the stream. The library never reconnects, resubscribes, replays, or fills a
+gap.
+
+Increment 50I temporarily appends only `diagnostics.subscribe` to the exact
+Python principal and enables remote diagnostics at the Bytes ceiling. Both
+the policy and application profile are revision-locked and atomically
+replaced; exact rollback bytes and access control are verified. Physical
+closure requires one safe KEL-103 authoritative read while CC/OFF with the
+external supply output OFF. Operational, Protocol, and exact Bytes records
+must retain Runtime Host and endpoint/generation scope, the request must end
+in `0D`, and the final correlated receive fragment must end in `0A`.
+
+After that observation the Runtime Host is stopped and the paired restore
+operation reinstates the exact pre-50I policy and profile bytes. Closure
+requires `diagnostics.subscribe` to be absent, remote diagnostics to be
+disabled, transaction artifacts to be absent, and all Python, focused
+provisioning, and full .NET tests to pass.
 
 ## Increment 50A validation
 
