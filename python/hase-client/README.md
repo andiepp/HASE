@@ -239,6 +239,22 @@ planned with snapshot and authoritative-read only. The companion
 only when every protected source hash remains exact and every publication
 target remains absent. Leaf creation and publication remain deferred.
 
+### Atomic MiniPC Python credential publication
+
+`Publish-HaseMiniPcPythonCredential.ps1` consumes the protected 51D2A plan,
+requires its recorded commit to remain an ancestor of the clean synchronized
+repository, and revalidates every protected source hash and absent target. It
+creates private custody, publishes the prepared initial policy, invokes the
+reviewed credential operator for the certificate, key, profile, enrollment and
+minimal Python grants, and atomically replaces the application profile last.
+An external outer journal makes partial completion explicit; failures never
+start the Runtime Host and require the companion
+`Recover-HaseMiniPcPythonCredentialPublication.ps1`. Recovery composes the
+existing five-file operator recovery, restores the exact enrollment and
+application-profile evidence, and removes only the new Python outputs, policy,
+custody directory, and outer journal. The dedicated authority, preparation
+evidence, server identity, diagnostics, and hardware state remain untouched.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
