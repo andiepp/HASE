@@ -3,10 +3,15 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $ProfilePath,
 
-    [ValidateSet("Health", "Kel103SameValuePropertyWrite")]
+    [ValidateSet(
+        "Health",
+        "Kel103SameValuePropertyWrite",
+        "Kel103SameStateCcCommand")]
     [string] $Workflow = "Health",
 
-    [switch] $ConfirmSameValueWrite
+    [switch] $ConfirmSameValueWrite,
+
+    [switch] $ConfirmSameStateCommand
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,15 +48,28 @@ if (-not (Test-Path -LiteralPath $automationPython -PathType Leaf) `
     Write-Error "HASE automation failed: installation-invalid."
     exit 1
 }
+if ($Workflow -ne "Kel103SameValuePropertyWrite" `
+    -and $ConfirmSameValueWrite.IsPresent)
+{
+    Write-Error "HASE automation failed: confirmation-not-applicable."
+    exit 1
+}
+if ($Workflow -ne "Kel103SameStateCcCommand" `
+    -and $ConfirmSameStateCommand.IsPresent)
+{
+    Write-Error "HASE automation failed: confirmation-not-applicable."
+    exit 1
+}
 if ($Workflow -eq "Kel103SameValuePropertyWrite" `
     -and -not $ConfirmSameValueWrite.IsPresent)
 {
     Write-Error "HASE automation failed: same-value-write-confirmation-required."
     exit 1
 }
-if ($Workflow -eq "Health" -and $ConfirmSameValueWrite.IsPresent)
+if ($Workflow -eq "Kel103SameStateCcCommand" `
+    -and -not $ConfirmSameStateCommand.IsPresent)
 {
-    Write-Error "HASE automation failed: confirmation-not-applicable."
+    Write-Error "HASE automation failed: same-state-command-confirmation-required."
     exit 1
 }
 if (-not (Test-AbsolutePath -Path $ProfilePath) `
@@ -72,12 +90,19 @@ try
     {
         & $automationPython -m hase._automation_health $ProfilePath
     }
-    else
+    elseif ($Workflow -eq "Kel103SameValuePropertyWrite")
     {
         & $automationPython `
             -m hase._automation_same_value_property_write `
             $ProfilePath `
             "confirm-same-value-write"
+    }
+    else
+    {
+        & $automationPython `
+            -m hase._automation_same_state_cc_command `
+            $ProfilePath `
+            "confirm-same-state-cc-command"
     }
     if ($LASTEXITCODE -ne 0)
     {

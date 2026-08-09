@@ -113,10 +113,38 @@ withheld.
 No failure path retries, replays, reconnects, falls back to cached data, or
 issues a second write. An uncertain outcome stops immediately and requires
 operator reconciliation outside the workflow. The workflow never changes a
-setpoint, selects a mode, activates the input, or executes a Command. Physical
-use requires the reviewed temporary `property.write` authorization transaction
-and exact restoration of its retained policy and application-profile rollback
-files after the Runtime Host is stopped.
+setpoint, selects a mode, activates the input, or executes a Command. The
+retained ADR-0050 authorization already includes `property.write`; physical use
+must not modify the authorization policy or application profile.
+
+### Guarded same-state KEL-103 Command workflow
+
+Version 0.4.0 adds one explicitly confirmed parameterless Command workflow to
+a newly installed persistent automation environment:
+
+```powershell
+& "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
+    -Workflow Kel103SameStateCcCommand `
+    -ProfilePath "<absolute-published-python-profile-path>" `
+    -ConfirmSameStateCommand
+```
+
+The launcher rejects missing, unrelated, or crossed confirmation switches
+before inspecting the profile and passes a second fixed confirmation token to
+the package-internal module. The workflow obtains one current snapshot,
+resolves exactly one ready `electronic-load-01`, requires exactly one
+parameterless `Mode/SelectConstantCurrent` descriptor, authoritatively verifies
+CC mode and input OFF, executes that Command once, and authoritatively requires
+the resulting state to remain exactly CC/OFF.
+
+No failure path retries, replays, reconnects, writes a Property, or issues a
+second Command. An uncertain outcome stops immediately; because the initial and
+intended state are identical, a later CC/OFF read cannot prove whether an
+uncertain Command executed. Values, identities, generations, addresses, paths,
+and raw diagnostics are withheld. The workflow never selects CV, CR, CW, or
+SHORT and never activates or deactivates the input. The retained ADR-0050
+authorization already includes `command.execute`; physical use must not modify
+the authorization policy or application profile.
 
 ## Generated Runtime Host contract
 
