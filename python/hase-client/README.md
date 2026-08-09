@@ -130,6 +130,16 @@ Increment 50D4A defines and tests only these transport-independent models. It
 does not invoke an RPC, open a channel, start the Runtime Host, retry, reconnect,
 read or write a Property, or interact with hardware.
 
+`RuntimeHostClient.read_authoritative_property` accepts one validated immutable
+target, encodes its four identity fields exactly, invokes
+`ReadAuthoritativeProperty` exactly once with a bounded timeout, and returns the
+immutable normalized result. Generated transport objects remain internal.
+Caller cancellation propagates; authorization and transport failures use the
+same stable sanitized codes as the snapshot operation. It never retries,
+reconnects, closes the caller-owned channel, or falls back to cached data.
+Increment 50D4B1 validates this behavior only with isolated fakes and performs
+no physical read or hardware interaction.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -232,8 +242,9 @@ The package currently provides:
 - immutable Runtime Host snapshot models with strict transport projection; and
 - one bounded, non-retrying asynchronous Runtime Host snapshot operation; and
 - immutable authoritative Property-operation models and strict projection; and
+- one bounded, non-retrying authoritative Property-read operation; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Property RPC invocation, Commands, and observations require later approved
-increments.
+Physical authoritative Property validation, Commands, and observations require
+later approved increments.

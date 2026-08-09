@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import math
-from typing import Final
+from typing import Any, Final
 
 import grpc
 
 from hase._generated import runtime_host_remote_api_v1_pb2 as contract
 from hase._generated import runtime_host_remote_api_v1_pb2_grpc as services
 from hase.channel import RuntimeHostChannel
+from hase.property import PropertyOperationResult
+from hase.property import PropertyTarget
+from hase.property import project_property_operation_result
 from hase.snapshot import RuntimeHostSnapshot
 from hase.snapshot import project_runtime_host_snapshot
 
@@ -56,19 +59,14 @@ class RuntimeHostClient:
             raise RuntimeHostClientError("client-channel-invalid")
         self._stub = services.RuntimeHostRemoteApiStub(channel.grpc_channel)
 
-    async def get_snapshot(
+    async def _invoke(
         self,
-        *,
-        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS,
-    ) -> RuntimeHostSnapshot:
-        """Invoke GetSnapshot exactly once and return its immutable projection."""
-
-        rpc_timeout = _timeout(timeout)
+        operation: Any,
+        request: Any,
+        timeout: float,
+    ) -> Any:
         try:
-            response = await self._stub.GetSnapshot(
-                contract.GetSnapshotRequest(),
-                timeout=rpc_timeout,
-            )
+            return await operation(request, timeout=timeout)
         except asyncio.CancelledError:
             raise
         except grpc.RpcError as failure:
@@ -82,7 +80,47 @@ class RuntimeHostClient:
         except Exception:
             raise RuntimeHostClientError("rpc-failed") from None
 
+    async def get_snapshot(
+        self,
+        *,
+        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS,
+    ) -> RuntimeHostSnapshot:
+        """Invoke GetSnapshot exactly once and return its immutable projection."""
+
+        rpc_timeout = _timeout(timeout)
+        response = await self._invoke(
+            self._stub.GetSnapshot,
+            contract.GetSnapshotRequest(),
+            rpc_timeout,
+        )
+
         return project_runtime_host_snapshot(response)
+
+    async def read_authoritative_property(
+        self,
+        target: PropertyTarget,
+        *,
+        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS,
+    ) -> PropertyOperationResult:
+        """Read one authoritative Property exactly once without retrying."""
+
+        if not isinstance(target, PropertyTarget):
+            raise RuntimeHostClientError("property-target-invalid")
+        rpc_timeout = _timeout(timeout)
+        request = contract.ReadAuthoritativePropertyRequest(
+            target=contract.PropertyTarget(
+                endpoint_id=target.endpoint_id,
+                attachment_generation=target.attachment_generation,
+                instrument_id=target.instrument_id,
+                property_id=target.property_id,
+            )
+        )
+        response = await self._invoke(
+            self._stub.ReadAuthoritativeProperty,
+            request,
+            rpc_timeout,
+        )
+        return project_property_operation_result(response)
 
 
 __all__ = [
