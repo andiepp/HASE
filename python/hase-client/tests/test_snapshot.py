@@ -154,6 +154,28 @@ def test_projection_is_deeply_immutable_and_detached() -> None:
         projected.endpoints[0] = projected.endpoints[0]  # type: ignore[index]
 
 
+def test_projection_preserves_authoritative_absent_nested_values() -> None:
+    response = _response()
+    instrument = response.endpoints[0].descriptor.instruments[0]
+    response.endpoints[0].connection_status.ClearField("changed_at_utc")
+    instrument.properties[0].data.numeric.ClearField("range")
+    instrument.properties[0].data.numeric.ClearField("resolution")
+    instrument.commands[0].ClearField("argument")
+    instrument.events[0].ClearField("payload")
+
+    projected = project_runtime_host_snapshot(response)
+    endpoint = projected.endpoints[0]
+    projected_instrument = endpoint.descriptor.instruments[0]
+    numeric = projected_instrument.properties[0].data
+
+    assert endpoint.connection_status.changed_at_utc is None
+    assert isinstance(numeric, NumericDataDescriptor)
+    assert numeric.value_range is None
+    assert numeric.resolution is None
+    assert projected_instrument.commands[0].argument is None
+    assert projected_instrument.events[0].payload is None
+
+
 @pytest.mark.parametrize(
     ("mutate", "code"),
     [
@@ -170,12 +192,6 @@ def test_projection_is_deeply_immutable_and_detached() -> None:
         (
             lambda value: setattr(value.endpoints[0].connection_status, "state", 0),
             "snapshot-connection-state-invalid",
-        ),
-        (
-            lambda value: value.endpoints[0].connection_status.ClearField(
-                "changed_at_utc"
-            ),
-            "snapshot-message-missing",
         ),
         (
             lambda value: setattr(
@@ -231,20 +247,6 @@ def test_projection_is_deeply_immutable_and_detached() -> None:
                 math.inf,
             ),
             "snapshot-number-invalid",
-        ),
-        (
-            lambda value: value.endpoints[0]
-            .descriptor.instruments[0]
-            .commands[0]
-            .ClearField("argument"),
-            "snapshot-message-missing",
-        ),
-        (
-            lambda value: value.endpoints[0]
-            .descriptor.instruments[0]
-            .events[0]
-            .ClearField("payload"),
-            "snapshot-message-missing",
         ),
     ],
 )

@@ -78,7 +78,9 @@ it again immediately afterward.
 version, endpoint and attachment identity, connection state and UTC timestamp,
 and the complete ordered Instrument, Property, Command, Event, and data
 descriptor graphs are preserved. Optional transport fields remain distinct
-from present empty strings. Unspecified enums, incomplete nested messages,
+from present empty strings. Authoritatively absent connection timestamps,
+numeric ranges and resolutions, Command arguments, and Event payloads are
+preserved as `None`. Unspecified enums, incomplete required nested messages,
 unknown data kinds, invalid numeric descriptors, and inconsistent endpoint
 identity are rejected with sanitized error codes.
 
@@ -94,6 +96,23 @@ deadline, availability, cancellation-status, and unexpected RPC failures map
 to stable sanitized codes. The operation never retries or reconnects and does
 not close the caller's channel. Increment 50D3B1 validates this behavior only
 with isolated fakes; it does not connect to a Runtime Host or operate hardware.
+
+After all automated validation succeeds with the Runtime Host stopped, the
+authorized snapshot boundary can be physically validated once on the Desktop:
+
+```powershell
+.\tools\Test-HasePythonPhysicalSnapshot.ps1 `
+    -ProfilePath "<absolute-published-python-profile-path>"
+```
+
+Start only the Desktop Runtime Host immediately before this check and stop it
+again immediately afterward. The Laptop and installed HASE Client remain
+uninvolved. The tool loads the profile, opens one bounded channel, invokes
+`GetSnapshot` exactly once, verifies the immutable snapshot and supported API
+major version, and closes exactly once including failure paths. It prints only
+six fixed Boolean outcomes and never prints inventory, deployment, profile,
+path, or credential values. It does not retry, reconnect, read a Property,
+modify deployment state, or operate hardware.
 
 ## Credential-provisioning readiness
 
@@ -199,5 +218,4 @@ The package currently provides:
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Physical snapshot validation, Properties, Commands, and observations require
-later approved increments.
+Properties, Commands, and observations require later approved increments.

@@ -67,8 +67,8 @@ class ValueRange:
 class NumericDataDescriptor:
     quantity: Quantity
     native_unit: Unit
-    value_range: ValueRange
-    resolution: float
+    value_range: ValueRange | None
+    resolution: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +116,7 @@ class CommandDescriptor:
     path_segments: tuple[str, ...]
     display_name: str
     description: str | None
-    argument: CommandArgumentDescriptor
+    argument: CommandArgumentDescriptor | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,7 +131,7 @@ class EventDescriptor:
     path_segments: tuple[str, ...]
     display_name: str
     description: str | None
-    payload: EventPayloadDescriptor
+    payload: EventPayloadDescriptor | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,7 +161,7 @@ class EndpointDescriptor:
 @dataclass(frozen=True, slots=True)
 class EndpointConnectionStatus:
     state: EndpointConnectionState
-    changed_at_utc: datetime
+    changed_at_utc: datetime | None
     detail: str | None
 
 
@@ -229,14 +229,18 @@ def _data(source: contract.DataDescriptor) -> DataDescriptor:
     quantity = _quantity(_message(numeric, "quantity"))  # type: ignore[arg-type]
     native_unit_source = _message(numeric, "native_unit")
     unit_quantity = _quantity(_message(native_unit_source, "quantity"))  # type: ignore[arg-type]
-    value_range_source = _message(numeric, "range")
-    minimum = _finite(value_range_source.minimum)  # type: ignore[attr-defined]
-    maximum = _finite(value_range_source.maximum)  # type: ignore[attr-defined]
-    if minimum > maximum:
-        raise SnapshotProjectionError("snapshot-range-invalid")
-    resolution = _finite(_message(numeric, "resolution").value)  # type: ignore[attr-defined]
-    if resolution <= 0:
-        raise SnapshotProjectionError("snapshot-resolution-invalid")
+    value_range = None
+    if numeric.HasField("range"):
+        minimum = _finite(numeric.range.minimum)
+        maximum = _finite(numeric.range.maximum)
+        if minimum > maximum:
+            raise SnapshotProjectionError("snapshot-range-invalid")
+        value_range = ValueRange(minimum, maximum)
+    resolution = None
+    if numeric.HasField("resolution"):
+        resolution = _finite(numeric.resolution.value)
+        if resolution <= 0:
+            raise SnapshotProjectionError("snapshot-resolution-invalid")
 
     return NumericDataDescriptor(
         quantity,
@@ -246,7 +250,7 @@ def _data(source: contract.DataDescriptor) -> DataDescriptor:
             _required_text(native_unit_source.symbol),  # type: ignore[attr-defined]
             unit_quantity,
         ),
-        ValueRange(minimum, maximum),
+        value_range,
         resolution,
     )
 
@@ -284,30 +288,36 @@ def _property(source: contract.PropertyDescriptor) -> PropertyDescriptor:
 
 
 def _command(source: contract.CommandDescriptor) -> CommandDescriptor:
-    argument = _message(source, "argument")
+    argument = None
+    if source.HasField("argument"):
+        argument_source = source.argument
+        argument = CommandArgumentDescriptor(
+            _required_text(argument_source.display_name),
+            _optional(argument_source, "description"),
+            _data(_message(argument_source, "data")),  # type: ignore[arg-type]
+        )
     return CommandDescriptor(
         _segments(source.path_segments),
         _required_text(source.display_name),
         _optional(source, "description"),
-        CommandArgumentDescriptor(
-            _required_text(argument.display_name),  # type: ignore[attr-defined]
-            _optional(argument, "description"),
-            _data(_message(argument, "data")),  # type: ignore[arg-type]
-        ),
+        argument,
     )
 
 
 def _event(source: contract.EventDescriptor) -> EventDescriptor:
-    payload = _message(source, "payload")
+    payload = None
+    if source.HasField("payload"):
+        payload_source = source.payload
+        payload = EventPayloadDescriptor(
+            _required_text(payload_source.display_name),
+            _optional(payload_source, "description"),
+            _data(_message(payload_source, "data")),  # type: ignore[arg-type]
+        )
     return EventDescriptor(
         _segments(source.path_segments),
         _required_text(source.display_name),
         _optional(source, "description"),
-        EventPayloadDescriptor(
-            _required_text(payload.display_name),  # type: ignore[attr-defined]
-            _optional(payload, "description"),
-            _data(_message(payload, "data")),  # type: ignore[arg-type]
-        ),
+        payload,
     )
 
 
@@ -333,11 +343,12 @@ def _status(source: contract.EndpointConnectionStatus) -> EndpointConnectionStat
         state = _CONNECTION_STATES[source.state]
     except KeyError:
         raise SnapshotProjectionError("snapshot-connection-state-invalid") from None
-    timestamp = _message(source, "changed_at_utc")
-    try:
-        changed_at = timestamp.ToDatetime(tzinfo=timezone.utc)  # type: ignore[attr-defined]
-    except (OverflowError, ValueError):
-        raise SnapshotProjectionError("snapshot-timestamp-invalid") from None
+    changed_at = None
+    if source.HasField("changed_at_utc"):
+        try:
+            changed_at = source.changed_at_utc.ToDatetime(tzinfo=timezone.utc)
+        except (OverflowError, ValueError):
+            raise SnapshotProjectionError("snapshot-timestamp-invalid") from None
     return EndpointConnectionStatus(state, changed_at, _optional(source, "detail"))
 
 
