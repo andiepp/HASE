@@ -196,6 +196,16 @@ execution or non-execution. Raw Runtime Host diagnostics are never exposed by
 mutation exceptions. Increment 50E2A adds only this projector and does not make
 `WriteProperty` publicly callable.
 
+`RuntimeHostClient.write_property` is the public version-1 Property mutation
+boundary. It validates the target, value, and bounded timeout before transport;
+constructs one exact `WritePropertyRequest`; invokes `WriteProperty` exactly
+once; and returns only a valid confirmed authoritative success. Rejection and
+uncertain-outcome failures retain the mutation classifications above, expose no
+raw diagnostic, and never permit automatic retry, replay, or reconnection. The
+caller must reconcile an uncertain outcome with an authoritative read or
+explicit operator action before considering another write. Increment 50E2B
+does not add authorization or perform a physical write.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must

@@ -87,6 +87,21 @@ def normalize_mutation_value(value: object) -> MutationValue:
     raise _not_sent("mutation-value-type-unsupported")
 
 
+def _mutation_timeout(value: object) -> float:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+    ):
+        raise _not_sent("mutation-rpc-timeout-invalid")
+    try:
+        timeout = float(value)
+    except OverflowError:
+        raise _not_sent("mutation-rpc-timeout-invalid") from None
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise _not_sent("mutation-rpc-timeout-invalid")
+    return timeout
+
+
 def _encode_mutation_value(value: object) -> contract.RemoteValue:
     normalized = normalize_mutation_value(value)
     result = contract.RemoteValue()

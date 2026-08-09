@@ -11,6 +11,12 @@ import grpc
 from hase._generated import runtime_host_remote_api_v1_pb2 as contract
 from hase._generated import runtime_host_remote_api_v1_pb2_grpc as services
 from hase.channel import RuntimeHostChannel
+from hase.mutation import MutationValue
+from hase.mutation import _encode_mutation_value
+from hase.mutation import _invoke_mutation_once
+from hase.mutation import _mutation_timeout
+from hase.mutation import _not_sent
+from hase.mutation import _project_property_mutation_result
 from hase.property import PropertyOperationResult
 from hase.property import PropertyTarget
 from hase.property import project_property_operation_result
@@ -121,6 +127,39 @@ class RuntimeHostClient:
             rpc_timeout,
         )
         return project_property_operation_result(response)
+
+    async def write_property(
+        self,
+        target: PropertyTarget,
+        requested_value: MutationValue,
+        *,
+        timeout: float = _DEFAULT_RPC_TIMEOUT_SECONDS,
+    ) -> PropertyOperationResult:
+        """Write one Property exactly once and return its confirmed result."""
+
+        if not isinstance(target, PropertyTarget):
+            raise _not_sent("mutation-property-target-invalid")
+        rpc_timeout = _mutation_timeout(timeout)
+        requested_remote_value = _encode_mutation_value(requested_value)
+        try:
+            request = contract.WritePropertyRequest(
+                target=contract.PropertyTarget(
+                    endpoint_id=target.endpoint_id,
+                    attachment_generation=target.attachment_generation,
+                    instrument_id=target.instrument_id,
+                    property_id=target.property_id,
+                ),
+                requested_value=requested_remote_value,
+            )
+        except Exception:
+            raise _not_sent("mutation-property-request-invalid") from None
+
+        response = await _invoke_mutation_once(
+            self._stub.WriteProperty,
+            request,
+            rpc_timeout,
+        )
+        return _project_property_mutation_result(response)
 
 
 __all__ = [
