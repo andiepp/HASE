@@ -206,6 +206,25 @@ caller must reconcile an uncertain outcome with an authoritative read or
 explicit operator action before considering another write. Increment 50E2B
 does not add authorization or perform a physical write.
 
+## Authorized physical Property-write validation
+
+`Enable-HasePythonPropertyWrite.ps1` performs one fixed-purpose authorization
+transaction for the existing `hase-python-automation` principal. It requires
+the exact read-only grant set, locks the input policy revision, appends only
+`property.write`, and activates that policy in the legacy Desktop application
+profile while keeping remote diagnostics disabled. Both input revisions are
+locked, both candidates are staged before publication, the profile is
+published last, file security is preserved, and exact rollback files are
+retained for both inputs. It never changes credential or enrollment files and
+cannot grant Command, observation, or diagnostic permissions.
+
+`Test-HasePythonPhysicalPropertyWrite.ps1` requires exactly one ready KEL-103,
+authoritatively verifies CC/OFF, reads `target-current`, writes
+that same numeric value exactly once, verifies the returned confirmation, and
+performs one authoritative reconciliation read. It never changes the setpoint,
+activates the load, selects a mode, executes a Command, retries, reconnects, or
+replays a mutation. Any uncertain outcome stops the run without another write.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must

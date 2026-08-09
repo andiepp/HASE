@@ -30,6 +30,16 @@ internal static class PythonCredentialProvisioningOperator
         "authorization-policy",
     ];
 
+    private static readonly string[] AuthorizePropertyWriteValueNames =
+    [
+        "authorization-policy",
+        "expected-authorization-policy-sha256",
+        "application-profile",
+        "expected-application-profile-sha256",
+        "policy-rollback",
+        "profile-rollback",
+    ];
+
     internal static async Task<int> RunAsync(
         string[] args,
         TextWriter output,
@@ -77,6 +87,20 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
+                case "authorize-property-write":
+                {
+                    AuthorizePropertyWriteCommand command =
+                        ParseAuthorizePropertyWrite(args[1..]);
+                    _ = await operations.AuthorizePropertyWriteAsync(
+                            command, cancellationToken)
+                        .ConfigureAwait(false);
+                    output.WriteLine("Operation            : Authorize Property write");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine("Permission           : property.write");
+                    output.WriteLine("Rollback retained    : True");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
                 default:
                     return Usage(error);
             }
@@ -104,6 +128,10 @@ internal static class PythonCredentialProvisioningOperator
             return Failure(error, exception.Code);
         }
         catch (PythonCredentialProvisioningRecoveryException exception)
+        {
+            return Failure(error, exception.Code);
+        }
+        catch (PythonPropertyWriteAuthorizationException exception)
         {
             return Failure(error, exception.Code);
         }
@@ -179,6 +207,28 @@ internal static class PythonCredentialProvisioningOperator
             policy);
     }
 
+    private static AuthorizePropertyWriteCommand ParseAuthorizePropertyWrite(
+        string[] args)
+    {
+        ParsedArguments parsed = Parse(
+            args, AuthorizePropertyWriteValueNames,
+            allowReplacementSwitch: false);
+        string hash = parsed.Values["expected-authorization-policy-sha256"];
+        string profileHash = parsed.Values["expected-application-profile-sha256"];
+        if (!IsHex(hash, 64, allowUppercase: false)
+            || !IsHex(profileHash, 64, allowUppercase: false))
+        {
+            throw new ArgumentException();
+        }
+        string policy = RequireAbsolute(parsed.Values["authorization-policy"]);
+        string profile = RequireAbsolute(parsed.Values["application-profile"]);
+        string policyRollback = RequireAbsolute(parsed.Values["policy-rollback"]);
+        string profileRollback = RequireAbsolute(parsed.Values["profile-rollback"]);
+        RequireDistinct(policy, profile, policyRollback, profileRollback);
+        return new AuthorizePropertyWriteCommand(policy, hash, profile,
+            profileHash, policyRollback, profileRollback);
+    }
+
     private static ParsedArguments Parse(
         string[] args,
         IReadOnlyCollection<string> valueNames,
@@ -252,6 +302,7 @@ internal static class PythonCredentialProvisioningOperator
         error.WriteLine("Usage:");
         error.WriteLine("  provision --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90> [--allow-replacement]");
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
+        error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
         return 2;
     }
 
@@ -332,6 +383,20 @@ internal sealed class SystemPythonCredentialProvisioningOperations
                 command.AuthorizationPolicyPath));
     }
 
+    public Task<PythonPropertyWriteAuthorizationResult>
+        AuthorizePropertyWriteAsync(
+            AuthorizePropertyWriteCommand command,
+            CancellationToken cancellationToken) =>
+        new PythonPropertyWriteAuthorizer().AuthorizeAsync(
+            new PythonPropertyWriteAuthorizationRequest(
+                command.AuthorizationPolicyPath,
+                command.ExpectedAuthorizationPolicySha256,
+                command.ApplicationProfilePath,
+                command.ExpectedApplicationProfileSha256,
+                command.PolicyRollbackPath,
+                command.ProfileRollbackPath),
+            cancellationToken);
+
     internal static DateTimeOffset NormalizeCertificateTimestamp(
         DateTimeOffset timestamp)
     {
@@ -378,6 +443,10 @@ internal interface IPythonCredentialProvisioningOperations
         CancellationToken cancellationToken);
 
     PythonCredentialProvisioningRecoveryResult Recover(RecoveryCommand command);
+
+    Task<PythonPropertyWriteAuthorizationResult> AuthorizePropertyWriteAsync(
+        AuthorizePropertyWriteCommand command,
+        CancellationToken cancellationToken);
 }
 
 internal sealed record ProvisionCommand(
@@ -401,6 +470,14 @@ internal sealed record RecoveryCommand(
     string ProfilePath,
     string EnrollmentPath,
     string AuthorizationPolicyPath);
+
+internal sealed record AuthorizePropertyWriteCommand(
+    string AuthorizationPolicyPath,
+    string ExpectedAuthorizationPolicySha256,
+    string ApplicationProfilePath,
+    string ExpectedApplicationProfileSha256,
+    string PolicyRollbackPath,
+    string ProfileRollbackPath);
 
 internal sealed record OperatorProvisioningResult(
     string PlanId,

@@ -92,6 +92,28 @@ public sealed class PythonCredentialProvisioningOperatorTests
         AssertInputsWithheld(args, output.ToString());
     }
 
+    [Fact]
+    public async Task RunAsync_AuthorizePropertyWrite_DelegatesAndWithholdsInputs()
+    {
+        string[] args = AuthorizePropertyWriteArguments();
+        var operations = new StubOperations();
+        var output = new StringWriter();
+
+        int exitCode = await PythonCredentialProvisioningOperator.RunAsync(
+            args, output, TextWriter.Null, operations, CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.NotNull(operations.AuthorizeCommand);
+        Assert.Equal(P("authorization.json"),
+            operations.AuthorizeCommand.AuthorizationPolicyPath);
+        Assert.Equal(P("desktop-runtime-host.json"),
+            operations.AuthorizeCommand.ApplicationProfilePath);
+        Assert.Contains("Permission           : property.write",
+            output.ToString());
+        Assert.Contains("Rollback retained    : True", output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
     [Theory]
     [MemberData(nameof(InvalidCommands))]
     public async Task RunAsync_InvalidArguments_DoNotInvokeOperations(string[] args)
@@ -193,6 +215,8 @@ public sealed class PythonCredentialProvisioningOperatorTests
             .Select(value => value == new string('a', 64)
                 ? new string('A', 64) : value).ToArray(),
         RecoveryArguments().Append("--allow-replacement").ToArray(),
+        AuthorizePropertyWriteArguments()
+            .Append("--policy-rollback").Append(P("duplicate.json")).ToArray(),
     };
 
     private static string[] ProvisionArguments(bool allowReplacement)
@@ -227,6 +251,17 @@ public sealed class PythonCredentialProvisioningOperatorTests
         "--authorization-policy", P("authorization.json"),
     ];
 
+    private static string[] AuthorizePropertyWriteArguments() =>
+    [
+        "authorize-property-write",
+        "--authorization-policy", P("authorization.json"),
+        "--expected-authorization-policy-sha256", new string('a', 64),
+        "--application-profile", P("desktop-runtime-host.json"),
+        "--expected-application-profile-sha256", new string('b', 64),
+        "--policy-rollback", P("authorization.rollback.json"),
+        "--profile-rollback", P("desktop-runtime-host.rollback.json"),
+    ];
+
     private static string P(string name) => Path.GetFullPath(
         Path.Combine(Path.GetTempPath(), "hase-operator-tests", name));
 
@@ -245,6 +280,7 @@ public sealed class PythonCredentialProvisioningOperatorTests
     {
         public ProvisionCommand? ProvisionCommand { get; private set; }
         public RecoveryCommand? RecoveryCommand { get; private set; }
+        public AuthorizePropertyWriteCommand? AuthorizeCommand { get; private set; }
         public Exception? ProvisionException { get; init; }
         public OperatorProvisioningResult ProvisioningResult { get; init; } =
             new("python-provisioning-plan-sha256:" + new string('1', 64),
@@ -253,6 +289,13 @@ public sealed class PythonCredentialProvisioningOperatorTests
             { get; init; } = new(
                 PythonCredentialProvisioningRecoveryDisposition.NoTransaction,
                 null);
+        public PythonPropertyWriteAuthorizationResult AuthorizationResult
+            { get; init; } = new(
+                "0123456789abcdef0123456789abcdef",
+                new string('b', 64),
+                new string('c', 64),
+                P("authorization.rollback.json"),
+                P("desktop-runtime-host.rollback.json"));
 
         public Task<OperatorProvisioningResult> ProvisionAsync(
             ProvisionCommand command,
@@ -268,6 +311,15 @@ public sealed class PythonCredentialProvisioningOperatorTests
         {
             RecoveryCommand = command;
             return RecoveryResult;
+        }
+
+        public Task<PythonPropertyWriteAuthorizationResult>
+            AuthorizePropertyWriteAsync(
+                AuthorizePropertyWriteCommand command,
+                CancellationToken cancellationToken)
+        {
+            AuthorizeCommand = command;
+            return Task.FromResult(AuthorizationResult);
         }
     }
 }
