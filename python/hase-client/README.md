@@ -114,6 +114,22 @@ six fixed Boolean outcomes and never prints inventory, deployment, profile,
 path, or credential values. It does not retry, reconnect, read a Property,
 modify deployment state, or operate hardware.
 
+## Authoritative Property model
+
+`PropertyTarget`, `PropertyValue`, and `PropertyOperationResult` define the
+immutable public boundary for a later authoritative Property operation.
+Projection preserves Boolean, string, finite numeric, byte-array, and absent
+values; exact UTC timestamps; quality; every version-1 operation status; and
+the presence distinction of optional diagnostic text. Byte arrays are detached
+immutable `bytes`. Successful results must contain exactly one confirmed value
+and no diagnostic, while failed results must not contain a confirmed value.
+Malformed identities, timestamps, enums, numeric values, and result shapes are
+rejected with sanitized codes.
+
+Increment 50D4A defines and tests only these transport-independent models. It
+does not invoke an RPC, open a channel, start the Runtime Host, retry, reconnect,
+read or write a Property, or interact with hardware.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -215,7 +231,9 @@ The package currently provides:
 - an asyncio mutual-TLS channel lifecycle with bounded readiness; and
 - immutable Runtime Host snapshot models with strict transport projection; and
 - one bounded, non-retrying asynchronous Runtime Host snapshot operation; and
+- immutable authoritative Property-operation models and strict projection; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Properties, Commands, and observations require later approved increments.
+Property RPC invocation, Commands, and observations require later approved
+increments.

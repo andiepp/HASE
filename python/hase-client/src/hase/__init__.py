@@ -8,6 +8,15 @@ from hase.client import RuntimeHostClientError
 from hase.profile import ProfileValidationError
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
+from hase.property import PropertyOperationResult
+from hase.property import PropertyOperationStatus
+from hase.property import PropertyProjectionError
+from hase.property import PropertyQuality
+from hase.property import PropertyScalar
+from hase.property import PropertyTarget
+from hase.property import PropertyValue
+from hase.property import project_property_operation_result
+from hase.property import project_property_target
 from hase.snapshot import BooleanDataDescriptor
 from hase.snapshot import ByteArrayDataDescriptor
 from hase.snapshot import CommandArgumentDescriptor
@@ -49,6 +58,13 @@ __all__ = [
     "InstrumentDescriptor",
     "NumericDataDescriptor",
     "ProfileValidationError",
+    "PropertyOperationResult",
+    "PropertyOperationStatus",
+    "PropertyProjectionError",
+    "PropertyQuality",
+    "PropertyScalar",
+    "PropertyTarget",
+    "PropertyValue",
     "PropertyAccessMode",
     "PropertyDescriptor",
     "Quantity",
@@ -67,5 +83,7 @@ __all__ = [
     "__version__",
     "load_runtime_host_profile",
     "open_runtime_host_channel",
+    "project_property_operation_result",
+    "project_property_target",
     "project_runtime_host_snapshot",
 ]
