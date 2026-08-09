@@ -3,6 +3,8 @@
 from hase.channel import RuntimeHostChannel
 from hase.channel import RuntimeHostChannelError
 from hase.channel import open_runtime_host_channel
+from hase.client import RuntimeHostClient
+from hase.client import RuntimeHostClientError
 from hase.profile import ProfileValidationError
 from hase.profile import RuntimeHostProfile
 from hase.profile import load_runtime_host_profile
@@ -51,6 +53,8 @@ __all__ = [
     "PropertyDescriptor",
     "Quantity",
     "RuntimeEndpointSnapshot",
+    "RuntimeHostClient",
+    "RuntimeHostClientError",
     "RuntimeHostChannel",
     "RuntimeHostChannelError",
     "RuntimeHostApiVersion",

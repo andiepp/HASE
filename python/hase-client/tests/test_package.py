@@ -21,6 +21,8 @@ def test_package_exposes_the_approved_profile_surface() -> None:
         "PropertyDescriptor",
         "Quantity",
         "RuntimeEndpointSnapshot",
+        "RuntimeHostClient",
+        "RuntimeHostClientError",
         "RuntimeHostChannel",
         "RuntimeHostChannelError",
         "RuntimeHostApiVersion",

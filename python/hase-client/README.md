@@ -86,6 +86,15 @@ Increment 50D3A defines and tests only this transport-independent projection.
 It does not invoke `GetSnapshot`, start the Runtime Host, connect, retry,
 reconnect, read a Property, or interact with hardware.
 
+`RuntimeHostClient.get_snapshot` now invokes exactly one bounded asynchronous
+`GetSnapshot` operation over a caller-owned `RuntimeHostChannel` and returns
+that immutable model. Generated request, response, and stub objects remain
+internal. Caller cancellation propagates, while authentication, authorization,
+deadline, availability, cancellation-status, and unexpected RPC failures map
+to stable sanitized codes. The operation never retries or reconnects and does
+not close the caller's channel. Increment 50D3B1 validates this behavior only
+with isolated fakes; it does not connect to a Runtime Host or operate hardware.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -186,8 +195,9 @@ The package currently provides:
 - an immutable strict external Runtime Host profile model; and
 - an asyncio mutual-TLS channel lifecycle with bounded readiness; and
 - immutable Runtime Host snapshot models with strict transport projection; and
+- one bounded, non-retrying asynchronous Runtime Host snapshot operation; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Snapshot RPC invocation, Properties, Commands, and observations require later
-approved increments.
+Physical snapshot validation, Properties, Commands, and observations require
+later approved increments.
