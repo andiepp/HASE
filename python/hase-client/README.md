@@ -54,6 +54,41 @@ does not mutate hardware, retry, reconnect, change authorization, enable
 diagnostics, print deployment values, or retain the validation environment.
 Stop the Runtime Host immediately afterward.
 
+## Persistent local automation environment
+
+Install a verified local wheel into a new external automation directory:
+
+```powershell
+.\tools\Install-HasePythonAutomation.ps1 `
+    -PackagePath "<absolute-hase-client-wheel-path>" `
+    -InstallationDirectory "<absolute-new-automation-directory>"
+```
+
+The adjacent `<wheel>.sha256` record is mandatory and is verified before the
+target directory is created. Installation uses a private virtual environment,
+never an editable or global package. The target must not already exist; this
+increment does not update or replace installations. A copied launcher and a
+non-sensitive manifest record the schema, package version and SHA-256, CPython
+version, and UTC installation time. Credentials, profiles, source paths, and
+deployment identifiers are neither copied nor recorded.
+
+With the KEL-103 in CC/OFF state, the laboratory supply output OFF, the
+installed HASE Client stopped, and remote diagnostics disabled, start only the
+Desktop Runtime Host and invoke the installed read-only health workflow:
+
+```powershell
+& "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
+    -ProfilePath "<absolute-published-python-profile-path>"
+```
+
+The launcher uses only its installed private interpreter, clears Python source
+path injection, opens one bounded mutual-TLS channel, obtains one version-1
+snapshot without retry or reconnection, prints only fixed Boolean outcomes and
+bounded inventory counts, and closes deterministically. It never reads or
+writes a Property, executes a Command, observes events or diagnostics, changes
+authorization, copies credentials, or changes instrument state. Stop the
+Runtime Host immediately afterward.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
