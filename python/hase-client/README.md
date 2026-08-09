@@ -45,6 +45,17 @@ external files: the Client certificate chain, Client private key, and exact
 trusted-server certificate. Increment 50C1 checks file custody only and does
 not parse credential bytes.
 
+## Mutual-TLS channel
+
+`open_runtime_host_channel` creates one asyncio gRPC channel from a validated
+profile. Credential reads are bounded, the exact trusted Runtime Host
+certificate is supplied as the channel trust anchor, TLS authority is never
+overridden, readiness has an explicit timeout, and opening is never retried.
+The returned `RuntimeHostChannel` is an async context manager with deterministic
+concurrent and repeated close behavior. Channel failures expose only sanitized
+codes and never include credential bytes or deployment paths. Increment 50D1
+does not invoke an RPC or connect during automated validation.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -143,6 +154,7 @@ The package currently provides:
 - reproducible version-1 protobuf and gRPC bindings;
 - byte-exact freshness and descriptor-level parity validation;
 - an immutable strict external Runtime Host profile model; and
+- an asyncio mutual-TLS channel lifecycle with bounded readiness; and
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
