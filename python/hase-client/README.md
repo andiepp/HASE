@@ -140,6 +140,26 @@ reconnects, closes the caller-owned channel, or falls back to cached data.
 Increment 50D4B1 validates this behavior only with isolated fakes and performs
 no physical read or hardware interaction.
 
+After all automated validation succeeds with the Runtime Host stopped, one
+authoritative measured-voltage read can be physically validated on the Desktop:
+
+```powershell
+.\tools\Test-HasePythonPhysicalAuthoritativeProperty.ps1 `
+    -ProfilePath "<absolute-published-python-profile-path>"
+```
+
+Keep the KEL-103 connected and `Ready` in CC/OFF state with the external
+laboratory supply output OFF. Start only the Desktop Runtime Host immediately
+before the check and stop it immediately afterward; the Laptop and installed
+HASE Client remain uninvolved. The tool gets one snapshot, resolves exactly one
+current `electronic-load-01`/`measured-voltage` target with readable access,
+performs exactly one authoritative read, requires a finite `GOOD` numeric result
+with a UTC timestamp, and closes exactly once including failure paths. It prints
+only seven fixed Boolean outcomes and withholds all identities, generations,
+measurement values, timestamps, paths, addresses, and credential information.
+It never retries, reconnects, reads cached data, writes, executes a Command, or
+changes KEL-103 state.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must
@@ -246,5 +266,4 @@ The package currently provides:
 - dedicated-Python-identity provisioning, durable five-file publication, and
   an explicit operator and interrupted-publication recovery boundaries.
 
-Physical authoritative Property validation, Commands, and observations require
-later approved increments.
+Commands and observations require later approved increments.
