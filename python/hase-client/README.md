@@ -222,6 +222,23 @@ change enrollment, authorization, profiles, server identity, diagnostics, or
 hardware state. MiniPC readiness receives the manifest thumbprint explicitly;
 Desktop readiness retains its existing server-issuer selection behavior.
 
+### MiniPC provisioning transaction preparation
+
+`Initialize-HaseMiniPcPythonProvisioningTransaction.ps1` prepares—but does not
+publish—the dedicated MiniPC Python transaction. It validates the explicit
+client authority, active self-signed server leaf, clean repository, stopped
+processes, absent Python targets, and the legacy application profile with no
+authorization-policy reference. It creates only an external Python profile
+template and a Current-User-only rollback directory. The rollback custody holds
+exact enrollment and application-profile copies, candidate policy/profile
+documents, and a seven-entry plan covering the new provisioning directory plus
+the six publication files. Existing enrolled Client principals receive all six
+previously effective non-diagnostic permissions; the new Python principal is
+planned with snapshot and authoritative-read only. The companion
+`Restore-HaseMiniPcPythonProvisioningPreparation.ps1` removes preparation state
+only when every protected source hash remains exact and every publication
+target remains absent. Leaf creation and publication remain deferred.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
