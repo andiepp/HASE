@@ -177,6 +177,15 @@ considered. Increment 50E1A defines only these value and failure semantics; it
 does not invoke `WriteProperty` or `ExecuteCommand`, change authorization,
 connect, or operate hardware.
 
+The package-internal mutation transport boundary invokes one prepared call
+exactly once. A failure constructing that call is `NOT_SENT`; explicit server
+authentication, authorization, validation, precondition, target, range, or
+unsupported-operation statuses are `REJECTED`; cancellation and all ambiguous
+post-invocation transport failures are `OUTCOME_UNCERTAIN`. Exception details
+remain sanitized and no classification permits automatic retry. Increment
+50E1B still exposes no public mutation operation and invokes neither
+`WriteProperty` nor `ExecuteCommand`.
+
 ## Credential-provisioning readiness
 
 The installed WPF Client private key is intentionally non-exportable and must

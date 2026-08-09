@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from enum import Enum
 import math
-from typing import TypeAlias
+from typing import Any, Awaitable, Callable, TypeAlias
+
+import grpc
 
 from hase._generated import runtime_host_remote_api_v1_pb2 as contract
 
@@ -92,6 +95,74 @@ def _encode_mutation_value(value: object) -> contract.RemoteValue:
     else:
         result.numeric_value = normalized
     return result
+
+
+_REJECTED_RPC_CODES = {
+    grpc.StatusCode.INVALID_ARGUMENT: "mutation-rpc-invalid-argument",
+    grpc.StatusCode.NOT_FOUND: "mutation-rpc-not-found",
+    grpc.StatusCode.ALREADY_EXISTS: "mutation-rpc-already-exists",
+    grpc.StatusCode.PERMISSION_DENIED: "mutation-rpc-permission-denied",
+    grpc.StatusCode.FAILED_PRECONDITION: "mutation-rpc-failed-precondition",
+    grpc.StatusCode.OUT_OF_RANGE: "mutation-rpc-out-of-range",
+    grpc.StatusCode.UNAUTHENTICATED: "mutation-rpc-unauthenticated",
+    grpc.StatusCode.UNIMPLEMENTED: "mutation-rpc-unimplemented",
+}
+
+
+def _rpc_status(failure: grpc.RpcError) -> grpc.StatusCode | None:
+    try:
+        status = failure.code()
+    except Exception:
+        return None
+    return status if isinstance(status, grpc.StatusCode) else None
+
+
+async def _invoke_mutation_once(
+    operation: Callable[..., Awaitable[Any]],
+    request: Any,
+    timeout: float,
+) -> Any:
+    """Invoke one prepared mutation without retry, replay, or reconnection."""
+
+    try:
+        pending = operation(request, timeout=timeout)
+    except grpc.RpcError as failure:
+        status = _rpc_status(failure)
+        code = _REJECTED_RPC_CODES.get(status, "mutation-rpc-not-sent")
+        raise RuntimeHostMutationError(
+            code,
+            MutationFailureClassification.NOT_SENT,
+        ) from None
+    except Exception:
+        raise RuntimeHostMutationError(
+            "mutation-rpc-not-sent",
+            MutationFailureClassification.NOT_SENT,
+        ) from None
+
+    try:
+        return await pending
+    except asyncio.CancelledError:
+        raise RuntimeHostMutationError(
+            "mutation-rpc-cancelled",
+            MutationFailureClassification.OUTCOME_UNCERTAIN,
+        ) from None
+    except grpc.RpcError as failure:
+        status = _rpc_status(failure)
+        rejection_code = _REJECTED_RPC_CODES.get(status)
+        if rejection_code is not None:
+            raise RuntimeHostMutationError(
+                rejection_code,
+                MutationFailureClassification.REJECTED,
+            ) from None
+        raise RuntimeHostMutationError(
+            "mutation-rpc-outcome-uncertain",
+            MutationFailureClassification.OUTCOME_UNCERTAIN,
+        ) from None
+    except Exception:
+        raise RuntimeHostMutationError(
+            "mutation-rpc-outcome-uncertain",
+            MutationFailureClassification.OUTCOME_UNCERTAIN,
+        ) from None
 
 
 __all__ = [
