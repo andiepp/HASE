@@ -431,9 +431,9 @@ creation, profile rewriting, published-scope validation, manifest creation,
 and archive creation. A failure reports only that phase and remains explicit-
 recovery-only. Transfer packaging binds an explicit four-file input list and
 verifies that a non-empty archive exists before committing the outer journal.
-Files created inside the protected staging directory retain and verify their
-inherited Current-User-only ACL; only the archive outside staging receives a
-separate explicit private ACL.
+The operator-created profile retains and verifies its protected ACL. The newly
+created manifest and the archive outside staging each receive and verify an
+explicit Current-User-only protected ACL.
 
 If Laptop readiness finds a Desktop Python profile whose three custody paths
 still refer to the MiniPC user root, use the paired Laptop-only custody repair

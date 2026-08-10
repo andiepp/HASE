@@ -80,7 +80,7 @@ def test_staging_files_keep_inherited_protected_acl() -> None:
     assert "(Get-Acl -LiteralPath $profile).AreAccessRulesProtected" in text
     assert "(Get-Acl -LiteralPath $manifest).AreAccessRulesProtected" in text
     assert "Set-PrivateFile $profile" not in text
-    assert "Set-PrivateFile $manifest" not in text
+    assert "Set-PrivateFile $manifest" in text
     assert "Set-PrivateFile $transfer" in text
 
 

@@ -206,6 +206,7 @@ try
         }
     }
     Write-Json $manifest $manifestDocument
+    Set-PrivateFile $manifest
     if (-not (Get-Acl -LiteralPath $manifest).AreAccessRulesProtected)
     { throw "manifest-acl" }
     $phase = "manifest-written"
