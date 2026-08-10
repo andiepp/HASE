@@ -1476,7 +1476,6 @@ KEL-103 final state CC/OFF; external laboratory supply output OFF
 
 ## Agreed later objectives
 
-- Python Automation Boundary.
 - Diagnostic Export and Offline Analysis.
 - Remote Media Feedback.
 
@@ -1515,3 +1514,37 @@ ADR-0049 Authorized Remote Runtime Diagnostics closed
 Remote diagnostics disabled after supervised profile restoration
 KEL-103 final state CC/OFF; external laboratory supply output OFF
 ```
+
+## Completed objective — ADR-0050 Python Automation Boundary
+
+**Status:** [Completed] Implemented, automated, physically validated, and closed
+at 325 Python tests, 159 focused credential-provisioning tests, and 5,895 .NET
+tests
+
+ADR-0050 exposes all seven version-1 Runtime Host RPCs through the external
+asyncio-native `hase-client` package while preserving mutual TLS, explicit
+authorization, generation-qualified targets, mutation uncertainty, no retry or
+replay, and live-only streaming semantics. Physical validation covered
+snapshot, cached and authoritative reads, same-value Property write, one CC
+Command, observation, and authorized diagnostics. Exact security restoration
+removed the diagnostic grant and disabled remote diagnostics.
+
+## Completed objective — ADR-0051 Python Client Local Distribution and Automation Workflows
+
+**Status:** [Completed] Locally distributed, installed, physically validated on
+Desktop, MiniPC, and Laptop, and closed at 494 Python tests, 161 focused
+credential-provisioning tests, and 5,897 .NET tests
+
+ADR-0051 adds versioned local wheel production, content and SHA-256 records,
+fresh installed-package validation, private persistent automation environments,
+guarded KEL-103 workflows, a dedicated MiniPC Python identity, and a dedicated
+Laptop-to-MiniPC read-only identity. The Laptop installed `hase-client 0.6.0`
+and selected exactly two external targets without discovery, fan-out, failover,
+retry, or redirection.
+
+Physical closure validated installed Laptop Health workflows against both the
+Desktop and MiniPC Runtime Hosts and one authoritative MiniPC Arduino A0 read.
+All protected Laptop custody remained unchanged. Temporary wheel-transfer and
+duplicate MiniPC private-key staging custody were removed; rollback and
+preparation evidence remain protected. Runtime Hosts and Clients were stopped,
+the KEL-103 remained CC/OFF, and the laboratory supply output remained OFF.

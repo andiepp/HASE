@@ -31,6 +31,8 @@ changes.
 - Mutual-TLS client authentication and certificate authorization
 - Reusable transport-independent .NET client contracts
 - Recovering gRPC client sessions
+- Asyncio-native Python Client with reproducible local wheel distribution,
+  isolated installed automation, and explicit Desktop/MiniPC target selection
 - WPF laptop client with:
   - Runtime-host identity and API-version display
   - Endpoint and instrument inventory
@@ -179,6 +181,8 @@ or environment-specific client configuration files.
 - [Project Status](docs/ProjectStatus.md)
 - [Roadmap](docs/Roadmap.md)
 - [Architecture Decision Records](docs/adr)
+- [Python Client](python/hase-client/README.md)
+- [ADR-0051 — Python Client Local Distribution and Automation Workflows](docs/adr/ADR-0051-Python-Client-Local-Distribution-and-Automation-Workflows.md)
 
 The capability reports under `docs` record focused implementation and physical
 validation milestones. The ADR collection records the architectural decisions

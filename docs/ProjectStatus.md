@@ -1515,6 +1515,9 @@ Relevant recent decisions:
 - ADR-0046 - Controlled KEL-103 Operating State and Setpoints.
 - ADR-0047 - Passive SCPI Instrument Health Supervision.
 - ADR-0048 - SCPI Protocol and Bytes Diagnostics.
+- ADR-0049 - Authorized Remote Runtime Diagnostics.
+- ADR-0050 - Python Automation Boundary.
+- ADR-0051 - Python Client Local Distribution and Automation Workflows.
 
 ---
 
@@ -1541,9 +1544,6 @@ The current implementation intentionally excludes:
 - additional compact scalar/event-value encodings;
 - Tailscale runtime-host discovery;
 - automatic SCPI instrument discovery and generic VISA, USBTMC, or GPIB;
-- authenticated projection of Runtime Host southbound diagnostics to remote
-  Clients;
-- Python automation;
 - diagnostic export and offline analysis;
 - remote media feedback.
 
@@ -1552,8 +1552,8 @@ The current implementation intentionally excludes:
 # Immediate Next Steps
 
 1. Select the next architectural objective through explicit approval while
-   preserving the closed ADR-0046 safety, ADR-0047 health, and ADR-0048
-   diagnostics guarantees.
+   preserving the closed ADR-0046 safety, ADR-0047 through ADR-0049 diagnostic
+   guarantees, and ADR-0050/ADR-0051 Python automation boundaries.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.

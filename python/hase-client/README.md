@@ -4,7 +4,10 @@ This directory contains the asyncio-native Python Client for the HASE Runtime
 Host. The current implementation establishes an isolated package toolchain,
 package-internal generated Python bindings, a strict external Runtime Host
 profile model, and explicit Windows credential provisioning and recovery. It
-does not yet open a Runtime Host connection or invoke hardware.
+also provides hash-bound local wheel distribution, private installed automation
+environments, guarded workflows, and explicit Desktop/MiniPC target selection
+from the Laptop. Runtime Hosts continue to own every physical connection and
+hardware operation.
 
 ## Development environment
 
@@ -360,8 +363,8 @@ prepared registry and external installation custody with:
 The readiness tool loads both profiles without reading credential contents,
 excludes the repository and installed automation roots, prints only fixed
 Boolean outcomes, and never opens a channel or performs a Runtime Host RPC.
-Creating the Laptop MiniPC credential, publishing its enrollment and grants,
-installing the 0.6.0 wheel, and physical connections remain deferred.
+Credential creation, publication, import, and physical validation are separate
+explicit transactions described below.
 
 ### Laptop-to-MiniPC credential readiness
 
@@ -424,7 +427,8 @@ certificate chain, private key, Runtime Host profile, and manifest. Runtime
 Host and Client processes remain stopped. The paired recovery tool restores
 all three active files exactly, removes credential and archive outputs, and
 retains the original 51E2B1 preparation evidence. Laptop installation,
-connection, RPCs, and hardware operations remain deferred.
+connection, RPCs, and hardware operations remain outside publication and are
+performed only by a later explicit installed-workflow validation.
 
 On Laptop `LTAEP`, `Import-HaseClientMiniPcPythonCredential.ps1` validates the
 transferred archive in place before extraction: exactly four root entries,
@@ -437,7 +441,8 @@ incoming archive is removed only after registry validation; secured import
 evidence is retained. A sanitized phase journal makes incomplete import
 explicit-recovery-only. The paired recovery tool removes only the new MiniPC
 custody and registry while refusing any changed Desktop profile. Package
-installation, channel creation, RPCs, and hardware operations remain deferred.
+installation, channel creation, RPCs, and hardware operations remain outside
+import and require a later explicit installed-workflow invocation.
 
 The publication journal records sanitized post-credential phases for custody
 creation, profile rewriting, published-scope validation, manifest creation,
@@ -460,6 +465,29 @@ accepts retained rollback evidence only when its purpose, target, original
 bytes, and SHA-256 match the still-unchanged profile exactly. The corrected
 profile is committed in place, its ACL must remain unchanged, and all three
 corrected paths are verified explicitly. Restore accepts only matching evidence.
+
+### Accepted Laptop two-target installation
+
+The accepted `hase-client 0.6.0` wheel has SHA-256
+`4abd42ccb529703560c3f8e400b50c9cd290d319671ed9040d13ac131eb4df2c`.
+It was hash-verified and installed into a fresh private Laptop automation
+environment. The external two-target registry and both strict profiles remain
+outside that installation.
+
+Physical closure selected `desktop-runtime-host` and `minipc-runtime-host`
+individually from the installed launcher. Both Health workflows received valid
+snapshots with every expected endpoint Ready. One installed
+`MiniPcAuthoritativePropertyRead` resolved and authoritatively read Arduino A0.
+Every channel closed cleanly, all workflows succeeded, and all nine protected
+Laptop registry, profile, credential, key, and trust files remained unchanged.
+
+After validation the transferred Laptop wheel and hash copies, the MiniPC
+credential transfer archive, and the duplicate MiniPC staging custody were
+removed. The installed environment, target registry, Laptop credential
+custody, rollback evidence, MiniPC preparation evidence, and MiniPC profile
+template remain. Runtime Hosts, WPF Client, and installed automation were
+stopped; the KEL-103 remained CC/OFF and the laboratory supply output remained
+OFF.
 
 ## Generated Runtime Host contract
 
