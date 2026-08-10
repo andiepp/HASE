@@ -2,9 +2,12 @@ import hase
 
 
 def test_package_exposes_the_approved_profile_surface() -> None:
-    assert hase.__version__ == "0.5.0"
+    assert hase.__version__ == "0.6.0"
     assert hase.__all__ == [
         "BooleanDataDescriptor",
+        "AutomationTarget",
+        "AutomationTargetRegistry",
+        "AutomationTargetRegistryError",
         "CachedPropertyResult",
         "CachedPropertySnapshot",
         "ByteArrayDataDescriptor",
@@ -51,6 +54,7 @@ def test_package_exposes_the_approved_profile_surface() -> None:
         "ValueRange",
         "__version__",
         "load_runtime_host_profile",
+        "load_automation_target_registry",
         "normalize_mutation_value",
         "open_runtime_host_channel",
         "project_property_operation_result",

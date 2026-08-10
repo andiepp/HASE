@@ -1,7 +1,11 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
     [string] $ProfilePath,
+
+    [string] $TargetRegistryPath,
+
+    [ValidateSet("desktop-runtime-host", "minipc-runtime-host")]
+    [string] $TargetId,
 
     [ValidateSet(
         "Health",
@@ -73,8 +77,51 @@ if ($Workflow -eq "Kel103SameStateCcCommand" `
     Write-Error "HASE automation failed: same-state-command-confirmation-required."
     exit 1
 }
-if (-not (Test-AbsolutePath -Path $ProfilePath) `
-    -or -not (Test-Path -LiteralPath $ProfilePath -PathType Leaf))
+$profileSupplied = -not [string]::IsNullOrWhiteSpace($ProfilePath)
+$registrySupplied = -not [string]::IsNullOrWhiteSpace($TargetRegistryPath)
+$targetSupplied = -not [string]::IsNullOrWhiteSpace($TargetId)
+if (($profileSupplied -and ($registrySupplied -or $targetSupplied)) `
+    -or (-not $profileSupplied -and (-not $registrySupplied -or -not $targetSupplied)))
+{
+    Write-Error "HASE automation failed: target-selection-invalid."
+    exit 1
+}
+
+$selectedProfilePath = $ProfilePath
+if ($registrySupplied)
+{
+    if (-not (Test-AbsolutePath -Path $TargetRegistryPath) `
+        -or -not (Test-Path -LiteralPath $TargetRegistryPath -PathType Leaf))
+    {
+        Write-Error "HASE automation failed: target-registry-path-invalid."
+        exit 1
+    }
+    $selectionPythonPath = $env:PYTHONPATH
+    try
+    {
+        Push-Location $PSScriptRoot
+        $env:PYTHONPATH = $null
+        $selectionOutput = @(
+            & $automationPython `
+                -m hase._automation_target_selection `
+                $TargetRegistryPath `
+                $TargetId `
+                $PSScriptRoot
+        )
+    }
+    finally
+    {
+        $env:PYTHONPATH = $selectionPythonPath
+        Pop-Location
+    }
+    if ($LASTEXITCODE -ne 0 -or $selectionOutput.Count -ne 1)
+    {
+        exit 1
+    }
+    $selectedProfilePath = [string] $selectionOutput[0]
+}
+if (-not (Test-AbsolutePath -Path $selectedProfilePath) `
+    -or -not (Test-Path -LiteralPath $selectedProfilePath -PathType Leaf))
 {
     Write-Error "HASE automation failed: profile-path-invalid."
     exit 1
@@ -89,27 +136,27 @@ try
     $env:PYTHONPATH = $null
     if ($Workflow -eq "Health")
     {
-        & $automationPython -m hase._automation_health $ProfilePath
+        & $automationPython -m hase._automation_health $selectedProfilePath
     }
     elseif ($Workflow -eq "Kel103SameValuePropertyWrite")
     {
         & $automationPython `
             -m hase._automation_same_value_property_write `
-            $ProfilePath `
+            $selectedProfilePath `
             "confirm-same-value-write"
     }
     elseif ($Workflow -eq "Kel103SameStateCcCommand")
     {
         & $automationPython `
             -m hase._automation_same_state_cc_command `
-            $ProfilePath `
+            $selectedProfilePath `
             "confirm-same-state-cc-command"
     }
     else
     {
         & $automationPython `
             -m hase._automation_minipc_authoritative_property_read `
-            $ProfilePath
+            $selectedProfilePath
     }
     if ($LASTEXITCODE -ne 0)
     {

@@ -298,6 +298,71 @@ required because the workflow cannot mutate state. It never retries,
 reconnects, reads cached data, writes, executes a Command, subscribes, enables
 diagnostics, or changes authorization.
 
+## Laptop automation target registry
+
+Version 0.6.0 adds an explicit two-target registry for Python automation that
+runs beside—but independently from—the installed WPF Client. The registry is
+external JSON configuration and contains no endpoint address, certificate, or
+private-key value itself. It maps the two exact approved target IDs to two
+strict external Runtime Host profiles:
+
+```json
+{
+  "formatVersion": 1,
+  "targets": [
+    {
+      "targetId": "desktop-runtime-host",
+      "displayName": "Desktop Runtime Host",
+      "profilePath": "<absolute-desktop-python-profile-path>"
+    },
+    {
+      "targetId": "minipc-runtime-host",
+      "displayName": "MiniPC Runtime Host",
+      "profilePath": "<absolute-minipc-python-profile-path>"
+    }
+  ]
+}
+```
+
+The loader requires exactly these two IDs, unique absolute profile paths,
+distinct Runtime Host addresses, and six distinct certificate/key custody
+paths across the profiles. Registry and profile paths must be regular files,
+must not traverse reparse points, and can be excluded from repository and
+installation roots by the caller. Both profiles are loaded strictly without
+reading credential bytes. Unknown fields, implicit targets, shared profiles,
+shared credentials, shared server pins, and automatic target selection are
+rejected.
+
+An installed launcher accepts either the existing direct `-ProfilePath` or the
+paired `-TargetRegistryPath` and `-TargetId`; supplying both modes, neither
+mode, or an incomplete registry mode is rejected. For example:
+
+```powershell
+& "<absolute-laptop-automation-directory>\Invoke-HasePythonAutomation.ps1" `
+    -Workflow Health `
+    -TargetRegistryPath "<absolute-laptop-target-registry-path>" `
+    -TargetId "desktop-runtime-host"
+```
+
+Target resolution runs only through the installed private interpreter with
+`PYTHONPATH` cleared. It selects one profile and one workflow; it never
+discovers, fans out, fails over, retries, or redirects between hosts.
+
+Before Laptop credential provisioning or physical connection, validate a
+prepared registry and external installation custody with:
+
+```powershell
+.\tools\Test-HaseClientPythonAutomationReadiness.ps1 `
+    -TargetRegistryPath "<absolute-laptop-target-registry-path>" `
+    -InstallationDirectory "<absolute-laptop-automation-directory>"
+```
+
+The readiness tool loads both profiles without reading credential contents,
+excludes the repository and installed automation roots, prints only fixed
+Boolean outcomes, and never opens a channel or performs a Runtime Host RPC.
+Creating the Laptop MiniPC credential, publishing its enrollment and grants,
+installing the 0.6.0 wheel, and physical connections remain deferred.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:

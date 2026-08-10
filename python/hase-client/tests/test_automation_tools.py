@@ -61,8 +61,29 @@ def test_launcher_uses_only_installed_environment() -> None:
 def test_launcher_rejects_invalid_external_profile() -> None:
     source = _source("Invoke-HasePythonAutomation.ps1")
     assert "profile-path-invalid" in source
-    assert "Test-AbsolutePath -Path $ProfilePath" in source
+    assert "Test-AbsolutePath -Path $selectedProfilePath" in source
     assert "HASE automation failed: unexpected-failure." in source
+
+
+def test_launcher_requires_exactly_one_explicit_target_mode() -> None:
+    source = _source("Invoke-HasePythonAutomation.ps1")
+    assert "target-selection-invalid" in source
+    assert "$profileSupplied" in source
+    assert "$registrySupplied" in source
+    assert "$targetSupplied" in source
+    assert '"desktop-runtime-host", "minipc-runtime-host"' in source
+    assert "hase._automation_target_selection" in source
+    assert "$selectedProfilePath" in source
+
+
+def test_launcher_isolates_registry_resolution_from_source_path() -> None:
+    source = _source("Invoke-HasePythonAutomation.ps1")
+    selection = source[
+        source.index("$selectionPythonPath"):source.index("$locationPushed")
+    ]
+    assert "$env:PYTHONPATH = $null" in selection
+    assert "Push-Location $PSScriptRoot" in selection
+    assert "$env:PYTHONPATH = $selectionPythonPath" in selection
 
 
 def test_launcher_requires_explicit_confirmation_only_for_write() -> None:

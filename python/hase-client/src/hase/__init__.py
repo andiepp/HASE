@@ -57,12 +57,19 @@ from hase.snapshot import StringDataDescriptor
 from hase.snapshot import Unit
 from hase.snapshot import ValueRange
 from hase.snapshot import project_runtime_host_snapshot
+from hase.targets import AutomationTarget
+from hase.targets import AutomationTargetRegistry
+from hase.targets import AutomationTargetRegistryError
+from hase.targets import load_automation_target_registry
 
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 __all__ = [
     "BooleanDataDescriptor",
+    "AutomationTarget",
+    "AutomationTargetRegistry",
+    "AutomationTargetRegistryError",
     "CachedPropertyResult",
     "CachedPropertySnapshot",
     "ByteArrayDataDescriptor",
@@ -109,6 +116,7 @@ __all__ = [
     "ValueRange",
     "__version__",
     "load_runtime_host_profile",
+    "load_automation_target_registry",
     "normalize_mutation_value",
     "open_runtime_host_channel",
     "project_property_operation_result",
