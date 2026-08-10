@@ -270,7 +270,7 @@ public sealed class PythonCredentialProvisioningPublisher
             if (addedEnrollment.GetProperty("credentialId").GetString()
                     != plan.CredentialId
                 || addedEnrollment.GetProperty("principalId").GetString()
-                    != "hase-python-automation"
+                    != plan.PrincipalId
                 || addedEnrollment.GetProperty("trustPolicyId").GetString()
                     != plan.TrustPolicyId)
             {
@@ -291,7 +291,7 @@ public sealed class PythonCredentialProvisioningPublisher
                 .Select(grant =>
                 {
                     if (grant.GetProperty("principalId").GetString()
-                        != "hase-python-automation")
+                        != plan.PrincipalId)
                     {
                         Fail("candidate-policy-invalid");
                     }

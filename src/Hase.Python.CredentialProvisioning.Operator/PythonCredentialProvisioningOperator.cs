@@ -67,7 +67,25 @@ internal static class PythonCredentialProvisioningOperator
             {
                 case "provision":
                 {
-                    ProvisionCommand command = ParseProvision(args[1..]);
+                    ProvisionCommand command = ParseProvision(
+                        args[1..], "hase-python-automation");
+                    OperatorProvisioningResult result =
+                        await operations.ProvisionAsync(command, cancellationToken)
+                            .ConfigureAwait(false);
+                    output.WriteLine("Operation            : Provision");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine($"Plan ID              : {result.PlanId}");
+                    output.WriteLine(
+                        $"Transaction ID       : {result.TransactionId}");
+                    output.WriteLine(
+                        $"Replaced outputs     : {result.ReplacedOutputs}");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
+                case "provision-laptop-minipc":
+                {
+                    ProvisionCommand command = ParseProvision(
+                        args[1..], "hase-laptop-python-minipc");
                     OperatorProvisioningResult result =
                         await operations.ProvisionAsync(command, cancellationToken)
                             .ConfigureAwait(false);
@@ -195,7 +213,9 @@ internal static class PythonCredentialProvisioningOperator
         }
     }
 
-    private static ProvisionCommand ParseProvision(string[] args)
+    private static ProvisionCommand ParseProvision(
+        string[] args,
+        string principalId)
     {
         ParsedArguments parsed = Parse(
             args, ProvisionValueNames, allowReplacementSwitch: true);
@@ -229,6 +249,7 @@ internal static class PythonCredentialProvisioningOperator
 
         return new ProvisionCommand(
             thumbprint,
+            principalId,
             parsed.Values["trust-policy-id"],
             sourceProfile,
             directory,
@@ -377,6 +398,7 @@ internal static class PythonCredentialProvisioningOperator
     {
         error.WriteLine("Usage:");
         error.WriteLine("  provision --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90> [--allow-replacement]");
+        error.WriteLine("  provision-laptop-minipc --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90>");
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
         error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
         error.WriteLine("  authorize-command-execution --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
@@ -414,7 +436,7 @@ internal sealed class SystemPythonCredentialProvisioningOperations
         var request = new PythonCredentialProvisioningPlanRequest(
             command.SigningRootThumbprint,
             material.CredentialId,
-            "hase-python-automation",
+            command.PrincipalId,
             command.TrustPolicyId,
             command.SourceProfilePath,
             command.ProvisioningDirectory,
@@ -555,6 +577,7 @@ internal interface IPythonCredentialProvisioningOperations
 
 internal sealed record ProvisionCommand(
     string SigningRootThumbprint,
+    string PrincipalId,
     string TrustPolicyId,
     string SourceProfilePath,
     string ProvisioningDirectory,

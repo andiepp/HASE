@@ -10,7 +10,8 @@ namespace Hase.Python.CredentialProvisioning;
 
 public sealed class PythonCredentialProvisioningPreparer
 {
-    private const string PrincipalId = "hase-python-automation";
+    private const string LocalPrincipalId = "hase-python-automation";
+    private const string LaptopMiniPcPrincipalId = "hase-laptop-python-minipc";
     private const string ClientAuthenticationOid = "1.3.6.1.5.5.7.3.2";
     private const string Sha256RsaOid = "1.2.840.113549.1.1.11";
 
@@ -106,7 +107,8 @@ public sealed class PythonCredentialProvisioningPreparer
                 PythonRuntimeHostProfileDocument.Load(sourceProfile);
             _ = RuntimeHostClientCredentialEnrollmentRegistryFile.Load(sourceEnrollment);
             _ = RuntimeHostAuthorizationPolicyFile.Load(sourcePolicy);
-            RejectExistingPythonAuthority(sourceEnrollment, sourcePolicy);
+            RejectExistingPythonAuthority(
+                sourceEnrollment, sourcePolicy, plan.PrincipalId);
 
             profile = new PythonRuntimeHostProfileDocument(
                 sourceProfileDocument.Address,
@@ -168,7 +170,8 @@ public sealed class PythonCredentialProvisioningPreparer
 
     internal static void ValidatePlan(PythonCredentialProvisioningPlan plan)
     {
-        if (plan.PrincipalId != PrincipalId
+        if ((plan.PrincipalId != LocalPrincipalId
+                && plan.PrincipalId != LaptopMiniPcPrincipalId)
             || plan.LeafRsaKeySize != 2048
             || plan.LeafSignatureAlgorithm != "sha256WithRSAEncryption"
             || !plan.LeafEnhancedKeyUsages.SequenceEqual([ClientAuthenticationOid])
@@ -463,16 +466,17 @@ public sealed class PythonCredentialProvisioningPreparer
 
     private static void RejectExistingPythonAuthority(
         byte[] enrollment,
-        byte[] policy)
+        byte[] policy,
+        string principalId)
     {
         using JsonDocument enrollmentDocument = JsonDocument.Parse(enrollment);
         using JsonDocument policyDocument = JsonDocument.Parse(policy);
         bool existingEnrollment = enrollmentDocument.RootElement
             .GetProperty("enrollments").EnumerateArray()
-            .Any(entry => entry.GetProperty("principalId").GetString() == PrincipalId);
+            .Any(entry => entry.GetProperty("principalId").GetString() == principalId);
         bool existingGrant = policyDocument.RootElement.GetProperty("grants")
             .EnumerateArray()
-            .Any(entry => entry.GetProperty("principalId").GetString() == PrincipalId);
+            .Any(entry => entry.GetProperty("principalId").GetString() == principalId);
         if (existingEnrollment || existingGrant)
         {
             Fail("python-authority-already-present");
@@ -497,7 +501,7 @@ public sealed class PythonCredentialProvisioningPreparer
             }
             writer.WriteStartObject();
             writer.WriteString("credentialId", plan.CredentialId);
-            writer.WriteString("principalId", PrincipalId);
+            writer.WriteString("principalId", plan.PrincipalId);
             writer.WriteString("trustPolicyId", plan.TrustPolicyId);
             writer.WriteEndObject();
             writer.WriteEndArray();
@@ -525,7 +529,7 @@ public sealed class PythonCredentialProvisioningPreparer
             foreach (string permission in plan.AuthorizationGrants)
             {
                 writer.WriteStartObject();
-                writer.WriteString("principalId", PrincipalId);
+                writer.WriteString("principalId", plan.PrincipalId);
                 writer.WriteString("permission", permission);
                 writer.WriteEndObject();
             }

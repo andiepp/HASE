@@ -68,6 +68,35 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
         AssertNoPublishedOutputs(fixture.Plan);
     }
 
+    [Fact]
+    public async Task PrepareAsync_LaptopMiniPcPlan_UsesDistinctPrincipal()
+    {
+        using Fixture fixture = await CreateFixtureAsync(
+            "hase-laptop-python-minipc");
+
+        using PythonCredentialProvisioningCandidates candidates =
+            await PrepareAsync(fixture);
+
+        var identity = new RuntimeHostClientCredentialIdentity(
+            RuntimeHostAuthenticationMechanism.MutualTls,
+            new RuntimeHostClientCredentialId(fixture.Plan.CredentialId));
+        RuntimeHostClientCredentialEnrollmentRegistry registry =
+            RuntimeHostClientCredentialEnrollmentRegistryFile.Load(
+                candidates.EnrollmentDocument.Span);
+        Assert.True(registry.TryResolve(
+            identity, Now, out RuntimeHostClientPrincipal? principal));
+        Assert.Equal("hase-laptop-python-minipc", principal!.PrincipalId);
+        RuntimeHostAuthorizationPolicy policy =
+            RuntimeHostAuthorizationPolicyFile.Load(
+                candidates.AuthorizationPolicyDocument.Span);
+        Assert.True(policy.IsGranted("hase-laptop-python-minipc",
+            RuntimeHostPermission.ReadSnapshot));
+        Assert.True(policy.IsGranted("hase-laptop-python-minipc",
+            RuntimeHostPermission.ReadAuthoritativeProperty));
+        Assert.False(policy.IsGranted("hase-laptop-python-minipc",
+            RuntimeHostPermission.WriteProperty));
+    }
+
     [Theory]
     [InlineData("profile")]
     [InlineData("enrollment")]
@@ -203,7 +232,8 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
 
     public void Dispose() => Directory.Delete(directory, recursive: true);
 
-    private async Task<Fixture> CreateFixtureAsync()
+    private async Task<Fixture> CreateFixtureAsync(
+        string principalId = "hase-python-automation")
     {
         X509Certificate2 root = CreateRoot();
         PythonClientCredentialMaterial material = PythonClientCredentialFactory.Create(
@@ -254,7 +284,7 @@ public sealed class PythonCredentialProvisioningPreparerTests : IDisposable
         var request = new PythonCredentialProvisioningPlanRequest(
             root.Thumbprint,
             material.CredentialId,
-            "hase-python-automation",
+            principalId,
             "private-network-validation-v1",
             profile,
             directory,

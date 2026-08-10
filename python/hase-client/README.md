@@ -409,6 +409,23 @@ archive, enrollment, authorization policy, and application profile remain
 unchanged. The paired restore tool removes preparation evidence only while all
 revision-locked active and absent publication state still matches the plan.
 
+`Publish-HaseMiniPcLaptopPythonCredential.ps1` consumes that plan through a
+dedicated `provision-laptop-minipc` operator command. The existing local
+`provision` command remains fixed to `hase-python-automation`; the new command
+is fixed to `hase-laptop-python-minipc`. The operator publishes one enrollment
+and exactly snapshot and authoritative-read grants against the active locked
+files. A private outer journal makes incomplete outcomes recovery-only.
+
+After credential publication, the tool rewrites only the unpublished transfer
+profile to four explicit Laptop-local certificate, key, profile, and MiniPC
+server-trust paths. It records hashes and destination paths in a transfer
+manifest and creates a Current-User-only archive containing only the client
+certificate chain, private key, Runtime Host profile, and manifest. Runtime
+Host and Client processes remain stopped. The paired recovery tool restores
+all three active files exactly, removes credential and archive outputs, and
+retains the original 51E2B1 preparation evidence. Laptop installation,
+connection, RPCs, and hardware operations remain deferred.
+
 If Laptop readiness finds a Desktop Python profile whose three custody paths
 still refer to the MiniPC user root, use the paired Laptop-only custody repair
 and restore tools. Repair requires machine `LTAEP`, exact stale-root evidence,

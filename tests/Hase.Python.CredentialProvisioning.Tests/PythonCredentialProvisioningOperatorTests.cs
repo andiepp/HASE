@@ -68,6 +68,23 @@ public sealed class PythonCredentialProvisioningOperatorTests
     }
 
     [Fact]
+    public async Task RunAsync_ProvisionLaptopMiniPc_UsesDistinctFixedPrincipal()
+    {
+        string[] args = ProvisionArguments(allowReplacement: false);
+        args[0] = "provision-laptop-minipc";
+        var operations = new StubOperations();
+
+        int exitCode = await PythonCredentialProvisioningOperator.RunAsync(
+            args, TextWriter.Null, TextWriter.Null, operations,
+            CancellationToken.None);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal("hase-laptop-python-minipc",
+            operations.ProvisionCommand!.PrincipalId);
+        Assert.False(operations.ProvisionCommand.AllowReplacement);
+    }
+
+    [Fact]
     public async Task RunAsync_Recover_DelegatesExactTargetsAndWithholdsInputs()
     {
         string[] args = RecoveryArguments();
