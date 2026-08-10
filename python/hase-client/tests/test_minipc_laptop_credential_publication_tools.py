@@ -75,6 +75,15 @@ def test_transfer_archive_uses_exact_verified_input_list() -> None:
     assert "(Get-Item -LiteralPath $transfer).Length -le 0" in text
 
 
+def test_staging_files_keep_inherited_protected_acl() -> None:
+    text = source("Publish-HaseMiniPcLaptopPythonCredential.ps1")
+    assert "(Get-Acl -LiteralPath $profile).AreAccessRulesProtected" in text
+    assert "(Get-Acl -LiteralPath $manifest).AreAccessRulesProtected" in text
+    assert "Set-PrivateFile $profile" not in text
+    assert "Set-PrivateFile $manifest" not in text
+    assert "Set-PrivateFile $transfer" in text
+
+
 def test_recovery_restores_all_active_files_and_removes_new_outputs() -> None:
     text = source("Recover-HaseMiniPcLaptopPythonCredentialPublication.ps1")
     for original in (

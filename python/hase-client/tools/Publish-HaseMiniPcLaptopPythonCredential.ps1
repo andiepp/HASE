@@ -165,7 +165,8 @@ try
     $profileDocument.clientCertificate.privateKeyPath = $laptopPrivateKey
     $profileDocument.trustedServerCertificate.certificatePath = $laptopTrustedServer
     Write-Json $profile $profileDocument
-    Set-PrivateFile $profile
+    if (-not (Get-Acl -LiteralPath $profile).AreAccessRulesProtected)
+    { throw "profile-acl" }
     $phase = "profile-rewritten"
     $state.status = $phase
     Write-Json $journal $state
@@ -205,7 +206,8 @@ try
         }
     }
     Write-Json $manifest $manifestDocument
-    Set-PrivateFile $manifest
+    if (-not (Get-Acl -LiteralPath $manifest).AreAccessRulesProtected)
+    { throw "manifest-acl" }
     $phase = "manifest-written"
     $state.status = $phase
     Write-Json $journal $state
