@@ -363,6 +363,38 @@ Boolean outcomes, and never opens a channel or performs a Runtime Host RPC.
 Creating the Laptop MiniPC credential, publishing its enrollment and grants,
 installing the 0.6.0 wheel, and physical connections remain deferred.
 
+### Laptop-to-MiniPC credential readiness
+
+The Laptop uses a new `hase-laptop-python-minipc` principal and never reuses
+the MiniPC-local `hase-python-automation` credential, either WPF Client
+credential, or any Desktop Python credential. Before credential creation, run
+the paired read-only readiness tools with every path explicit.
+
+On the stopped MiniPC, invoke
+`Test-HaseMiniPcLaptopPythonCredentialReadiness.ps1` with its active private
+network configuration and application profile, the dedicated client-authority
+manifest and rollback evidence, and new external staging, certificate, key,
+profile, transfer-archive, and rollback targets. The tool verifies the exact
+non-exported authority custody, absence of the Laptop principal and grants,
+and preservation of the MiniPC-local Python enrollment with exactly snapshot
+and authoritative-read access. All planned targets must be absent, distinct,
+outside the repository, and free of reparse-point traversal.
+
+On the stopped Laptop, invoke
+`Test-HaseClientMiniPcPythonCredentialReadiness.ps1` with its existing Desktop
+Python profile and new external paths for the 0.6.0 installation, MiniPC
+credential custody, certificate, key, profile, two-target registry, incoming
+transfer archive, and rollback directory. The existing Desktop profile is
+loaded strictly without reading credential bytes. Planned MiniPC custody must
+be absent, distinct from the Desktop profile and installation, and outside the
+repository.
+
+Both tools require a clean synchronized repository and stopped Runtime Host
+and WPF Client processes. They print only fixed Boolean outcomes and never
+create a certificate, profile, registry, archive, directory, rollback record,
+enrollment, or grant; they never open a channel or operate hardware. Issuance,
+transactional publication, transfer, and Laptop installation remain deferred.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
