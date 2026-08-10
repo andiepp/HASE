@@ -395,6 +395,20 @@ create a certificate, profile, registry, archive, directory, rollback record,
 enrollment, or grant; they never open a channel or operate hardware. Issuance,
 transactional publication, transfer, and Laptop installation remain deferred.
 
+After both readiness checks pass, the MiniPC-only
+`Initialize-HaseMiniPcLaptopPythonCredentialTransaction.ps1` tool prepares the
+Laptop transaction without issuing or publishing a credential. It requires
+machine `LABC`, reuses the strict MiniPC readiness boundary, verifies the
+dedicated non-exportable authority and active public server certificate, and
+records a Current-User-only profile template plus exact enrollment,
+authorization-policy, and application-profile originals. Its transaction plan
+revision-locks five absent publication targets and all three active files,
+identifies only `hase-laptop-python-minipc`, and records exactly snapshot and
+authoritative-read grants. The staging directory, credential files, transfer
+archive, enrollment, authorization policy, and application profile remain
+unchanged. The paired restore tool removes preparation evidence only while all
+revision-locked active and absent publication state still matches the plan.
+
 If Laptop readiness finds a Desktop Python profile whose three custody paths
 still refer to the MiniPC user root, use the paired Laptop-only custody repair
 and restore tools. Repair requires machine `LTAEP`, exact stale-root evidence,
