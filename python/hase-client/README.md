@@ -402,7 +402,11 @@ a locally matching certificate/key pair, distinct Desktop and MiniPC server
 certificates, a clean synchronized repository, and a new external rollback
 file. It changes only the three profile paths, preserves the address, records
 exact original bytes, SHA-256, and security metadata, and verifies the strict
-profile without opening a channel. Restore accepts only matching evidence.
+profile without opening a channel. A retry after a safe pre-publication failure
+accepts retained rollback evidence only when its purpose, target, original
+bytes, and SHA-256 match the still-unchanged profile exactly. The corrected
+profile is committed in place, its ACL must remain unchanged, and all three
+corrected paths are verified explicitly. Restore accepts only matching evidence.
 
 ## Generated Runtime Host contract
 
