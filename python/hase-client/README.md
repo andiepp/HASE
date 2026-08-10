@@ -395,6 +395,15 @@ create a certificate, profile, registry, archive, directory, rollback record,
 enrollment, or grant; they never open a channel or operate hardware. Issuance,
 transactional publication, transfer, and Laptop installation remain deferred.
 
+If Laptop readiness finds a Desktop Python profile whose three custody paths
+still refer to the MiniPC user root, use the paired Laptop-only custody repair
+and restore tools. Repair requires machine `LTAEP`, exact stale-root evidence,
+a locally matching certificate/key pair, distinct Desktop and MiniPC server
+certificates, a clean synchronized repository, and a new external rollback
+file. It changes only the three profile paths, preserves the address, records
+exact original bytes, SHA-256, and security metadata, and verifies the strict
+profile without opening a channel. Restore accepts only matching evidence.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
