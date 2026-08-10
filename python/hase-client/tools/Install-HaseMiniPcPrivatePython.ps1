@@ -102,7 +102,7 @@ try
 
     $installedIdentity = & $environmentPython -c `
         "import hase,platform,sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}|{platform.architecture()[0]}|{hase.__version__}')"
-    if ($LASTEXITCODE -ne 0 -or $installedIdentity.Trim() -ne "3.13.1|64bit|0.4.0")
+    if ($LASTEXITCODE -ne 0 -or $installedIdentity.Trim() -ne "3.13.1|64bit|0.5.0")
     {
         throw "validation"
     }

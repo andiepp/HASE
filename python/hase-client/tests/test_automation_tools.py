@@ -55,6 +55,7 @@ def test_launcher_uses_only_installed_environment() -> None:
     assert "hase._automation_health" in source
     assert "hase._automation_same_value_property_write" in source
     assert "hase._automation_same_state_cc_command" in source
+    assert "hase._automation_minipc_authoritative_property_read" in source
 
 
 def test_launcher_rejects_invalid_external_profile() -> None:
@@ -77,9 +78,16 @@ def test_launcher_requires_explicit_confirmation_only_for_write() -> None:
 
 def test_launcher_requires_command_specific_confirmation() -> None:
     source = _source("Invoke-HasePythonAutomation.ps1")
-    assert '"Kel103SameStateCcCommand")]' in source
+    assert '"Kel103SameStateCcCommand",' in source
     assert "same-state-command-confirmation-required" in source
     assert '"confirm-same-state-cc-command"' in source
     assert source.index("same-state-command-confirmation-required") < source.index(
         "profile-path-invalid"
     )
+
+
+def test_launcher_exposes_read_only_minipc_workflow_without_confirmation() -> None:
+    source = _source("Invoke-HasePythonAutomation.ps1")
+    assert '"MiniPcAuthoritativePropertyRead")]' in source
+    assert '$Workflow -eq "MiniPcAuthoritativePropertyRead"' not in source
+    assert "hase._automation_minipc_authoritative_property_read" in source

@@ -276,6 +276,28 @@ identities, attachment generation, timestamp, address, paths, and credentials.
 It never retries, reconnects, reads cached data, writes, executes a Command,
 subscribes, changes authorization, or changes Arduino state.
 
+### Installed MiniPC authoritative Property workflow
+
+Version 0.5.0 packages the same read-only boundary for a fresh persistent
+automation installation. After building, transferring, hash-verifying, and
+installing the wheel outside the repository, invoke only its copied launcher:
+
+```powershell
+& "<absolute-minipc-automation-directory>\Invoke-HasePythonAutomation.ps1" `
+    -Workflow MiniPcAuthoritativePropertyRead `
+    -ProfilePath "<absolute-minipc-python-profile-path>"
+```
+
+The launcher clears `PYTHONPATH`, changes its working directory to the external
+installation, and invokes only the package installed in that environment. The
+workflow gets one snapshot, resolves the current Ready Arduino A0 numeric
+descriptor, performs exactly one authoritative read, validates its `GOOD` UTC
+result against the descriptor range, and closes the channel. It needs only the
+two published MiniPC Python permissions. No confirmation switch is accepted or
+required because the workflow cannot mutate state. It never retries,
+reconnects, reads cached data, writes, executes a Command, subscribes, enables
+diagnostics, or changes authorization.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:

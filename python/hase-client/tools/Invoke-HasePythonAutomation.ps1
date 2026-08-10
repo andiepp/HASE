@@ -6,7 +6,8 @@ param(
     [ValidateSet(
         "Health",
         "Kel103SameValuePropertyWrite",
-        "Kel103SameStateCcCommand")]
+        "Kel103SameStateCcCommand",
+        "MiniPcAuthoritativePropertyRead")]
     [string] $Workflow = "Health",
 
     [switch] $ConfirmSameValueWrite,
@@ -97,12 +98,18 @@ try
             $ProfilePath `
             "confirm-same-value-write"
     }
-    else
+    elseif ($Workflow -eq "Kel103SameStateCcCommand")
     {
         & $automationPython `
             -m hase._automation_same_state_cc_command `
             $ProfilePath `
             "confirm-same-state-cc-command"
+    }
+    else
+    {
+        & $automationPython `
+            -m hase._automation_minipc_authoritative_property_read `
+            $ProfilePath
     }
     if ($LASTEXITCODE -ne 0)
     {
