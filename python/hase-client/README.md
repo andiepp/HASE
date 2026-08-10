@@ -426,6 +426,12 @@ all three active files exactly, removes credential and archive outputs, and
 retains the original 51E2B1 preparation evidence. Laptop installation,
 connection, RPCs, and hardware operations remain deferred.
 
+The publication journal records sanitized post-credential phases for custody
+creation, profile rewriting, published-scope validation, manifest creation,
+and archive creation. A failure reports only that phase and remains explicit-
+recovery-only. Transfer packaging binds an explicit four-file input list and
+verifies that a non-empty archive exists before committing the outer journal.
+
 If Laptop readiness finds a Desktop Python profile whose three custody paths
 still refer to the MiniPC user root, use the paired Laptop-only custody repair
 and restore tools. Repair requires machine `LTAEP`, exact stale-root evidence,

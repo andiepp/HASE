@@ -57,9 +57,22 @@ def test_publication_has_outer_journal_and_explicit_recovery() -> None:
     text = source("Publish-HaseMiniPcLaptopPythonCredential.ps1")
     assert "publication-journal.json" in text
     assert 'status = "created"' in text
-    assert 'status = "credential-published"' in text
-    assert 'status = "committed"' in text
+    assert '$phase = "credential-published"' in text
+    assert '$phase = "committed"' in text
+    for phase in (
+        "custody-created", "profile-rewritten", "scope-validated",
+        "manifest-written", "package-created",
+    ):
+        assert phase in text
+    assert "failed at phase '$phase'" in text
     assert "explicit recovery may be required" in text
+
+
+def test_transfer_archive_uses_exact_verified_input_list() -> None:
+    text = source("Publish-HaseMiniPcLaptopPythonCredential.ps1")
+    assert "$archiveInputs = @($certificate, $privateKey, $profile, $manifest)" in text
+    assert "-LiteralPath $archiveInputs" in text
+    assert "(Get-Item -LiteralPath $transfer).Length -le 0" in text
 
 
 def test_recovery_restores_all_active_files_and_removes_new_outputs() -> None:

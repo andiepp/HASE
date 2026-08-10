@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$phase = "preflight"
 
 function Write-Json([string] $Path, $Value)
 {
@@ -132,6 +133,9 @@ try
 
     [IO.Directory]::CreateDirectory($staging) | Out-Null
     Set-PrivateDirectory $staging
+    $phase = "custody-created"
+    $state.status = $phase
+    Write-Json $journal $state
     $policyHash = (Get-FileHash `
         -LiteralPath $authorization -Algorithm SHA256).Hash.ToLowerInvariant()
     $operator = Join-Path `
@@ -152,7 +156,8 @@ try
     & dotnet run --project $operator -c Release -- @operatorArguments `
         1>$null 2>$null 3>$null 4>$null 5>$null 6>$null
     if ($LASTEXITCODE -ne 0) { throw "credential-publication" }
-    $state.status = "credential-published"
+    $phase = "credential-published"
+    $state.status = $phase
     Write-Json $journal $state
 
     $profileDocument = Get-Content -LiteralPath $profile -Raw | ConvertFrom-Json
@@ -161,6 +166,9 @@ try
     $profileDocument.trustedServerCertificate.certificatePath = $laptopTrustedServer
     Write-Json $profile $profileDocument
     Set-PrivateFile $profile
+    $phase = "profile-rewritten"
+    $state.status = $phase
+    Write-Json $journal $state
 
     $enrollmentDocument = Get-Content -LiteralPath $enrollment -Raw | ConvertFrom-Json
     $authorizationDocument = Get-Content -LiteralPath $authorization -Raw | ConvertFrom-Json
@@ -173,6 +181,9 @@ try
         -or $laptopGrants.permission -notcontains "runtime-host.snapshot.read" `
         -or $laptopGrants.permission -notcontains "property.authoritative.read")
     { throw "published-scope" }
+    $phase = "scope-validated"
+    $state.status = $phase
+    Write-Json $journal $state
 
     $manifest = Join-Path $staging "transfer-manifest.json"
     $manifestDocument = [ordered]@{
@@ -195,12 +206,23 @@ try
     }
     Write-Json $manifest $manifestDocument
     Set-PrivateFile $manifest
+    $phase = "manifest-written"
+    $state.status = $phase
+    Write-Json $journal $state
+    $archiveInputs = @($certificate, $privateKey, $profile, $manifest)
     Compress-Archive `
-        -LiteralPath @($certificate, $privateKey, $profile, $manifest) `
+        -LiteralPath $archiveInputs `
         -DestinationPath $transfer `
         -CompressionLevel Optimal
+    if (-not (Test-Path -LiteralPath $transfer -PathType Leaf) `
+        -or (Get-Item -LiteralPath $transfer).Length -le 0)
+    { throw "transfer-package" }
     Set-PrivateFile $transfer
-    $state.status = "committed"
+    $phase = "package-created"
+    $state.status = $phase
+    Write-Json $journal $state
+    $phase = "committed"
+    $state.status = $phase
     Write-Json $journal $state
     Remove-Item -LiteralPath $journal -Force
 
@@ -218,6 +240,6 @@ try
 }
 catch
 {
-    Write-Error "MiniPC Laptop Python credential publication failed; explicit recovery may be required."
+    Write-Error "MiniPC Laptop Python credential publication failed at phase '$phase'; explicit recovery may be required."
     exit 1
 }
