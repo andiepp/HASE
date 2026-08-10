@@ -256,6 +256,26 @@ application-profile evidence, and removes only the new Python outputs, policy,
 custody directory, and outer journal. The dedicated authority, preparation
 evidence, server identity, diagnostics, and hardware state remain untouched.
 
+### MiniPC authoritative Property validation
+
+After publication and automated regression validation, start only the MiniPC
+Runtime Host and first validate one read-only snapshot. Then validate the
+second and only other Python grant with:
+
+```powershell
+.\tools\Test-HaseMiniPcPythonAuthoritativeProperty.ps1 `
+    -ProfilePath "<absolute-minipc-python-profile-path>"
+```
+
+The tool gets one snapshot, resolves exactly one current Ready
+`arduino-uno-controller-01`/`analog-input-voltage` descriptor with readable
+numeric access and a declared range, performs exactly one authoritative read,
+and requires a finite `GOOD` result with an exact UTC timestamp inside that
+range. It prints only fixed Boolean outcomes and withholds the voltage,
+identities, attachment generation, timestamp, address, paths, and credentials.
+It never retries, reconnects, reads cached data, writes, executes a Command,
+subscribes, changes authorization, or changes Arduino state.
+
 ## Generated Runtime Host contract
 
 The only authoritative protobuf source is:
