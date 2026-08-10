@@ -426,6 +426,19 @@ all three active files exactly, removes credential and archive outputs, and
 retains the original 51E2B1 preparation evidence. Laptop installation,
 connection, RPCs, and hardware operations remain deferred.
 
+On Laptop `LTAEP`, `Import-HaseClientMiniPcPythonCredential.ps1` validates the
+transferred archive in place before extraction: exactly four root entries,
+strict manifest identity and destination paths, and SHA-256 for all credential
+payloads. It extracts only into a private rollback-owned stage, validates the
+certificate/key pair, then publishes protected MiniPC custody and an exact
+Desktop/MiniPC two-target registry. Both profiles are loaded strictly without
+opening a channel, and the Desktop profile remains byte- and ACL-exact. The
+incoming archive is removed only after registry validation; secured import
+evidence is retained. A sanitized phase journal makes incomplete import
+explicit-recovery-only. The paired recovery tool removes only the new MiniPC
+custody and registry while refusing any changed Desktop profile. Package
+installation, channel creation, RPCs, and hardware operations remain deferred.
+
 The publication journal records sanitized post-credential phases for custody
 creation, profile rewriting, published-scope validation, manifest creation,
 and archive creation. A failure reports only that phase and remains explicit-
