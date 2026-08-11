@@ -70,7 +70,7 @@ python .\examples\observe_runtime_host.py `
 
 The stream supplies its own initial snapshot, followed by ordered live observations. The initial snapshot does not consume the requested count. The example can present attachment, connection-status, Property-value, and Event observations, but never replays, reconnects, resubscribes, opens diagnostics, reads or writes a Property, or executes a Command.
 
-Physical use with the Laptop MiniPC Python principal remains deferred until a separately approved increment grants the distinct `observation.subscribe` permission.
+Physical use with the Laptop MiniPC Python principal is accepted after ADR-0052 Increment 52D2 granted only the distinct `observation.subscribe` permission in addition to its existing snapshot and authoritative-Property-read grants. The resulting principal remains read-only: cached reads, Property writes, Commands, and diagnostics subscription are not authorized. Physical validation used one bounded stream and confirmed MiniPC `Controller/ButtonPressed` Event delivery; periodic Property observations may occur before or between Events, so the requested count bounds the whole Runtime Host observation stream rather than a specific Event kind.
 
 ## Development environment
 

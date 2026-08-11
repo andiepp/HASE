@@ -63,6 +63,16 @@ The dedicated authorizer preserves exact policy SHA-256 checking, atomic staged 
 
 52D2A changes repository tooling only. It does not alter external authorization, credentials, profiles, target registries, diagnostics, or hardware. Physical 52D2 validation remains deferred until the new tooling is tested, committed, pushed, and synchronized to LABC.
 
+## Increment 52D2 — Narrow Observation Authorization and Physical MiniPC Event Validation
+
+52D2 persistently extends only the existing `hase-laptop-python-minipc` principal from its exact two-grant state (`runtime-host.snapshot.read`, `property.authoritative.read`) by adding `observation.subscribe`. The accepted resulting grant set contains exactly those three permissions. `property.cached.read`, `property.write`, `command.execute`, and `diagnostics.subscribe` remain absent.
+
+The authorization transaction used the dedicated 52D2A authorizer while the MiniPC Runtime Host was stopped. The active policy changed from SHA-256 `1b048431568e1cd20c88f96184bcae328fee26890bba9611620aa7c8e07e59d1` to `2a450a398994eb58fb1e34e1abc0f9c0867add96c5d8e36f9f926b1987d33a10`; the retained external rollback file remains the exact pre-change policy with the original SHA-256. No credential, private key, profile, target registry, server trust, diagnostics authorization, or repository state was changed by the transaction.
+
+Physical validation used the installed `hase-client 0.6.0` on Laptop target `minipc-runtime-host` with one bounded ordinary observation stream. The stream's initial snapshot reported one endpoint and live sequence started at 1. Periodic same-value `built-in-led-state` and `analog-input-voltage` Property observations were present, so physical validation used a bounded count of 30 rather than assuming the first live observation would be the operator event. The contiguous sequence 1 through 30 included `Controller/ButtonPressed` Event observations at sequences 9 and 22 for `arduino-uno-01` / `arduino-uno-controller-01`; the operator confirmed two physical button presses. The example did not filter, replay, reconnect, resubscribe, open diagnostics, read or write a Property, or execute a Command.
+
+After validation the MiniPC Runtime Host was stopped. The active policy SHA-256, exact three-grant principal state, rollback SHA-256, and clean synchronized repository were reverified. The three-grant authorization is retained as the accepted operational state.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
