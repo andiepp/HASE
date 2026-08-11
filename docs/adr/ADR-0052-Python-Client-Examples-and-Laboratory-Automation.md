@@ -91,6 +91,16 @@ The dedicated authorizer requires the exact current authorization-policy SHA-256
 
 The operator adds only `authorize-laptop-minipc-property-write`; existing generic Property-write, Command, and observation verbs retain their existing behavior. `tools/Enable-HaseLaptopMiniPcPythonPropertyWrite.ps1` computes the active policy SHA-256 and invokes the already-built Release operator with `--no-build`. 52F1 changes repository source/tooling only and performs no external authorization transaction. Physical same-value validation remains deferred to 52F2 after this tooling is tested, committed, pushed, and synchronized to LABC and LTAEP.
 
+## Increment 52F2 — Narrow Property-Write Authorization and Physical Same-Value Validation
+
+52F2 persistently extends only the existing `hase-laptop-python-minipc` principal from its exact three-grant state (`runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`) by adding `property.write`. The accepted resulting grant set contains exactly those four permissions. `property.cached.read`, `command.execute`, and `diagnostics.subscribe` remain absent.
+
+The authorization transaction used the dedicated 52F1 authorizer while the MiniPC Runtime Host was stopped. The active policy changed from SHA-256 `2a450a398994eb58fb1e34e1abc0f9c0867add96c5d8e36f9f926b1987d33a10` to `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`; the retained external rollback file remains the exact pre-change policy with SHA-256 `2a450a398994eb58fb1e34e1abc0f9c0867add96c5d8e36f9f926b1987d33a10`. No credential, private key, profile, target registry, trust, diagnostics authorization, or repository state was changed by the transaction.
+
+Physical validation used the installed `hase-client 0.6.0` on Laptop target `minipc-runtime-host` against `arduino-uno-01` / `arduino-uno-controller-01` / `built-in-led-state`. The committed guarded example required `--confirm-same-value-write`, read the authoritative value as `False`, wrote exactly that same `False` value once, received a confirmed write result, performed one authoritative reconciliation read, and observed `False` again. The example exited with code 0 and reported `Reconciliation: matched`. No arbitrary new value was supplied, and no retry, replay, reconnect, cached read, Command, observation, or diagnostics operation was performed.
+
+After validation the MiniPC Runtime Host was stopped. The active policy SHA-256 remained `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`, the rollback SHA-256 remained the exact pre-52F2 value, the four-grant principal state was reverified, prohibited permissions remained absent, and the repository remained clean. The four-grant authorization is retained as the accepted operational state.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
