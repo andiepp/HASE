@@ -9,6 +9,30 @@ environments, guarded workflows, and explicit Desktop/MiniPC target selection
 from the Laptop. Runtime Hosts continue to own every physical connection and
 hardware operation.
 
+## Examples — inspect one Runtime Host
+
+ADR-0052 begins with a user-oriented read-only example that consumes only the
+public installed `hase-client 0.6.0` API. The example requires the external
+Laptop target registry and one exact target ID; it never discovers, defaults,
+fans out, fails over, redirects, retries, reconnects, or automatically selects a
+Runtime Host.
+
+Run the example with the Python interpreter from an environment where
+`hase-client 0.6.0` is installed:
+
+```powershell
+python .\examples\inspect_runtime_host.py `
+    --registry "<absolute-laptop-target-registry-path>" `
+    --target desktop-runtime-host
+```
+
+or select `minipc-runtime-host`. The program resolves exactly one target, opens
+one mutual-TLS channel, invokes `GetSnapshot` exactly once, closes the channel
+deterministically, and prints descriptor inventory only. It does not read a
+Property value, write a Property, execute a Command, subscribe to observations
+or diagnostics, change authorization, or mutate hardware. Profile paths,
+addresses, credential/trust paths and contents, Runtime Host identity,
+attachment generation, and instrument serial numbers are not printed.
 ## Development environment
 
 From this directory in an ordinary PowerShell window:

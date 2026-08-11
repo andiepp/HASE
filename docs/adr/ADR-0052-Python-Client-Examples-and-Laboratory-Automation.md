@@ -1,0 +1,38 @@
+# ADR-0052 — Python Client Examples and Laboratory Automation
+
+- Status: Accepted objective; Increment 52A
+- Date: 2026-08-10
+
+## Context
+
+ADR-0050 established the supported asyncio-native external Python Client boundary. ADR-0051 established reproducible local distribution, private installed automation, guarded workflows, and explicit Laptop selection between the Desktop and MiniPC Runtime Hosts.
+
+HASE now needs small repository-backed programs that show a user how to consume the installed public Python API without introducing another framework.
+
+## Decision
+
+Examples use only the public `hase` package API and Python standard library unless a later increment explicitly approves another dependency. Laptop target selection remains explicit through the external two-target registry and an exact target identifier. Examples do not discover Runtime Hosts, select a default target, fan out, fail over, redirect, retry, reconnect, or automatically resubscribe.
+
+Read-only examples precede mutation examples. Later Property writes and Commands retain ADR-0050/0051 uncertain-outcome, no-retry, and no-replay semantics.
+
+Examples remain repository source and are not added to the wheel merely by being introduced. Increment 52A therefore retains `hase-client 0.6.0` unchanged.
+
+## Increment 52A — Explicit Runtime Host Inventory Example
+
+52A adds `examples/inspect_runtime_host.py`. The program requires an external target-registry path and exactly one of `desktop-runtime-host` or `minipc-runtime-host`. It resolves one profile, opens one mutual-TLS channel, invokes `GetSnapshot` exactly once, closes deterministically, and presents descriptor inventory.
+
+The presentation includes API version, endpoint identity and state, instrument identity/name/kind, non-sensitive manufacturer/model/firmware metadata, Properties, Commands, Events, and numeric descriptor metadata. It deliberately does not print Runtime Host identity, attachment generation, instrument serial number, profile path, address, credential/trust paths or contents, diagnostics, or raw transport objects.
+
+52A performs no cached or authoritative Property read, Property write, Command, observation subscription, diagnostic subscription, authorization change, hardware mutation, discovery, retry, reconnection, failover, or fan-out.
+
+## Validation
+
+Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
+
+Physical validation is read-only and separately targets the Desktop and MiniPC Runtime Hosts from the Laptop. No authorization change is required. The accepted ADR-0051 inventory counts are the comparison baseline; no Property value is read during 52A validation.
+
+## Consequences
+
+- The first user-oriented Python program demonstrates the already accepted `0.6.0` public API without changing it.
+- Example code remains visibly separate from package, provisioning, and deployment tooling.
+- A later increment may add one authoritative Property-read example without changing 52A's inventory-only semantics.
