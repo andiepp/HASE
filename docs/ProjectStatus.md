@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0053
 
-**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53B implementation in progress**
+**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53C implementation in progress**
 
 - The accepted lifecycle preserves the existing principal, exact authorization
   grants, explicit Runtime Host identity, trusted-server certificate, target
@@ -26,6 +26,12 @@
   `Finalize` and `Recover` as separate explicit operator decisions. Injected
   failures after staging and every publication boundary must restore all exact
   source hashes and leave no transaction artifact.
+- Stage 53B closed at 216 focused credential-provisioning and 5,952 complete
+  .NET tests and is synchronized across all three computers.
+- Stage 53C exposes guarded `rotate-begin`, `rotate-finalize`, and
+  `rotate-recover` operations through the existing sanitized provisioning
+  operator. Every security input, source revision, principal, trust policy,
+  exact grant set, and current credential identity remains explicit.
 
 ---
 

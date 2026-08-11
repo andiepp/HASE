@@ -110,6 +110,50 @@ public sealed class PythonCredentialProvisioningOperatorTests
     }
 
     [Fact]
+    public async Task RunAsync_RotateBegin_DelegatesExactLifecycleInputs()
+    {
+        string[] args = RotationBeginArguments();
+        var operations = new StubOperations();
+        var output = new StringWriter();
+
+        int code = await PythonCredentialProvisioningOperator.RunAsync(
+            args, output, TextWriter.Null, operations, CancellationToken.None);
+
+        Assert.Equal(0, code);
+        Assert.NotNull(operations.RotationBeginCommand);
+        Assert.Equal("hase-laptop-python-minipc",
+            operations.RotationBeginCommand.PrincipalId);
+        Assert.Equal(5, operations.RotationBeginCommand.ExpectedGrants.Count);
+        Assert.Equal(TimeSpan.FromDays(90),
+            operations.RotationBeginCommand.Validity);
+        Assert.Contains("Disposition          : OverlapPublished",
+            output.ToString());
+        Assert.Contains("Rollback retained    : True", output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
+    [Theory]
+    [InlineData("rotate-finalize", "Finalized")]
+    [InlineData("rotate-recover", "RolledBack")]
+    public async Task RunAsync_RotationTerminalCommand_DelegatesAndWithholds(
+        string operation,
+        string expectedDisposition)
+    {
+        string[] args = RotationPublicationArguments(operation);
+        var operations = new StubOperations();
+        var output = new StringWriter();
+
+        int code = await PythonCredentialProvisioningOperator.RunAsync(
+            args, output, TextWriter.Null, operations, CancellationToken.None);
+
+        Assert.Equal(0, code);
+        Assert.NotNull(operations.RotationPublicationCommand);
+        Assert.Contains($"Disposition          : {expectedDisposition}",
+            output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
+    [Fact]
     public async Task RunAsync_AuthorizePropertyWrite_DelegatesAndWithholdsInputs()
     {
         string[] args = AuthorizePropertyWriteArguments();
@@ -265,6 +309,15 @@ public sealed class PythonCredentialProvisioningOperatorTests
         RecoveryArguments().Append("--allow-replacement").ToArray(),
         AuthorizePropertyWriteArguments()
             .Append("--policy-rollback").Append(P("duplicate.json")).ToArray(),
+        RotationBeginArguments()
+            .Select(value => value == "90" ? "91" : value).ToArray(),
+        RotationBeginArguments()
+            .Select(value => value.StartsWith("x509-sha256:",
+                StringComparison.Ordinal) ? "x509-sha256:invalid" : value)
+            .ToArray(),
+        RotationPublicationArguments("rotate-finalize")
+            .Select(value => value == new string('f', 64)
+                ? new string('F', 64) : value).ToArray(),
     };
 
     private static string[] ProvisionArguments(bool allowReplacement)
@@ -310,6 +363,35 @@ public sealed class PythonCredentialProvisioningOperatorTests
         "--profile-rollback", P("desktop-runtime-host.rollback.json"),
     ];
 
+    private static string[] RotationBeginArguments() =>
+    [
+        "rotate-begin",
+        "--signing-root-thumbprint", "0123456789ABCDEF0123456789ABCDEF01234567",
+        "--validity-days", "90",
+        "--principal-id", "hase-laptop-python-minipc",
+        "--trust-policy-id", "private-network-validation-v1",
+        "--expected-grants", "runtime-host.snapshot.read,property.authoritative.read,observation.subscribe,property.write,command.execute",
+        "--expected-current-credential-id", "x509-sha256:" + new string('1', 64),
+        "--expected-trusted-server-certificate-sha256", new string('2', 64),
+        .. RotationPublicationArguments("placeholder")[1..],
+    ];
+
+    private static string[] RotationPublicationArguments(string operation) =>
+    [
+        operation,
+        "--provisioning-directory", P("provisioning"),
+        "--certificate", P("certificate.pem"),
+        "--private-key", P("private-key.pem"),
+        "--profile", P("profile.json"),
+        "--enrollment", P("enrollment.json"),
+        "--authorization-policy", P("authorization.json"),
+        "--expected-certificate-sha256", new string('a', 64),
+        "--expected-private-key-sha256", new string('b', 64),
+        "--expected-profile-sha256", new string('c', 64),
+        "--expected-enrollment-sha256", new string('d', 64),
+        "--expected-authorization-policy-sha256", new string('f', 64),
+    ];
+
     private static string P(string name) => Path.GetFullPath(
         Path.Combine(Path.GetTempPath(), "hase-operator-tests", name));
 
@@ -332,6 +414,9 @@ public sealed class PythonCredentialProvisioningOperatorTests
         public AuthorizeCommandExecutionCommand? CommandExecutionCommand
             { get; private set; }
         public AuthorizeObservationCommand? ObservationCommand { get; private set; }
+        public RotationBeginCommand? RotationBeginCommand { get; private set; }
+        public RotationPublicationCommand? RotationPublicationCommand
+            { get; private set; }
         public Exception? ProvisionException { get; init; }
         public OperatorProvisioningResult ProvisioningResult { get; init; } =
             new("python-provisioning-plan-sha256:" + new string('1', 64),
@@ -362,6 +447,33 @@ public sealed class PythonCredentialProvisioningOperatorTests
         {
             RecoveryCommand = command;
             return RecoveryResult;
+        }
+
+        public Task<PythonCredentialRotationPublicationResult>
+            BeginRotationAsync(
+                RotationBeginCommand command,
+                CancellationToken cancellationToken)
+        {
+            RotationBeginCommand = command;
+            return Task.FromResult(new PythonCredentialRotationPublicationResult(
+                "0123456789abcdef0123456789abcdef",
+                "OverlapPublished", true));
+        }
+
+        public PythonCredentialRotationPublicationResult FinalizeRotation(
+            RotationPublicationCommand command)
+        {
+            RotationPublicationCommand = command;
+            return new("0123456789abcdef0123456789abcdef",
+                "Finalized", false);
+        }
+
+        public PythonCredentialRotationPublicationResult RecoverRotation(
+            RotationPublicationCommand command)
+        {
+            RotationPublicationCommand = command;
+            return new("0123456789abcdef0123456789abcdef",
+                "RolledBack", false);
         }
 
         public Task<PythonPropertyWriteAuthorizationResult>

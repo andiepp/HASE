@@ -1503,7 +1503,7 @@ Credential lifecycle work is intentionally deferred to a separate architectural 
 
 ## Active objective — ADR-0053 Python Credential Lifecycle and Recovery
 
-**Status:** [In progress] Accepted; Stage 53B rotation preparation
+**Status:** [In progress] Accepted; Stage 53C operator and deployment validation
 
 ADR-0053 extends the dedicated Python mutual-TLS provisioning boundary beyond
 initial enrollment. It adds explicit expiry classification, planned rotation,
@@ -1549,6 +1549,15 @@ Automated interruption injection covers the staged boundary, each of the four
 published files, and completed overlap publication. Every injected failure is
 required to restore the exact certificate, key, profile, enrollment, and
 policy hashes and remove all transaction artifacts.
+
+Stage 53B closed at 216 focused credential-provisioning and 5,952 complete .NET
+tests. Stage 53C exposes the composed lifecycle through the existing Windows
+operator. `rotate-begin` requires the exact current credential ID, certificate,
+key, profile, enrollment, policy and trusted-server hashes, principal, trust
+policy, grant set, signing root, and bounded validity. `rotate-finalize` and
+`rotate-recover` accept only the exact retained publication inputs. Output
+contains fixed outcomes and transaction metadata while withholding every
+deployment value.
 
 ## Agreed later objectives
 

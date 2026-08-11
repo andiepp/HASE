@@ -185,6 +185,28 @@ all five locked source hashes and leave no transaction artifact.
    MiniPC and Desktop read-only physical rotation, old-credential rejection,
    cleanup, documentation reconciliation, and closure.
 
+## Stage 53C operator boundary
+
+Stage 53B closed with 216 focused credential-provisioning and 5,952 complete
+.NET Release tests and was synchronized across all three computers. Stage 53C
+adds three explicit modes to the existing sanitized Windows provisioning
+operator:
+
+- `rotate-begin` issues one bounded replacement credential, re-inspects the
+  exact selected deployment, prepares candidates, and publishes the durable
+  overlap transaction;
+- `rotate-finalize` consumes the exact retained publication inputs only after
+  external replacement validation and removes the old enrollment; and
+- `rotate-recover` consumes those same exact inputs to restore the pre-rotation
+  state while finalization has not committed.
+
+`rotate-begin` requires explicit paths and lowercase SHA-256 revisions for the
+current certificate, private key, profile, enrollment, authorization policy,
+and trusted-server certificate, plus the current credential ID, principal,
+trust-policy ID, exact comma-separated grants, signing-root thumbprint, and
+validity. No path, address, credential value, hash input, principal, trust
+policy, or grant is printed. Finalize is never implied by successful Begin.
+
 ## Consequences
 
 - Initial provisioning remains narrow and cannot be misused as rotation.
