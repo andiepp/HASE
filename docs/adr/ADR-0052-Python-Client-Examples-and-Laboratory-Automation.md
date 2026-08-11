@@ -45,6 +45,16 @@ Any failed sample terminates the run. The example never retries, reconnects, obt
 
 Physical acceptance uses only Laptop target `minipc-runtime-host` and MiniPC Arduino A0 with `--interval 1.0 --count 5`. All five values must be finite numeric values within the descriptor range, use `V`, and have `good` quality. No authorization, profile, credential, registry, diagnostics, or hardware-state change is required.
 
+## Increment 52D1 — Bounded Live Observation Example
+
+52D1 adds `examples/observe_runtime_host.py`. The program requires the external target registry, one exact Runtime Host target, and a bounded live-observation count from 1 through 1000. It opens exactly one ordinary observation stream and does not invoke a separate snapshot RPC: the stream's required `ObservationInitialSnapshot` establishes the starting sequence and endpoint count, and does not consume the requested live-observation count.
+
+The example presents all five public observation kinds: attachment publication, attachment ending, connection-status change, Property-value change, and Event occurrence. It displays observation sequence and relevant typed payload fields while withholding Runtime Host identity/address, attachment generation, profile and credential/trust paths or contents, instrument serial numbers, raw protobuf/gRPC objects, and diagnostics.
+
+52D1 never replays, reconnects, resubscribes, opens diagnostics, reads or writes a Property, executes a Command, fans out, or fails over. The existing public client's stream ordering and gap detection remain authoritative. Stream failure, early ending, or cancellation terminates the run; bounded completion closes the channel deterministically. The package remains `hase-client 0.6.0`.
+
+Physical validation is deliberately deferred to Increment 52D2 because the accepted Laptop MiniPC Python principal does not currently possess the distinct `observation.subscribe` permission. 52D1 makes no authorization, profile, credential, registry, diagnostics, or hardware-state change.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.

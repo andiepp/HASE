@@ -55,6 +55,23 @@ python .\examples\sample_property.py `
 
 The example stops on the first failed sample and never retries, reconnects, refreshes the snapshot, falls back to cached data, writes, executes a Command, or subscribes. It prints authoritative UTC timestamps, descriptor units, and Property quality to the console only.
 
+## Example — bounded live Runtime Host observation
+
+`examples/observe_runtime_host.py` demonstrates the public installed `hase-client 0.6.0` observation stream without polling. It requires an external target registry, one exact target, and a bounded live-observation count.
+
+For example:
+
+```powershell
+python .\examples\observe_runtime_host.py `
+    --registry "<absolute-laptop-target-registry-path>" `
+    --target minipc-runtime-host `
+    --count 1
+```
+
+The stream supplies its own initial snapshot, followed by ordered live observations. The initial snapshot does not consume the requested count. The example can present attachment, connection-status, Property-value, and Event observations, but never replays, reconnects, resubscribes, opens diagnostics, reads or writes a Property, or executes a Command.
+
+Physical use with the Laptop MiniPC Python principal remains deferred until a separately approved increment grants the distinct `observation.subscribe` permission.
+
 ## Development environment
 
 From this directory in an ordinary PowerShell window:
