@@ -55,6 +55,14 @@ The example presents all five public observation kinds: attachment publication, 
 
 Physical validation is deliberately deferred to Increment 52D2 because the accepted Laptop MiniPC Python principal does not currently possess the distinct `observation.subscribe` permission. 52D1 makes no authorization, profile, credential, registry, diagnostics, or hardware-state change.
 
+## Increment 52D2A — Laptop MiniPC Narrow Observation Authorization Tooling
+
+52D2A introduces a dedicated transactional authorizer for the existing `hase-laptop-python-minipc` principal. Its required pre-state is exactly `runtime-host.snapshot.read` plus `property.authoritative.read`; its only permitted post-state change is adding `observation.subscribe`. The existing `hase-python-automation` observation authorizer remains unchanged.
+
+The dedicated authorizer preserves exact policy SHA-256 checking, atomic staged publication, rollback retention, access-control preservation, post-publication hash validation, and automatic rollback on publication failure. It rejects an already-authorized principal and any unexpected Laptop MiniPC permission set. The operator exposes a distinct `authorize-laptop-minipc-observation` verb and the PowerShell wrapper `Enable-HaseLaptopMiniPcPythonObservation.ps1`.
+
+52D2A changes repository tooling only. It does not alter external authorization, credentials, profiles, target registries, diagnostics, or hardware. Physical 52D2 validation remains deferred until the new tooling is tested, committed, pushed, and synchronized to LABC.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
