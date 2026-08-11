@@ -1094,6 +1094,12 @@ The northbound runtime-host API begins in Phase 7 under ADR-0023.
 - ADR-0047 — Passive SCPI Instrument Health Supervision — complete at 5,497
   tests.
 - ADR-0048 — SCPI Protocol and Bytes Diagnostics — complete at 5,533 tests.
+- ADR-0049 — Authorized Remote Runtime Diagnostics — complete at 5,726 tests.
+- ADR-0050 — Python Automation Boundary — complete.
+- ADR-0051 — Python Client Local Distribution and Automation Workflows — complete.
+- ADR-0052 — Python Client Examples and Laboratory Automation — complete at
+  569 Python tests and 5,924 .NET tests after physical MiniPC Property,
+  observation/Event, and Command validation.
 
 ADR-0042 closed at 4,017 automated tests with all thirty-seven combined
 physical ESP32 and Arduino Uno validation checks passing without deviation.
@@ -1473,6 +1479,27 @@ Runtime Host raw and structured SCPI Bytes presentation verified
 SCPI mutation uncertainty and no-replay behavior unchanged
 KEL-103 final state CC/OFF; external laboratory supply output OFF
 ```
+
+## Completed objective — ADR-0052 Python Client Examples and Laboratory Automation
+
+**Status:** [Completed] Implemented, automated, physically validated, and closed at 569 Python / 5,924 .NET tests
+
+ADR-0052 turns the supported installed Python Client boundary into practical repository-backed laboratory automation examples without adding a second framework. The completed examples cover explicit inventory inspection, one authoritative Property read, bounded repeated authoritative sampling, bounded live observation including Events, an explicitly confirmed same-value Property write with authoritative reconciliation, and an explicitly confirmed parameterless Command execution.
+
+The examples preserve explicit Runtime Host selection through the external target registry, current attachment-generation targeting, deterministic channel ownership, no discovery, no default target, no fan-out, no failover, and no automatic reconnect. Mutations execute once, expose uncertain outcomes, and are never retried or replayed.
+
+Physical MiniPC validation covered Arduino A0 measurement and sampling, physical button Events through live observation, a same-value `built-in-led-state` write, and one `Led/Toggle` Command with a visible one-time LED toggle. The accepted Laptop MiniPC Python principal now retains exactly snapshot read, authoritative Property read, observation subscription, Property write, and Command execution. Cached Property reads and diagnostics subscription remain absent.
+
+Closure baseline:
+
+```text
+13 focused Command-example tests pass
+569 complete Python tests pass
+188 focused credential-provisioning tests pass
+5,924 complete .NET Release tests pass
+```
+
+Credential lifecycle work is intentionally deferred to a separate architectural objective.
 
 ## Agreed later objectives
 

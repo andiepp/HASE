@@ -1,5 +1,24 @@
 # Project Status
 
+## Completed architectural objective — ADR-0052
+
+**ADR-0052 — Python Client Examples and Laboratory Automation — implemented, physically validated, and closed at 569 Python / 5,924 .NET tests**
+
+- Repository-backed examples cover explicit Runtime Host inventory, authoritative Property reads, bounded repeated sampling, bounded live observation, guarded same-value Property writes, and guarded parameterless Command execution.
+- Examples consume the installed public `hase` API and standard library only; target selection remains explicit through the external two-target registry.
+- Property and Command mutations require explicit confirmation, use the current attachment generation, invoke the mutation boundary once, surface uncertain outcomes, and never retry, replay, reconnect, fail over, or fan out.
+- Physical MiniPC validation covered Arduino A0 measurements, live observation including physical button Events, a confirmed same-value built-in LED Property write with authoritative reconciliation, and one confirmed `Led/Toggle` Command with one visible LED toggle.
+- The final `hase-laptop-python-minipc` authorization set is exactly `runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`, `property.write`, and `command.execute`; cached reads and remote diagnostics remain unauthorized.
+- The active MiniPC authorization-policy SHA-256 is `b909195329b431c44d77e6e28b24a62413cd2fcec88c2c1ca0b8b0411b16c650`. The retained pre-52G rollback remains exact at `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`.
+- Closure validation completed with 13 focused Command-example tests, 569 complete Python tests, 188 focused credential-provisioning tests, and 5,924 complete .NET Release tests.
+- Desktop, MiniPC, and Laptop repositories were clean and synchronized at the accepted 52G closure baseline before this documentation-only closure.
+
+### Next
+
+Credential rotation, expiry, replacement, revocation, and recovery belong to a separate architectural objective. ADR-0052 is closed.
+
+---
+
 ## Completed architectural objective — ADR-0049
 
 **ADR-0049 — Authorized Remote Runtime Diagnostics — implemented, physically

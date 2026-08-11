@@ -1,6 +1,6 @@
 # ADR-0052 — Python Client Examples and Laboratory Automation
 
-- Status: Accepted objective; Increment 52A
+- Status: Accepted and completed
 - Date: 2026-08-10
 
 ## Context
@@ -118,6 +118,20 @@ After starting the MiniPC Runtime Host and waiting for `arduino-uno-01` to becom
 The persistent authorization transition retained the exact five-grant state for principal `hase-laptop-python-minipc`: `runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`, `property.write`, and `command.execute`. The active Runtime Host authorization-policy SHA-256 after 52G is `b909195329b431c44d77e6e28b24a62413cd2fcec88c2c1ca0b8b0411b16c650`. The retained external rollback remains the exact pre-52G policy with SHA-256 `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`. The repository remained clean and synchronized.
 
 Automated validation before physical use completed with 13 focused Command-example tests, 569 complete Python tests, 188 focused credential-provisioning tests, and 5,924 complete .NET Release tests passing.
+
+## ADR-0052 Closure
+
+ADR-0052 is complete. The accepted Python laboratory-automation examples now cover explicit Runtime Host inventory inspection, one authoritative Property read, bounded repeated authoritative sampling, bounded live observation including Events, one explicitly confirmed same-value Property write with authoritative reconciliation, and one explicitly confirmed parameterless Command execution.
+
+The examples remain repository-backed user programs over the installed public `hase` API rather than a second automation framework. Target selection remains explicit through the external two-target registry. Mutation examples retain the established exactly-once call boundary, explicit confirmation, uncertain-outcome classification, no retry, no replay, no reconnect, and no failover semantics.
+
+Physical MiniPC validation completed for authoritative A0 reading and sampling, live observation including physical `Controller/ButtonPressed` Events, the guarded `built-in-led-state` same-value Property write, and the guarded `Led/Toggle` Command. The final Command validation produced a confirmed result and one visible Arduino built-in LED toggle. The earlier `channel-readiness-timeout` occurred before snapshot acquisition or mutation because the MiniPC Runtime Host had not been started; after starting the Host, the single physical Command attempt succeeded.
+
+The retained `hase-laptop-python-minipc` authorization state contains exactly `runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`, `property.write`, and `command.execute`. `property.cached.read` and `diagnostics.subscribe` remain absent. The active MiniPC authorization-policy SHA-256 is `b909195329b431c44d77e6e28b24a62413cd2fcec88c2c1ca0b8b0411b16c650`; the retained pre-52G rollback SHA-256 is `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`.
+
+The closure baseline is 13 focused Command-example tests, 569 complete Python tests, 188 focused credential-provisioning tests, and 5,924 complete .NET Release tests passing. Desktop, MiniPC, and Laptop repositories are clean and synchronized at the 52G closure baseline before this documentation-only closure increment.
+
+Future Python work, including credential rotation, expiry, replacement, revocation, and recovery, requires a separate architectural objective rather than extending ADR-0052.
 
 ## Validation
 
