@@ -1501,6 +1501,28 @@ Closure baseline:
 
 Credential lifecycle work is intentionally deferred to a separate architectural objective.
 
+## Active objective — ADR-0053 Python Credential Lifecycle and Recovery
+
+**Status:** [In progress] Accepted; Stage 53A lifecycle inspection
+
+ADR-0053 extends the dedicated Python mutual-TLS provisioning boundary beyond
+initial enrollment. It adds explicit expiry classification, planned rotation,
+replacement, revocation, loss and corruption recovery, emergency compromise
+replacement, installed-environment cutover, protected evidence, and independent
+Desktop/MiniPC transitions.
+
+Initial provisioning remains unchanged and continues to reject an
+already-authorized principal. Rotation is a separate lifecycle transaction:
+the new credential is temporarily enrolled for the same principal and trust
+policy, authorization remains exact and byte-stable, the installed Client
+selects and validates the replacement through a fresh session, and only then is
+the old enrollment removed and obsolete private-key custody destroyed.
+
+Stage 53A establishes the accepted decision and an offline, read-only inspector
+that proves certificate/key identity, exact enrollment, principal and trust,
+exact expected grants, trusted-server custody, UTC validity state, and source
+revisions before a later lifecycle publication is permitted.
+
 ## Agreed later objectives
 
 - Diagnostic Export and Offline Analysis.

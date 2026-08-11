@@ -1,5 +1,22 @@
 # Project Status
 
+## Active architectural objective — ADR-0053
+
+**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53A implementation in progress**
+
+- The accepted lifecycle preserves the existing principal, exact authorization
+  grants, explicit Runtime Host identity, trusted-server certificate, target
+  selection, credential custody, and multi-host independence.
+- Planned rotation uses bounded old/new enrollment overlap followed by fresh
+  replacement validation, exact old-credential revocation, rejection proof,
+  and obsolete private-key cleanup.
+- Emergency replacement never prolongs acceptance of a credential suspected of
+  compromise.
+- Stage 53A introduces a separate offline lifecycle-inspection boundary and
+  leaves the strict initial-provisioning guards unchanged.
+
+---
+
 ## Completed architectural objective — ADR-0052
 
 **ADR-0052 — Python Client Examples and Laboratory Automation — implemented, physically validated, and closed at 569 Python / 5,924 .NET tests**
@@ -15,7 +32,8 @@
 
 ### Next
 
-Credential rotation, expiry, replacement, revocation, and recovery belong to a separate architectural objective. ADR-0052 is closed.
+ADR-0053 implements credential rotation, expiry, replacement, revocation, and
+recovery as a separate architectural objective. ADR-0052 remains closed.
 
 ---
 
