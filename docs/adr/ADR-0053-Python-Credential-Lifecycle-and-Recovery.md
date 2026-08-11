@@ -1,6 +1,6 @@
 # ADR-0053 — Python Credential Lifecycle and Recovery
 
-- Status: Accepted objective; Stage 53A implementation
+- Status: Accepted objective; Stage 53B implementation
 - Date: 2026-08-11
 
 ## Context
@@ -125,6 +125,54 @@ boundary. It deliberately leaves the initial-provisioning guards unchanged.
 The inspector establishes the exact safe input state required by later rotation
 planning and publication and performs no write, enrollment change, policy
 change, connection, or hardware operation.
+
+Stage 53A closed with 204 focused credential-provisioning tests and 5,940
+complete .NET Release tests passing. The implementation was committed, pushed,
+and synchronized across all three computers.
+
+## Stage 53B rotation preparation
+
+The first integrated Stage 53B boundary prepares planned rotation entirely in
+memory. It reruns the strict lifecycle inspection, locks the profile,
+enrollment, policy, and trusted-server revisions, rejects an expired or
+not-yet-valid source, and requires a new credential identity backed by a
+matching, currently valid certificate and private key.
+
+The preparer returns disposable candidate buffers for the replacement
+certificate and key, the byte-exact current profile and authorization policy,
+an overlap enrollment containing both old and new identities for the exact
+same principal and trust policy, and a final enrollment containing the new but
+not the old identity. Both enrollment candidates are loaded through the
+authoritative Runtime Host parser and their expected resolutions are proved.
+Every candidate buffer, including non-secret configuration evidence, is zeroed
+on disposal. No file is staged or published and no Runtime Host is contacted.
+
+The paired durable publisher consumes only that prepared set. `Begin` locks the
+exact current certificate, private key, profile, enrollment, authorization
+policy, and their protected access control; makes a bounded metadata journal
+durable; stages the replacement credential, byte-exact profile, overlap
+enrollment, and final enrollment; and publishes the overlap enrollment last.
+The authorization policy is verified but never staged or written.
+
+Successful `Begin` intentionally retains the journal, exact old four-file
+backups, and final-enrollment stage across the computer boundary. This is the
+recoverable validation interval. `Recover` validates every target, stage,
+backup, derived path, hash, phase, and policy revision before restoring exact
+sources. Ambiguous or substituted evidence is left untouched.
+
+`Finalize` is a separate explicit operation after replacement-client physical
+validation. It requires the complete overlap state and unchanged policy,
+atomically selects the final enrollment, proves the old identity absent and
+the replacement present, records commitment, and removes old credential
+backups and all transaction artifacts. It never changes authorization.
+
+The rotation orchestrator composes preparation and durable `Begin` but retains
+separate explicit `Finalize` and `Recover` calls. This prevents a successful
+local publication from being mistaken for completed cross-computer validation
+or authorization to revoke the old credential. Automated fault injection
+stops after staging, after each certificate/key/profile/enrollment publication,
+and after completed overlap publication; every ordinary failure must restore
+all five locked source hashes and leave no transaction artifact.
 
 ## Planned implementation stages
 

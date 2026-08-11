@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0053
 
-**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53A implementation in progress**
+**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53B implementation in progress**
 
 - The accepted lifecycle preserves the existing principal, exact authorization
   grants, explicit Runtime Host identity, trusted-server certificate, target
@@ -12,8 +12,20 @@
   and obsolete private-key cleanup.
 - Emergency replacement never prolongs acceptance of a credential suspected of
   compromise.
-- Stage 53A introduces a separate offline lifecycle-inspection boundary and
-  leaves the strict initial-provisioning guards unchanged.
+- Stage 53A introduced a separate offline lifecycle-inspection boundary and
+  closed at 204 focused credential-provisioning and 5,940 complete .NET tests.
+- Stage 53B now prepares byte-validated overlap and final enrollment candidates,
+  replacement credential custody, and byte-exact unchanged profile and policy
+  evidence entirely in memory before any publication is permitted.
+- Durable rotation publication replaces the certificate, key, profile, and
+  overlap enrollment under one journal, retains exact originals across
+  external validation, and exposes separate explicit finalize and recovery
+  operations. Finalize installs the final enrollment and removes obsolete
+  rollback custody only after operator-controlled validation.
+- The rotation orchestrator composes preparation and `Begin` while leaving
+  `Finalize` and `Recover` as separate explicit operator decisions. Injected
+  failures after staging and every publication boundary must restore all exact
+  source hashes and leave no transaction artifact.
 
 ---
 

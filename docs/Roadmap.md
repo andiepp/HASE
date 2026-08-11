@@ -1503,7 +1503,7 @@ Credential lifecycle work is intentionally deferred to a separate architectural 
 
 ## Active objective — ADR-0053 Python Credential Lifecycle and Recovery
 
-**Status:** [In progress] Accepted; Stage 53A lifecycle inspection
+**Status:** [In progress] Accepted; Stage 53B rotation preparation
 
 ADR-0053 extends the dedicated Python mutual-TLS provisioning boundary beyond
 initial enrollment. It adds explicit expiry classification, planned rotation,
@@ -1522,6 +1522,33 @@ Stage 53A establishes the accepted decision and an offline, read-only inspector
 that proves certificate/key identity, exact enrollment, principal and trust,
 exact expected grants, trusted-server custody, UTC validity state, and source
 revisions before a later lifecycle publication is permitted.
+
+Stage 53A closed at 204 focused credential-provisioning and 5,940 complete .NET
+tests. Stage 53B begins with a separate in-memory rotation preparer. It
+re-inspects and revision-locks the complete selected deployment, validates a
+new and distinct certificate/private-key pair, creates an overlap enrollment
+containing exactly the old and new credential for the same principal and trust
+policy, creates the final enrollment with only the replacement, and carries
+the profile and authorization policy byte-exact. It publishes no file and
+therefore cannot create a partial cross-computer transition.
+
+The durable Stage 53B publisher begins only from those locked candidates. It
+records a bounded metadata-only journal before staging, preserves exact hashes
+and access control for all four replaced files, publishes the overlap
+enrollment last, and deliberately retains the originals and final-enrollment
+candidate across external Client transfer and validation. Explicit rollback
+restores every exact source. Explicit finalization requires the complete
+candidate state and unchanged authorization policy, replaces only the overlap
+enrollment with the validated final enrollment, proves the old identity absent
+and the replacement present, and then removes obsolete backups and transaction
+artifacts.
+
+The Stage 53B orchestration boundary composes strict reinspection, candidate
+preparation, and durable `Begin` without hiding finalization or recovery.
+Automated interruption injection covers the staged boundary, each of the four
+published files, and completed overlap publication. Every injected failure is
+required to restore the exact certificate, key, profile, enrollment, and
+policy hashes and remove all transaction artifacts.
 
 ## Agreed later objectives
 

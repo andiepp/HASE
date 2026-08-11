@@ -93,6 +93,8 @@ public sealed class PythonCredentialLifecycleInspector
                             ? 0
                             : (int)Math.Floor(remaining.TotalDays),
                         grants,
+                        Sha256(certificateBytes),
+                        Sha256(privateKeyBytes),
                         Sha256(profileBytes),
                         await HashFileAsync(validated.EnrollmentPath,
                             cancellationToken).ConfigureAwait(false),

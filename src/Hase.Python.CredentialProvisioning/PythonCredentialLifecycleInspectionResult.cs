@@ -9,6 +9,8 @@ public sealed record PythonCredentialLifecycleInspectionResult(
     DateTimeOffset NotAfterUtc,
     int RemainingWholeDays,
     IReadOnlyList<string> AuthorizationGrants,
+    string ClientCertificateSha256,
+    string ClientPrivateKeySha256,
     string ProfileSha256,
     string EnrollmentSha256,
     string AuthorizationPolicySha256,
