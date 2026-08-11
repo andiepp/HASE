@@ -88,6 +88,24 @@ python .\examples\write_same_value_property.py `
 
 After one snapshot and one initial authoritative read, a confirmed successful write is followed by one authoritative reconciliation read. Rejected or uncertain mutation outcomes stop immediately; there is no retry, replay, reconnect, second write, snapshot refresh, cached read, Command, observation, or diagnostics operation. Physical MiniPC use remains deferred until a separately approved increment grants the distinct `property.write` permission to the Laptop MiniPC Python principal.
 
+## Example — guarded parameterless Command execution
+
+`examples/execute_command.py` demonstrates one explicit parameterless Command mutation through the public API. It requires exact target, endpoint, instrument and Command path selection plus `--confirm-command-execution`. A successful run obtains one snapshot and executes the selected Command exactly once. Rejected or uncertain outcomes stop immediately; there is no retry, replay, reconnect, second snapshot, Property write, observation, or diagnostics operation.
+
+Example shape:
+
+```powershell
+python .\examples\execute_command.py `
+    --registry "<absolute-target-registry-path>" `
+    --target minipc-runtime-host `
+    --endpoint arduino-uno-01 `
+    --instrument arduino-uno-controller-01 `
+    --command Led Toggle `
+    --confirm-command-execution
+```
+
+The exact Command path must match the descriptor published by the selected Runtime Host. Physical use requires the separate `command.execute` authorization established by ADR-0052 Increment 52G.
+
 ## Development environment
 
 From this directory in an ordinary PowerShell window:

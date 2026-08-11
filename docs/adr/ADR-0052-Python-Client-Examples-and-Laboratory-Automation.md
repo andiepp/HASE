@@ -101,6 +101,14 @@ Physical validation used the installed `hase-client 0.6.0` on Laptop target `min
 
 After validation the MiniPC Runtime Host was stopped. The active policy SHA-256 remained `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`, the rollback SHA-256 remained the exact pre-52F2 value, the four-grant principal state was reverified, prohibited permissions remained absent, and the repository remained clean. The four-grant authorization is retained as the accepted operational state.
 
+## Increment 52G — Guarded Command Execution Example and Physical MiniPC Validation
+
+52G completes the first user-oriented Python Command boundary in one integrated increment. `examples/execute_command.py` requires an external target registry, exact Runtime Host target, endpoint, instrument, exact Command path segments, and explicit `--confirm-command-execution`. It accepts only parameterless Commands, obtains exactly one snapshot, retains that attachment generation, invokes `RuntimeHostClient.execute_command` exactly once, and requires a successful Command result. Rejected and uncertain mutation outcomes terminate immediately without retry, replay, reconnect, second snapshot, or second Command invocation.
+
+52G also adds a dedicated policy-only authorizer for principal `hase-laptop-python-minipc`. Its accepted pre-state is exactly `runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`, and `property.write`; its only permitted post-state addition is `command.execute`. The transaction retains exact SHA-256 revision locking, staged durable publication, atomic replacement, exact rollback retention, and access-control verification. It does not modify credentials, profiles, target registries, trust configuration, diagnostics configuration, or hardware.
+
+Physical acceptance is performed only after automated regressions, commit/push, and synchronization. The intended MiniPC validation target is the argumentless Arduino LED Toggle Command on `arduino-uno-01` / `arduino-uno-controller-01`, selected by its exact descriptor path. One successful confirmed execution is sufficient; any uncertain outcome is a hard stop and must not be repeated automatically. After validation, the five-grant authorization is retained as the accepted operational state and the exact pre-52G rollback remains external recovery evidence.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.

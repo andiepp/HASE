@@ -136,6 +136,27 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
+                case "authorize-laptop-minipc-command-execution":
+                {
+                    AuthorizeObservationCommand command =
+                        ParseAuthorizeObservation(args[1..]);
+                    _ = await new PythonLaptopMiniPcCommandExecutionAuthorizer()
+                        .AuthorizeAsync(
+                            new(
+                                command.AuthorizationPolicyPath,
+                                command.ExpectedAuthorizationPolicySha256,
+                                command.RollbackPath),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    output.WriteLine("Operation            : Authorize Laptop MiniPC Command execution");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine("Principal            : hase-laptop-python-minipc");
+                    output.WriteLine("Permission           : command.execute");
+                    output.WriteLine("Rollback retained    : True");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
+
                 case "authorize-laptop-minipc-property-write":
                 {
                     AuthorizeObservationCommand command =
@@ -240,6 +261,10 @@ internal static class PythonCredentialProvisioningOperator
             return Failure(error, exception.Code);
         }
         catch (PythonCommandExecutionAuthorizationException exception)
+        {
+            return Failure(error, exception.Code);
+        }
+        catch (PythonLaptopMiniPcCommandExecutionAuthorizationException exception)
         {
             return Failure(error, exception.Code);
         }
@@ -448,6 +473,7 @@ internal static class PythonCredentialProvisioningOperator
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
         error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
         error.WriteLine("  authorize-command-execution --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
+        error.WriteLine("  authorize-laptop-minipc-command-execution --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
         error.WriteLine("  authorize-laptop-minipc-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
         error.WriteLine("  authorize-laptop-minipc-observation --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
         error.WriteLine("  authorize-observation --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
