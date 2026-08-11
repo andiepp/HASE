@@ -109,6 +109,16 @@ After validation the MiniPC Runtime Host was stopped. The active policy SHA-256 
 
 Physical acceptance is performed only after automated regressions, commit/push, and synchronization. The intended MiniPC validation target is the argumentless Arduino LED Toggle Command on `arduino-uno-01` / `arduino-uno-controller-01`, selected by its exact descriptor path. One successful confirmed execution is sufficient; any uncertain outcome is a hard stop and must not be repeated automatically. After validation, the five-grant authorization is retained as the accepted operational state and the exact pre-52G rollback remains external recovery evidence.
 
+## Increment 52G — Physical Command Validation Closure
+
+52G physical validation completed successfully after the integrated repository implementation and automated regression pass. The first Laptop attempt returned `channel-readiness-timeout` because the MiniPC Runtime Host had not yet been started; this failure occurred before snapshot acquisition or Command execution, so no mutation was sent and the retry was safe.
+
+After starting the MiniPC Runtime Host and waiting for `arduino-uno-01` to become Ready, the Laptop example executed the exact parameterless Command `Led/Toggle` for `arduino-uno-01` / `arduino-uno-controller-01`. The example reported `Target: MiniPC Runtime Host`, `Command: Toggle Built-in LED`, `Command path: Led/Toggle`, `Execution: confirmed`, and exit code 0. The operator independently confirmed that the Arduino built-in LED visibly toggled exactly once.
+
+The persistent authorization transition retained the exact five-grant state for principal `hase-laptop-python-minipc`: `runtime-host.snapshot.read`, `property.authoritative.read`, `observation.subscribe`, `property.write`, and `command.execute`. The active Runtime Host authorization-policy SHA-256 after 52G is `b909195329b431c44d77e6e28b24a62413cd2fcec88c2c1ca0b8b0411b16c650`. The retained external rollback remains the exact pre-52G policy with SHA-256 `74d1ff1173960f7e39792ce187ef9c9a1a92df5d73094fcea66bf006a3d996b5`. The repository remained clean and synchronized.
+
+Automated validation before physical use completed with 13 focused Command-example tests, 569 complete Python tests, 188 focused credential-provisioning tests, and 5,924 complete .NET Release tests passing.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
