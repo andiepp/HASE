@@ -38,6 +38,23 @@ attachment generation, and instrument serial numbers are not printed.
 `examples/read_property.py` demonstrates one explicit authoritative Property read using the installed `hase-client 0.6.0` public API. Supply the external registry and exact target, endpoint, instrument, and Property identifiers. The example obtains one snapshot to bind the current attachment generation and then performs one authoritative read. It never retries, reconnects, falls back to cached data, writes, executes a Command, or subscribes.
 
 
+## Example — bounded repeated Property sampling
+
+`examples/sample_property.py` extends the single-read example into a bounded measurement session using only the installed `hase-client 0.6.0` public API. It requires explicit target, endpoint, instrument, Property, interval, and count; opens one channel; obtains one snapshot; reuses one attachment generation; and performs sequential authoritative reads on a monotonic schedule.
+
+```powershell
+python .\examples\sample_property.py `
+    --registry "<absolute-laptop-target-registry-path>" `
+    --target minipc-runtime-host `
+    --endpoint arduino-uno-01 `
+    --instrument arduino-uno-controller-01 `
+    --property analog-input-voltage `
+    --interval 1.0 `
+    --count 5
+```
+
+The example stops on the first failed sample and never retries, reconnects, refreshes the snapshot, falls back to cached data, writes, executes a Command, or subscribes. It prints authoritative UTC timestamps, descriptor units, and Property quality to the console only.
+
 ## Development environment
 
 From this directory in an ordinary PowerShell window:

@@ -35,6 +35,16 @@ The example prints target and Property display names, the confirmed value, descr
 
 Physical acceptance uses only Laptop target `minipc-runtime-host` and MiniPC Arduino A0. The result must be finite numeric, `GOOD`, within the descriptor range, and use the descriptor-provided voltage unit. No authorization, profile, credential, registry, diagnostics, or hardware-state change is required.
 
+## Increment 52C — Bounded Repeated Measurement Example
+
+52C adds `examples/sample_property.py`. The program requires the external target registry plus exact target, endpoint, instrument, Property, interval, and count. Interval is bounded to 0.1 through 3600 seconds and count to 1 through 1000. The Python program owns the schedule; no scheduling behavior is added to HASE.
+
+The example opens one channel, obtains exactly one snapshot, resolves one current readable `PropertyTarget`, and reuses that attachment generation for the complete bounded run. A successful run performs exactly `count` sequential authoritative reads. Sample starts are anchored to a monotonic schedule; reads never overlap, and an already-due sample begins immediately after the preceding read finishes.
+
+Any failed sample terminates the run. The example never retries, reconnects, obtains another snapshot, refreshes attachment generation, skips a failed sample, reads cached data, writes, executes a Command, subscribes, fans out, or fails over. Output uses authoritative HASE UTC timestamps, descriptor-provided numeric units, and Property quality for every sample. No file or plot is produced. The package remains `hase-client 0.6.0`.
+
+Physical acceptance uses only Laptop target `minipc-runtime-host` and MiniPC Arduino A0 with `--interval 1.0 --count 5`. All five values must be finite numeric values within the descriptor range, use `V`, and have `good` quality. No authorization, profile, credential, registry, diagnostics, or hardware-state change is required.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
