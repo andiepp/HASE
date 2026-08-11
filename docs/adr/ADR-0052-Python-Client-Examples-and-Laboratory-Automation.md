@@ -83,6 +83,14 @@ Rejected and uncertain mutation outcomes are surfaced through the existing publi
 
 52E changes repository example/test/documentation source only. It does not change external authorization, credentials, profiles, target registries, Runtime Host state, or hardware. Physical validation is deferred because the accepted Laptop MiniPC Python principal does not possess `property.write`; a separately approved increment must address that authorization boundary before physical use.
 
+## Increment 52F1 — Dedicated Laptop MiniPC Property-Write Authorization Tooling
+
+52F1 adds repository tooling for one narrow policy-only authorization transition for principal `hase-laptop-python-minipc`. The accepted pre-state is exactly `runtime-host.snapshot.read`, `property.authoritative.read`, and `observation.subscribe`; the only added permission is `property.write`. Any missing, reordered, duplicate, already-authorized, or unexpected target-principal grant state is rejected.
+
+The dedicated authorizer requires the exact current authorization-policy SHA-256, writes a staged candidate, rechecks the active revision, publishes atomically with `File.Replace`, retains an exact rollback copy, and verifies policy hash plus rollback hash and security metadata. It changes only the Runtime Host authorization policy; it does not modify an application profile, credentials, certificates, private keys, target registries, trust configuration, diagnostics configuration, or hardware state.
+
+The operator adds only `authorize-laptop-minipc-property-write`; existing generic Property-write, Command, and observation verbs retain their existing behavior. `tools/Enable-HaseLaptopMiniPcPythonPropertyWrite.ps1` computes the active policy SHA-256 and invokes the already-built Release operator with `--no-build`. 52F1 changes repository source/tooling only and performs no external authorization transaction. Physical same-value validation remains deferred to 52F2 after this tooling is tested, committed, pushed, and synchronized to LABC and LTAEP.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.
