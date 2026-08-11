@@ -73,6 +73,16 @@ Physical validation used the installed `hase-client 0.6.0` on Laptop target `min
 
 After validation the MiniPC Runtime Host was stopped. The active policy SHA-256, exact three-grant principal state, rollback SHA-256, and clean synchronized repository were reverified. The three-grant authorization is retained as the accepted operational state.
 
+## Increment 52E — Guarded Same-Value Property Write Example
+
+52E adds `examples/write_same_value_property.py` as the first user-oriented mutation example. The program requires an external target registry, exact target, endpoint, instrument and Property identifiers, plus the explicit `--confirm-same-value-write` switch. It has no value argument: confirmation authorizes only one write of the current authoritative value back to the same Property.
+
+A successful run opens one channel, obtains exactly one snapshot, requires one Ready `READ_WRITE` Property, performs one initial authoritative read, writes that exact returned value exactly once, requires the returned confirmed value to match exactly, performs one authoritative reconciliation read, and requires that value to match exactly. The one snapshot attachment generation is retained throughout.
+
+Rejected and uncertain mutation outcomes are surfaced through the existing public mutation classification and terminate immediately. No mutation failure path retries, replays, reconnects, refreshes the snapshot, writes again, or automatically reconciles an uncertain outcome. The example never reads cached data, executes a Command, subscribes to observations or diagnostics, fans out, or fails over. Numeric presentation uses the descriptor-provided native unit; byte-array values are not printed. The package remains `hase-client 0.6.0`.
+
+52E changes repository example/test/documentation source only. It does not change external authorization, credentials, profiles, target registries, Runtime Host state, or hardware. Physical validation is deferred because the accepted Laptop MiniPC Python principal does not possess `property.write`; a separately approved increment must address that authorization boundary before physical use.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.

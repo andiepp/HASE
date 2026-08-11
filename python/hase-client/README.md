@@ -72,6 +72,22 @@ The stream supplies its own initial snapshot, followed by ordered live observati
 
 Physical use with the Laptop MiniPC Python principal is accepted after ADR-0052 Increment 52D2 granted only the distinct `observation.subscribe` permission in addition to its existing snapshot and authoritative-Property-read grants. The resulting principal remains read-only: cached reads, Property writes, Commands, and diagnostics subscription are not authorized. Physical validation used one bounded stream and confirmed MiniPC `Controller/ButtonPressed` Event delivery; periodic Property observations may occur before or between Events, so the requested count bounds the whole Runtime Host observation stream rather than a specific Event kind.
 
+## Example — guarded same-value Property write
+
+`examples/write_same_value_property.py` is the first mutation example. It requires an external target registry, exact target, endpoint, instrument and Property, plus `--confirm-same-value-write`. There is deliberately no value argument: the example reads the current authoritative value and can write only that exact value back once.
+
+```powershell
+python .\examples\write_same_value_property.py `
+    --registry "<absolute-laptop-target-registry-path>" `
+    --target minipc-runtime-host `
+    --endpoint arduino-uno-01 `
+    --instrument arduino-uno-controller-01 `
+    --property built-in-led-state `
+    --confirm-same-value-write
+```
+
+After one snapshot and one initial authoritative read, a confirmed successful write is followed by one authoritative reconciliation read. Rejected or uncertain mutation outcomes stop immediately; there is no retry, replay, reconnect, second write, snapshot refresh, cached read, Command, observation, or diagnostics operation. Physical MiniPC use remains deferred until a separately approved increment grants the distinct `property.write` permission to the Laptop MiniPC Python principal.
+
 ## Development environment
 
 From this directory in an ordinary PowerShell window:
