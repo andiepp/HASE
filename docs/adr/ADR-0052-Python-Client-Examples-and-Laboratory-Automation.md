@@ -25,6 +25,16 @@ The presentation includes API version, endpoint identity and state, instrument i
 
 52A performs no cached or authoritative Property read, Property write, Command, observation subscription, diagnostic subscription, authorization change, hardware mutation, discovery, retry, reconnection, failover, or fan-out.
 
+## Increment 52B — Authoritative Property Read Example
+
+52B adds `examples/read_property.py`. The program requires the external target registry plus exact target, endpoint, instrument, and Property identifiers. It obtains exactly one snapshot, requires the endpoint to be Ready and the Property readable, constructs the current `PropertyTarget` from the snapshot attachment generation, performs exactly one authoritative Property read, and closes deterministically.
+
+The example prints target and Property display names, the confirmed value, descriptor-provided native unit for numeric Properties, quality, and authoritative UTC timestamp. It withholds Runtime Host identity/address, profile and credential/trust paths or contents, attachment generation, instrument serial number, raw transport objects, and remote diagnostics.
+
+52B never reads cached data, writes, executes a Command, subscribes, retries, reconnects, obtains a second snapshot, fails over, or fans out. An attachment-not-current result is reported rather than reconciled automatically. The package remains `hase-client 0.6.0`.
+
+Physical acceptance uses only Laptop target `minipc-runtime-host` and MiniPC Arduino A0. The result must be finite numeric, `GOOD`, within the descriptor range, and use the descriptor-provided voltage unit. No authorization, profile, credential, registry, diagnostics, or hardware-state change is required.
+
 ## Validation
 
 Automated coverage proves mandatory explicit target selection, deterministic sanitized presentation, one selected profile, one snapshot, deterministic channel closure on success and snapshot failure, and absence of non-snapshot client operations from the example source.

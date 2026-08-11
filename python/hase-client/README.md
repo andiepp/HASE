@@ -33,6 +33,11 @@ Property value, write a Property, execute a Command, subscribe to observations
 or diagnostics, change authorization, or mutate hardware. Profile paths,
 addresses, credential/trust paths and contents, Runtime Host identity,
 attachment generation, and instrument serial numbers are not printed.
+## Example — authoritative Property read
+
+`examples/read_property.py` demonstrates one explicit authoritative Property read using the installed `hase-client 0.6.0` public API. Supply the external registry and exact target, endpoint, instrument, and Property identifiers. The example obtains one snapshot to bind the current attachment generation and then performs one authoritative read. It never retries, reconnects, falls back to cached data, writes, executes a Command, or subscribes.
+
+
 ## Development environment
 
 From this directory in an ordinary PowerShell window:
