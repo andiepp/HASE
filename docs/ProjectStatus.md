@@ -32,6 +32,9 @@
   `rotate-recover` operations through the existing sanitized provisioning
   operator. Every security input, source revision, principal, trust policy,
   exact grant set, and current credential identity remains explicit.
+- Stage 53C2A corrects the physical cross-computer custody assumption: the old
+  Laptop private key remains on the Laptop, while a metadata-only request lets
+  the MiniPC publish overlap enrollment and issue replacement-only custody.
 
 ---
 

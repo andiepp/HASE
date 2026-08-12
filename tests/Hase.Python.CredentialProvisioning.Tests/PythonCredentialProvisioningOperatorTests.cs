@@ -154,6 +154,21 @@ public sealed class PythonCredentialProvisioningOperatorTests
     }
 
     [Fact]
+    public async Task RunAsync_CrossComputerRotationBegin_DelegatesAndWithholds()
+    {
+        string[] args = CrossRotationBeginArguments();
+        var output = new StringWriter();
+        int code = await PythonCredentialProvisioningOperator.RunAsync(args,
+            output, TextWriter.Null, new StubOperations(),
+            CancellationToken.None);
+        Assert.Equal(0, code);
+        Assert.Contains("Disposition          : OverlapPublished",
+            output.ToString());
+        Assert.Contains("Transfer ready       : True", output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
+    [Fact]
     public async Task RunAsync_AuthorizePropertyWrite_DelegatesAndWithholdsInputs()
     {
         string[] args = AuthorizePropertyWriteArguments();
@@ -392,6 +407,22 @@ public sealed class PythonCredentialProvisioningOperatorTests
         "--expected-authorization-policy-sha256", new string('f', 64),
     ];
 
+    private static string[] CrossRotationBeginArguments() =>
+    [
+        "rotate-cross-computer-begin",
+        "--rotation-request", P("rotation-request.json"),
+        "--profile-template", P("profile-template.json"),
+        "--enrollment", P("enrollment.json"),
+        "--authorization-policy", P("authorization.json"),
+        "--provisioning-directory", P("cross-rotation"),
+        "--transfer-archive", P("cross-rotation/replacement.zip"),
+        "--signing-root-thumbprint", "0123456789ABCDEF0123456789ABCDEF01234567",
+        "--trust-policy-id", "private-network-validation-v1",
+        "--validity-days", "90",
+        "--expected-enrollment-sha256", new string('a', 64),
+        "--expected-authorization-policy-sha256", new string('b', 64),
+    ];
+
     private static string P(string name) => Path.GetFullPath(
         Path.Combine(Path.GetTempPath(), "hase-operator-tests", name));
 
@@ -459,6 +490,14 @@ public sealed class PythonCredentialProvisioningOperatorTests
                 "0123456789abcdef0123456789abcdef",
                 "OverlapPublished", true));
         }
+
+        public Task<PythonCrossComputerRotationBeginResult>
+            BeginCrossComputerRotationAsync(
+                CrossRotationBeginCommand command,
+                CancellationToken cancellationToken) =>
+            Task.FromResult(new PythonCrossComputerRotationBeginResult(
+                "0123456789abcdef0123456789abcdef",
+                "OverlapPublished", true, true));
 
         public PythonCredentialRotationPublicationResult FinalizeRotation(
             RotationPublicationCommand command)

@@ -207,6 +207,22 @@ trust-policy ID, exact comma-separated grants, signing-root thumbprint, and
 validity. No path, address, credential value, hash input, principal, trust
 policy, or grant is printed. Finalize is never implied by successful Begin.
 
+### Cross-computer custody correction
+
+Physical Stage 53C preflight proved that the installed Laptop credential and
+the MiniPC enrollment and signing authority deliberately occupy different
+computers. The local four-file publisher remains valid for colocated
+deployments, but it is not used to copy or reconstruct the Laptop's old private
+key on the MiniPC.
+
+The cross-computer Begin boundary consumes a protected metadata-only Laptop
+request. It validates the exact profile template, current enrollment, exact
+five-grant authorization, Runtime Host identity evidence, trust policy,
+signing authority, and source revisions. It publishes only overlap enrollment
+on the MiniPC and creates a protected four-entry archive containing the new
+certificate, new private key, unchanged profile, and strict manifest.
+Finalization and recovery remain later explicit operations.
+
 ## Consequences
 
 - Initial provisioning remains narrow and cannot be misused as rotation.

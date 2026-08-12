@@ -298,6 +298,56 @@ public sealed class PythonCredentialLifecycleInspectorTests : IDisposable
     }
 
     [Fact]
+    public async Task CrossComputerRotationBegin_PublishesOnlyOverlapAndPackage()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(60));
+        string requestPath = Path.Combine(directory, "cross-request.json");
+        string packageDirectory = Path.Combine(directory, "cross");
+        string archivePath = Path.Combine(packageDirectory, "replacement.zip");
+        Directory.CreateDirectory(packageDirectory);
+        string profileHash = HashFile(fixture.Request.ProfilePath);
+        string enrollmentHash = HashFile(fixture.Request.EnrollmentPath);
+        string policyHash = HashFile(fixture.Request.AuthorizationPolicyPath);
+        File.WriteAllText(requestPath, JsonSerializer.Serialize(new
+        {
+            schemaVersion = 1,
+            purpose = "hase-laptop-minipc-python-cross-computer-rotation-request",
+            repositoryHead = new string('a', 40),
+            targetId = "minipc-runtime-host",
+            principalId = "hase-laptop-python-minipc",
+            expectedCurrentCredentialId = fixture.Material.CredentialId,
+            expectedGrants = fixture.ExpectedGrants,
+            profileSha256 = profileHash,
+            certificateSha256 = HashFile(fixture.CertificatePath),
+            privateKeySha256 = HashFile(fixture.PrivateKeyPath),
+            trustedServerCertificateSha256 = new string('b', 64),
+            createdUtc = Now.ToString("O"),
+        }));
+        var request = new PythonCrossComputerRotationBeginRequest(
+            requestPath, fixture.Request.ProfilePath,
+            fixture.Request.EnrollmentPath,
+            fixture.Request.AuthorizationPolicyPath, packageDirectory,
+            archivePath, new string('1', 40),
+            "private-network-validation-v1", TimeSpan.FromDays(90),
+            enrollmentHash, policyHash);
+
+        PythonCrossComputerRotationBeginResult result =
+            await new PythonCrossComputerRotationBegin().BeginAsync(
+                request, fixture.Root, Now);
+
+        Assert.Equal("OverlapPublished", result.Disposition);
+        Assert.True(result.RollbackRetained);
+        Assert.True(result.TransferArchiveCreated);
+        Assert.True(File.Exists(archivePath));
+        AssertEnrollment(File.ReadAllBytes(fixture.Request.EnrollmentPath),
+            fixture.Material.CredentialId, expected: true);
+        Assert.Equal(policyHash,
+            HashFile(fixture.Request.AuthorizationPolicyPath));
+        Assert.True(File.Exists(Path.Combine(packageDirectory,
+            "cross-computer-rotation.transaction.json")));
+    }
+
+    [Fact]
     public void ClassifyReturnsActiveOutsideRotationWindow()
     {
         Assert.Equal(

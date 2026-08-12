@@ -1559,6 +1559,12 @@ policy, grant set, signing root, and bounded validity. `rotate-finalize` and
 contains fixed outcomes and transaction metadata while withholding every
 deployment value.
 
+Physical Stage 53C2A preflight found and corrected the colocated-custody
+assumption for Laptop-to-MiniPC rotation. The old Laptop private key never
+returns to the MiniPC. A protected metadata request binds its identity and
+revisions; the MiniPC publishes overlap enrollment and emits only newly issued
+replacement custody for explicit Laptop cutover.
+
 ## Agreed later objectives
 
 - Diagnostic Export and Offline Analysis.

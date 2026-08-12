@@ -58,6 +58,14 @@ internal static class PythonCredentialProvisioningOperator
             "trust-policy-id", "expected-grants", "expected-current-credential-id",
             "expected-trusted-server-certificate-sha256",
         }).ToArray();
+    private static readonly string[] CrossRotationBeginValueNames =
+    [
+        "rotation-request", "profile-template", "enrollment",
+        "authorization-policy", "provisioning-directory", "transfer-archive",
+        "signing-root-thumbprint", "trust-policy-id", "validity-days",
+        "expected-enrollment-sha256",
+        "expected-authorization-policy-sha256",
+    ];
 
     internal static async Task<int> RunAsync(
         string[] args,
@@ -135,6 +143,22 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine($"Transaction ID       : {result.TransactionId}");
                     output.WriteLine($"Disposition          : {result.Disposition}");
                     output.WriteLine($"Rollback retained    : {result.RollbackRetained}");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
+                case "rotate-cross-computer-begin":
+                {
+                    CrossRotationBeginCommand command =
+                        ParseCrossRotationBegin(args[1..]);
+                    PythonCrossComputerRotationBeginResult result =
+                        await operations.BeginCrossComputerRotationAsync(command,
+                            cancellationToken).ConfigureAwait(false);
+                    output.WriteLine("Operation            : Begin cross-computer credential rotation");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine($"Transaction ID       : {result.TransactionId}");
+                    output.WriteLine($"Disposition          : {result.Disposition}");
+                    output.WriteLine($"Rollback retained    : {result.RollbackRetained}");
+                    output.WriteLine($"Transfer ready       : {result.TransferArchiveCreated}");
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
@@ -323,6 +347,10 @@ internal static class PythonCredentialProvisioningOperator
         {
             return Failure(error, exception.Code);
         }
+        catch (PythonCrossComputerRotationException exception)
+        {
+            return Failure(error, exception.Code);
+        }
         catch (PythonPropertyWriteAuthorizationException exception)
         {
             return Failure(error, exception.Code);
@@ -434,6 +462,30 @@ internal static class PythonCredentialProvisioningOperator
         return new(publication, thumbprint, TimeSpan.FromDays(validityDays),
             principal, trust, Array.AsReadOnly(grants), currentCredentialId,
             trustedHash);
+    }
+
+    private static CrossRotationBeginCommand ParseCrossRotationBegin(string[] args)
+    {
+        ParsedArguments parsed = Parse(args, CrossRotationBeginValueNames, false);
+        string thumbprint = parsed.Values["signing-root-thumbprint"];
+        string enrollmentHash = parsed.Values["expected-enrollment-sha256"];
+        string policyHash = parsed.Values["expected-authorization-policy-sha256"];
+        if (!IsHex(thumbprint, 40, true) || !IsHex(enrollmentHash, 64, false)
+            || !IsHex(policyHash, 64, false)
+            || !int.TryParse(parsed.Values["validity-days"], NumberStyles.None,
+                CultureInfo.InvariantCulture, out int validityDays)
+            || validityDays is < 1 or > 90)
+            throw new ArgumentException();
+        string request = RequireAbsolute(parsed.Values["rotation-request"]);
+        string profile = RequireAbsolute(parsed.Values["profile-template"]);
+        string enrollment = RequireAbsolute(parsed.Values["enrollment"]);
+        string policy = RequireAbsolute(parsed.Values["authorization-policy"]);
+        string directory = RequireAbsolute(parsed.Values["provisioning-directory"]);
+        string archive = RequireAbsolute(parsed.Values["transfer-archive"]);
+        RequireDistinct(request, profile, enrollment, policy, archive);
+        return new(request, profile, enrollment, policy, directory, archive,
+            thumbprint, RequireValue(parsed.Values["trust-policy-id"]),
+            TimeSpan.FromDays(validityDays), enrollmentHash, policyHash);
     }
 
     private static RotationPublicationCommand ParseRotationPublication(
@@ -604,6 +656,7 @@ internal static class PythonCredentialProvisioningOperator
         error.WriteLine("  provision-laptop-minipc --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90>");
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
         error.WriteLine("  rotate-begin --signing-root-thumbprint <value> --validity-days <1-90> --principal-id <value> --trust-policy-id <value> --expected-grants <comma-separated> --expected-current-credential-id <value> --expected-trusted-server-certificate-sha256 <value> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
+        error.WriteLine("  rotate-cross-computer-begin --rotation-request <absolute-path> --profile-template <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --provisioning-directory <absolute-path> --transfer-archive <absolute-path> --signing-root-thumbprint <value> --trust-policy-id <value> --validity-days <1-90> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
         error.WriteLine("  rotate-finalize|rotate-recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
         error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
         error.WriteLine("  authorize-command-execution --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --rollback <absolute-path>");
@@ -726,6 +779,39 @@ internal sealed class SystemPythonCredentialProvisioningOperations
         new PythonCredentialRotationOrchestrator().Finalize(
             CreatePublicationRequest(command));
 
+    public async Task<PythonCrossComputerRotationBeginResult>
+        BeginCrossComputerRotationAsync(
+            CrossRotationBeginCommand command,
+            CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException();
+        DateTimeOffset utcNow = NormalizeCertificateTimestamp(
+            DateTimeOffset.UtcNow);
+        using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
+        store.Open(OpenFlags.ReadOnly);
+        X509Certificate2[] matches = store.Certificates.Find(
+            X509FindType.FindByThumbprint, command.SigningRootThumbprint,
+            validOnly: false).OfType<X509Certificate2>()
+            .Where(certificate => certificate.HasPrivateKey).ToArray();
+        try
+        {
+            if (matches.Length != 1) throw new InvalidOperationException();
+            return await new PythonCrossComputerRotationBegin().BeginAsync(
+                new(command.RotationRequestPath, command.ProfileTemplatePath,
+                    command.EnrollmentPath, command.AuthorizationPolicyPath,
+                    command.ProvisioningDirectory, command.TransferArchivePath,
+                    command.SigningRootThumbprint, command.TrustPolicyId,
+                    command.Validity, command.ExpectedEnrollmentSha256,
+                    command.ExpectedAuthorizationPolicySha256),
+                matches[0], utcNow, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            foreach (X509Certificate2 match in matches) match.Dispose();
+        }
+    }
+
     public PythonCredentialRotationPublicationResult RecoverRotation(
         RotationPublicationCommand command) =>
         new PythonCredentialRotationOrchestrator().Recover(
@@ -821,6 +907,8 @@ internal interface IPythonCredentialProvisioningOperations
     PythonCredentialProvisioningRecoveryResult Recover(RecoveryCommand command);
     Task<PythonCredentialRotationPublicationResult> BeginRotationAsync(
         RotationBeginCommand command, CancellationToken cancellationToken);
+    Task<PythonCrossComputerRotationBeginResult> BeginCrossComputerRotationAsync(
+        CrossRotationBeginCommand command, CancellationToken cancellationToken);
     PythonCredentialRotationPublicationResult FinalizeRotation(
         RotationPublicationCommand command);
     PythonCredentialRotationPublicationResult RecoverRotation(
@@ -870,6 +958,19 @@ internal sealed record RotationBeginCommand(
     IReadOnlyList<string> ExpectedGrants,
     string ExpectedCurrentCredentialId,
     string ExpectedTrustedServerCertificateSha256);
+
+internal sealed record CrossRotationBeginCommand(
+    string RotationRequestPath,
+    string ProfileTemplatePath,
+    string EnrollmentPath,
+    string AuthorizationPolicyPath,
+    string ProvisioningDirectory,
+    string TransferArchivePath,
+    string SigningRootThumbprint,
+    string TrustPolicyId,
+    TimeSpan Validity,
+    string ExpectedEnrollmentSha256,
+    string ExpectedAuthorizationPolicySha256);
 
 internal sealed record RotationPublicationCommand(
     string ProvisioningDirectory,
