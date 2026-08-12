@@ -453,7 +453,6 @@ try
 
     $journal.phase = "replacement-installed"
     Write-HaseUtf8Json $journalPath $journal
-    Set-HasePrivateFile $journalPath
     Remove-Item -LiteralPath $stageDirectory -Recurse -Force
     Remove-Item -LiteralPath $incomingArchive -Force
 

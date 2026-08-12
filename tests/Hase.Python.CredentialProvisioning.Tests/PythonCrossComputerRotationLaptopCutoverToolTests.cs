@@ -68,6 +68,9 @@ public sealed class PythonCrossComputerRotationLaptopCutoverToolTests
         Assert.DoesNotContain("-AclObject $file", script);
         Assert.Contains("Installed ACL changed during replacement", script);
         Assert.Contains("Installed ACL changed during rollback", script);
+        Assert.Equal(1, CountOccurrences(script,
+            "Set-HasePrivateFile $journalPath"));
+        Assert.Contains("$journal.phase = \"replacement-installed\"", script);
         Assert.Contains("$primaryFailureType", script);
         Assert.Contains("$rollbackFailureType", script);
         Assert.DoesNotContain("EnrollmentPath", script);

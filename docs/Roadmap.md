@@ -1663,3 +1663,8 @@ before/after Access-SDDL equality around content-only replacement and rollback.
 Automated validation, commit, push, and three-computer synchronization remain
 mandatory before a fresh Retry3 cutover; all three failed attempts remain
 protected recovery evidence.
+
+Stage 53C2A3D removes the redundant post-update journal ACL application.
+Automated validation, commit, push, and three-computer synchronization remain
+mandatory before a fresh Retry4 cutover. Failed4 evidence deliberately records
+`replacement-installed` while independently verified installed content is old.

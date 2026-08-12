@@ -309,3 +309,19 @@ The operation captures Access SDDL for comparison only, overwrites bytes, and
 requires byte-identical Access SDDL afterward. Rollback restores bytes and
 requires the same unchanged ACL. Any ACL drift is a sanitized transaction
 failure; no owner, audit, or privilege-bearing security write is attempted.
+
+#### Increment 53C2A3D â€” remove redundant journal ACL write
+
+The 53C2A3C physical retry installed and byte-verified the replacement files
+with unchanged ACLs and durably advanced the already-private journal to
+`replacement-installed`. A redundant second private-ACL application then
+raised `PrivilegeNotHeldException/-2147024891`. Content-only rollback restored
+all old files byte-exact with intact private ACLs. The journal therefore
+remains intentionally ahead of deployment state as protected Failed4 evidence;
+Downloads replacement custody, MiniPC overlap, authorization, repository, and
+stopped processes remain intact.
+
+Increment 53C2A3D removes only that redundant journal ACL write. Journal ACL
+custody is established once immediately after initial creation and is preserved
+by subsequent content replacement. Regression coverage requires exactly one
+journal ACL initialization and retains all installed-file ACL equality checks.

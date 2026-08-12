@@ -1665,3 +1665,9 @@ The 53C2A3B physical retry identified Windows
 content and private ACLs were again fully recovered. Increment 53C2A3C performs
 content-only replacement and verifies that each existing Access descriptor
 remains unchanged instead of attempting a privileged security write.
+
+The 53C2A3C Retry3 reached verified replacement installation but failed on a
+redundant second journal ACL write; automatic content-only rollback restored
+exact old files and private ACLs. Increment 53C2A3D removes that redundant
+privileged operation while retaining the protected inconsistent transaction as
+Failed4 evidence.
