@@ -372,3 +372,23 @@ an NT account name while the verifier compared it directly with the current
 user SID. 53C2A4B translates the owner account to a `SecurityIdentifier` before
 comparison. Custody requirements are unchanged and no physical finalization
 occurred before the correction.
+
+#### Increment 53C2A4 physical acceptance and closure
+
+The corrected finalization preflight uniquely bound the retained request at
+Begin revision `5a914f8567caffa8b4662af52afca48c639fe9aa` to transaction
+`948f1a03e52e44b2aa75d4bfb2b77b8d`. With both applications stopped, the
+MiniPC published the exact final enrollment, removed only the old credential,
+retained the replacement principal and trust, preserved authorization bytes and
+the enrollment Access descriptor, and durably committed protected finalization
+evidence. Independent validation confirmed the old credential absent and the
+replacement exact.
+
+The finalized Runtime Host then started with only the replacement enrollment.
+A fresh Laptop Python process loaded the installed replacement profile, opened
+one bounded mutual-TLS channel, reached readiness, and closed it successfully.
+The Runtime Host was gracefully stopped afterward. The final state retains the
+protected overlap/original rollback evidence, keeps both applications stopped,
+and leaves all three repositories clean and synchronized. Increment 53C2A4
+closes at 234 focused credential-provisioning tests and 5,970 complete .NET
+tests.
