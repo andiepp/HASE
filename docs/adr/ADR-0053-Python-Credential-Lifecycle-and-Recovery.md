@@ -259,3 +259,19 @@ tool accepts or mutates the MiniPC enrollment or authorization policy. The
 MiniPC old-plus-replacement overlap remains until replacement connectivity is
 physically validated and a later explicit finalization is approved. Physical
 cutover and finalization remain pending.
+
+#### Increment 53C2A3A â€” Windows ACL descriptor correction
+
+The first physical 53C2A3 attempt validated the replacement archive and entered
+installation, but Windows rejected applying a full security descriptor as an
+Access-only descriptor. Automatic rollback restored all three old files
+byte-exact. Independent inspection confirmed every installed ACL remained
+protected, owned by the current user, and limited to one explicit allow with no
+deny. The MiniPC overlap, authorization, repository, and both stopped-process
+states remained unchanged.
+
+Increment 53C2A3A captures only the Access section used by the existing
+Access-only restoration call. Regression coverage requires three explicit
+Access-only captures and the existing Access-only restore. The failed protected
+transaction is retained separately as recovery evidence; physical cutover must
+start from a new custody directory.

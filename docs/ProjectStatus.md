@@ -1649,3 +1649,8 @@ tests pin its machine, repository, process, archive, identity, direct-custody,
 ACL, rollback, verification, and MiniPC non-mutation boundaries. Physical
 Laptop cutover remains pending; the MiniPC remains in the durable overlap
 phase with both credentials enrolled and rollback evidence retained.
+
+The first physical 53C2A3 cutover attempt failed during Windows ACL descriptor
+application. Exact old certificate, private key, and profile content and their
+protected current-user ACLs were independently confirmed restored. Increment
+53C2A3A corrects the Access-only SDDL contract before a new cutover attempt.

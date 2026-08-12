@@ -61,6 +61,10 @@ public sealed class PythonCrossComputerRotationLaptopCutoverToolTests
         Assert.Contains("phase = \"replacement-installed\"", script);
         Assert.Contains("Restore-HaseInstalledFiles", script);
         Assert.Contains("rollback requires operator recovery", script);
+        Assert.Equal(3, CountOccurrences(script,
+            "GetSecurityDescriptorSddlForm("));
+        Assert.Equal(5, CountOccurrences(script,
+            "AccessControlSections]::Access"));
         Assert.DoesNotContain("EnrollmentPath", script);
         Assert.DoesNotContain("AuthorizationPolicyPath", script);
     }
@@ -94,5 +98,19 @@ public sealed class PythonCrossComputerRotationLaptopCutoverToolTests
         }
 
         throw new InvalidOperationException("Repository root was not found.");
+    }
+
+    private static int CountOccurrences(string value, string fragment)
+    {
+        int count = 0;
+        int offset = 0;
+        while ((offset = value.IndexOf(fragment, offset,
+            StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += fragment.Length;
+        }
+
+        return count;
     }
 }

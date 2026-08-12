@@ -1646,3 +1646,8 @@ verification. After automated validation, commit, push, and three-computer
 synchronization, physical validation must prove a fresh Python session with the
 replacement credential. Only then may a separate explicit MiniPC finalization
 remove the old enrollment and obsolete private-key custody.
+
+Stage 53C2A3A corrects Windows Access-only security-descriptor capture after a
+fully recovered physical cutover attempt. Automated validation, commit, push,
+and three-computer synchronization remain mandatory before retrying the Laptop
+cutover in fresh protected custody.

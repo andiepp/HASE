@@ -375,19 +375,22 @@ try
             Name = "client-certificate.pem"
             Path = $certificatePath
             AccessSddl = (Get-Acl -LiteralPath $certificatePath).
-                Sddl
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         },
         [pscustomobject]@{
             Name = "private-key.pem"
             Path = $privateKeyPath
             AccessSddl = (Get-Acl -LiteralPath $privateKeyPath).
-                Sddl
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         },
         [pscustomobject]@{
             Name = "runtime-host-profile.json"
             Path = $profilePath
             AccessSddl = (Get-Acl -LiteralPath $profilePath).
-                Sddl
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         })
 
     foreach ($file in $installedFiles)
