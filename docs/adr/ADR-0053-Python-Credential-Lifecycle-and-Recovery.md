@@ -362,3 +362,13 @@ write. It validates the protected custody root and requires every new or
 retained evidence file's effective explicit-plus-inherited rules to contain
 only current-user allows, with current-user ownership. No physical finalization
 was attempted before this correction.
+
+#### Increment 53C2A4B — Windows owner-identity normalization
+
+The read-only physical preflight confirmed the protected custody root and, for
+every retained transaction file, current-user ownership, exactly one allow,
+zero deny, and zero foreign rules. It also exposed that `Get-Acl.Owner` returns
+an NT account name while the verifier compared it directly with the current
+user SID. 53C2A4B translates the owner account to a `SecurityIdentifier` before
+comparison. Custody requirements are unchanged and no physical finalization
+occurred before the correction.

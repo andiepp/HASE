@@ -1689,3 +1689,7 @@ Increment 53C2A4A removes two redundant privilege-sensitive ACL writes found
 during pre-execution review. New evidence inherits the already-protected Begin
 custody ACL and is validated by effective current-user-only access rules. No
 physical finalization was attempted and the MiniPC overlap remains unchanged.
+
+Increment 53C2A4B normalizes Windows ACL owner identity from `NTAccount` to SID
+before current-user comparison. Read-only physical classification confirmed
+valid private custody; no enrollment or deployment state changed.

@@ -43,6 +43,9 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
         Assert.DoesNotContain("Set-Acl", script);
         Assert.Contains("Test-HasePrivateCustodyFile", script);
         Assert.Contains("GetAccessRules($true, $true", script);
+        Assert.Contains("[Security.Principal.NTAccount]::new($acl.Owner)", script);
+        Assert.Contains("Translate([Security.Principal.SecurityIdentifier])", script);
+        Assert.DoesNotContain("$acl.Owner -eq $user.Value", script);
         Assert.Contains("enrollment.overlap-before-finalization.json", script);
         Assert.Contains("originalBackupPath", script);
         Assert.Contains("phase = \"prepared\"", script);
@@ -74,6 +77,7 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
         Assert.Contains("ReplacementCredentialId", script);
         Assert.Contains("Test-HasePrivateCustodyFile", script);
         Assert.Contains("AreAccessRulesProtected", script);
+        Assert.Contains("Translate([Security.Principal.SecurityIdentifier])", script);
         Assert.Contains("MiniPC finalized               : True", script);
     }
 

@@ -1685,3 +1685,7 @@ mandatory before a fresh Retry4 cutover. Failed4 evidence deliberately records
 access from the protected Begin directory, verify effective current-user-only
 rules, and perform no redundant ACL write. Repeat repository validation and
 synchronization before physical finalization.
+
+53C2A4B corrects only Windows owner representation in the private-custody
+verifier by translating `Get-Acl.Owner` to SID. Repeat automated validation and
+three-computer synchronization before physical finalization.

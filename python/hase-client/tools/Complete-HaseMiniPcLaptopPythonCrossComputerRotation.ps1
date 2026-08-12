@@ -65,6 +65,8 @@ function Test-HasePrivateCustodyFile([string] $Path)
 {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().User
     $acl = Get-Acl -LiteralPath $Path
+    $owner = [Security.Principal.NTAccount]::new($acl.Owner).
+        Translate([Security.Principal.SecurityIdentifier])
     $rules = @($acl.GetAccessRules($true, $true,
         [Security.Principal.SecurityIdentifier]))
     $invalidRules = @($rules | Where-Object {
@@ -72,7 +74,7 @@ function Test-HasePrivateCustodyFile([string] $Path)
             [Security.AccessControl.AccessControlType]::Allow -or
         $_.IdentityReference -ne $user
     })
-    return $acl.Owner -eq $user.Value -and
+    return $owner -eq $user -and
         $rules.Count -ge 1 -and $invalidRules.Count -eq 0
 }
 
