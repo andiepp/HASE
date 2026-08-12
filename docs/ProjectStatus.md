@@ -1654,3 +1654,8 @@ The first physical 53C2A3 cutover attempt failed during Windows ACL descriptor
 application. Exact old certificate, private key, and profile content and their
 protected current-user ACLs were independently confirmed restored. Increment
 53C2A3A corrects the Access-only SDDL contract before a new cutover attempt.
+
+The 53C2A3A physical retry also failed at Windows ACL application and again
+fully restored exact old content with intact private ACLs. Increment 53C2A3B
+preserves and reapplies the original `FileSecurity` objects directly and adds
+sanitized exception type/HResult diagnostics before another controlled retry.

@@ -275,3 +275,20 @@ Access-only restoration call. Regression coverage requires three explicit
 Access-only captures and the existing Access-only restore. The failed protected
 transaction is retained separately as recovery evidence; physical cutover must
 start from a new custody directory.
+
+#### Increment 53C2A3B â€” direct Windows ACL object preservation
+
+The corrected Access-only SDDL attempt also failed at the common ACL
+application boundary. Automatic content rollback again restored all three old
+files byte-exact, and independent inspection again confirmed protected
+current-user ACLs with one explicit allow and no deny. Downloads replacement
+custody, both protected failed transactions, MiniPC overlap, authorization,
+repository, and stopped-process state remained intact.
+
+Increment 53C2A3B removes security-descriptor serialization from the live
+transaction. It retains each original `FileSecurity` object and reapplies that
+same object after installation or rollback. Failure output adds only exception
+type and numeric HResult for the primary and rollback boundaries; paths and
+credential values remain withheld. Regression coverage requires three direct
+ACL captures, two direct reapplications, no SDDL conversion, and sanitized
+failure classification.

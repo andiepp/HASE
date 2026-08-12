@@ -144,11 +144,9 @@ function Restore-HaseInstalledFiles(
         if (Test-Path -LiteralPath $backupPath -PathType Leaf)
         {
             Copy-Item -LiteralPath $backupPath -Destination $file.Path -Force
-            $acl = [Security.AccessControl.FileSecurity]::new()
-            $acl.SetSecurityDescriptorSddlForm(
-                $file.AccessSddl,
-                [Security.AccessControl.AccessControlSections]::Access)
-            Set-Acl -LiteralPath $file.Path -AclObject $acl
+            Set-Acl `
+                -LiteralPath $file.Path `
+                -AclObject $file.OriginalAcl
         }
     }
 }
@@ -374,23 +372,17 @@ try
         [pscustomobject]@{
             Name = "client-certificate.pem"
             Path = $certificatePath
-            AccessSddl = (Get-Acl -LiteralPath $certificatePath).
-                GetSecurityDescriptorSddlForm(
-                    [Security.AccessControl.AccessControlSections]::Access)
+            OriginalAcl = Get-Acl -LiteralPath $certificatePath
         },
         [pscustomobject]@{
             Name = "private-key.pem"
             Path = $privateKeyPath
-            AccessSddl = (Get-Acl -LiteralPath $privateKeyPath).
-                GetSecurityDescriptorSddlForm(
-                    [Security.AccessControl.AccessControlSections]::Access)
+            OriginalAcl = Get-Acl -LiteralPath $privateKeyPath
         },
         [pscustomobject]@{
             Name = "runtime-host-profile.json"
             Path = $profilePath
-            AccessSddl = (Get-Acl -LiteralPath $profilePath).
-                GetSecurityDescriptorSddlForm(
-                    [Security.AccessControl.AccessControlSections]::Access)
+            OriginalAcl = Get-Acl -LiteralPath $profilePath
         })
 
     foreach ($file in $installedFiles)
@@ -427,11 +419,9 @@ try
     {
         Copy-Item -LiteralPath (Join-Path $stageDirectory $file.Name) `
             -Destination $file.Path -Force
-        $acl = [Security.AccessControl.FileSecurity]::new()
-        $acl.SetSecurityDescriptorSddlForm(
-            $file.AccessSddl,
-            [Security.AccessControl.AccessControlSections]::Access)
-        Set-Acl -LiteralPath $file.Path -AclObject $acl
+        Set-Acl `
+            -LiteralPath $file.Path `
+            -AclObject $file.OriginalAcl
     }
 
     $phase = "installed-verification"
@@ -465,6 +455,9 @@ try
 }
 catch
 {
+    $primaryFailureType = $_.Exception.GetType().FullName
+    $primaryFailureHResult = $_.Exception.HResult
+
     if ($installationStarted -and
         $null -ne $rollbackDirectory -and
         $installedFiles.Count -ne 0)
@@ -476,13 +469,16 @@ catch
         }
         catch
         {
+            $rollbackFailureType = $_.Exception.GetType().FullName
+            $rollbackFailureHResult = $_.Exception.HResult
             Write-Error `
-                "Laptop cutover rollback requires operator recovery."
+                "Laptop cutover rollback requires operator recovery. Primary: $primaryFailureType/$primaryFailureHResult; rollback: $rollbackFailureType/$rollbackFailureHResult."
             exit 2
         }
     }
 
-    Write-Error "Laptop cutover failed at phase '$phase'."
+    Write-Error `
+        "Laptop cutover failed at phase '$phase'. Primary: $primaryFailureType/$primaryFailureHResult."
     exit 1
 }
 finally

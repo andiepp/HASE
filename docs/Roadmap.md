@@ -1651,3 +1651,9 @@ Stage 53C2A3A corrects Windows Access-only security-descriptor capture after a
 fully recovered physical cutover attempt. Automated validation, commit, push,
 and three-computer synchronization remain mandatory before retrying the Laptop
 cutover in fresh protected custody.
+
+Stage 53C2A3B replaces reconstructed Windows ACL descriptors with direct
+original `FileSecurity` object preservation. Automated validation, commit,
+push, and three-computer synchronization remain mandatory before a fresh
+Laptop cutover retry; both earlier failed transactions remain protected
+recovery evidence.

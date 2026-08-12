@@ -62,9 +62,12 @@ public sealed class PythonCrossComputerRotationLaptopCutoverToolTests
         Assert.Contains("Restore-HaseInstalledFiles", script);
         Assert.Contains("rollback requires operator recovery", script);
         Assert.Equal(3, CountOccurrences(script,
-            "GetSecurityDescriptorSddlForm("));
-        Assert.Equal(5, CountOccurrences(script,
-            "AccessControlSections]::Access"));
+            "OriginalAcl = Get-Acl"));
+        Assert.Equal(2, CountOccurrences(script,
+            "-AclObject $file.OriginalAcl"));
+        Assert.DoesNotContain("GetSecurityDescriptorSddlForm(", script);
+        Assert.Contains("$primaryFailureType", script);
+        Assert.Contains("$rollbackFailureType", script);
         Assert.DoesNotContain("EnrollmentPath", script);
         Assert.DoesNotContain("AuthorizationPolicyPath", script);
     }
