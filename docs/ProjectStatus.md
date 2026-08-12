@@ -1,8 +1,8 @@
 # Project Status
 
-## Active architectural objective — ADR-0053
+## Completed architectural objective — ADR-0053
 
-**ADR-0053 — Python Credential Lifecycle and Recovery — accepted; Stage 53C implementation in progress**
+**ADR-0053 — Python Credential Lifecycle and Recovery — implemented, physically validated, and closed at 238 focused / 5,974 complete .NET tests**
 
 - The accepted lifecycle preserves the existing principal, exact authorization
   grants, explicit Runtime Host identity, trusted-server certificate, target
@@ -35,6 +35,14 @@
 - Stage 53C2A corrects the physical cross-computer custody assumption: the old
   Laptop private key remains on the Laptop, while a metadata-only request lets
   the MiniPC publish overlap enrollment and issue replacement-only custody.
+- The accepted cross-computer transaction completed replacement installation,
+  replacement-only mutual-TLS proof, exact old-enrollment revocation, and
+  deletion of five obsolete old-key rollback copies while retaining fifteen
+  byte-exact non-secret evidence files and a durable cleanup journal.
+- The final state preserves the existing principal, trust policy, exact five
+  grants, Runtime Host identity, authorization bytes, and enrollment ACL. Both
+  applications are stopped and all three repositories are clean and
+  synchronized.
 
 ---
 

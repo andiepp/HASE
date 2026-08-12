@@ -1,6 +1,6 @@
 # ADR-0053 — Python Credential Lifecycle and Recovery
 
-- Status: Accepted objective; Stage 53B implementation
+- Status: Accepted, implemented, physically validated, and closed
 - Date: 2026-08-11
 
 ## Context
@@ -429,3 +429,25 @@ certificates, and profiles remained byte-exact, and credential contents were
 never disclosed. Both applications remained stopped and the repository stayed
 clean. Increment 53C2A5 closes at 238 focused credential-provisioning tests and
 5,974 complete .NET tests.
+
+## Final acceptance and closure
+
+ADR-0053 is complete. The accepted implementation provides offline lifecycle
+inspection, explicit planned rotation, bounded old/new overlap, protected
+cross-computer custody transfer, rollback-capable Laptop cutover, explicit
+MiniPC finalization, replacement-only mutual-TLS proof, exact old-enrollment
+revocation, and transaction-bound obsolete private-key cleanup.
+
+The final physical transaction
+`948f1a03e52e44b2aa75d4bfb2b77b8d` preserved the principal, trust policy,
+five exact authorization grants, Runtime Host identity, enrollment ACL, and
+non-secret recovery evidence. The replacement credential is the only active
+MiniPC enrollment. Five obsolete old-key rollback copies are absent, the
+active replacement key is unchanged, and fifteen retained journals,
+certificates, and profiles remain byte-exact.
+
+Closure is based on 238 focused credential-provisioning tests and 5,974
+complete .NET tests. AEPRAKETE, LABC, and LTAEP were clean and synchronized at
+the final implementation baseline, and both HASE applications were stopped.
+No automatic rotation, retry, replay, target selection, failover, or permission
+widening was introduced.

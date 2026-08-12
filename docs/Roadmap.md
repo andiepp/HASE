@@ -1501,9 +1501,9 @@ Closure baseline:
 
 Credential lifecycle work is intentionally deferred to a separate architectural objective.
 
-## Active objective — ADR-0053 Python Credential Lifecycle and Recovery
+## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 
-**Status:** [In progress] Accepted; Stage 53C operator and deployment validation
+**Status:** [Complete] Implemented, physically validated, and closed
 
 ADR-0053 extends the dedicated Python mutual-TLS provisioning boundary beyond
 initial enrollment. It adds explicit expiry classification, planned rotation,
@@ -1712,5 +1712,17 @@ Stage 53C2A5 is complete. All five transaction-bound obsolete old private-key
 rollback copies are absent; the active replacement is unchanged; fifteen
 non-secret journals, certificates, and profiles remain exact; and a committed
 cleanup journal is durable. Both applications are stopped. Subsequent work must
-preserve the replacement-only enrollment and may address broader ADR-0053
-closure or separately approved evidence-retention expiry.
+preserve the replacement-only enrollment. Any separately approved
+evidence-retention expiry remains outside this implementation stage.
+
+## ADR-0053 closure
+
+ADR-0053 is complete at 238 focused credential-provisioning tests and 5,974
+complete .NET tests. The final accepted state has one active replacement
+credential, no old MiniPC enrollment, no obsolete old-key rollback copies, an
+unchanged principal and exact five-grant authorization set, durable protected
+transaction evidence, and a proven replacement-only mutual-TLS channel.
+AEPRAKETE, LABC, and LTAEP are clean and synchronized, and both applications
+are stopped. Any future credential-lifecycle extension requires a new approved
+architectural objective; retained non-secret evidence expiry remains a separate
+operator-approved policy decision.
