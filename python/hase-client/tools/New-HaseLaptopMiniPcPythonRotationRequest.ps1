@@ -7,6 +7,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+$phase = "preflight"
+$createdDirectory = $false
 
 $principalId = "hase-laptop-python-minipc"
 $targetId = "minipc-runtime-host"
@@ -81,9 +83,11 @@ function Get-Sha256([string] $Path)
 
 try
 {
+    $phase = "machine"
     if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne "LTAEP")
     { throw "machine" }
 
+    $phase = "repository"
     $toolDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
     $packageDirectory = Split-Path -Parent $toolDirectory
     $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $packageDirectory "..\.."))
@@ -96,6 +100,7 @@ try
         -or @(Get-Process -Name "Hase.Client.Wpf.App" -ErrorAction SilentlyContinue).Count -ne 0)
     { throw "processes" }
 
+    $phase = "custody"
     $registryPath = Resolve-AbsolutePath $TargetRegistryPath
     $directory = Resolve-AbsolutePath $RequestDirectory
     $output = Resolve-AbsolutePath $RequestPath
@@ -108,9 +113,11 @@ try
     $parent = Split-Path -Parent $directory
     if (-not (Test-Path -LiteralPath $parent -PathType Container))
     { throw "parent" }
+    $phase = "reparse"
     Assert-NoReparsePoint $registryPath
     Assert-NoReparsePoint $parent
 
+    $phase = "target"
     $registry = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json
     if ([int]$registry.formatVersion -ne 1) { throw "registry" }
     $targets = @($registry.targets | Where-Object {
@@ -132,6 +139,7 @@ try
         Assert-NoReparsePoint $path
     }
 
+    $phase = "credential"
     $certificate = Get-PfxCertificate -FilePath $certificatePath
     try
     {
@@ -153,6 +161,7 @@ try
     }
     finally { $certificate.Dispose() }
 
+    $phase = "request"
     $request = [ordered]@{
         schemaVersion = 1
         purpose = "hase-laptop-minipc-python-cross-computer-rotation-request"
@@ -167,12 +176,15 @@ try
         trustedServerCertificateSha256 = Get-Sha256 $trustedServerPath
         createdUtc = [DateTimeOffset]::UtcNow.ToString("O")
     }
+    $phase = "directory-publication"
     [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $createdDirectory = $true
     Set-PrivateDirectory $directory
     $bytes = [Text.UTF8Encoding]::new($false).GetBytes(
         ($request | ConvertTo-Json -Depth 8))
     try
     {
+        $phase = "request-publication"
         [IO.File]::WriteAllBytes($output, $bytes)
         Set-PrivateFile $output
     }
@@ -194,6 +206,10 @@ try
 }
 catch
 {
-    Write-Error "Laptop MiniPC Python rotation request creation failed."
+    if ($createdDirectory -and (Test-Path -LiteralPath $directory))
+    {
+        Remove-Item -LiteralPath $directory -Recurse -Force
+    }
+    Write-Error "Laptop MiniPC Python rotation request creation failed at phase '$phase'."
     exit 1
 }
