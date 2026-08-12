@@ -1,5 +1,36 @@
 # Project Status
 
+## Active architectural objective — ADR-0054
+
+**ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — accepted; implementation pending**
+
+- The current physical ESP32 sketch contains 72 sketch-root files and 7,129
+  lines, including a 1,189-line `HaseEndpoint.ino`.
+- Stable Protocol Version 1 framing, serialization, TCP transport, discovery,
+  mDNS, UTC, lifecycle, and Event publication infrastructure will move into a
+  conventional source-based Arduino library.
+- Endpoint configuration, descriptor and registration, hardware behavior, and
+  local Wi-Fi secrets become separate, clearly named application concerns.
+- The application boundary preserves the exact existing endpoint and
+  instrument identities, descriptors, BME280 Properties, GPIO16 Property and
+  Command, GPIO17 Event, transport behavior, discovery, Runtime Host
+  compatibility, and recovery behavior.
+- Increment 54A records only the accepted architecture and compatibility
+  contract. It changes no firmware or executable source and authorizes no
+  compilation, deployment, or physical mutation.
+- Stage 54B will first discover the authoritative installed ESP32 toolchain and
+  dependency versions, then introduce library packaging and clean repeatable
+  compilation without uploading firmware.
+- Stages 54C and 54D introduce the typed registration/callback boundary and
+  migrate the BME280/GPIO example with an authoring guide. Stage 54E is a later
+  separately approved physical compatibility validation and closure.
+
+The authoritative starting baseline is commit
+`96db1799d410eedc82aea82cc3f5b3efa003242c`, with 238 focused
+credential-provisioning tests and 5,974 complete .NET Release tests passing.
+
+---
+
 ## Completed architectural objective — ADR-0053
 
 **ADR-0053 — Python Credential Lifecycle and Recovery — implemented, physically validated, and closed at 238 focused / 5,974 complete .NET tests**

@@ -1501,6 +1501,46 @@ Closure baseline:
 
 Credential lifecycle work is intentionally deferred to a separate architectural objective.
 
+## Active objective — ADR-0054 ESP32 Endpoint Library and Application Authoring Boundary
+
+**Status:** [Accepted] Architecture and compatibility contract accepted;
+implementation pending
+
+The current `HaseEndpoint` sketch contains 72 sketch-root files and 7,129
+lines, including a 1,189-line `.ino`. Protocol, serialization, TCP transport,
+discovery, lifecycle, descriptors, BME280 Properties, GPIO behavior, Events,
+and local configuration are presented as one Arduino application source set.
+
+ADR-0054 separates stable HASE ESP32 infrastructure into a conventional
+source-based Arduino library. The active application becomes approximately six
+visible files covering five explicit concerns: sketch composition, public
+endpoint configuration, endpoint definition and registration, hardware
+application behavior, and local ignored Wi-Fi secrets.
+
+The compatibility contract preserves Protocol Version 1.0, framed TCP port
+5000, discovery and authoritative identity, descriptor bytes and ordering,
+the three BME280 Properties, GPIO16 status-LED Property and Command, GPIO17
+button Event, UTC timestamps, at-most-once mutations, live-only Events, Runtime
+Host behavior, and recovery.
+
+Planned stages:
+
+1. 54A — accepted decision and current-behavior compatibility contract;
+2. 54B — conventional Arduino library packaging and repeatable clean
+   compilation validation, without firmware upload;
+3. 54C — typed application callback and registration boundary;
+4. 54D — BME280/GPIO example migration and ESP32 endpoint authoring guide; and
+5. 54E — separately authorized physical compatibility validation and closure.
+
+Increment 54A is documentation-only. It does not modify firmware, Runtime
+Hosts, Client, deployment, credentials, or physical state. Before 54B selects a
+compilation baseline, it must discover and record the actual AEPRAKETE Arduino
+IDE, ESP32 core, compiler, board FQBN, and dependency versions rather than
+inferring them.
+
+Diagnostic Export and Offline Analysis remains the agreed objective after
+ADR-0054.
+
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 
 **Status:** [Complete] Implemented, physically validated, and closed
