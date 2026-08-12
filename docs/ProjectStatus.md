@@ -1671,3 +1671,16 @@ redundant second journal ACL write; automatic content-only rollback restored
 exact old files and private ACLs. Increment 53C2A3D removes that redundant
 privileged operation while retaining the protected inconsistent transaction as
 Failed4 evidence.
+
+### ADR-0053 Increment 53C2A4 — MiniPC rotation finalization
+
+- Added guarded MiniPC cross-computer finalization, interrupted-finalization
+  recovery, and independent validation tools.
+- Finalization requires the exact retained Begin transaction and explicit
+  replacement-connection proof, removes only the old enrollment, and preserves
+  the replacement principal, trust policy, authorization bytes, and ACL.
+- Protected overlap/original evidence and a durable committed journal remain;
+  committed finalization is never implicitly rolled back.
+- Repository work does not change deployment state. Physical finalization
+  remains separately controlled until source review, tests, commit, push, and
+  three-computer synchronization complete.

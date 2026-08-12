@@ -1668,3 +1668,15 @@ Stage 53C2A3D removes the redundant post-update journal ACL application.
 Automated validation, commit, push, and three-computer synchronization remain
 mandatory before a fresh Retry4 cutover. Failed4 evidence deliberately records
 `replacement-installed` while independently verified installed content is old.
+
+### ADR-0053 Increment 53C2A4 — MiniPC finalization boundary
+
+- Implement the explicit MiniPC transaction that consumes the physically proven
+  replacement-connection decision and revokes only the old enrollment.
+- Retain protected Begin, overlap, original, archive, and committed-finalization
+  evidence while keeping authorization and trust byte-exact.
+- Recover only an interrupted prepared finalization; never silently reintroduce
+  an old credential after commit.
+- After repository validation and synchronization, finalize physically with both
+  applications stopped, independently validate, then prove one fresh
+  replacement-only mutual-TLS connection.

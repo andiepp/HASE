@@ -325,3 +325,28 @@ Increment 53C2A3D removes only that redundant journal ACL write. Journal ACL
 custody is established once immediately after initial creation and is preserved
 by subsequent content replacement. Regression coverage requires exactly one
 journal ACL initialization and retains all installed-file ACL equality checks.
+
+#### Increment 53C2A4 — MiniPC cross-computer rotation finalization
+
+Physical Retry4 installed the replacement Laptop certificate, private key, and
+profile byte-exact under protected custody. A new Python process then opened and
+closed one fresh mutual-TLS channel to the MiniPC while both enrollments were
+still accepted. Both applications were stopped afterward, all repositories
+remained synchronized and clean, and the overlap was not changed by validation.
+
+Finalization is a separate MiniPC-only transaction. It requires the exact
+retained Begin transaction ID, an explicit replacement-connection attestation,
+the `overlap-published` Begin phase, exact overlap/final enrollment hashes, and
+an unchanged authorization-policy hash. It verifies that old and replacement
+entries share the same principal and trust policy and that the final candidate
+contains exactly the replacement entry but not the old entry.
+
+Publication overwrites only the existing enrollment file content, preserving
+and comparing its existing Access descriptor without attempting a privileged
+ACL write. A protected copy of the overlap enrollment, the original Begin
+backup, Begin journal, transfer archive, and a durable finalization journal are
+retained as evidence. Recovery restores overlap only from an interrupted
+`prepared` finalization; a committed finalization is never implicitly rolled
+back. Independent validation proves old enrollment removal, exact replacement
+enrollment, unchanged authorization, protected evidence, and the transaction-
+bound connection attestation before the Runtime Host is restarted.
