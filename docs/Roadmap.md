@@ -1639,3 +1639,10 @@ All protected Laptop custody remained unchanged. Temporary wheel-transfer and
 duplicate MiniPC private-key staging custody were removed; rollback and
 preparation evidence remain protected. Runtime Hosts and Clients were stopped,
 the KEL-103 remained CC/OFF, and the laboratory supply output remained OFF.
+
+Stage 53C2A3 adds protected Laptop import, rollback-capable replacement of the
+installed certificate, private key and profile, and independent byte-exact
+verification. After automated validation, commit, push, and three-computer
+synchronization, physical validation must prove a fresh Python session with the
+replacement credential. Only then may a separate explicit MiniPC finalization
+remove the old enrollment and obsolete private-key custody.

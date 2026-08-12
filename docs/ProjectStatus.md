@@ -1642,3 +1642,10 @@ The current implementation intentionally excludes:
 - The runtime host remains the sole owner of physical endpoint lifecycles.
 - Northbound active operations are scoped to one attachment generation.
 - Network reachability does not grant HASE authorization.
+
+Increment 53C2A3 implements the protected, rollback-capable Laptop side of the
+cross-computer Python credential rotation. Five focused automated contract
+tests pin its machine, repository, process, archive, identity, direct-custody,
+ACL, rollback, verification, and MiniPC non-mutation boundaries. Physical
+Laptop cutover remains pending; the MiniPC remains in the durable overlap
+phase with both credentials enrolled and rollback evidence retained.

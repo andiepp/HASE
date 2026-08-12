@@ -234,3 +234,28 @@ Finalization and recovery remain later explicit operations.
 - Successful rotation leaves no usable obsolete private-key rollback path.
 - Python mutation no-retry, no-replay, and uncertain-outcome semantics remain
   unchanged.
+
+### Increment 53C2A3 â€” protected Laptop replacement cutover
+
+Increment 53C2A3 adds the Laptop-side cutover half of the cross-computer
+custody bridge. The operation accepts only the replacement archive issued by
+the durable MiniPC Begin transaction. Before mutation it validates the exact
+four-entry archive shape, strict manifest purpose and principal, every payload
+hash, the old and replacement certificate identities, and unchanged installed
+certificate and private-key paths.
+
+The operation is pinned to LTAEP, a synchronized clean repository, stopped
+Runtime Host and Client processes, direct non-reparse custody, and a protected
+directory outside the repository. It imports the archive byte-exact, records a
+durable journal, retains protected byte-exact copies of the old certificate,
+private key, and profile, preserves their access descriptors, installs all
+three replacements, and verifies every installed hash. A handled failure after
+installation begins restores all three originals and their access descriptors;
+an incomplete rollback is reported as requiring operator recovery.
+
+The independent verifier proves the durable installed phase, protected archive
+hash, exact installed files, and retained old-credential rollback. Neither
+tool accepts or mutates the MiniPC enrollment or authorization policy. The
+MiniPC old-plus-replacement overlap remains until replacement connectivity is
+physically validated and a later explicit finalization is approved. Physical
+cutover and finalization remain pending.
