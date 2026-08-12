@@ -10,7 +10,7 @@ try
 {
     if ($env:OS -ne "Windows_NT") { throw "platform" }
     if ([string]::IsNullOrWhiteSpace($RequestPath) `
-        -or -not [IO.Path]::IsPathFullyQualified($RequestPath)) { throw "path" }
+        -or -not ($RequestPath -match '^[A-Za-z]:[\\/]')) { throw "path" }
     $path = [IO.Path]::GetFullPath($RequestPath)
     if (-not (Test-Path -LiteralPath $path -PathType Leaf) `
         -or (Get-Item -LiteralPath $path).Attributes -band

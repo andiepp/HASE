@@ -22,7 +22,7 @@ $expectedGrants = @(
 function Resolve-AbsolutePath([string] $Value)
 {
     if ([string]::IsNullOrWhiteSpace($Value) -or $Value -ne $Value.Trim() `
-        -or -not [IO.Path]::IsPathFullyQualified($Value)) { throw "path" }
+        -or -not ($Value -match '^[A-Za-z]:[\\/]')) { throw "path" }
     return [IO.Path]::GetFullPath($Value)
 }
 
