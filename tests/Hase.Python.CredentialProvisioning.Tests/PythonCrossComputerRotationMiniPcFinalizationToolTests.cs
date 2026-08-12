@@ -40,8 +40,9 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
 
         Assert.Contains("Write-HaseExistingBytes $enrollment $finalBytes", script);
         Assert.Contains("Get-HaseAccessSddl", script);
-        Assert.DoesNotContain("Set-Acl -LiteralPath $enrollment", script);
-        Assert.Equal(2, CountOccurrences(script, "Set-HasePrivateFile $"));
+        Assert.DoesNotContain("Set-Acl", script);
+        Assert.Contains("Test-HasePrivateCustodyFile", script);
+        Assert.Contains("GetAccessRules($true, $true", script);
         Assert.Contains("enrollment.overlap-before-finalization.json", script);
         Assert.Contains("originalBackupPath", script);
         Assert.Contains("phase = \"prepared\"", script);
@@ -71,6 +72,7 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
         Assert.Contains("replacementConnectionProven", script);
         Assert.Contains("CurrentCredentialId", script);
         Assert.Contains("ReplacementCredentialId", script);
+        Assert.Contains("Test-HasePrivateCustodyFile", script);
         Assert.Contains("AreAccessRulesProtected", script);
         Assert.Contains("MiniPC finalized               : True", script);
     }
@@ -93,17 +95,4 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
         throw new InvalidOperationException("Repository root was not found.");
     }
 
-    private static int CountOccurrences(string value, string fragment)
-    {
-        int count = 0;
-        int offset = 0;
-        while ((offset = value.IndexOf(fragment, offset,
-            StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            offset += fragment.Length;
-        }
-
-        return count;
-    }
 }

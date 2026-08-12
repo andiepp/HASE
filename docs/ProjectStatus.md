@@ -1684,3 +1684,8 @@ Failed4 evidence.
 - Repository work does not change deployment state. Physical finalization
   remains separately controlled until source review, tests, commit, push, and
   three-computer synchronization complete.
+
+Increment 53C2A4A removes two redundant privilege-sensitive ACL writes found
+during pre-execution review. New evidence inherits the already-protected Begin
+custody ACL and is validated by effective current-user-only access rules. No
+physical finalization was attempted and the MiniPC overlap remains unchanged.

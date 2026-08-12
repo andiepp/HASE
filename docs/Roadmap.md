@@ -1680,3 +1680,8 @@ mandatory before a fresh Retry4 cutover. Failed4 evidence deliberately records
 - After repository validation and synchronization, finalize physically with both
   applications stopped, independently validate, then prove one fresh
   replacement-only mutual-TLS connection.
+
+53C2A4A corrects the pre-execution Windows custody boundary: inherit private
+access from the protected Begin directory, verify effective current-user-only
+rules, and perform no redundant ACL write. Repeat repository validation and
+synchronization before physical finalization.

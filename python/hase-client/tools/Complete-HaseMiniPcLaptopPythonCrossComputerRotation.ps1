@@ -61,18 +61,19 @@ function Get-HaseAccessSddl([string] $Path)
         [Security.AccessControl.AccessControlSections]::Access)
 }
 
-function Set-HasePrivateFile([string] $Path)
+function Test-HasePrivateCustodyFile([string] $Path)
 {
     $user = [Security.Principal.WindowsIdentity]::GetCurrent().User
-    $acl = [Security.AccessControl.FileSecurity]::new()
-    $acl.SetOwner($user)
-    $acl.SetAccessRuleProtection($true, $false)
-    $acl.AddAccessRule(
-        [Security.AccessControl.FileSystemAccessRule]::new(
-            $user,
-            "FullControl",
-            "Allow"))
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    $acl = Get-Acl -LiteralPath $Path
+    $rules = @($acl.GetAccessRules($true, $true,
+        [Security.Principal.SecurityIdentifier]))
+    $invalidRules = @($rules | Where-Object {
+        $_.AccessControlType -ne
+            [Security.AccessControl.AccessControlType]::Allow -or
+        $_.IdentityReference -ne $user
+    })
+    return $acl.Owner -eq $user.Value -and
+        $rules.Count -ge 1 -and $invalidRules.Count -eq 0
 }
 
 function Write-HaseUtf8Json([string] $Path, [object] $Document)
@@ -287,10 +288,7 @@ try
     $overlapBytes = [IO.File]::ReadAllBytes($enrollment)
     $finalBytes = [IO.File]::ReadAllBytes($finalEnrollmentPath)
     [IO.File]::WriteAllBytes($overlapBackupPath, $overlapBytes)
-    Set-HasePrivateFile $overlapBackupPath
-
-    if (-not (Get-Acl -LiteralPath $overlapBackupPath).
-        AreAccessRulesProtected)
+    if (-not (Test-HasePrivateCustodyFile $overlapBackupPath))
     {
         throw "backup-custody"
     }
@@ -313,10 +311,7 @@ try
         originalBackupPath = $originalBackupPath
     }
     Write-HaseUtf8Json $finalizationJournalPath $journal
-    Set-HasePrivateFile $finalizationJournalPath
-
-    if (-not (Get-Acl -LiteralPath $finalizationJournalPath).
-        AreAccessRulesProtected)
+    if (-not (Test-HasePrivateCustodyFile $finalizationJournalPath))
     {
         throw "journal-custody"
     }
@@ -333,8 +328,7 @@ try
     $journal.phase = "committed"
     Write-HaseUtf8Json $finalizationJournalPath $journal
 
-    if (-not (Get-Acl -LiteralPath $finalizationJournalPath).
-        AreAccessRulesProtected -or
+    if (-not (Test-HasePrivateCustodyFile $finalizationJournalPath) -or
         (Get-HaseSha256 $policy) -cne
             [string]$begin.AuthorizationPolicySha256)
     {

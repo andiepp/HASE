@@ -9,6 +9,20 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+function Test-HasePrivateCustodyFile([string] $Path)
+{
+    $user = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $acl = Get-Acl -LiteralPath $Path
+    $rules = @($acl.GetAccessRules($true, $true,
+        [Security.Principal.SecurityIdentifier]))
+    return $acl.Owner -eq $user.Value -and $rules.Count -ge 1 -and
+        @($rules | Where-Object {
+            $_.AccessControlType -ne
+                [Security.AccessControl.AccessControlType]::Allow -or
+            $_.IdentityReference -ne $user
+        }).Count -eq 0
+}
+
 try
 {
     $enrollment = [IO.Path]::GetFullPath($EnrollmentPath)
@@ -56,14 +70,18 @@ try
         throw "enrollment"
     }
 
+    if (-not (Get-Acl -LiteralPath $custody).AreAccessRulesProtected)
+    {
+        throw "custody-root"
+    }
+
     foreach ($path in @(
-        $custody,
         $finalizationPath,
         [string]$finalization.overlapBackupPath,
         [string]$finalization.originalBackupPath))
     {
         if (-not (Test-Path -LiteralPath $path) -or
-            -not (Get-Acl -LiteralPath $path).AreAccessRulesProtected)
+            -not (Test-HasePrivateCustodyFile $path))
         {
             throw "custody"
         }

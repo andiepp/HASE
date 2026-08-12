@@ -350,3 +350,15 @@ retained as evidence. Recovery restores overlap only from an interrupted
 back. Independent validation proves old enrollment removal, exact replacement
 enrollment, unchanged authorization, protected evidence, and the transaction-
 bound connection attestation before the Runtime Host is restarted.
+
+#### Increment 53C2A4A — inherited private-custody correction
+
+Pre-execution review found that 53C2A4 redundantly attempted to assign owner and
+ACL objects to new evidence files inside the already-protected Begin custody
+directory. That privilege-sensitive operation repeats the Windows boundary
+removed by 53C2A3D and is unnecessary because the directory's single private,
+inheritable current-user grant is authoritative. The correction performs no ACL
+write. It validates the protected custody root and requires every new or
+retained evidence file's effective explicit-plus-inherited rules to contain
+only current-user allows, with current-user ownership. No physical finalization
+was attempted before this correction.
