@@ -392,3 +392,21 @@ protected overlap/original rollback evidence, keeps both applications stopped,
 and leaves all three repositories clean and synchronized. Increment 53C2A4
 closes at 234 focused credential-provisioning tests and 5,970 complete .NET
 tests.
+
+#### Increment 53C2A5 — evidence retention and obsolete private-key cleanup
+
+After replacement-only finalization and a fresh mutual-TLS proof, the old
+Laptop private key is no longer required for recovery. Cleanup accepts an
+explicit list of protected cutover custody directories and targets only each
+transaction-bound `rollback/private-key.pem`. Every target must match the old
+private-key SHA-256 recorded by the authoritative request and the same rotation
+transaction. The active installed key must exist and must not match that hash.
+
+Deletion is journaled under a protected parent. Exact targets are first moved
+to private quarantine, the journal advances to `quarantined`, and only then are
+the obsolete key files deleted and the journal committed. Recovery resumes an
+interrupted uncommitted cleanup toward approved deletion; it never reconstructs
+or prints key bytes. Independent validation requires the active replacement key,
+a committed cleanup journal, and absence of every recorded source and quarantine
+path. Certificates, profiles, failure journals, hashes, transaction evidence,
+authorization evidence, and replacement custody remain unchanged.

@@ -1702,3 +1702,9 @@ Laptop Python process then proved replacement-only mutual-TLS readiness and
 closed cleanly. The Runtime Host was gracefully stopped; both applications are
 stopped and all repositories are clean and synchronized. Closure validation is
 234 focused tests and 5,970 complete .NET tests.
+
+Increment 53C2A5 adds an explicit, transaction-bound Laptop cleanup for obsolete
+old private-key rollback copies after replacement-only proof. It quarantines
+before deletion, retains a durable non-secret journal, supports interrupted
+cleanup resumption, protects the active replacement key, and preserves all
+other evidence. Repository implementation does not change deployment state.

@@ -1697,3 +1697,13 @@ channel succeeded. Both applications are stopped and the three repositories
 remain synchronized. Subsequent lifecycle work may address separately approved
 retention expiry and obsolete private-key cleanup; it must not weaken the
 accepted replacement-only state.
+
+### ADR-0053 Increment 53C2A5 — obsolete private-key cleanup
+
+- Discover and supply an explicit set of transaction-bound failed/accepted
+  Laptop cutover custody directories.
+- Require finalization and replacement-only connection proof before cleanup.
+- Match every obsolete rollback key to the authoritative old-key hash, protect
+  the active replacement key, quarantine first, and durably commit deletion.
+- Retain non-secret evidence and resume interrupted cleanup deterministically.
+- Validate, commit, push, and synchronize all computers before physical cleanup.
