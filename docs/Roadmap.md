@@ -1707,3 +1707,10 @@ accepted replacement-only state.
   the active replacement key, quarantine first, and durably commit deletion.
 - Retain non-secret evidence and resume interrupted cleanup deterministically.
 - Validate, commit, push, and synchronize all computers before physical cleanup.
+
+Stage 53C2A5 is complete. All five transaction-bound obsolete old private-key
+rollback copies are absent; the active replacement is unchanged; fifteen
+non-secret journals, certificates, and profiles remain exact; and a committed
+cleanup journal is durable. Both applications are stopped. Subsequent work must
+preserve the replacement-only enrollment and may address broader ADR-0053
+closure or separately approved evidence-retention expiry.

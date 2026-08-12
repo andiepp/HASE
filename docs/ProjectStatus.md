@@ -1708,3 +1708,11 @@ old private-key rollback copies after replacement-only proof. It quarantines
 before deletion, retains a durable non-secret journal, supports interrupted
 cleanup resumption, protects the active replacement key, and preserves all
 other evidence. Repository implementation does not change deployment state.
+
+Increment 53C2A5 is physically accepted and complete. Five exact obsolete old
+private-key rollback files were quarantined and deleted under transaction
+`948f1a03e52e44b2aa75d4bfb2b77b8d`; the active replacement key remained
+byte-exact. Fifteen journals, certificates, and profiles remained byte-exact,
+and the committed non-secret cleanup journal proves absence. Both applications
+are stopped and the repository is clean. Closure validation is 238 focused
+tests and 5,974 complete .NET tests.

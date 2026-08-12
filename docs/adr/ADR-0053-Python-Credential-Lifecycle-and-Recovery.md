@@ -410,3 +410,22 @@ or prints key bytes. Independent validation requires the active replacement key,
 a committed cleanup journal, and absence of every recorded source and quarantine
 path. Certificates, profiles, failure journals, hashes, transaction evidence,
 authorization evidence, and replacement custody remain unchanged.
+
+#### Increment 53C2A5 physical acceptance and closure
+
+Read-only Laptop discovery found five exact transaction-bound old-key rollback
+copies across Failed1 through Failed4 and successful Retry4 custody. All five
+matched the authoritative old-key SHA-256, were privately held, and differed
+from the active replacement key. The first cleanup invocation used an inferred
+MiniPC-side request filename and stopped in preflight before creating a cleanup
+journal or moving a key. Discovery then uniquely resolved the protected Laptop
+request under `PythonCredentialRotation-53C2A-Retry1`.
+
+The corrected cleanup quarantined and deleted exactly those five obsolete key
+files, committed the durable cleanup journal, and left the active replacement
+key byte-exact. Independent validation confirmed every recorded source and
+quarantine path absent. Fifteen non-secret failure/success journals,
+certificates, and profiles remained byte-exact, and credential contents were
+never disclosed. Both applications remained stopped and the repository stayed
+clean. Increment 53C2A5 closes at 238 focused credential-provisioning tests and
+5,974 complete .NET tests.
