@@ -1657,3 +1657,9 @@ original `FileSecurity` object preservation. Automated validation, commit,
 push, and three-computer synchronization remain mandatory before a fresh
 Laptop cutover retry; both earlier failed transactions remain protected
 recovery evidence.
+
+Stage 53C2A3C removes privileged installed-file ACL writes and requires
+before/after Access-SDDL equality around content-only replacement and rollback.
+Automated validation, commit, push, and three-computer synchronization remain
+mandatory before a fresh Retry3 cutover; all three failed attempts remain
+protected recovery evidence.

@@ -144,9 +144,13 @@ function Restore-HaseInstalledFiles(
         if (Test-Path -LiteralPath $backupPath -PathType Leaf)
         {
             Copy-Item -LiteralPath $backupPath -Destination $file.Path -Force
-            Set-Acl `
-                -LiteralPath $file.Path `
-                -AclObject $file.OriginalAcl
+            $restoredAccessSddl = (Get-Acl -LiteralPath $file.Path).
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
+            if ($restoredAccessSddl -cne $file.OriginalAccessSddl)
+            {
+                throw "Installed ACL changed during rollback."
+            }
         }
     }
 }
@@ -372,17 +376,23 @@ try
         [pscustomobject]@{
             Name = "client-certificate.pem"
             Path = $certificatePath
-            OriginalAcl = Get-Acl -LiteralPath $certificatePath
+            OriginalAccessSddl = (Get-Acl -LiteralPath $certificatePath).
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         },
         [pscustomobject]@{
             Name = "private-key.pem"
             Path = $privateKeyPath
-            OriginalAcl = Get-Acl -LiteralPath $privateKeyPath
+            OriginalAccessSddl = (Get-Acl -LiteralPath $privateKeyPath).
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         },
         [pscustomobject]@{
             Name = "runtime-host-profile.json"
             Path = $profilePath
-            OriginalAcl = Get-Acl -LiteralPath $profilePath
+            OriginalAccessSddl = (Get-Acl -LiteralPath $profilePath).
+                GetSecurityDescriptorSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access)
         })
 
     foreach ($file in $installedFiles)
@@ -419,9 +429,13 @@ try
     {
         Copy-Item -LiteralPath (Join-Path $stageDirectory $file.Name) `
             -Destination $file.Path -Force
-        Set-Acl `
-            -LiteralPath $file.Path `
-            -AclObject $file.OriginalAcl
+        $installedAccessSddl = (Get-Acl -LiteralPath $file.Path).
+            GetSecurityDescriptorSddlForm(
+                [Security.AccessControl.AccessControlSections]::Access)
+        if ($installedAccessSddl -cne $file.OriginalAccessSddl)
+        {
+            throw "Installed ACL changed during replacement."
+        }
     }
 
     $phase = "installed-verification"

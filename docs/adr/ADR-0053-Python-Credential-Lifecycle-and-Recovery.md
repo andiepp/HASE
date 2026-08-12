@@ -292,3 +292,20 @@ type and numeric HResult for the primary and rollback boundaries; paths and
 credential values remain withheld. Regression coverage requires three direct
 ACL captures, two direct reapplications, no SDDL conversion, and sanitized
 failure classification.
+
+#### Increment 53C2A3C â€” preserve existing installed ACLs by content-only replacement
+
+The direct `FileSecurity` retry produced sanitized
+`PrivilegeNotHeldException/-2147024891` at both normal and rollback ACL
+application. Content rollback again restored all three old files byte-exact;
+independent inspection again confirmed protected ACLs with one explicit allow
+and no deny. Downloads replacement custody, all three protected failed
+transactions, MiniPC overlap, authorization, repository, and stopped processes
+remained intact.
+
+Increment 53C2A3C removes `Set-Acl` from installed-file replacement and rollback.
+Windows content overwrite of an existing file preserves its security object.
+The operation captures Access SDDL for comparison only, overwrites bytes, and
+requires byte-identical Access SDDL afterward. Rollback restores bytes and
+requires the same unchanged ACL. Any ACL drift is a sanitized transaction
+failure; no owner, audit, or privilege-bearing security write is attempted.

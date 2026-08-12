@@ -1659,3 +1659,9 @@ The 53C2A3A physical retry also failed at Windows ACL application and again
 fully restored exact old content with intact private ACLs. Increment 53C2A3B
 preserves and reapplies the original `FileSecurity` objects directly and adds
 sanitized exception type/HResult diagnostics before another controlled retry.
+
+The 53C2A3B physical retry identified Windows
+`PrivilegeNotHeldException/-2147024891` at installed-file `Set-Acl`; exact old
+content and private ACLs were again fully recovered. Increment 53C2A3C performs
+content-only replacement and verifies that each existing Access descriptor
+remains unchanged instead of attempting a privileged security write.
