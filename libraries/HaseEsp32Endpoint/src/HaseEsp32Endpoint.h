@@ -1,5 +1,6 @@
 #pragma once
 
+#include "HaseApplicationCallbacks.h"
 #include "HaseBinaryProtocolReader.h"
 #include "HaseBinaryProtocolWriter.h"
 #include "HaseCommandDescriptorSerializer.h"
@@ -7,6 +8,8 @@
 #include "HaseDescriptorModel.h"
 #include "HaseDiscoverHandler.h"
 #include "HaseEndpointDescriptorSerializer.h"
+#include "HaseEndpointDefinition.h"
+#include "HaseEndpointDefinitionValidator.h"
 #include "HaseEndpointMetadataSerializer.h"
 #include "HaseEventDescriptorSerializer.h"
 #include "HaseEventNotificationHandler.h"
