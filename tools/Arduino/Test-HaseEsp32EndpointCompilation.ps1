@@ -21,22 +21,11 @@ $expectedCoreVersion = "3.3.10"
 $fqbn = "esp32:esp32:esp32doit-devkit-v1"
 
 $expectedApplicationFiles = @(
-    "HaseBme280Sensor.cpp",
-    "HaseBme280Sensor.h",
-    "HaseEndpoint.ino",
-    "HasePhysicalEndpointDefinition.cpp",
-    "HasePhysicalEndpointDefinition.h",
-    "HasePhysicalEndpointDescriptor.cpp",
-    "HasePhysicalEndpointDescriptor.h",
-    "HasePhysicalEventPublisher.cpp",
-    "HasePhysicalEventPublisher.h",
-    "HasePhysicalPropertyService.cpp",
-    "HasePhysicalPropertyService.h",
-    "HasePushButton.cpp",
-    "HasePushButton.h",
-    "HaseSecrets.example.h",
-    "HaseStatusLed.cpp",
-    "HaseStatusLed.h"
+    "EndpointApplication.cpp",
+    "EndpointApplication.h",
+    "EndpointConfiguration.h",
+    "EndpointDefinition.cpp",
+    "HaseEndpoint.ino"
 ) | Sort-Object
 
 $expectedFrameworkFiles = @(
@@ -53,11 +42,15 @@ $expectedFrameworkFiles = @(
     "HaseDescriptorModel.h",
     "HaseEndpointDescriptorSerializer.cpp",
     "HaseEndpointDescriptorSerializer.h",
+    "HaseEndpointApplication.h",
+    "HaseEndpointConfiguration.h",
     "HaseEndpointDefinition.h",
     "HaseEndpointDefinitionResolver.h",
     "HaseEndpointDefinitionValidator.h",
     "HaseEndpointRequestProcessor.cpp",
     "HaseEndpointRequestProcessor.h",
+    "HaseEndpointRuntime.cpp",
+    "HaseEndpointRuntime.h",
     "HaseEndpointMetadataSerializer.cpp",
     "HaseEndpointMetadataSerializer.h",
     "HaseEsp32Endpoint.h",
@@ -505,6 +498,10 @@ if (@($boardOutput | Where-Object {
 [System.IO.Directory]::CreateDirectory($EvidenceRoot) | Out-Null
 
 $sketchRoot = Join-Path $EvidenceRoot "Sketch\HaseEndpoint"
+$runtimeFixtureRoot =
+    Join-Path $EvidenceRoot "RuntimeFixture\HaseEndpointRuntimeValidation"
+$runtimeBuildRoot = Join-Path $EvidenceRoot "RuntimeBuild"
+$runtimeOutputRoot = Join-Path $EvidenceRoot "RuntimeOutput"
 $buildPropertiesRoot = Join-Path $EvidenceRoot "BuildProperties"
 $buildOneRoot = Join-Path $EvidenceRoot "Build1"
 $buildTwoRoot = Join-Path $EvidenceRoot "Build2"
@@ -514,6 +511,9 @@ $logRoot = Join-Path $EvidenceRoot "Logs"
 
 foreach ($directory in @(
     $sketchRoot,
+    $runtimeFixtureRoot,
+    $runtimeBuildRoot,
+    $runtimeOutputRoot,
     $buildPropertiesRoot,
     $buildOneRoot,
     $buildTwoRoot,
@@ -523,6 +523,64 @@ foreach ($directory in @(
 {
     [System.IO.Directory]::CreateDirectory($directory) | Out-Null
 }
+
+$runtimeFixtureSource =
+    Join-Path `
+        $RepositoryRoot `
+        "tests\Arduino\HaseEndpointRuntimeValidation\HaseEndpointRuntimeValidation.ino"
+
+if (-not (Test-Path -LiteralPath $runtimeFixtureSource -PathType Leaf))
+{
+    throw "The endpoint-runtime validation fixture is missing."
+}
+
+[System.IO.File]::Copy(
+    $runtimeFixtureSource,
+    (Join-Path $runtimeFixtureRoot "HaseEndpointRuntimeValidation.ino"),
+    $false)
+
+$runtimeCompileLog = Join-Path $logRoot "RuntimeCompile.txt"
+$runtimeCompileArguments = @(
+    "compile",
+    "--fqbn", $fqbn,
+    "--libraries", $repositoryLibrariesRoot,
+    "--build-path", $runtimeBuildRoot,
+    "--output-dir", $runtimeOutputRoot,
+    "--clean",
+    "--verbose",
+    $runtimeFixtureRoot
+)
+
+Write-Host "Starting focused endpoint-runtime compilation..."
+$runtimeCompileResult =
+    Invoke-CliCapture `
+        -Arguments $runtimeCompileArguments `
+        -LogPath $runtimeCompileLog
+
+if ($runtimeCompileResult.ExitCode -ne 0)
+{
+    throw "The focused endpoint-runtime compilation failed."
+}
+
+$runtimeWarningLines = @(
+    $runtimeCompileResult.Output |
+        Where-Object { $_ -match "\bwarning:|\bWarnung:" }
+)
+
+if ($runtimeWarningLines.Count -ne 0)
+{
+    throw "The focused endpoint-runtime compilation produced warnings."
+}
+
+$runtimeArtifacts = @(
+    Get-ArtifactEvidence -OutputDirectory $runtimeOutputRoot)
+
+if ($runtimeArtifacts.Count -eq 0)
+{
+    throw "The focused endpoint-runtime compilation produced no artifacts."
+}
+
+Write-Host "Focused endpoint-runtime compilation succeeded."
 
 foreach ($applicationFile in $expectedApplicationFiles)
 {
@@ -554,10 +612,10 @@ $stagedInoCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".ino" }).Co
 $stagedCppCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".cpp" }).Count
 $stagedHeaderCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".h" }).Count
 
-if ($stagedFiles.Count -ne 17 `
+if ($stagedFiles.Count -ne 6 `
     -or $stagedInoCount -ne 1 `
-    -or $stagedCppCount -ne 7 `
-    -or $stagedHeaderCount -ne 9)
+    -or $stagedCppCount -ne 2 `
+    -or $stagedHeaderCount -ne 3)
 {
     throw "The staged application file set is invalid."
 }
@@ -801,7 +859,7 @@ Assert-ExactStringSet `
     -Description "repository status"
 
 Write-Host ""
-Write-Host "ADR-0054 Increment 54B1 library-based compilation"
+Write-Host "ADR-0054 Increment 54D1 six-tab endpoint compilation"
 Write-Host ""
 Write-Host "Computer                    :" $env:COMPUTERNAME
 Write-Host "Repository unchanged        :" $true
@@ -810,7 +868,10 @@ Write-Host "Local secrets present       :" (
 Write-Host "Local secrets read          :" $false
 Write-Host "Application .ino/.cpp/.h    :" (
     "{0}/{1}/{2}" -f $stagedInoCount, $stagedCppCount, $stagedHeaderCount)
-Write-Host "Framework .cpp/.h           :" "26/31"
+Write-Host "Framework .cpp/.h           :" "27/34"
+Write-Host "Runtime fixture succeeded   :" (
+    $runtimeCompileResult.ExitCode -eq 0)
+Write-Host "Runtime fixture warnings    :" $runtimeWarningLines.Count
 Write-Host "Arduino CLI version exact   :" $true
 Write-Host "ESP32 core version exact    :" $true
 Write-Host "FQBN exact                  :" ($buildFqbn -ceq $fqbn)
