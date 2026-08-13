@@ -1,11 +1,9 @@
 #pragma once
 
 #include <Arduino.h>
+#include <HaseEsp32Endpoint.h>
 
 #include "HasePhysicalPropertyService.h"
-#include "HaseProtocolEnvelope.h"
-#include "HaseReadPropertyRequest.h"
-#include "HaseUtcClock.h"
 
 class HasePhysicalReadPropertyHandler
 {

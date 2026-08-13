@@ -1,8 +1,5 @@
 #include "HasePhysicalEventPublisher.h"
 
-#include "HaseBinaryProtocolWriter.h"
-#include "HaseProtocolEnvelope.h"
-
 HasePhysicalEventPublisher::HasePhysicalEventPublisher(
     HaseTcpTransport& transport,
     const HaseUtcClock& utcClock)

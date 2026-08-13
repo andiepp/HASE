@@ -3,24 +3,16 @@
 // -----------------------------------------------------------------------------
 
 #include <WiFi.h>
+#include <HaseEsp32Endpoint.h>
 
 #include "HaseBme280Sensor.h"
-#include "HaseDiscoverHandler.h"
-#include "HaseMdnsAdvertiser.h"
 #include "HasePhysicalEndpointDescriptor.h"
 #include "HasePhysicalEventPublisher.h"
 #include "HasePhysicalExecuteCommandHandler.h"
 #include "HasePhysicalPropertyService.h"
 #include "HasePhysicalReadPropertyHandler.h"
 #include "HasePhysicalWritePropertyHandler.h"
-#include "HaseProtocolDispatcher.h"
-#include "HaseProtocolEnvelope.h"
-#include "HaseReadEndpointDescriptorHandler.h"
-#include "HaseReadPropertyRequest.h"
-#include "HaseReadPropertyResponseHandler.h"
 #include "HaseSecrets.h"
-#include "HaseTcpTransport.h"
-#include "HaseUtcClock.h"
 
 // -----------------------------------------------------------------------------
 // HASE transport configuration

@@ -1,7 +1,5 @@
 #include "HasePhysicalReadPropertyHandler.h"
 
-#include "HaseReadPropertyResponseHandler.h"
-
 namespace
 {
     bool CreateDoubleResponse(

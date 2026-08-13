@@ -1,9 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-
-#include "HaseTcpTransport.h"
-#include "HaseUtcClock.h"
+#include <HaseEsp32Endpoint.h>
 
 class HasePhysicalEventPublisher
 {

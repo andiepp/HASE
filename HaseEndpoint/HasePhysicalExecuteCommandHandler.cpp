@@ -1,8 +1,5 @@
 #include "HasePhysicalExecuteCommandHandler.h"
 
-#include "HaseExecuteCommandRequest.h"
-#include "HaseExecuteCommandResponseHandler.h"
-
 namespace
 {
     bool CreateInvalidRequestResponse(

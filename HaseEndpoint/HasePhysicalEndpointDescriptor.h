@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HaseDescriptorModel.h"
+#include <HaseEsp32Endpoint.h>
 
 class HasePhysicalEndpointDescriptor
 {

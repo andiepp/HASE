@@ -1,8 +1,5 @@
 #include "HasePhysicalWritePropertyHandler.h"
 
-#include "HaseWritePropertyRequest.h"
-#include "HaseWritePropertyResponseHandler.h"
-
 namespace
 {
     bool CreateInvalidRequestResponse(
