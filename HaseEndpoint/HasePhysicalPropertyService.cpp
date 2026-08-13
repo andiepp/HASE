@@ -1,40 +1,6 @@
 #include "HasePhysicalPropertyService.h"
 
 #include <cmath>
-#include <cstring>
-
-namespace
-{
-    using SensorReadFunction =
-        float (HaseBme280Sensor::*)();
-
-    struct PropertyReader
-    {
-        const char* propertyId;
-
-        SensorReadFunction read;
-    };
-
-    const PropertyReader PropertyReaders[] =
-    {
-        {
-            "physical.environment-sensor.temperature",
-            &HaseBme280Sensor::readTemperatureCelsius
-        },
-        {
-            "physical.environment-sensor.relative-humidity",
-            &HaseBme280Sensor::readRelativeHumidity
-        },
-        {
-            "physical.environment-sensor.air-pressure",
-            &HaseBme280Sensor::readAirPressureHectopascal
-        }
-    };
-
-    constexpr size_t PropertyReaderCount =
-        sizeof(PropertyReaders)
-        / sizeof(PropertyReaders[0]);
-}
 
 HasePhysicalPropertyService::HasePhysicalPropertyService(
     HaseBme280Sensor& sensor)
@@ -57,230 +23,114 @@ HasePhysicalPropertyService::HasePhysicalPropertyService(
 {
 }
 
-HasePhysicalPropertyReadResult
-    HasePhysicalPropertyService::readDouble(
-        const char* instrumentId,
-        const char* propertyId,
-        double& value)
+HaseApplicationResult HasePhysicalPropertyService::readTemperature(
+    double& value)
 {
-    value =
-        0.0;
-
-    if (instrumentId == nullptr
-        || strcmp(
-               instrumentId,
-               EnvironmentSensorInstrumentId)
-            != 0)
-    {
-        return
-            HasePhysicalPropertyReadResult::
-                InstrumentNotFound;
-    }
-
-    if (propertyId == nullptr)
-    {
-        return
-            HasePhysicalPropertyReadResult::
-                PropertyNotFound;
-    }
-
-    for (size_t index = 0;
-         index < PropertyReaderCount;
-         index++)
-    {
-        const PropertyReader& propertyReader =
-            PropertyReaders[index];
-
-        if (strcmp(
-                propertyId,
-                propertyReader.propertyId)
-            != 0)
-        {
-            continue;
-        }
-
-        float sensorValue =
-            (_sensor.*propertyReader.read)();
-
-        if (isnan(
-                sensorValue))
-        {
-            return
-                HasePhysicalPropertyReadResult::
-                    SensorUnavailable;
-        }
-
-        value =
-            static_cast<double>(
-                sensorValue);
-
-        return
-            HasePhysicalPropertyReadResult::
-                Success;
-    }
-
-    return
-        HasePhysicalPropertyReadResult::
-            PropertyNotFound;
+    return readSensor(
+        &HaseBme280Sensor::readTemperatureCelsius,
+        value);
 }
 
-HasePhysicalPropertyReadResult
-    HasePhysicalPropertyService::readBoolean(
-        const char* instrumentId,
-        const char* propertyId,
-        bool& value)
+HaseApplicationResult HasePhysicalPropertyService::readRelativeHumidity(
+    double& value)
+{
+    return readSensor(
+        &HaseBme280Sensor::readRelativeHumidity,
+        value);
+}
+
+HaseApplicationResult HasePhysicalPropertyService::readAirPressure(
+    double& value)
+{
+    return readSensor(
+        &HaseBme280Sensor::readAirPressureHectopascal,
+        value);
+}
+
+HaseApplicationResult HasePhysicalPropertyService::readStatusLedEnabled(
+    bool& value)
 {
     value =
         false;
 
-    if (instrumentId == nullptr
-        || strcmp(
-               instrumentId,
-               ControllerInstrumentId)
-            != 0)
+    if (!ensureStatusLedInitialized())
     {
-        return
-            HasePhysicalPropertyReadResult::
-                InstrumentNotFound;
-    }
-
-    if (propertyId == nullptr
-        || strcmp(
-               propertyId,
-               StatusLedEnabledPropertyId)
-            != 0)
-    {
-        return
-            HasePhysicalPropertyReadResult::
-                PropertyNotFound;
-    }
-
-    if (_statusLed == nullptr)
-    {
-        return
-            HasePhysicalPropertyReadResult::
-                SensorUnavailable;
-    }
-
-    if (!_statusLed->isInitialized())
-    {
-        _statusLed->begin();
-    }
-
-    if (!_statusLed->isInitialized())
-    {
-        return
-            HasePhysicalPropertyReadResult::
-                SensorUnavailable;
+        return HaseApplicationResult::Unavailable;
     }
 
     value =
         _statusLed->isEnabled();
 
-    return
-        HasePhysicalPropertyReadResult::
-            Success;
+    return HaseApplicationResult::Success;
 }
 
-HasePhysicalPropertyWriteResult
-    HasePhysicalPropertyService::writeBoolean(
-        const char* instrumentId,
-        const char* propertyId,
-        bool value)
+HaseApplicationResult HasePhysicalPropertyService::writeStatusLedEnabled(
+    bool value)
 {
-    if (instrumentId == nullptr
-        || strcmp(
-               instrumentId,
-               ControllerInstrumentId)
-            != 0)
+    if (!ensureStatusLedInitialized())
     {
-        return
-            HasePhysicalPropertyWriteResult::
-                InstrumentNotFound;
-    }
-
-    if (propertyId == nullptr
-        || strcmp(
-               propertyId,
-               StatusLedEnabledPropertyId)
-            != 0)
-    {
-        return
-            HasePhysicalPropertyWriteResult::
-                PropertyNotFound;
-    }
-
-    if (_statusLed == nullptr)
-    {
-        return
-            HasePhysicalPropertyWriteResult::
-                HardwareUnavailable;
-    }
-
-    if (!_statusLed->isInitialized())
-    {
-        _statusLed->begin();
-    }
-
-    if (!_statusLed->isInitialized())
-    {
-        return
-            HasePhysicalPropertyWriteResult::
-                HardwareUnavailable;
+        return HaseApplicationResult::Unavailable;
     }
 
     _statusLed->setEnabled(
         value);
 
-    if (_statusLed->isEnabled()
-        != value)
+    if (_statusLed->isEnabled() != value)
     {
-        return
-            HasePhysicalPropertyWriteResult::
-                HardwareUnavailable;
+        return HaseApplicationResult::Unavailable;
     }
 
-    return
-        HasePhysicalPropertyWriteResult::
-            Success;
+    return HaseApplicationResult::Success;
 }
 
-HasePhysicalCommandExecutionResult
-    HasePhysicalPropertyService::toggleStatusLed(
-        const char* instrumentId,
-        const char* commandPath,
-        bool& enabled)
+HaseApplicationResult HasePhysicalPropertyService::toggleStatusLed(
+    bool& enabled)
 {
     enabled =
         false;
 
-    if (instrumentId == nullptr
-        || strcmp(
-               instrumentId,
-               ControllerInstrumentId)
-            != 0)
+    if (!ensureStatusLedInitialized())
     {
-        return
-            HasePhysicalCommandExecutionResult::
-                InstrumentNotFound;
+        return HaseApplicationResult::Unavailable;
     }
 
-    if (commandPath == nullptr
-        || strcmp(
-               commandPath,
-               ToggleStatusLedCommandPath)
-            != 0)
+    enabled =
+        _statusLed->toggleEnabled();
+
+    if (_statusLed->isEnabled() != enabled)
     {
-        return
-            HasePhysicalCommandExecutionResult::
-                CommandNotFound;
+        return HaseApplicationResult::Unavailable;
     }
 
+    return HaseApplicationResult::Success;
+}
+
+HaseApplicationResult HasePhysicalPropertyService::readSensor(
+    SensorReadFunction read,
+    double& value)
+{
+    value =
+        0.0;
+
+    const float sensorValue =
+        (_sensor.*read)();
+
+    if (std::isnan(sensorValue))
+    {
+        return HaseApplicationResult::Unavailable;
+    }
+
+    value =
+        static_cast<double>(sensorValue);
+
+    return HaseApplicationResult::Success;
+}
+
+bool HasePhysicalPropertyService::ensureStatusLedInitialized()
+{
     if (_statusLed == nullptr)
     {
-        return
-            HasePhysicalCommandExecutionResult::
-                HardwareUnavailable;
+        return false;
     }
 
     if (!_statusLed->isInitialized())
@@ -288,25 +138,5 @@ HasePhysicalCommandExecutionResult
         _statusLed->begin();
     }
 
-    if (!_statusLed->isInitialized())
-    {
-        return
-            HasePhysicalCommandExecutionResult::
-                HardwareUnavailable;
-    }
-
-    enabled =
-        _statusLed->toggleEnabled();
-
-    if (_statusLed->isEnabled()
-        != enabled)
-    {
-        return
-            HasePhysicalCommandExecutionResult::
-                HardwareUnavailable;
-    }
-
-    return
-        HasePhysicalCommandExecutionResult::
-            Success;
+    return _statusLed->isInitialized();
 }

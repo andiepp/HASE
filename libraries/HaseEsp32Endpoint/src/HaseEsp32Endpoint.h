@@ -6,7 +6,6 @@
 #include "HaseCommandDescriptorSerializer.h"
 #include "HaseDataDescriptorSerializer.h"
 #include "HaseDescriptorModel.h"
-#include "HaseDiscoverHandler.h"
 #include "HaseEndpointDescriptorSerializer.h"
 #include "HaseEndpointDefinition.h"
 #include "HaseEndpointDefinitionResolver.h"

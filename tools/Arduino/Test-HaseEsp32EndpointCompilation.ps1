@@ -24,18 +24,14 @@ $expectedApplicationFiles = @(
     "HaseBme280Sensor.cpp",
     "HaseBme280Sensor.h",
     "HaseEndpoint.ino",
+    "HasePhysicalEndpointDefinition.cpp",
+    "HasePhysicalEndpointDefinition.h",
     "HasePhysicalEndpointDescriptor.cpp",
     "HasePhysicalEndpointDescriptor.h",
     "HasePhysicalEventPublisher.cpp",
     "HasePhysicalEventPublisher.h",
-    "HasePhysicalExecuteCommandHandler.cpp",
-    "HasePhysicalExecuteCommandHandler.h",
     "HasePhysicalPropertyService.cpp",
     "HasePhysicalPropertyService.h",
-    "HasePhysicalReadPropertyHandler.cpp",
-    "HasePhysicalReadPropertyHandler.h",
-    "HasePhysicalWritePropertyHandler.cpp",
-    "HasePhysicalWritePropertyHandler.h",
     "HasePushButton.cpp",
     "HasePushButton.h",
     "HaseSecrets.example.h",
@@ -55,8 +51,6 @@ $expectedFrameworkFiles = @(
     "HaseDataDescriptorSerializer.h",
     "HaseDescriptorModel.cpp",
     "HaseDescriptorModel.h",
-    "HaseDiscoverHandler.cpp",
-    "HaseDiscoverHandler.h",
     "HaseEndpointDescriptorSerializer.cpp",
     "HaseEndpointDescriptorSerializer.h",
     "HaseEndpointDefinition.h",
@@ -560,10 +554,10 @@ $stagedInoCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".ino" }).Co
 $stagedCppCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".cpp" }).Count
 $stagedHeaderCount = @($stagedFiles | Where-Object { $_.Extension -ceq ".h" }).Count
 
-if ($stagedFiles.Count -ne 21 `
+if ($stagedFiles.Count -ne 17 `
     -or $stagedInoCount -ne 1 `
-    -or $stagedCppCount -ne 9 `
-    -or $stagedHeaderCount -ne 11)
+    -or $stagedCppCount -ne 7 `
+    -or $stagedHeaderCount -ne 9)
 {
     throw "The staged application file set is invalid."
 }
@@ -816,7 +810,7 @@ Write-Host "Local secrets present       :" (
 Write-Host "Local secrets read          :" $false
 Write-Host "Application .ino/.cpp/.h    :" (
     "{0}/{1}/{2}" -f $stagedInoCount, $stagedCppCount, $stagedHeaderCount)
-Write-Host "Framework .cpp/.h           :" "27/32"
+Write-Host "Framework .cpp/.h           :" "26/31"
 Write-Host "Arduino CLI version exact   :" $true
 Write-Host "ESP32 core version exact    :" $true
 Write-Host "FQBN exact                  :" ($buildFqbn -ceq $fqbn)

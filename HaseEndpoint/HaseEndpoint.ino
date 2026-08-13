@@ -6,12 +6,9 @@
 #include <HaseEsp32Endpoint.h>
 
 #include "HaseBme280Sensor.h"
-#include "HasePhysicalEndpointDescriptor.h"
+#include "HasePhysicalEndpointDefinition.h"
 #include "HasePhysicalEventPublisher.h"
-#include "HasePhysicalExecuteCommandHandler.h"
 #include "HasePhysicalPropertyService.h"
-#include "HasePhysicalReadPropertyHandler.h"
-#include "HasePhysicalWritePropertyHandler.h"
 #include "HaseSecrets.h"
 
 // -----------------------------------------------------------------------------
@@ -47,6 +44,9 @@ HaseMdnsAdvertiser mdnsAdvertiser;
 HasePhysicalPropertyService physicalPropertyService(
     environmentSensor);
 
+HasePhysicalEndpointDefinition physicalEndpointDefinition(
+    physicalPropertyService);
+
 HaseUtcClock utcClock;
 
 HaseTcpTransport transport(
@@ -56,7 +56,8 @@ HaseTcpTransport transport(
 
 HasePhysicalEventPublisher eventPublisher(
     transport,
-    utcClock);
+    utcClock,
+    physicalEndpointDefinition.buttonPressedEvent());
 
 uint8_t requestBuffer[
     MAXIMUM_PAYLOAD_LENGTH];
@@ -88,21 +89,6 @@ void processTransport();
 bool processProtocolFrame(
     const HaseProtocolEnvelope& envelope,
     HaseProtocolDispatchResult dispatchResult);
-
-bool processDiscoverRequest(
-    const HaseProtocolEnvelope& envelope);
-
-bool processReadPropertyRequest(
-    const HaseProtocolEnvelope& envelope);
-
-bool processWritePropertyRequest(
-    const HaseProtocolEnvelope& envelope);
-
-bool processExecuteCommandRequest(
-    const HaseProtocolEnvelope& envelope);
-
-bool processReadEndpointDescriptorRequest(
-    const HaseProtocolEnvelope& envelope);
 
 void printProtocolEnvelope(
     const HaseProtocolEnvelope& envelope);
@@ -142,17 +128,41 @@ void setup()
 
     Serial.println();
 
+    const HaseEndpointDefinition& definition =
+        physicalEndpointDefinition.definition();
+
+    const HaseEndpointDefinitionValidationResult definitionResult =
+        HaseEndpointDefinitionValidator::Validate(
+            definition);
+
+    if (definitionResult
+        != HaseEndpointDefinitionValidationResult::Valid)
+    {
+        Serial.print(
+            "Endpoint definition validation failed: ");
+
+        Serial.println(
+            static_cast<uint8_t>(definitionResult));
+
+        Serial.println(
+            "Endpoint startup stopped before publication.");
+
+        Serial.println();
+
+        return;
+    }
+
     Serial.print(
         "Endpoint ID   : ");
 
     Serial.println(
-        HaseDiscoverHandler::EndpointId());
+        definition.descriptor->id);
 
     Serial.print(
         "Instrument ID : ");
 
     Serial.println(
-        HaseDiscoverHandler::InstrumentId());
+        definition.descriptor->instruments[0].id);
 
     Serial.println();
 
@@ -591,168 +601,31 @@ bool processProtocolFrame(
     const HaseProtocolEnvelope& envelope,
     HaseProtocolDispatchResult dispatchResult)
 {
-    switch (dispatchResult)
-    {
-        case HaseProtocolDispatchResult::
-            DiscoverRequestRecognized:
-        {
-            return processDiscoverRequest(
-                envelope);
-        }
-
-        case HaseProtocolDispatchResult::
-            ReadPropertyRequestRecognized:
-        {
-            return processReadPropertyRequest(
-                envelope);
-        }
-
-        case HaseProtocolDispatchResult::
-            WritePropertyRequestRecognized:
-
-        case HaseProtocolDispatchResult::
-            InvalidWritePropertyRequest:
-        {
-            return processWritePropertyRequest(
-                envelope);
-        }
-
-        case HaseProtocolDispatchResult::
-            ExecuteCommandRequestRecognized:
-
-        case HaseProtocolDispatchResult::
-            InvalidExecuteCommandRequest:
-        {
-            return processExecuteCommandRequest(
-                envelope);
-        }
-
-        case HaseProtocolDispatchResult::
-            ReadEndpointDescriptorRequestRecognized:
-        {
-            return processReadEndpointDescriptorRequest(
-                envelope);
-        }
-
-        default:
-        {
-            return false;
-        }
-    }
-}
-
-bool processDiscoverRequest(
-    const HaseProtocolEnvelope& envelope)
-{
     uint32_t responseLength =
         0;
 
-    bool responseCreated =
-        HaseDiscoverHandler::CreateResponse(
+    const HaseEndpointRequestProcessingResult processingResult =
+        HaseEndpointRequestProcessor::Process(
             envelope,
-            responseBuffer,
-            sizeof(responseBuffer),
-            responseLength);
-
-    if (!responseCreated)
-    {
-        Serial.println(
-            "Failed to create DiscoverResponse.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    bool responseWritten =
-        transport.writeFrame(
-            responseBuffer,
-            responseLength);
-
-    if (!responseWritten)
-    {
-        Serial.println(
-            "Failed to write DiscoverResponse. "
-            "Closing client connection.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    printPayload(
-        "Responded",
-        responseBuffer,
-        responseLength);
-
-    Serial.println();
-
-    Serial.println(
-        "DiscoverResponse sent.");
-
-    Serial.print(
-        "Endpoint ID   : ");
-
-    Serial.println(
-        HaseDiscoverHandler::EndpointId());
-
-    Serial.print(
-        "Instrument ID : ");
-
-    Serial.println(
-        HaseDiscoverHandler::InstrumentId());
-
-    Serial.println();
-
-    return true;
-}
-
-bool processReadPropertyRequest(
-    const HaseProtocolEnvelope& envelope)
-{
-    HaseReadPropertyRequest request;
-
-    if (!HaseReadPropertyRequestDecoder::Decode(
-            envelope,
-            request))
-    {
-        uint32_t responseLength =
-            0;
-
-        HaseReadPropertyResponseHandler::
-            CreateFailureResponse(
-                envelope,
-                HaseReadPropertyResponseHandler::
-                    InvalidRequestResultCode,
-                "Invalid request",
-                responseBuffer,
-                sizeof(responseBuffer),
-                responseLength);
-
-        transport.writeFrame(
-            responseBuffer,
-            responseLength);
-
-        return true;
-    }
-
-    uint32_t responseLength =
-        0;
-
-    bool responseCreated =
-        HasePhysicalReadPropertyHandler::CreateResponse(
-            envelope,
-            request,
-            physicalPropertyService,
+            dispatchResult,
+            physicalEndpointDefinition.definition(),
             utcClock,
             responseBuffer,
             sizeof(responseBuffer),
             responseLength);
 
-    if (!responseCreated)
+    if (processingResult
+        == HaseEndpointRequestProcessingResult::NotHandled)
+    {
+        return false;
+    }
+
+    if (processingResult
+        == HaseEndpointRequestProcessingResult::ResponseCreationFailed)
     {
         Serial.println(
-            "Failed to create ReadPropertyResponse.");
+            "Failed to create protocol response. "
+            "Closing client connection.");
 
         transport.disconnectClient();
 
@@ -764,46 +637,7 @@ bool processReadPropertyRequest(
             responseLength))
     {
         Serial.println(
-            "Failed to write ReadPropertyResponse. "
-            "Closing client connection.");
-
-        transport.disconnectClient();
-    }
-
-    return true;
-}
-
-bool processWritePropertyRequest(
-    const HaseProtocolEnvelope& envelope)
-{
-    uint32_t responseLength =
-        0;
-
-    bool responseCreated =
-        HasePhysicalWritePropertyHandler::CreateResponse(
-            envelope,
-            physicalPropertyService,
-            utcClock,
-            responseBuffer,
-            sizeof(responseBuffer),
-            responseLength);
-
-    if (!responseCreated)
-    {
-        Serial.println(
-            "Failed to create WritePropertyResponse.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    if (!transport.writeFrame(
-            responseBuffer,
-            responseLength))
-    {
-        Serial.println(
-            "Failed to write WritePropertyResponse. "
+            "Failed to write protocol response. "
             "Closing client connection.");
 
         transport.disconnectClient();
@@ -815,127 +649,6 @@ bool processWritePropertyRequest(
         "Responded",
         responseBuffer,
         responseLength);
-
-    Serial.println();
-
-    Serial.println(
-        "WritePropertyResponse sent.");
-
-    Serial.println();
-
-    return true;
-}
-
-bool processExecuteCommandRequest(
-    const HaseProtocolEnvelope& envelope)
-{
-    uint32_t responseLength =
-        0;
-
-    bool responseCreated =
-        HasePhysicalExecuteCommandHandler::CreateResponse(
-            envelope,
-            physicalPropertyService,
-            responseBuffer,
-            sizeof(responseBuffer),
-            responseLength);
-
-    if (!responseCreated)
-    {
-        Serial.println(
-            "Failed to create ExecuteCommandResponse.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    if (!transport.writeFrame(
-            responseBuffer,
-            responseLength))
-    {
-        Serial.println(
-            "Failed to write ExecuteCommandResponse. "
-            "Closing client connection.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    printPayload(
-        "Responded",
-        responseBuffer,
-        responseLength);
-
-    Serial.println();
-
-    Serial.println(
-        "ExecuteCommandResponse sent.");
-
-    Serial.println();
-
-    return true;
-}
-
-bool processReadEndpointDescriptorRequest(
-    const HaseProtocolEnvelope& envelope)
-{
-    uint32_t responseLength =
-        0;
-
-    const HaseEndpointDescriptor& descriptor =
-        HasePhysicalEndpointDescriptor::Descriptor();
-
-    bool responseCreated =
-        HaseReadEndpointDescriptorHandler::CreateResponse(
-            envelope,
-            descriptor,
-            responseBuffer,
-            sizeof(responseBuffer),
-            responseLength);
-
-    if (!responseCreated)
-    {
-        Serial.println(
-            "Failed to create ReadEndpointDescriptorResponse.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    bool responseWritten =
-        transport.writeFrame(
-            responseBuffer,
-            responseLength);
-
-    if (!responseWritten)
-    {
-        Serial.println(
-            "Failed to write ReadEndpointDescriptorResponse. "
-            "Closing client connection.");
-
-        transport.disconnectClient();
-
-        return true;
-    }
-
-    printPayload(
-        "Responded",
-        responseBuffer,
-        responseLength);
-
-    Serial.println();
-
-    Serial.println(
-        "ReadEndpointDescriptorResponse sent.");
-
-    Serial.print(
-        "Endpoint ID : ");
-
-    Serial.println(
-        descriptor.id);
 
     Serial.println();
 

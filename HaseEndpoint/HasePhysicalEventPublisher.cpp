@@ -2,11 +2,14 @@
 
 HasePhysicalEventPublisher::HasePhysicalEventPublisher(
     HaseTcpTransport& transport,
-    const HaseUtcClock& utcClock)
+    const HaseUtcClock& utcClock,
+    const HaseEventRegistration& buttonPressedEvent)
     : _transport(
           transport),
       _utcClock(
-          utcClock)
+          utcClock),
+      _buttonPressedEvent(
+          buttonPressedEvent)
 {
 }
 
@@ -103,117 +106,8 @@ void HasePhysicalEventPublisher::update()
 
 bool HasePhysicalEventPublisher::publishButtonPressed()
 {
-    if (!_transport.hasConnectedClient())
-    {
-        return false;
-    }
-
-    int64_t unixTimeMilliseconds =
-        0;
-
-    if (!_utcClock.tryGetUnixTimeMilliseconds(
-            unixTimeMilliseconds))
-    {
-        return false;
-    }
-
-    uint8_t frame[
-        FrameCapacity];
-
-    uint32_t frameLength =
-        0;
-
-    if (!createButtonPressedFrame(
-            unixTimeMilliseconds,
-            frame,
-            sizeof(frame),
-            frameLength))
-    {
-        return false;
-    }
-
-    return _transport.writeFrame(
-        frame,
-        frameLength);
-}
-
-bool HasePhysicalEventPublisher::createButtonPressedFrame(
-    int64_t unixTimeMilliseconds,
-    uint8_t* frame,
-    size_t frameCapacity,
-    uint32_t& frameLength) const
-{
-    frameLength =
-        0;
-
-    if (frame == nullptr)
-    {
-        return false;
-    }
-
-    uint8_t payload[
-        PayloadCapacity];
-
-    HaseBinaryProtocolWriter writer(
-        payload,
-        sizeof(payload));
-
-    if (!writer.writeString(
-            ControllerInstrumentId))
-    {
-        return false;
-    }
-
-    if (!writer.writeString(
-            ButtonPressedEventPath))
-    {
-        return false;
-    }
-
-    if (!writer.writeInt64(
-            unixTimeMilliseconds))
-    {
-        return false;
-    }
-
-    if (!writer.writeByte(
-            NullVariantType))
-    {
-        return false;
-    }
-
-    if (!writer.succeeded())
-    {
-        return false;
-    }
-
-    HaseProtocolEnvelope notification;
-
-    notification.majorVersion =
-        ProtocolMajorVersion;
-
-    notification.minorVersion =
-        ProtocolMinorVersion;
-
-    notification.role =
-        NotificationRole;
-
-    notification.messageType =
-        EventNotificationMessageType;
-
-    notification.correlationId =
-        NotificationCorrelationId;
-
-    notification.payload =
-        payload;
-
-    notification.payloadLength =
-        static_cast<uint32_t>(
-            writer.length());
-
-    return HaseProtocolEnvelopeCodec::Encode(
-        notification,
-        frame,
-        frameCapacity,
-        frameLength);
+    return HaseEventNotificationHandler::PublishNull(
+        _buttonPressedEvent,
+        _utcClock,
+        _transport);
 }
