@@ -60,7 +60,10 @@ $expectedFrameworkFiles = @(
     "HaseEndpointDescriptorSerializer.cpp",
     "HaseEndpointDescriptorSerializer.h",
     "HaseEndpointDefinition.h",
+    "HaseEndpointDefinitionResolver.h",
     "HaseEndpointDefinitionValidator.h",
+    "HaseEndpointRequestProcessor.cpp",
+    "HaseEndpointRequestProcessor.h",
     "HaseEndpointMetadataSerializer.cpp",
     "HaseEndpointMetadataSerializer.h",
     "HaseEsp32Endpoint.h",
@@ -813,7 +816,7 @@ Write-Host "Local secrets present       :" (
 Write-Host "Local secrets read          :" $false
 Write-Host "Application .ino/.cpp/.h    :" (
     "{0}/{1}/{2}" -f $stagedInoCount, $stagedCppCount, $stagedHeaderCount)
-Write-Host "Framework .cpp/.h           :" "26/30"
+Write-Host "Framework .cpp/.h           :" "27/32"
 Write-Host "Arduino CLI version exact   :" $true
 Write-Host "ESP32 core version exact    :" $true
 Write-Host "FQBN exact                  :" ($buildFqbn -ceq $fqbn)
