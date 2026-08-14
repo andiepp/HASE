@@ -2,32 +2,36 @@
 
 ## Active architectural objective — ADR-0054
 
-**ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — accepted; implementation pending**
+**ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — implemented through Stage 54D; physical validation pending**
 
-- The current physical ESP32 sketch contains 72 sketch-root files and 7,129
-  lines, including a 1,189-line `HaseEndpoint.ino`.
 - Stable Protocol Version 1 framing, serialization, TCP transport, discovery,
-  mDNS, UTC, lifecycle, and Event publication infrastructure will move into a
-  conventional source-based Arduino library.
-- Endpoint configuration, descriptor and registration, hardware behavior, and
-  local Wi-Fi secrets become separate, clearly named application concerns.
-- The application boundary preserves the exact existing endpoint and
-  instrument identities, descriptors, BME280 Properties, GPIO16 Property and
-  Command, GPIO17 Event, transport behavior, discovery, Runtime Host
-  compatibility, and recovery behavior.
-- Increment 54A records only the accepted architecture and compatibility
-  contract. It changes no firmware or executable source and authorizes no
-  compilation, deployment, or physical mutation.
-- Stage 54B will first discover the authoritative installed ESP32 toolchain and
-  dependency versions, then introduce library packaging and clean repeatable
-  compilation without uploading firmware.
-- Stages 54C and 54D introduce the typed registration/callback boundary and
-  migrate the BME280/GPIO example with an authoring guide. Stage 54E is a later
-  separately approved physical compatibility validation and closure.
+  mDNS, UTC, lifecycle, request processing, and Event framing are packaged in
+  the conventional `libraries/HaseEsp32Endpoint` Arduino library.
+- The active BME280/GPIO application now contains five tracked source files:
+  the sketch, configuration, definition, and application header/source. Local
+  `HaseSecrets.h` remains ignored, and its tracked template is outside the
+  sketch root.
+- The typed definition registers four Properties, one Command, and one Event.
+  Definition validation runs before hardware and network startup, and the
+  framework invokes Property writes and Commands at most once.
+- The library contains no BME280, GPIO16, GPIO17, or Adafruit application data.
+  Hardware initialization, reads, writes, Command behavior, debounce, and Event
+  detection remain in `EndpointApplication.*`.
+- The focused runtime fixture and two clean endpoint builds succeed without
+  warning lines on Arduino IDE 2.3.7, embedded CLI 1.3.1, ESP32 core 3.3.10,
+  FQBN `esp32:esp32:esp32doit-devkit-v1`, and Espressif GCC 14.2.0.
+- The validated application footprint is 1,010,594 flash bytes and 59,388 RAM
+  bytes. The complete .NET Release suite remains at 5,974 passing tests.
+- The [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md)
+  explains the supported application files, typed callbacks, registrations,
+  hardware dependencies, ignored secrets, and controlled compilation.
+- Stage 54E remains separately authorized firmware upload, physical
+  compatibility validation, and closure. No Stage 54D action deployed firmware
+  or changed physical state.
 
-The authoritative starting baseline is commit
-`96db1799d410eedc82aea82cc3f5b3efa003242c`, with 238 focused
-credential-provisioning tests and 5,974 complete .NET Release tests passing.
+The authoritative Stage 54D1 implementation baseline is commit
+`06d5edc5f69c09ca45d5c5013c70c73b178d81e7`, with AEPRAKETE, LABC, and LTAEP
+clean and synchronized before the documentation increment.
 
 ---
 

@@ -1,7 +1,27 @@
 # ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary
 
-- Status: Accepted; implementation pending
+- Status: Accepted; implemented through Stage 54D; physical validation pending
 - Date: 2026-08-12
+
+## Implementation progress
+
+Stages 54B through 54D are implemented and automatically validated. The stable
+Protocol Version 1 framework is packaged as `libraries/HaseEsp32Endpoint`; the
+typed definition, callback, generic request-processing, runtime, and Event
+boundaries are active; and the BME280/GPIO reference application is reduced to
+five tracked source files plus ignored local secrets.
+
+Increment 54D1 was published at commit
+`06d5edc5f69c09ca45d5c5013c70c73b178d81e7`. Its focused runtime fixture and
+two clean endpoint compilations succeeded without warning lines at 1,010,594
+flash bytes and 59,388 RAM bytes. The complete .NET Release suite remains at
+5,974 passing tests.
+
+Increment 54D2 adds the
+[ESP32 Endpoint Authoring Guide](../ESP32-Endpoint-Authoring-Guide.md) and
+reconciles project documentation. It changes no firmware or executable source.
+Stage 54E remains separately authorized physical compatibility validation and
+closure.
 
 ## Context
 
@@ -336,3 +356,14 @@ state.
 Before commit, rollback restores or removes only the three documentation
 paths. After commit, recovery is a documentation-only revert. No device or
 deployment recovery procedure is required.
+
+## Stage 54D effects and recovery
+
+Increment 54D1 introduced the runtime facade and migrated reference
+application. Increment 54D2 changes only `README.md`, this ADR,
+`docs/ProjectStatus.md`, `docs/Roadmap.md`, and the new authoring guide. It does
+not compile or upload firmware and does not modify Runtime Host, Client,
+deployment, credentials, serial ports, or physical state.
+
+Before the 54D2 commit, recovery restores or removes only those five
+documentation paths. After commit, recovery is a documentation-only revert.

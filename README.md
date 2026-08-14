@@ -156,6 +156,15 @@ Physical hardware validations are intentionally separate from ordinary
 automated tests. They require explicit endpoint selection and do not
 automatically attach arbitrary discovered devices.
 
+### Author an ESP32 endpoint
+
+Use the
+[HASE ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
+to create or adapt a Protocol Version 1 ESP32 application. It explains the five
+tracked application files, local ignored Wi-Fi secrets, typed capability
+registration, hardware callbacks, Event publication, and controlled
+compilation without firmware upload.
+
 ### Run the laptop client
 
 Start with the
@@ -171,6 +180,7 @@ or environment-specific client configuration files.
 
 ## Documentation
 
+- [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 - [Descriptor-Driven Property Editing Tutorial](docs/Tutorial/HASE-Descriptor-Driven-Property-Editing-Tutorial.md)

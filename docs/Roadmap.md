@@ -1503,19 +1503,15 @@ Credential lifecycle work is intentionally deferred to a separate architectural 
 
 ## Active objective — ADR-0054 ESP32 Endpoint Library and Application Authoring Boundary
 
-**Status:** [Accepted] Architecture and compatibility contract accepted;
-implementation pending
+**Status:** [Implemented through 54D] Automated implementation and authoring
+documentation complete; separately authorized physical validation pending
 
-The current `HaseEndpoint` sketch contains 72 sketch-root files and 7,129
-lines, including a 1,189-line `.ino`. Protocol, serialization, TCP transport,
-discovery, lifecycle, descriptors, BME280 Properties, GPIO behavior, Events,
-and local configuration are presented as one Arduino application source set.
-
-ADR-0054 separates stable HASE ESP32 infrastructure into a conventional
-source-based Arduino library. The active application becomes approximately six
-visible files covering five explicit concerns: sketch composition, public
-endpoint configuration, endpoint definition and registration, hardware
-application behavior, and local ignored Wi-Fi secrets.
+Stable HASE ESP32 infrastructure is now packaged in the conventional
+`libraries/HaseEsp32Endpoint` source-based Arduino library. The active
+BME280/GPIO application contains five tracked source files plus local ignored
+`HaseSecrets.h`, covering sketch composition, public endpoint configuration,
+endpoint definition and registration, hardware application behavior, and
+local Wi-Fi secrets.
 
 The compatibility contract preserves Protocol Version 1.0, framed TCP port
 5000, discovery and authoritative identity, descriptor bytes and ordering,
@@ -1523,20 +1519,29 @@ the three BME280 Properties, GPIO16 status-LED Property and Command, GPIO17
 button Event, UTC timestamps, at-most-once mutations, live-only Events, Runtime
 Host behavior, and recovery.
 
-Planned stages:
+Stages:
 
-1. 54A — accepted decision and current-behavior compatibility contract;
-2. 54B — conventional Arduino library packaging and repeatable clean
-   compilation validation, without firmware upload;
-3. 54C — typed application callback and registration boundary;
-4. 54D — BME280/GPIO example migration and ESP32 endpoint authoring guide; and
-5. 54E — separately authorized physical compatibility validation and closure.
+1. 54A — complete: accepted decision and current-behavior compatibility
+   contract;
+2. 54B — complete: conventional library packaging and repeatable clean
+   compilation without firmware upload;
+3. 54C — complete: typed definition, callbacks, generic request processing,
+   and active application boundary;
+4. 54D — complete after this documentation increment: migrated BME280/GPIO
+   example, five tracked application files, external secrets template, and
+   [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md); and
+5. 54E — pending separate authorization: firmware upload, physical
+   compatibility validation, and closure.
 
-Increment 54A is documentation-only. It does not modify firmware, Runtime
-Hosts, Client, deployment, credentials, or physical state. Before 54B selects a
-compilation baseline, it must discover and record the actual AEPRAKETE Arduino
-IDE, ESP32 core, compiler, board FQBN, and dependency versions rather than
-inferring them.
+The Stage 54D1 implementation baseline is
+`06d5edc5f69c09ca45d5c5013c70c73b178d81e7`. Automated evidence records one
+focused runtime-fixture build and two clean endpoint builds with zero warning
+lines, a footprint of 1,010,594 flash bytes and 59,388 RAM bytes, and 5,974
+passing complete .NET Release tests. AEPRAKETE, LABC, and LTAEP were clean and
+synchronized before 54D2.
+
+Stage 54D does not upload firmware or modify Runtime Hosts, Client,
+deployment, credentials, serial ports, or physical state.
 
 Diagnostic Export and Offline Analysis remains the agreed objective after
 ADR-0054.
