@@ -26,6 +26,9 @@
     <None Include="..\..\tools\Arduino\Test-HaseEsp32PhysicalDeploymentPreflight.ps1"
           Link="Test-HaseEsp32PhysicalDeploymentPreflight.ps1"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\tools\Arduino\New-HaseEsp32DeploymentBundle.ps1"
+          Link="New-HaseEsp32DeploymentBundle.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
