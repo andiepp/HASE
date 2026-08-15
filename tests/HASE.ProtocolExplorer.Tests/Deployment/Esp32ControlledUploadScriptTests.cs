@@ -44,12 +44,19 @@ public sealed class Esp32ControlledUploadScriptTests
             CountOccurrences(script, "\"upload\","));
         Assert.Contains("$script:uploadInvocationCount++", script);
         Assert.Contains("More than one firmware-upload invocation was attempted", script);
-        Assert.Contains("\"--input-dir\", $currentRoot", script);
+        Assert.Contains("[string]$UploadWorkingRoot", script);
+        Assert.Contains("Esp32ControlledUploadWorkspaces", script);
+        Assert.Contains("\"--input-dir\", $UploadWorkingRoot", script);
+        Assert.DoesNotContain("\"--input-dir\", $currentRoot", script, StringComparison.Ordinal);
         Assert.DoesNotContain("\"--input-dir\", $rollbackRoot", script, StringComparison.Ordinal);
         Assert.Contains("automaticRetryAttempted = $false", script);
         Assert.Contains("automaticRollbackAttempted = $false", script);
+        Assert.Contains("retainedBundleUnchanged = $RetainedBundleUnchanged", script);
+        Assert.Contains("uploadWorkspaceRetained = $true", script);
+        Assert.Contains("$currentAfter = @(Get-ActualArtifactSignatures -Root $currentRoot)", script);
+        Assert.Contains("$rollbackAfter = @(Get-ActualArtifactSignatures -Root $rollbackRoot)", script);
         Assert.Contains("outcome is uncertain", script);
-        Assert.Equal(2, CountOccurrences(script, "[AllowEmptyCollection()]"));
+        Assert.Equal(3, CountOccurrences(script, "[AllowEmptyCollection()]"));
     }
 
     [Fact]
@@ -58,6 +65,7 @@ public sealed class Esp32ControlledUploadScriptTests
         string script = File.ReadAllText(UploadScriptPath);
 
         Assert.Contains("The upload-evidence root already exists", script);
+        Assert.Contains("The upload-working root already exists", script);
         Assert.Contains("$actualReadinessPlanHash -cne $ExpectedReadinessPlanSha256", script);
         Assert.Contains("$plan.firmwareUploaded -ne $false", script);
         Assert.Contains("$plan.physicalStateChanged -ne $false", script);

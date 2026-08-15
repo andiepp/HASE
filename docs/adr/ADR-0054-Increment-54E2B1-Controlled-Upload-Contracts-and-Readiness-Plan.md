@@ -75,7 +75,8 @@ begin evidence before invoking the uploader.
 
 The executor contains exactly one permitted Arduino CLI upload invocation:
 
-- target: the `Current` artifact directory only;
+- source: the exact `Current` artifact set;
+- target: a new isolated current-user-local upload workspace;
 - FQBN: `esp32:esp32:esp32doit-devkit-v1`;
 - port: the approved COM port only;
 - invocation limit: one;
@@ -86,6 +87,23 @@ After a successful uploader exit, it waits for at most 30 seconds for the same
 COM port and vendor/product identity to return. It then records sanitized
 result evidence. It does not start a Runtime Host or Client and does not claim
 endpoint behavior validation.
+
+## 54E2B2 upload-workspace correction
+
+The first authorized 54E2B2 upload succeeded, but Arduino CLI 1.3.1 wrote four
+additional `_flashed.bin` files into the directory supplied through
+`--input-dir`. The six manifest-approved current artifacts remained byte-exact,
+the rollback set remained byte-exact, and the repository and physical upload
+evidence remained valid. Directly passing the retained `Current` bundle was
+therefore a custody defect even though it was not a firmware-upload failure.
+
+The corrected executor copies the exact approved current artifacts into a new
+child of `%LOCALAPPDATA%\HASE\Esp32ControlledUploadWorkspaces` and supplies only
+that isolated directory to Arduino CLI. It verifies the approved working files
+and both retained artifact sets after the single invocation, records sanitized
+metadata for uploader-generated files, and retains the sensitive working
+directory for explicit classification or recovery. It never deletes that
+workspace automatically.
 
 ## Failure and recovery boundary
 

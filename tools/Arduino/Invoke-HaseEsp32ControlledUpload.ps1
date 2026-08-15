@@ -44,6 +44,9 @@ param(
     [string]$VendorProduct,
 
     [Parameter(Mandatory = $true)]
+    [string]$UploadWorkingRoot,
+
+    [Parameter(Mandatory = $true)]
     [string]$UploadEvidenceRoot
 )
 
@@ -133,6 +136,63 @@ function Get-ActualArtifactSignatures
     )
 }
 
+function Get-SelectedArtifactSignatures
+{
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][object[]]$Artifacts
+    )
+
+    return @(
+        foreach ($artifact in $Artifacts)
+        {
+            $relativePath = $artifact.name.Replace('/', '\')
+            $path = Join-Path $Root $relativePath
+
+            if (Test-Path -LiteralPath $path -PathType Leaf)
+            {
+                $hash = (Get-FileHash `
+                    -LiteralPath $path `
+                    -Algorithm SHA256).Hash.ToLowerInvariant()
+                "{0}|{1}|{2}" -f `
+                    $artifact.name, `
+                    (Get-Item -LiteralPath $path).Length, `
+                    $hash
+            }
+        }
+    ) | Sort-Object
+}
+
+function Get-AdditionalArtifactRecords
+{
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [Parameter(Mandatory = $true)][string[]]$ApprovedNames
+    )
+
+    $fullRoot = [System.IO.Path]::GetFullPath($Root)
+    $prefix = $fullRoot.TrimEnd('\') + "\"
+
+    return @(
+        Get-ChildItem -LiteralPath $fullRoot -File -Recurse |
+            ForEach-Object {
+                $name = $_.FullName.Substring($prefix.Length).Replace('\', '/')
+
+                if ($name -cnotin $ApprovedNames)
+                {
+                    $hash = (Get-FileHash `
+                        -LiteralPath $_.FullName `
+                        -Algorithm SHA256).Hash.ToLowerInvariant()
+                    [ordered]@{
+                        name = $name
+                        length = $_.Length
+                        sha256 = $hash
+                    }
+                }
+            }
+    )
+}
+
 function Get-ManifestArtifactSignatures
 {
     param([Parameter(Mandatory = $true)][object[]]$Artifacts)
@@ -189,7 +249,12 @@ function Write-UploadEvidence
         [Parameter(Mandatory = $true)][string]$Path,
         [Parameter(Mandatory = $true)][bool]$UploadSucceeded,
         [Parameter(Mandatory = $true)][bool]$PortReturned,
-        [Parameter(Mandatory = $true)][bool]$OutcomeUncertain
+        [Parameter(Mandatory = $true)][bool]$OutcomeUncertain,
+        [Parameter(Mandatory = $true)][bool]$RetainedBundleUnchanged,
+        [Parameter(Mandatory = $true)][bool]$WorkingArtifactsUnchanged,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object[]]$UploaderGeneratedArtifacts
     )
 
     $document = [ordered]@{
@@ -212,6 +277,11 @@ function Write-UploadEvidence
         automaticRollbackAttempted = $false
         serialPortOpenedByUploader = $true
         physicalStateChanged = $true
+        retainedBundleUnchanged = $RetainedBundleUnchanged
+        uploadWorkspaceApprovedArtifactsUnchanged = $WorkingArtifactsUnchanged
+        uploaderGeneratedArtifactCount = $UploaderGeneratedArtifacts.Count
+        uploaderGeneratedArtifacts = @($UploaderGeneratedArtifacts)
+        uploadWorkspaceRetained = $true
     }
     [System.IO.File]::WriteAllText(
         $Path,
@@ -225,6 +295,7 @@ $BundleRoot = [System.IO.Path]::GetFullPath($BundleRoot)
 $PreparationEvidencePath =
     [System.IO.Path]::GetFullPath($PreparationEvidencePath)
 $ReadinessPlanPath = [System.IO.Path]::GetFullPath($ReadinessPlanPath)
+$UploadWorkingRoot = [System.IO.Path]::GetFullPath($UploadWorkingRoot)
 $UploadEvidenceRoot = [System.IO.Path]::GetFullPath($UploadEvidenceRoot)
 $ExpectedCommit = $ExpectedCommit.ToLowerInvariant()
 $ExpectedBundleRepositoryCommit =
@@ -246,12 +317,27 @@ $repositoryPrefix = $RepositoryRoot.TrimEnd('\') + "\"
 $localCustodyRoot = [System.IO.Path]::GetFullPath(
     (Join-Path $env:LOCALAPPDATA "HASE\Esp32DeploymentBundles"))
 $localCustodyPrefix = $localCustodyRoot.TrimEnd('\') + "\"
+$localWorkingCustodyRoot = [System.IO.Path]::GetFullPath(
+    (Join-Path $env:LOCALAPPDATA "HASE\Esp32ControlledUploadWorkspaces"))
+$localWorkingCustodyPrefix = $localWorkingCustodyRoot.TrimEnd('\') + "\"
 
 if (-not $BundleRoot.StartsWith(
         $localCustodyPrefix,
         [System.StringComparison]::OrdinalIgnoreCase))
 {
     throw "The sensitive bundle is outside current-user local HASE custody."
+}
+
+if (-not $UploadWorkingRoot.StartsWith(
+        $localWorkingCustodyPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase))
+{
+    throw "The upload-working root is outside current-user local HASE custody."
+}
+
+if (Test-Path -LiteralPath $UploadWorkingRoot)
+{
+    throw "The upload-working root already exists."
 }
 
 if ($UploadEvidenceRoot.StartsWith(
@@ -421,6 +507,36 @@ if (@(Get-MatchingDevice).Count -ne 1)
     throw "The selected ESP32 device identity is not ready."
 }
 
+[System.IO.Directory]::CreateDirectory($UploadWorkingRoot) | Out-Null
+$workingPrefix = $UploadWorkingRoot.TrimEnd('\') + "\"
+
+foreach ($artifact in @($manifest.currentArtifacts))
+{
+    $relativePath = $artifact.name.Replace('/', '\')
+    $sourcePath = [System.IO.Path]::GetFullPath(
+        (Join-Path $currentRoot $relativePath))
+    $targetPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $UploadWorkingRoot $relativePath))
+
+    if (-not $sourcePath.StartsWith(
+            ($currentRoot.TrimEnd('\') + "\"),
+            [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not $targetPath.StartsWith(
+            $workingPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase))
+    {
+        throw "An upload artifact path escaped its custody root."
+    }
+
+    $targetDirectory = Split-Path -Parent $targetPath
+    [System.IO.Directory]::CreateDirectory($targetDirectory) | Out-Null
+    Copy-Item -LiteralPath $sourcePath -Destination $targetPath
+}
+
+$workingBefore = @(Get-ActualArtifactSignatures -Root $UploadWorkingRoot)
+Assert-ExactStringSet -Expected $manifestCurrent -Actual $workingBefore `
+    -Description "upload-working artifact"
+
 [System.IO.Directory]::CreateDirectory($UploadEvidenceRoot) | Out-Null
 $beginPath = Join-Path $UploadEvidenceRoot "upload-begin.json"
 $beginDocument = [ordered]@{
@@ -428,6 +544,7 @@ $beginDocument = [ordered]@{
     increment = "54E2B2"
     repositoryCommit = $ExpectedCommit
     readinessPlanSha256 = $ExpectedReadinessPlanSha256
+    uploadWorkspaceCreated = $true
     uploadInvocationCount = 0
     firmwareUploaded = $false
     serialPortOpenedByUploader = $false
@@ -442,10 +559,30 @@ $uploadArguments = @(
     "upload",
     "--fqbn", $fqbn,
     "--port", $Port,
-    "--input-dir", $currentRoot
+    "--input-dir", $UploadWorkingRoot
 )
 $uploadResult = Invoke-SingleFirmwareUpload -Arguments $uploadArguments
 $resultPath = Join-Path $UploadEvidenceRoot "upload-result.json"
+
+$currentAfter = @(Get-ActualArtifactSignatures -Root $currentRoot)
+$rollbackAfter = @(Get-ActualArtifactSignatures -Root $rollbackRoot)
+$workingApprovedAfter = @(
+    Get-SelectedArtifactSignatures `
+        -Root $UploadWorkingRoot `
+        -Artifacts @($manifest.currentArtifacts))
+$approvedNames = @($manifest.currentArtifacts | ForEach-Object { $_.name })
+$uploaderGeneratedArtifacts = @(
+    Get-AdditionalArtifactRecords `
+        -Root $UploadWorkingRoot `
+        -ApprovedNames $approvedNames)
+$retainedBundleUnchanged =
+    @(Compare-Object -ReferenceObject $manifestCurrent `
+        -DifferenceObject $currentAfter -CaseSensitive).Count -eq 0 -and
+    @(Compare-Object -ReferenceObject $manifestRollback `
+        -DifferenceObject $rollbackAfter -CaseSensitive).Count -eq 0
+$workingArtifactsUnchanged =
+    @(Compare-Object -ReferenceObject $manifestCurrent `
+        -DifferenceObject $workingApprovedAfter -CaseSensitive).Count -eq 0
 
 if ($uploadResult.ExitCode -ne 0)
 {
@@ -453,7 +590,10 @@ if ($uploadResult.ExitCode -ne 0)
         -Path $resultPath `
         -UploadSucceeded $false `
         -PortReturned $false `
-        -OutcomeUncertain $true
+        -OutcomeUncertain $true `
+        -RetainedBundleUnchanged $retainedBundleUnchanged `
+        -WorkingArtifactsUnchanged $workingArtifactsUnchanged `
+        -UploaderGeneratedArtifacts $uploaderGeneratedArtifacts
     throw "The single controlled firmware upload failed; outcome is uncertain."
 }
 
@@ -474,7 +614,15 @@ Write-UploadEvidence `
     -Path $resultPath `
     -UploadSucceeded $true `
     -PortReturned $portReturned `
-    -OutcomeUncertain $false
+    -OutcomeUncertain $false `
+    -RetainedBundleUnchanged $retainedBundleUnchanged `
+    -WorkingArtifactsUnchanged $workingArtifactsUnchanged `
+    -UploaderGeneratedArtifacts $uploaderGeneratedArtifacts
+
+if (-not $retainedBundleUnchanged -or -not $workingArtifactsUnchanged)
+{
+    throw "The upload succeeded but firmware artifact custody changed."
+}
 
 if (-not $portReturned)
 {
@@ -503,6 +651,10 @@ Write-Host "Exact device returned       :" $portReturned
 Write-Host "Automatic retry attempted   :" $false
 Write-Host "Automatic rollback attempted:" $false
 Write-Host "Repository unchanged        :" $true
+Write-Host "Retained bundle unchanged   :" $retainedBundleUnchanged
+Write-Host "Working artifacts unchanged :" $workingArtifactsUnchanged
+Write-Host "Uploader-generated artifacts:" $uploaderGeneratedArtifacts.Count
+Write-Host "Upload workspace retained   :" $true
 Write-Host "Serial port opened by uploader:" $true
 Write-Host "Physical state changed      :" $true
 Write-Host "Begin evidence SHA-256      :" $beginHash
