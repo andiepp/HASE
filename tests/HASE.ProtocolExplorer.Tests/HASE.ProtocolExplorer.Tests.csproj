@@ -29,6 +29,12 @@
     <None Include="..\..\tools\Arduino\New-HaseEsp32DeploymentBundle.ps1"
           Link="New-HaseEsp32DeploymentBundle.ps1"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\tools\Arduino\New-HaseEsp32ControlledUploadReadinessPlan.ps1"
+          Link="New-HaseEsp32ControlledUploadReadinessPlan.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\tools\Arduino\Invoke-HaseEsp32ControlledUpload.ps1"
+          Link="Invoke-HaseEsp32ControlledUpload.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
