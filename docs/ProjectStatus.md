@@ -1,8 +1,8 @@
 # Project Status
 
-## Active architectural objective — ADR-0054
+## Completed architectural objective — ADR-0054
 
-**ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — implemented through Stage 54D; physical validation pending**
+**ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — implemented, physically validated, and closed at 6,024 passing tests**
 
 - Stable Protocol Version 1 framing, serialization, TCP transport, discovery,
   mDNS, UTC, lifecycle, request processing, and Event framing are packaged in
@@ -21,17 +21,26 @@
   warning lines on Arduino IDE 2.3.7, embedded CLI 1.3.1, ESP32 core 3.3.10,
   FQBN `esp32:esp32:esp32doit-devkit-v1`, and Espressif GCC 14.2.0.
 - The validated application footprint is 1,010,594 flash bytes and 59,388 RAM
-  bytes. The complete .NET Release suite remains at 5,974 passing tests.
+  bytes. The complete .NET Release suite passes 6,024 tests.
 - The [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md)
   explains the supported application files, typed callbacks, registrations,
   hardware dependencies, ignored secrets, and controlled compilation.
-- Stage 54E remains separately authorized firmware upload, physical
-  compatibility validation, and closure. No Stage 54D action deployed firmware
-  or changed physical state.
+- Stage 54E prepared exact six-artifact Current and Rollback bundles, retained
+  sanitized evidence, and performed one explicitly confirmed current-firmware
+  upload to the selected COM6 CP210x device without automatic retry or rollback.
+- Runtime Host and Laptop Client validation confirmed the authoritative ESP32
+  identity, three Good-quality BME280 values, GPIO controller behavior, GPIO17
+  Events, and disconnect/reconnect recovery. Capability C-005 strictly validated
+  the native Protocol Version 1 descriptor; that descriptor has no Compact
+  Serial numeric descriptor-version field.
+- Four Arduino CLI `_flashed.bin` side effects from the first upload remain
+  intact in current-user-local quarantine. The retained Current and Rollback
+  bundles remain exact and sensitive; cleanup or rollback requires a separate
+  explicit operator decision.
 
-The authoritative Stage 54D1 implementation baseline is commit
-`06d5edc5f69c09ca45d5c5013c70c73b178d81e7`, with AEPRAKETE, LABC, and LTAEP
-clean and synchronized before the documentation increment.
+The authoritative pre-closure baseline is commit
+`88e171590b6824546790c0e17c604f342865a4be`, with AEPRAKETE, LABC, and LTAEP
+clean and synchronized before Increment 54F.
 
 ---
 

@@ -165,6 +165,13 @@ tracked application files, local ignored Wi-Fi secrets, typed capability
 registration, hardware callbacks, Event publication, and controlled
 compilation without firmware upload.
 
+ADR-0054 also defines the separate controlled physical-deployment path:
+read-only preflight, sensitive Current and Rollback bundle preparation, a bound
+readiness plan, explicit confirmation, one upload without automatic retry or
+rollback, and Runtime Host/Client validation. Upload from an isolated workspace
+because Arduino CLI may create additional `_flashed.bin` files beside its
+inputs; never treat a successful compilation as upload authorization.
+
 ### Run the laptop client
 
 Start with the
@@ -181,6 +188,7 @@ or environment-specific client configuration files.
 ## Documentation
 
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
+- [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 - [Descriptor-Driven Property Editing Tutorial](docs/Tutorial/HASE-Descriptor-Driven-Property-Editing-Tutorial.md)

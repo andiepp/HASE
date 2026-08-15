@@ -449,12 +449,26 @@ board, opens a serial port, uploads firmware, or changes physical state.
 | Evidence directory already exists | Select a new outside-repository evidence directory. Do not delete retained evidence implicitly. |
 | Artifact hashes differ | Expected with this toolchain when names and lengths match and both clean compilations succeed without warnings. |
 
-## Physical validation remains separate
+## Controlled deployment remains separate
 
-Successful compilation does not prove compatibility with the installed
-Runtime Host, Laptop Client, BME280, GPIO wiring, Wi-Fi recovery, or reset
-recovery. ADR-0054 Stage 54E controls firmware upload and physical validation
-as a separate explicitly approved operation.
+Successful compilation does not by itself authorize firmware upload. The
+accepted deployment sequence uses the read-only physical preflight, prepares
+exact Current and Rollback bundles with `New-HaseEsp32DeploymentBundle.ps1`,
+creates a bound readiness plan, obtains explicit operator confirmation, and
+then permits one invocation of `Invoke-HaseEsp32ControlledUpload.ps1`. The
+uploader performs no automatic retry or rollback and retains sanitized begin
+and result evidence.
 
-Do not upload a newly authored application merely because these automated
-checks pass.
+Compiled firmware contains local configuration and remains sensitive in
+current-user-local custody. Do not copy source, secrets, or sensitive binaries
+into retained sanitized evidence. Arduino CLI 1.3.1 can create `_flashed.bin`
+files beside its upload inputs, so uploads must use an isolated workspace
+rather than the retained bundle. Classify and retain unexpected artifacts for
+an explicit recovery decision.
+
+After upload, validate the authoritative endpoint identity, BME280 Properties,
+GPIO behavior and Events, and disconnect/reconnect recovery through the Runtime
+Host and Laptop Client. Use Capability C-005 to read and strictly validate the
+complete native Protocol Version 1 descriptor. That native descriptor does not
+contain the numeric descriptor-version field used by Compact Serial Arduino
+descriptors.

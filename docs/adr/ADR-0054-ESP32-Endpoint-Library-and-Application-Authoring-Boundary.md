@@ -1,11 +1,11 @@
 # ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary
 
-- Status: Accepted; implemented through Stage 54D; physical validation pending
+- Status: Accepted; implemented, deployed, physically validated, and closed
 - Date: 2026-08-12
 
 ## Implementation progress
 
-Stages 54B through 54D are implemented and automatically validated. The stable
+Stages 54B through 54F are complete. The stable
 Protocol Version 1 framework is packaged as `libraries/HaseEsp32Endpoint`; the
 typed definition, callback, generic request-processing, runtime, and Event
 boundaries are active; and the BME280/GPIO reference application is reduced to
@@ -17,11 +17,26 @@ two clean endpoint compilations succeeded without warning lines at 1,010,594
 flash bytes and 59,388 RAM bytes. The complete .NET Release suite remains at
 5,974 passing tests.
 
-Increment 54D2 adds the
+Increment 54D2 added the
 [ESP32 Endpoint Authoring Guide](../ESP32-Endpoint-Authoring-Guide.md) and
-reconciles project documentation. It changes no firmware or executable source.
-Stage 54E remains separately authorized physical compatibility validation and
-closure.
+reconciled project documentation. Stage 54E then established a read-only
+physical preflight, prepared byte-identified current and rollback bundles,
+performed exactly one explicitly authorized upload, and validated the migrated
+firmware locally and through the Laptop Client. The complete .NET Release suite
+now passes 6,024 tests.
+
+The successful upload retained sanitized begin and result evidence with
+SHA-256 values `93df66091caed42058bb0a94b52d203f82f821df6d8a401ef3e9b06e112d84f1`
+and `79f1afdebb438279165bcbbed0acdcfbc06f4eba1f4f77bd38542279abf1ae89`.
+The deployment-bundle manifest, preparation evidence, and readiness plan were
+bound by SHA-256 values
+`adbba82b7c889a77f2a40291f1b940e2381fff543ac65945ec2d1c31eb939f47`,
+`cc7f892edb5210dc6ceac782e7363fcd2478e4b1099a8b136ee04dfc99c9ea9a`, and
+`5a2959dff30631f73efd5c11709ef38069fb725e45710a4f26db4d490c3635b8`.
+Current and rollback bundles each retain six byte-exact artifacts in
+current-user local custody. Four Arduino CLI `_flashed.bin` side-effect files
+remain intact in a separate local quarantine; no compiled firmware or secret
+was committed or transferred.
 
 ## Context
 
@@ -314,18 +329,37 @@ template outside the active sketch root, and adds a step-by-step authoring
 guide. The guide covers adding an instrument, Property, Command, Event, and
 hardware dependency. It compiles but does not upload.
 
-### 54E — physical compatibility validation and closure
+### 54E — physical deployment and compatibility validation
 
-Stage 54E requires separate explicit authorization after the implementation is
-compiled, tested, reviewed, committed, pushed, and synchronized. It controls
-firmware upload and independently validates discovery, identity, descriptor
-equivalence, BME280 Properties, LED read/write/restore, one Command toggle and
-restore, GPIO17 Event delivery, disconnect/reconnect, ESP32 reset recovery,
-normal Wi-Fi recovery, Runtime Host compatibility, and Laptop Client
-compatibility.
+Stage 54E was separately and explicitly authorized after implementation and
+documentation were committed and synchronized. A read-only preflight pinned
+AEPRAKETE, the repository, Arduino CLI 1.3.1, ESP32 core 3.3.10, the approved
+FQBN, local secrets readiness, and the selected COM6 device identity without
+opening the serial port or changing physical state.
 
-Closure reconciles this ADR, Project Status, and Roadmap only after physical
-compatibility is accepted.
+Deployment preparation compiled current and rollback firmware into sensitive
+current-user-local custody while retaining only sanitized hashes and counts in
+external evidence. The controlled upload bound the exact repository, bundle,
+preparation evidence, readiness plan, COM port, and USB identity. It invoked
+Arduino CLI upload once, with no retry and no automatic rollback, and confirmed
+that the same device identity returned.
+
+Arduino CLI 1.3.1 wrote four `_flashed.bin` files into the supplied input
+directory. The six approved current artifacts were unchanged. The executor was
+corrected to copy approved artifacts into a new isolated upload workspace,
+validate Current and Rollback after invocation, classify generated artifacts,
+and retain that workspace for explicit recovery. The four files from the first
+upload were moved intact to local quarantine, restoring the retained Current
+bundle to its exact six-artifact manifest.
+
+Physical validation confirmed Runtime Host readiness, the authoritative ESP32
+identity, BME280 temperature, relative-humidity, and air-pressure values with
+Good quality, the GPIO controller, and GPIO17 Event delivery. Laptop validation
+confirmed the same inventory, values, Events, and disconnect/reconnect
+recovery. Capability C-005 then read and strictly validated the complete native
+Protocol Version 1 descriptor with `Descriptor Read: Passed` and
+`Compatibility: Passed`. Native ESP32 descriptors have no Compact Serial
+numeric descriptor-version field.
 
 ## Consequences
 
@@ -367,3 +401,29 @@ deployment, credentials, serial ports, or physical state.
 
 Before the 54D2 commit, recovery restores or removes only those five
 documentation paths. After commit, recovery is a documentation-only revert.
+
+## Stage 54E effects and recovery
+
+Stage 54E performed one explicitly confirmed upload of the approved current
+firmware to the exact COM6 CP210x device. It retained sanitized preflight,
+bundle-preparation, readiness, and upload evidence while preserving exact
+six-artifact Current and Rollback bundles in sensitive current-user-local
+custody. No automatic retry or rollback was attempted.
+
+Arduino CLI created four additional `_flashed.bin` files during the first
+upload. The approved Current artifacts were unchanged, and the four generated
+files were moved intact to separate local quarantine. The corrected uploader
+uses an isolated workspace and validates both retained bundles after invocation.
+The accepted firmware requires no recovery. Firmware rollback and quarantine
+cleanup remain separate, explicit operator decisions.
+
+Runtime Host, Laptop Client, reconnect recovery, BME280 values, GPIO behavior
+and Events, and the complete native Protocol Version 1 descriptor were then
+physically validated. The authoritative pre-closure baseline is
+`88e171590b6824546790c0e17c604f342865a4be`, with 6,024 passing complete .NET
+Release tests.
+
+Increment 54F changes only `README.md`, this ADR, `docs/ProjectStatus.md`,
+`docs/Roadmap.md`, and `docs/ESP32-Endpoint-Authoring-Guide.md`. Before commit,
+recovery restores only those five documentation paths; after commit, recovery
+is a documentation-only revert.

@@ -1501,10 +1501,10 @@ Closure baseline:
 
 Credential lifecycle work is intentionally deferred to a separate architectural objective.
 
-## Active objective — ADR-0054 ESP32 Endpoint Library and Application Authoring Boundary
+## Completed objective — ADR-0054 ESP32 Endpoint Library and Application Authoring Boundary
 
-**Status:** [Implemented through 54D] Automated implementation and authoring
-documentation complete; separately authorized physical validation pending
+**Status:** [Complete] Implemented, physically validated, and closed at 6,024
+passing complete .NET Release tests
 
 Stable HASE ESP32 infrastructure is now packaged in the conventional
 `libraries/HaseEsp32Endpoint` source-based Arduino library. The active
@@ -1527,21 +1527,30 @@ Stages:
    compilation without firmware upload;
 3. 54C — complete: typed definition, callbacks, generic request processing,
    and active application boundary;
-4. 54D — complete after this documentation increment: migrated BME280/GPIO
+4. 54D — complete: migrated BME280/GPIO
    example, five tracked application files, external secrets template, and
-   [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md); and
-5. 54E — pending separate authorization: firmware upload, physical
-   compatibility validation, and closure.
+   [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md);
+5. 54E — complete: read-only preflight, sensitive Current and Rollback bundle
+   preparation, explicit single current-firmware upload, retained evidence,
+   Runtime Host and Laptop Client validation, reconnect recovery, and direct
+   Capability C-005 descriptor validation; and
+6. 54F — complete: reconciled closure documentation and retained-custody record.
 
-The Stage 54D1 implementation baseline is
-`06d5edc5f69c09ca45d5c5013c70c73b178d81e7`. Automated evidence records one
+The pre-closure baseline is
+`88e171590b6824546790c0e17c604f342865a4be`. Automated evidence records one
 focused runtime-fixture build and two clean endpoint builds with zero warning
-lines, a footprint of 1,010,594 flash bytes and 59,388 RAM bytes, and 5,974
+lines, a footprint of 1,010,594 flash bytes and 59,388 RAM bytes, and 6,024
 passing complete .NET Release tests. AEPRAKETE, LABC, and LTAEP were clean and
-synchronized before 54D2.
+synchronized before 54F.
 
-Stage 54D does not upload firmware or modify Runtime Hosts, Client,
-deployment, credentials, serial ports, or physical state.
+Stage 54E invoked exactly one approved upload on COM6 without automatic retry
+or rollback. Exact six-artifact Current and Rollback bundles remain in
+sensitive local custody. Four generated `_flashed.bin` side effects remain in
+separate local quarantine; cleanup and rollback remain separate explicit
+operator actions. Runtime Host, Laptop Client, BME280 values, GPIO behavior and
+Events, reconnect recovery, and the complete native Protocol Version 1
+descriptor were physically validated. The native descriptor has no Compact
+Serial numeric descriptor-version field.
 
 Diagnostic Export and Offline Analysis remains the agreed objective after
 ADR-0054.
