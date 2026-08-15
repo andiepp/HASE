@@ -127,8 +127,14 @@ function Get-ManifestArtifactSignatures
 function Assert-ExactStringSet
 {
     param(
-        [Parameter(Mandatory = $true)][string[]]$Expected,
-        [Parameter(Mandatory = $true)][string[]]$Actual,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$Expected,
+
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [string[]]$Actual,
+
         [Parameter(Mandatory = $true)][string]$Description
     )
 

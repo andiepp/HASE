@@ -28,6 +28,7 @@ public sealed class Esp32ControlledUploadScriptTests
         Assert.Contains("firmwareUploaded = $false", script);
         Assert.Contains("serialPortOpened = $false", script);
         Assert.Contains("physicalStateChanged = $false", script);
+        Assert.Equal(2, CountOccurrences(script, "[AllowEmptyCollection()]"));
         Assert.DoesNotContain("\"upload\",", script, StringComparison.Ordinal);
         Assert.DoesNotContain("[System.IO.Ports.SerialPort]", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Remove-Item", script, StringComparison.OrdinalIgnoreCase);
@@ -48,6 +49,7 @@ public sealed class Esp32ControlledUploadScriptTests
         Assert.Contains("automaticRetryAttempted = $false", script);
         Assert.Contains("automaticRollbackAttempted = $false", script);
         Assert.Contains("outcome is uncertain", script);
+        Assert.Equal(2, CountOccurrences(script, "[AllowEmptyCollection()]"));
     }
 
     [Fact]
