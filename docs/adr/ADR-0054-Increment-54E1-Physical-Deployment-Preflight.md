@@ -5,8 +5,8 @@
 Increment 54E1 establishes fail-closed readiness for the later, separately
 authorized ESP32 firmware deployment. It runs only on AEPRAKETE and validates:
 
-- the exact clean `main` repository at commit
-  `af513822d0b79e18cc979798ed409b1bfdffd7f3`;
+- the exact clean `main` repository at the explicitly approved commit supplied
+  through the mandatory `ExpectedCommit` parameter;
 - stopped Desktop Runtime Host and HASE Client processes;
 - the approved Arduino CLI executable and hash, CLI 1.3.1, ESP32 core 3.3.10,
   and FQBN `esp32:esp32:esp32doit-devkit-v1`;
@@ -82,6 +82,7 @@ $evidenceRoot = "H:\HASE-Packages\HASE-ADR-0054-54E1-Evidence"
 
 & $scriptPath `
     -RepositoryRoot "H:\Development" `
+    -ExpectedCommit "<approved-40-character-commit-hash>" `
     -Port $esp32Port `
     -EvidenceRoot $evidenceRoot
 ```

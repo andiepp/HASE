@@ -15,7 +15,10 @@ public sealed class Esp32PhysicalDeploymentPreflightScriptTests
     {
         string script = File.ReadAllText(ScriptPath);
 
-        Assert.Contains("af513822d0b79e18cc979798ed409b1bfdffd7f3", script);
+        Assert.Contains("[string]$ExpectedCommit", script);
+        Assert.Contains("$ExpectedCommit = $ExpectedCommit.ToLowerInvariant()", script);
+        Assert.Contains("$head[0].Trim() -cne $ExpectedCommit", script);
+        Assert.Contains("$origin[0].Trim() -cne $ExpectedCommit", script);
         Assert.Contains("96db1799d410eedc82aea82cc3f5b3efa003242c", script);
         Assert.Contains("selectedPort = \"Withheld\"", script);
         Assert.Contains("localSecretsRead = $false", script);

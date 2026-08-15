@@ -7,6 +7,10 @@ param(
         "I:\Arduino\arduino-ide_2.3.7\resources\app\lib\backend\resources\arduino-cli.exe",
 
     [Parameter(Mandatory = $true)]
+    [ValidatePattern("^[0-9a-fA-F]{40}$")]
+    [string]$ExpectedCommit,
+
+    [Parameter(Mandatory = $true)]
     [ValidatePattern("^COM[1-9][0-9]*$")]
     [string]$Port,
 
@@ -18,8 +22,6 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $expectedComputer = "AEPRAKETE"
-$expectedCommit =
-    "af513822d0b79e18cc979798ed409b1bfdffd7f3"
 $rollbackCommit =
     "96db1799d410eedc82aea82cc3f5b3efa003242c"
 $expectedCliHash =
@@ -133,6 +135,7 @@ function Invoke-ArduinoCli
 $RepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
 $ArduinoCliPath = [System.IO.Path]::GetFullPath($ArduinoCliPath)
 $EvidenceRoot = [System.IO.Path]::GetFullPath($EvidenceRoot)
+$ExpectedCommit = $ExpectedCommit.ToLowerInvariant()
 
 if ($env:COMPUTERNAME -cne $expectedComputer)
 {
@@ -189,14 +192,14 @@ $statusBefore = @(
         -Arguments @("status", "--porcelain=v1", "--untracked-files=all")
 )
 
-if ($head.Count -ne 1 -or $head[0].Trim() -cne $expectedCommit)
+if ($head.Count -ne 1 -or $head[0].Trim() -cne $ExpectedCommit)
 {
-    throw "Repository HEAD is not the approved 54D2 baseline."
+    throw "Repository HEAD is not the explicitly approved baseline."
 }
 
-if ($origin.Count -ne 1 -or $origin[0].Trim() -cne $expectedCommit)
+if ($origin.Count -ne 1 -or $origin[0].Trim() -cne $ExpectedCommit)
 {
-    throw "origin/main is not the approved 54D2 baseline."
+    throw "origin/main is not the explicitly approved baseline."
 }
 
 if ($branch.Count -ne 1 -or $branch[0].Trim() -cne "main")
@@ -382,7 +385,7 @@ $evidence = [ordered]@{
     formatVersion = 1
     increment = "54E1"
     computer = $expectedComputer
-    repositoryCommit = $expectedCommit
+    repositoryCommit = $ExpectedCommit
     rollbackCommit = $rollbackCommit
     arduinoCliVersion = $expectedCliVersion
     esp32CoreVersion = $expectedCoreVersion
