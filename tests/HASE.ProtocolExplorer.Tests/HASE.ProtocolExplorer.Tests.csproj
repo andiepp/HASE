@@ -22,4 +22,10 @@
     <ProjectReference Include="..\..\src\HASE.ProtocolExplorer\HASE.ProtocolExplorer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\tools\Arduino\Test-HaseEsp32PhysicalDeploymentPreflight.ps1"
+          Link="Test-HaseEsp32PhysicalDeploymentPreflight.ps1"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
