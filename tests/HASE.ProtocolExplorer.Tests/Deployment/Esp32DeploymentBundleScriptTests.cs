@@ -38,6 +38,9 @@ public sealed class Esp32DeploymentBundleScriptTests
         Assert.Contains("The evidence root already exists", script);
         Assert.Contains("HaseSecrets.h", script);
         Assert.Contains("git archive", script);
+        Assert.Contains("$currentSketchRoot = Join-Path $currentSourceRoot \"HaseEndpoint\"", script);
+        Assert.Contains("$repositorySketchRoot = Join-Path $RepositoryRoot \"HaseEndpoint\"", script);
+        Assert.DoesNotContain("$currentSketchRoot = Join-Path $RepositoryRoot", script);
         Assert.Contains("finally", script);
         Assert.Contains("Remove-Item -LiteralPath $workingRoot", script);
     }

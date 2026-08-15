@@ -65,15 +65,26 @@ secret source, secret value, COM port, or private-network address.
 - the exact 122-path rollback source tree at the approved rollback commit;
 - new and non-overlapping output roots.
 
-It compiles into external build paths, hashes the retained current and rollback
-artifacts, creates a bundle manifest and sanitized evidence, verifies that no
-`HaseSecrets.h` file entered either retained root, and verifies that repository
-status did not change.
+It copies the exact five current application files and local secret into a
+temporary current-source sketch, materializes rollback source into a separate
+temporary sketch, and compiles only those temporary sketches into external
+build paths. It hashes the retained current and rollback artifacts, creates a
+bundle manifest and sanitized evidence, verifies that no `HaseSecrets.h` file
+entered either retained root, and verifies that repository status did not
+change. Arduino CLI is never given a repository sketch as its compilation
+target.
 
-Temporary rollback source receives a temporary copy of `HaseSecrets.h` only so
-it can compile. That temporary working directory is removed in `finally` on
-success or failure. A failed preparation must stop; any retained partial bundle
-or evidence is classified before rerun or removal.
+Both temporary current and rollback source receive a temporary copy of
+`HaseSecrets.h` only so they can compile. Their common temporary working
+directory is removed in `finally` on success or failure. A failed preparation
+must stop; any retained partial bundle or evidence is classified before rerun
+or removal.
+
+The first physical preparation attempt exposed Arduino CLI 1.3.1 behavior that
+also exported build products beneath a directly targeted repository sketch.
+Those eleven untracked products were moved intact into current-user sensitive
+quarantine. Isolating both sketch targets prevents that side effect rather than
+weakening the repository-preservation check.
 
 ## Explicit exclusions
 

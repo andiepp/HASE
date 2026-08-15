@@ -28,6 +28,13 @@ $expectedCliVersion = "1.3.1"
 $expectedCoreVersion = "3.3.10"
 $fqbn = "esp32:esp32:esp32doit-devkit-v1"
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$expectedCurrentApplicationFiles = @(
+    "EndpointApplication.cpp",
+    "EndpointApplication.h",
+    "EndpointConfiguration.h",
+    "EndpointDefinition.cpp",
+    "HaseEndpoint.ino"
+) | Sort-Object
 
 function Invoke-GitLines
 {
@@ -332,6 +339,8 @@ try
         ("HASE-54E2A-" + [guid]::NewGuid().ToString("N"))
     $currentBuildRoot = Join-Path $workingRoot "CurrentBuild"
     $rollbackBuildRoot = Join-Path $workingRoot "RollbackBuild"
+    $currentSourceRoot = Join-Path $workingRoot "CurrentSource"
+    $currentSketchRoot = Join-Path $currentSourceRoot "HaseEndpoint"
     $rollbackArchive = Join-Path $workingRoot "RollbackSource.zip"
     $rollbackSourceRoot = Join-Path $workingRoot "RollbackSource"
     $rollbackSketchRoot = Join-Path $rollbackSourceRoot "HaseEndpoint"
@@ -340,6 +349,7 @@ try
         $workingRoot,
         $currentBuildRoot,
         $rollbackBuildRoot,
+        $currentSketchRoot,
         $rollbackSourceRoot,
         $BundleRoot,
         $EvidenceRoot))
@@ -373,9 +383,40 @@ try
         (Join-Path $rollbackSketchRoot "HaseSecrets.h"),
         $false)
 
-    $currentSketchRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+    $repositorySketchRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+    $actualCurrentApplicationFiles = @(
+        Get-ChildItem -LiteralPath $repositorySketchRoot -File |
+            Where-Object {
+                $_.Extension -in @(".ino", ".cpp", ".h") -and
+                $_.Name -cne "HaseSecrets.h"
+            } |
+            ForEach-Object { $_.Name } |
+            Sort-Object
+    )
+
+    if (@(Compare-Object `
+            -ReferenceObject $expectedCurrentApplicationFiles `
+            -DifferenceObject $actualCurrentApplicationFiles `
+            -CaseSensitive).Count -ne 0)
+    {
+        throw "The current application source set changed."
+    }
+
+    foreach ($applicationFile in $expectedCurrentApplicationFiles)
+    {
+        [System.IO.File]::Copy(
+            (Join-Path $repositorySketchRoot $applicationFile),
+            (Join-Path $currentSketchRoot $applicationFile),
+            $false)
+    }
+
+    [System.IO.File]::Copy(
+        $localSecretsPath,
+        (Join-Path $currentSketchRoot "HaseSecrets.h"),
+        $false)
+
     $repositoryLibrariesRoot = Join-Path $RepositoryRoot "libraries"
-    $currentVendorLibrariesRoot = Join-Path $currentSketchRoot "Libraries"
+    $currentVendorLibrariesRoot = Join-Path $repositorySketchRoot "Libraries"
     $rollbackVendorLibrariesRoot = Join-Path $rollbackSketchRoot "Libraries"
 
     $currentArguments = @(
