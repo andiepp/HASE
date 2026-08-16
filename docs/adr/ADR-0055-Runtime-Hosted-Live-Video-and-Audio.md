@@ -380,7 +380,8 @@ state requires rollback.
 ## Revised Increment 55D effects, validation, and rollback
 
 Increment 55D starts from exact commit
-`4f495a27af3ac3e3a4c5aae1a9b3d4a3de981e71`. It revises the source inventory
+`4f495a27af3ac3e3a4c5aae1a9b3d4a3de981e71` and is committed as
+`199356222f8763ed6e6fbb5f481fe46aa70ec679`. It revises the source inventory
 without weakening the one-session rule. The process-local owner accepts one or
 more unique logical camera configurations and opens only the exact local camera
 and optional microphone binding selected by logical ID and generation. The

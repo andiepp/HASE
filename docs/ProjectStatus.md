@@ -69,6 +69,8 @@
   the successful build reports 45 warnings. Validation performed no
   application start, WebView2 initialization, device enumeration or access,
   capture, signaling, deployment, configuration publication, or physical work.
+  The exact 27-path implementation is committed as
+  `199356222f8763ed6e6fbb5f481fe46aa70ec679`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

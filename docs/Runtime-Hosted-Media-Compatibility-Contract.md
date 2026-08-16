@@ -366,6 +366,8 @@ helper constructor; it did not change production behavior. Validation did not
 start an application, initialize WebView2, enumerate or access a media device,
 capture media, exchange signaling, deploy, or change firewall, privacy,
 credential, firmware, or physical state.
+The exact 27-path implementation is committed as
+`199356222f8763ed6e6fbb5f481fe46aa70ec679`.
 
 ## Automated validation obligations
 

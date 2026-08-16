@@ -1598,10 +1598,11 @@ Stages:
    and microphone capture boundary, exact device/session ownership, hardened
    local WebView2 origin, and 6,113-test complete Release validation; committed
    as `654ce26560d4e7688984a31bd515a2590ca2448d`;
-4. 55D — revised implementation automatically validated: multiple operator-configured logical
-   Runtime Host cameras, remote sanitized camera selection, WPF Client
-   Start/Stop and audio controls, and receiver-only WebView2 presentation;
-   commit remains pending;
+4. 55D — revised implementation automatically validated: multiple
+   operator-configured logical Runtime Host cameras, remote sanitized camera
+   selection, WPF Client Start/Stop and audio controls, and receiver-only
+   WebView2 presentation; committed as
+   `199356222f8763ed6e6fbb5f481fe46aa70ec679`;
 5. 55E — planned: encrypted end-to-end media transport and automated
    validation; and
 6. 55F — planned: separately authorized controlled physical validation,
@@ -1654,6 +1655,10 @@ skips; the successful build reports 45 warnings. Validation did not start an
 application, initialize WebView2, enumerate or access a media device, capture
 media, exchange signaling, deploy, or change firewall, privacy, credential,
 firmware, or physical state.
+
+The exact 27-path 55D implementation is committed as
+`199356222f8763ed6e6fbb5f481fe46aa70ec679`. Synchronization of LABC and LTAEP
+remains required before Increment 55E.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 
