@@ -65,6 +65,42 @@ public readonly record struct RuntimeHostPermission
     public static RuntimeHostPermission SubscribeDiagnostics { get; } =
         new("diagnostics.subscribe");
 
+    /// <summary>
+    /// Gets the permission required to discover sanitized media capabilities.
+    /// </summary>
+    public static RuntimeHostPermission ReadMediaCapabilities { get; } =
+        new("media.capability.read");
+
+    /// <summary>
+    /// Gets the permission required to receive runtime-host video.
+    /// </summary>
+    public static RuntimeHostPermission ReceiveMediaVideo { get; } =
+        new("media.video.receive");
+
+    /// <summary>
+    /// Gets the independent permission required to receive runtime-host audio.
+    /// </summary>
+    public static RuntimeHostPermission ReceiveMediaAudio { get; } =
+        new("media.audio.receive");
+
+    /// <summary>
+    /// Gets the permission required to start a media session.
+    /// </summary>
+    public static RuntimeHostPermission StartMediaSession { get; } =
+        new("media.session.start");
+
+    /// <summary>
+    /// Gets the permission required to exchange media negotiation messages.
+    /// </summary>
+    public static RuntimeHostPermission NegotiateMediaSession { get; } =
+        new("media.session.negotiate");
+
+    /// <summary>
+    /// Gets the permission required to stop a caller-owned media session.
+    /// </summary>
+    public static RuntimeHostPermission StopMediaSession { get; } =
+        new("media.session.stop");
+
     /// <inheritdoc />
     public override string ToString()
     {

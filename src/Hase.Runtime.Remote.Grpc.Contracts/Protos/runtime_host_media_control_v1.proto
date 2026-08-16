@@ -1,0 +1,207 @@
+syntax = "proto3";
+
+package hase.runtime.media.v1;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+option csharp_namespace = "Hase.Runtime.Media.Grpc.V1";
+
+// Version 1 control plane for one runtime-hosted view-only media session.
+// Continuous media is never carried by this service.
+service RuntimeHostMediaControl {
+  rpc GetMediaCapabilities (GetMediaCapabilitiesRequest)
+      returns (GetMediaCapabilitiesResponse);
+  rpc StartMediaSession (StartMediaSessionRequest)
+      returns (StartMediaSessionResponse);
+  rpc ExchangeMediaNegotiation (ExchangeMediaNegotiationRequest)
+      returns (ExchangeMediaNegotiationResponse);
+  rpc GetMediaSessionStatus (GetMediaSessionStatusRequest)
+      returns (GetMediaSessionStatusResponse);
+  rpc StopMediaSession (StopMediaSessionRequest)
+      returns (StopMediaSessionResponse);
+}
+
+message GetMediaCapabilitiesRequest {
+}
+
+message GetMediaCapabilitiesResponse {
+  string runtime_host_id = 1;
+  MediaControlApiVersion api_version = 2;
+  repeated MediaSourceCapability sources = 3;
+  MediaControlLimits limits = 4;
+}
+
+message MediaControlApiVersion {
+  uint32 major = 1;
+  uint32 minor = 2;
+}
+
+message MediaSourceTarget {
+  string media_source_id = 1;
+  string media_source_generation = 2;
+}
+
+message MediaSourceCapability {
+  MediaSourceTarget target = 1;
+  MediaSourceAvailability availability = 2;
+  bool supports_video = 3;
+  bool supports_audio = 4;
+  repeated MediaVideoProfile video_profiles = 5;
+  repeated MediaAudioProfile audio_profiles = 6;
+}
+
+enum MediaSourceAvailability {
+  MEDIA_SOURCE_AVAILABILITY_UNSPECIFIED = 0;
+  MEDIA_SOURCE_AVAILABILITY_UNAVAILABLE = 1;
+  MEDIA_SOURCE_AVAILABILITY_IDLE = 2;
+  MEDIA_SOURCE_AVAILABILITY_BUSY = 3;
+  MEDIA_SOURCE_AVAILABILITY_FAULTED = 4;
+}
+
+message MediaVideoProfile {
+  MediaVideoCodec codec = 1;
+  uint32 width = 2;
+  uint32 height = 3;
+  uint32 maximum_frames_per_second = 4;
+}
+
+enum MediaVideoCodec {
+  MEDIA_VIDEO_CODEC_UNSPECIFIED = 0;
+  MEDIA_VIDEO_CODEC_VP8 = 1;
+}
+
+message MediaAudioProfile {
+  MediaAudioCodec codec = 1;
+  uint32 sample_rate_hertz = 2;
+  uint32 maximum_channel_count = 3;
+}
+
+enum MediaAudioCodec {
+  MEDIA_AUDIO_CODEC_UNSPECIFIED = 0;
+  MEDIA_AUDIO_CODEC_OPUS = 1;
+}
+
+message MediaControlLimits {
+  uint32 maximum_source_identity_utf8_bytes = 1;
+  uint32 maximum_session_id_utf8_bytes = 2;
+  uint32 maximum_session_description_utf8_bytes = 3;
+  uint32 maximum_ice_candidate_utf8_bytes = 4;
+  uint32 maximum_ice_candidates_per_peer = 5;
+  uint32 maximum_negotiation_messages_per_peer = 6;
+  uint32 maximum_pending_delivery_messages = 7;
+  uint32 maximum_negotiation_exchanges = 8;
+  google.protobuf.Duration negotiation_idle_timeout = 9;
+  google.protobuf.Duration negotiation_lifetime = 10;
+  google.protobuf.Duration session_lease_duration = 11;
+}
+
+message StartMediaSessionRequest {
+  MediaSourceTarget target = 1;
+  bool include_audio = 2;
+}
+
+message StartMediaSessionResponse {
+  MediaControlOperationStatus status = 1;
+  MediaSessionSnapshot session = 2;
+}
+
+message ExchangeMediaNegotiationRequest {
+  string session_id = 1;
+  uint32 acknowledged_delivery_sequence = 2;
+  MediaNegotiationMessage submitted_message = 3;
+}
+
+message ExchangeMediaNegotiationResponse {
+  MediaControlOperationStatus status = 1;
+  MediaSessionSnapshot session = 2;
+  uint32 accepted_submission_sequence = 3;
+  repeated MediaNegotiationMessage delivered_messages = 4;
+  bool has_more = 5;
+}
+
+message MediaNegotiationMessage {
+  uint32 sequence = 1;
+  MediaNegotiationMessageKind kind = 2;
+  string sensitive_payload = 3;
+}
+
+enum MediaNegotiationMessageKind {
+  MEDIA_NEGOTIATION_MESSAGE_KIND_UNSPECIFIED = 0;
+  MEDIA_NEGOTIATION_MESSAGE_KIND_OFFER = 1;
+  MEDIA_NEGOTIATION_MESSAGE_KIND_ANSWER = 2;
+  MEDIA_NEGOTIATION_MESSAGE_KIND_ICE_CANDIDATE = 3;
+  MEDIA_NEGOTIATION_MESSAGE_KIND_ICE_COMPLETE = 4;
+}
+
+message GetMediaSessionStatusRequest {
+  string session_id = 1;
+}
+
+message GetMediaSessionStatusResponse {
+  MediaControlOperationStatus status = 1;
+  MediaSessionSnapshot session = 2;
+}
+
+message StopMediaSessionRequest {
+  string session_id = 1;
+}
+
+message StopMediaSessionResponse {
+  MediaControlOperationStatus status = 1;
+  MediaSessionSnapshot session = 2;
+}
+
+message MediaSessionSnapshot {
+  string session_id = 1;
+  MediaSourceTarget target = 2;
+  bool audio_requested = 3;
+  MediaSessionState state = 4;
+  google.protobuf.Timestamp started_at_utc = 5;
+  google.protobuf.Timestamp last_transition_at_utc = 6;
+  google.protobuf.Timestamp lease_expires_at_utc = 7;
+  MediaSessionTerminalReason terminal_reason = 8;
+  uint64 aggregate_video_bytes = 9;
+  uint64 aggregate_audio_bytes = 10;
+  uint64 aggregate_video_frames = 11;
+}
+
+enum MediaSessionState {
+  MEDIA_SESSION_STATE_UNSPECIFIED = 0;
+  MEDIA_SESSION_STATE_UNAVAILABLE = 1;
+  MEDIA_SESSION_STATE_IDLE = 2;
+  MEDIA_SESSION_STATE_STARTING = 3;
+  MEDIA_SESSION_STATE_NEGOTIATING = 4;
+  MEDIA_SESSION_STATE_STREAMING = 5;
+  MEDIA_SESSION_STATE_STOPPING = 6;
+  MEDIA_SESSION_STATE_ENDED = 7;
+  MEDIA_SESSION_STATE_FAULTED = 8;
+}
+
+enum MediaSessionTerminalReason {
+  MEDIA_SESSION_TERMINAL_REASON_UNSPECIFIED = 0;
+  MEDIA_SESSION_TERMINAL_REASON_CLIENT_STOPPED = 1;
+  MEDIA_SESSION_TERMINAL_REASON_CONTROL_DISCONNECTED = 2;
+  MEDIA_SESSION_TERMINAL_REASON_LEASE_EXPIRED = 3;
+  MEDIA_SESSION_TERMINAL_REASON_NEGOTIATION_TIMED_OUT = 4;
+  MEDIA_SESSION_TERMINAL_REASON_SOURCE_LOST = 5;
+  MEDIA_SESSION_TERMINAL_REASON_MEDIA_BOUNDARY_FAILED = 6;
+  MEDIA_SESSION_TERMINAL_REASON_HOST_STOPPING = 7;
+  MEDIA_SESSION_TERMINAL_REASON_PROTOCOL_REJECTED = 8;
+}
+
+enum MediaControlOperationStatus {
+  MEDIA_CONTROL_OPERATION_STATUS_UNSPECIFIED = 0;
+  MEDIA_CONTROL_OPERATION_STATUS_SUCCESS = 1;
+  MEDIA_CONTROL_OPERATION_STATUS_INVALID_REQUEST = 2;
+  MEDIA_CONTROL_OPERATION_STATUS_SOURCE_NOT_CURRENT = 3;
+  MEDIA_CONTROL_OPERATION_STATUS_SOURCE_UNAVAILABLE = 4;
+  MEDIA_CONTROL_OPERATION_STATUS_SESSION_BUSY = 5;
+  MEDIA_CONTROL_OPERATION_STATUS_AUDIO_NOT_SUPPORTED = 6;
+  MEDIA_CONTROL_OPERATION_STATUS_SESSION_NOT_FOUND = 7;
+  MEDIA_CONTROL_OPERATION_STATUS_SESSION_NOT_OWNED = 8;
+  MEDIA_CONTROL_OPERATION_STATUS_INVALID_STATE = 9;
+  MEDIA_CONTROL_OPERATION_STATUS_LIMIT_EXCEEDED = 10;
+  MEDIA_CONTROL_OPERATION_STATUS_TIMED_OUT = 11;
+  MEDIA_CONTROL_OPERATION_STATUS_FAULTED = 12;
+}

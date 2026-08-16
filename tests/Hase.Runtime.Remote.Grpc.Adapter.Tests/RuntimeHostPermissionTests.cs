@@ -23,6 +23,27 @@ public sealed class RuntimeHostPermissionTests
         Assert.Equal(
             "observation.subscribe",
             RuntimeHostPermission.SubscribeObservation.Value);
+        Assert.Equal(
+            "diagnostics.subscribe",
+            RuntimeHostPermission.SubscribeDiagnostics.Value);
+        Assert.Equal(
+            "media.capability.read",
+            RuntimeHostPermission.ReadMediaCapabilities.Value);
+        Assert.Equal(
+            "media.video.receive",
+            RuntimeHostPermission.ReceiveMediaVideo.Value);
+        Assert.Equal(
+            "media.audio.receive",
+            RuntimeHostPermission.ReceiveMediaAudio.Value);
+        Assert.Equal(
+            "media.session.start",
+            RuntimeHostPermission.StartMediaSession.Value);
+        Assert.Equal(
+            "media.session.negotiate",
+            RuntimeHostPermission.NegotiateMediaSession.Value);
+        Assert.Equal(
+            "media.session.stop",
+            RuntimeHostPermission.StopMediaSession.Value);
     }
 
     [Theory]

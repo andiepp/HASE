@@ -1,6 +1,7 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; Increment 55A architecture and read-only readiness complete
+- Status: Accepted; Increment 55B media control contracts implemented and
+  automatically validated
 - Date: 2026-08-16
 
 ## Context
@@ -122,8 +123,9 @@ session against the current source generation.
 
 ### Control-plane contract direction
 
-Increment 55B will define the exact protobuf surface. Its semantic operations
-are limited to:
+Increment 55B defines the exact protobuf package `hase.runtime.media.v1`, C#
+namespace `Hase.Runtime.Media.Grpc.V1`, and unary service
+`RuntimeHostMediaControl`. Its operations are limited to:
 
 1. read authorized sanitized media capabilities;
 2. start one session for an exact source generation and requested audio mode;
@@ -135,8 +137,7 @@ This is a separately versioned media control service on the existing secured
 Runtime Host listener. It does not overload the current endpoint, Property,
 Command, Event, observation, or diagnostics services.
 
-The proposed authorization actions, to be fixed with the exact 55B contract,
-are:
+The fixed authorization actions are:
 
 ```text
 media.capability.read
@@ -282,8 +283,9 @@ contract is direct private-network only.
 
 1. **55A — complete:** architecture decision, read-only technology discovery,
    compatibility contract, and machine readiness.
-2. **55B — planned:** media capability model, authorization actions, protobuf
-   control service, validation, and compatibility tests.
+2. **55B — complete pending commit and synchronization:** media capability
+   model, authorization actions, protobuf control service, fixed input limits,
+   validation, compatibility tests, and complete Release validation.
 3. **55C — planned:** Windows Runtime Host WebView2 capture and device/session
    ownership boundary without remote viewing.
 4. **55D — planned:** WPF Client WebView2 presentation, explicit Start/Stop,
@@ -295,6 +297,36 @@ contract is direct private-network only.
 
 Every stage requires a separate proposal and approval. No later stage is
 authorized by acceptance of this decision.
+
+## Increment 55B effects, validation, and rollback
+
+Increment 55B adds the separately versioned media protobuf file to the existing
+contracts project. It adds the six exact `media.*` permissions, immutable
+authorization requirement sets, fixed version 1 negotiation limits, and a
+stateless validator for source identity, session identity, message kind,
+sequence, payload presence, and UTF-8 byte bounds. Focused tests fix the wire
+surface, sanitized fields, VP8/Opus allowlist, independent audio grant,
+read-only requirement sets, constants, boundary acceptance, and rejection.
+
+55B does not implement the Runtime Host service adapter or session owner and
+does not compose the generated service into Kestrel. It adds no WebView2 SDK,
+HTML, JavaScript, XAML, WPF code, capture implementation, device configuration,
+authorization-policy grant, deployment tool, or firewall behavior. It cannot
+open a camera or microphone, exchange signaling, or transmit media.
+
+Release focused tests for the contracts and adapter projects succeeded on
+AEPRAKETE. The complete Release suite passes 6,061 tests with zero failures and
+zero skips in 35.0 seconds; the successful build completes in 42.6 seconds with
+59 warnings. Exact changed-path and diff checks retain the 17-path scope at the
+clean starting baseline
+`b745c512f43915a584a840749190a1ca34dc9faa`. No application was started and no
+deployment, media-device access, capture, signaling, credential, serial,
+firmware, or physical action occurred.
+
+Rollback restores the modified contracts project, permission model, and four
+documentation paths and removes the new protobuf, adapter, and test files.
+There is no dependency, generated artifact, configuration, credential,
+deployment, device, network, firmware, or physical state to undo.
 
 ## Increment 55A effects, validation, and rollback
 

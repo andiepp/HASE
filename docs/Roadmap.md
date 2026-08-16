@@ -1557,8 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55A architecture decision and read-only media
-readiness complete; no media implementation or physical capture authorized
+**Status:** [Active] Increment 55B media control contracts implemented and
+automatically validated at 6,061 passing tests; no application composition or
+physical capture authorized
 
 ADR-0055 adds one view-only live camera source hosted by a Windows HASE Runtime
 Host and viewed in one remote HASE WPF Client session. Optional microphone
@@ -1589,7 +1590,9 @@ Stages:
 
 1. 55A — complete: architecture decision, technology discovery, compatibility
    contract, and read-only host/client readiness;
-2. 55B — planned: media capability model and versioned control-plane contracts;
+2. 55B — complete pending commit and synchronization: media capability model,
+   exact authorization actions, versioned protobuf control service, fixed
+   limits, compatibility tests, and 6,061-test complete Release validation;
 3. 55C — planned: Windows Runtime Host camera and microphone capture boundary;
 4. 55D — planned: WPF Client live video and audio presentation;
 5. 55E — planned: encrypted end-to-end media transport and automated

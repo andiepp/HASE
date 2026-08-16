@@ -97,14 +97,26 @@ exchanged only through the authenticated control plane and remain sensitive.
 
 ## Capability and authorization contract
 
-The 55B proposal must give exact protobuf names and request/response shapes for
-these semantic operations:
+Increment 55B fixes the independent protobuf package
+`hase.runtime.media.v1`, C# namespace `Hase.Runtime.Media.Grpc.V1`, and service
+`RuntimeHostMediaControl`. The service has exactly five unary operations:
 
-1. read sanitized media capabilities;
-2. start a session against an exact source generation;
-3. exchange bounded negotiation messages;
-4. observe sanitized session status; and
-5. stop the authenticated caller's session.
+1. `GetMediaCapabilities` reads sanitized media capabilities and the applicable
+   limits;
+2. `StartMediaSession` starts against an exact `MediaSourceTarget` generation
+   and an explicit `include_audio` value;
+3. `ExchangeMediaNegotiation` submits at most one sequenced message,
+   acknowledges prior delivery, and returns a bounded pending batch;
+4. `GetMediaSessionStatus` reads the sanitized caller-owned session snapshot;
+   and
+5. `StopMediaSession` idempotently stops the authenticated caller's session.
+
+The contract publishes only logical source identity, generation, availability,
+the VP8/Opus allowlist, lifecycle state, sanitized terminal reason, timestamps,
+and aggregate counters. Windows device identifiers, friendly names, network
+addresses, SDP, ICE, credentials, tokens, and media content are never
+capability or status fields. Negotiation payloads exist only in the dedicated
+exchange messages and retain their sensitive classification.
 
 The planned authorization vocabulary is:
 
@@ -125,7 +137,10 @@ authorization.
 
 Existing authorization actions, policies, credentials, certificates, profile
 selection, target selection, shortcuts, and trust behavior remain unchanged.
-55A introduces none of the proposed grants.
+55B defines the six permission values but adds no grant to any policy. Start
+requires video receive plus session start; audio Start additionally requires
+the independent audio receive permission. Negotiation, status, and Stop also
+require exact session ownership in addition to their operation permissions.
 
 ## Session lifecycle
 
@@ -223,9 +238,27 @@ byte/frame counters, selected allowlisted codec labels, and enumerated failure
 categories. Diagnostics never record media content and must retain the current
 HASE local/remote disclosure ceilings.
 
-Negotiation has explicit limits for message bytes, candidates, exchanges,
-characters, sequence, idle time, and total lifetime. Exact limits are fixed and
-tested in 55B before remote inputs are accepted.
+The version 1 control limits are fixed as follows:
+
+| Limit | Value |
+| --- | ---: |
+| Source ID or generation | 128 UTF-8 bytes each |
+| Session ID | 128 UTF-8 bytes |
+| SDP offer or answer | 49,152 UTF-8 bytes |
+| ICE candidate | 4,096 UTF-8 bytes |
+| ICE candidates | 32 per peer |
+| Negotiation messages | 36 per peer |
+| Pending delivery messages | 16 |
+| Negotiation exchanges | 128 |
+| Negotiation idle timeout | 15 seconds |
+| Total negotiation lifetime | 60 seconds |
+| Renewable session lease | 30 seconds |
+
+Sequence zero, an unspecified message kind, blank required payload, an ICE
+completion payload, and any UTF-8 byte overflow are rejected before session or
+browser-media state. Stateful count, order, ownership, and timeout enforcement
+is required when 55C composes the first session owner; the published constants
+cannot be expanded by remote input.
 
 ## Existing behavior preserved
 

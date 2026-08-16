@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55A architecture and read-only readiness complete at the unchanged 6,024-test baseline**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55B media control contracts implemented and automatically validated with 6,061 passing tests**
 
 - One Windows Runtime Host camera, with optional associated microphone audio,
   will be presented view-only in one remote HASE WPF Client session.
@@ -23,9 +23,17 @@
 - Readiness did not open a media device, request a stream, send signaling,
   change privacy settings, install a dependency, start HASE, deploy software,
   or change physical state.
-- The [Runtime-Hosted Media Compatibility Contract](Runtime-Hosted-Media-Compatibility-Contract.md)
-  fixes the 55A boundary. Increment 55B will require separate approval before
-  adding the media capability model or control-plane contracts.
+- Increment 55B adds a separately versioned `hase.runtime.media.v1` protobuf
+  control service, sanitized capability and session models, the six accepted
+  media authorization actions, fixed negotiation limits, pre-session input
+  validation, and focused compatibility tests.
+- The 55B source does not compose a service into either application, add
+  WebView2, open a media device, exchange signaling, transmit media, deploy
+  software, change configuration or credentials, or perform physical work.
+- Release focused contract and adapter validation succeeded on AEPRAKETE. The
+  complete Release suite passes 6,061 tests with zero failures and zero skips;
+  the successful build reports 59 warnings. The exact 17-path scope remains
+  unstaged at the accepted 55A commit pending commit and synchronization.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 
