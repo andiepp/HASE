@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E1 authenticated duplex media-control source prepared; automated validation pending**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E2 encrypted WebView2 peer-boundary source prepared; automated validation pending**
 
 - One camera selected from locally configured Windows Runtime Host sources,
   with optional associated microphone audio, will be presented view-only in
@@ -75,7 +75,7 @@
   boundaries in 55E2, and configuration/application composition in 55E3.
   Increment 55E1 starts from reconciled commit
   `7b4ffe78920aeaa2e356b5d7a3e84b43ca493dc4`.
-- The prepared 55E1 source adds an authenticated generated gRPC service and
+- Increment 55E1 adds an authenticated generated gRPC service and
   Client adapter for the five existing media-control operations. The Runtime
   Host remains the sole WebRTC offerer; independent submission and delivery
   sequence spaces, acknowledgments, bounded pending delivery, exchange limits,
@@ -83,7 +83,20 @@
 - 55E1 deliberately does not register the service, compose either application,
   initialize WebView2, enumerate or access a device, capture media, create a
   peer connection, exchange live signaling, change configuration, deploy, or
-  perform physical work. Focused and complete Release validation remains
+  perform physical work. Focused validation and the complete Release suite
+  succeeded on AEPRAKETE with 6,158 passed, zero failed, and zero skipped. The
+  exact 16-path implementation is committed as
+  `c7d509f43a34948695656614ba5131fb526a4450`.
+- Approved Increment 55E2 extends the existing non-composed Runtime Host and
+  Client WebView2 boundaries into fixed offerer and answerer peers. It uses no
+  ICE servers or data channels, fixes send-only and receive-only roles, selects
+  VP8 and optional Opus, requires SHA-256 DTLS fingerprints and RTCP mux, and
+  exchanges only the existing bounded offer, answer, and ICE messages.
+- The prepared 55E2 source remains unregistered and uncomposed. Repository
+  application and automated tests cannot initialize WebView2, create a live
+  peer connection, enumerate or access a media device, capture or render
+  media, exchange network signaling, deploy, change firewall or privacy state,
+  or perform physical work. Focused and complete Release validation is
   required on AEPRAKETE before commit.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.

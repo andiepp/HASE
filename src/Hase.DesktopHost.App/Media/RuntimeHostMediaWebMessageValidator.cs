@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Hase.Runtime.Media;
 
 namespace Hase.DesktopHost.App.Media;
 
@@ -9,7 +10,9 @@ namespace Hase.DesktopHost.App.Media;
 /// </summary>
 public sealed class RuntimeHostMediaWebMessageValidator
 {
-    public const int MaximumMessageUtf8Bytes = 2_048;
+    public const int MaximumMessageUtf8Bytes =
+        (RuntimeHostMediaSessionOwner.MaximumSessionDescriptionUtf8Bytes * 2) +
+        1_024;
 
     private static readonly HashSet<string> FailureCodes =
         new(StringComparer.Ordinal)
@@ -18,7 +21,10 @@ public sealed class RuntimeHostMediaWebMessageValidator
             "device-busy",
             "permission-denied",
             "constraint-rejected",
-            "browser-failed"
+            "browser-failed",
+            "negotiation-rejected",
+            "codec-unsupported",
+            "transport-failed"
         };
 
     public bool TryValidate(
@@ -64,6 +70,10 @@ public sealed class RuntimeHostMediaWebMessageValidator
                     RuntimeHostMediaWebMessageKind.CaptureStopped,
                 "capture-faulted" =>
                     RuntimeHostMediaWebMessageKind.CaptureFaulted,
+                "negotiation" => RuntimeHostMediaWebMessageKind.Negotiation,
+                "peer-connected" =>
+                    RuntimeHostMediaWebMessageKind.PeerConnected,
+                "peer-faulted" => RuntimeHostMediaWebMessageKind.PeerFaulted,
                 _ => (RuntimeHostMediaWebMessageKind?)null
             };
             if (kind is null)
@@ -82,13 +92,30 @@ public sealed class RuntimeHostMediaWebMessageValidator
                 failureCode = failureElement.GetString();
             }
 
-            if ((kind == RuntimeHostMediaWebMessageKind.CaptureFaulted) !=
+            var isFailure = kind is
+                RuntimeHostMediaWebMessageKind.CaptureFaulted or
+                RuntimeHostMediaWebMessageKind.PeerFaulted;
+            if (isFailure !=
                 (failureCode is not null && FailureCodes.Contains(failureCode)))
             {
                 return false;
             }
 
-            message = new(kind.Value, failureCode);
+            RuntimeHostMediaNegotiationMessage? negotiationMessage = null;
+            if (kind == RuntimeHostMediaWebMessageKind.Negotiation)
+            {
+                negotiationMessage = ParseNegotiation(root);
+                if (negotiationMessage is null)
+                {
+                    return false;
+                }
+            }
+            else if (HasNegotiationProperties(root))
+            {
+                return false;
+            }
+
+            message = new(kind.Value, failureCode, negotiationMessage);
             return true;
         }
         catch (JsonException)
@@ -101,12 +128,69 @@ public sealed class RuntimeHostMediaWebMessageValidator
     {
         foreach (var property in root.EnumerateObject())
         {
-            if (property.Name is not ("version" or "kind" or "failureCode"))
+            if (property.Name is not (
+                "version" or
+                "kind" or
+                "failureCode" or
+                "sequence" or
+                "negotiationKind" or
+                "sensitivePayload"))
             {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private static bool HasNegotiationProperties(JsonElement root) =>
+        root.TryGetProperty("sequence", out _) ||
+        root.TryGetProperty("negotiationKind", out _) ||
+        root.TryGetProperty("sensitivePayload", out _);
+
+    private static RuntimeHostMediaNegotiationMessage? ParseNegotiation(
+        JsonElement root)
+    {
+        if (!root.TryGetProperty("sequence", out var sequenceElement) ||
+            sequenceElement.ValueKind != JsonValueKind.Number ||
+            !sequenceElement.TryGetUInt32(out var sequence) ||
+            sequence == 0 ||
+            !root.TryGetProperty("negotiationKind", out var kindElement) ||
+            kindElement.ValueKind != JsonValueKind.String ||
+            !root.TryGetProperty("sensitivePayload", out var payloadElement) ||
+            payloadElement.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        var kind = kindElement.GetString() switch
+        {
+            "offer" => RuntimeHostMediaNegotiationKind.Offer,
+            "ice-candidate" => RuntimeHostMediaNegotiationKind.IceCandidate,
+            "ice-complete" => RuntimeHostMediaNegotiationKind.IceComplete,
+            _ => (RuntimeHostMediaNegotiationKind?)null
+        };
+        if (kind is null)
+        {
+            return null;
+        }
+
+        var payload = payloadElement.GetString() ?? "";
+        var payloadBytes = Encoding.UTF8.GetByteCount(payload);
+        var valid = kind switch
+        {
+            RuntimeHostMediaNegotiationKind.Offer =>
+                payloadBytes is > 0 and <=
+                    RuntimeHostMediaSessionOwner
+                        .MaximumSessionDescriptionUtf8Bytes,
+            RuntimeHostMediaNegotiationKind.IceCandidate =>
+                payloadBytes is > 0 and <=
+                    RuntimeHostMediaSessionOwner.MaximumIceCandidateUtf8Bytes,
+            RuntimeHostMediaNegotiationKind.IceComplete => payloadBytes == 0,
+            _ => false
+        };
+        return valid
+            ? new RuntimeHostMediaNegotiationMessage(sequence, kind.Value, payload)
+            : null;
     }
 }

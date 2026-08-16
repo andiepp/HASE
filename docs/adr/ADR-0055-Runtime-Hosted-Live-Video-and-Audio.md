@@ -1,6 +1,6 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; Increment 55E1 authenticated duplex media-control source
+- Status: Accepted; Increment 55E2 encrypted WebView2 peer-boundary source
   prepared and awaiting automated validation
 - Date: 2026-08-16
 
@@ -296,11 +296,12 @@ contract is direct private-network only.
 4. **55D — revised implementation automatically validated:** WPF Client logical camera selection,
    WebView2 presentation boundary, explicit Start/Stop, audio control, and
    lifecycle UI; complete Release validation passes 6,139 tests.
-5. **55E1 — source prepared, validation pending:** authenticated generated
+5. **55E1 — implemented and automatically validated:** authenticated generated
    media-control service, Client gRPC adapter, transport-neutral duplex
-   negotiation, acknowledgments, limits, ownership, and leases.
-6. **55E2 — planned:** Runtime Host offerer and Client answerer WebView2 peer
-   boundaries with mandatory DTLS-SRTP.
+   negotiation, acknowledgments, limits, ownership, leases, and 6,158-test
+   complete Release validation.
+6. **55E2 — source prepared, validation pending:** Runtime Host offerer and
+   Client answerer WebView2 peer boundaries with mandatory DTLS-SRTP.
 7. **55E3 — planned:** configuration and application composition, packaging,
    failure recovery, security tests, and complete automated validation.
 8. **55F — planned:** separately approved controlled physical validation,
@@ -456,8 +457,10 @@ access fail closed and terminal protocol overflow releases the boundary.
 Focused validation covers authorization sets, logical-source redaction,
 principal ownership, offerer/answerer roles, delivery replay until
 acknowledgment, Client submission, sequence and pending-delivery bounds, lease
-renewal, sanitized failures, and Client wire mapping. Complete Release
-validation remains required on AEPRAKETE before commit.
+renewal, sanitized failures, and Client wire mapping. Focused validation and
+the complete Release suite succeeded on AEPRAKETE with 6,158 passed, zero
+failed, and zero skipped. The exact 16-path implementation is committed as
+`c7d509f43a34948695656614ba5131fb526a4450`.
 
 No 55E1 production registration or application composition is added. Applying
 or validating the source does not start an application, initialize WebView2,
@@ -468,6 +471,40 @@ Rollback restores the modified media-domain and Client abstractions and tests,
 removes the new Host service, authorization gate, wire mapper, Client adapter,
 and focused tests, and restores these documentation paths. No external state
 requires rollback.
+
+## Increment 55E2 effects, validation, and rollback
+
+Increment 55E2 starts from exact synchronized commit
+`c7d509f43a34948695656614ba5131fb526a4450`. It extends the existing
+repository-owned WebView2 assets and native adapters without composing them.
+The Runtime Host is the only offerer and attaches its already authorized local
+camera and optional microphone as send-only transceivers. The Client is the
+only answerer, creates no local media, and forces every negotiated transceiver
+to receive-only.
+
+Both peers use an empty ICE-server list, zero candidate pooling, maximum
+bundling, required RTCP multiplexing, SHA-256 DTLS fingerprints, VP8 video, and
+optional Opus audio. They create no data channel and accept no remote URL, ICE
+server, device identifier, or network target. Local ICE output is held until
+the offer or answer is published, retaining the independent one-based 55E1
+sequence contract. Invalid role, order, codec, fingerprint, candidate, or
+browser state fails closed with a fixed sanitized category.
+
+The web/native validators accept only the fixed lifecycle and negotiation
+envelopes with the existing SDP and ICE byte limits. Focused validation covers
+offerer/answerer direction, codec selection, DTLS and RTCP requirements, no
+relay configuration, no Client capture, bounded message mapping, sequencing,
+sanitized failure, and source-asset policy. Complete Release validation remains
+required on AEPRAKETE before commit.
+
+55E2 source application and automated validation do not initialize WebView2,
+create a live peer, enumerate or access a camera or microphone, capture or
+render media, exchange network signaling, register a gRPC service, compose an
+application, deploy, change firewall or privacy state, change credentials,
+upload firmware, access serial hardware, or perform physical work. Rollback
+restores the two peer assets, native message models, validators and adapters,
+focused tests, and these four documentation paths. No external state requires
+rollback.
 
 ## Increment 55A effects, validation, and rollback
 

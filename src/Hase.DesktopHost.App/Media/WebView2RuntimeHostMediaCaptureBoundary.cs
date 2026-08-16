@@ -82,8 +82,30 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
     {
         ArgumentNullException.ThrowIfNull(message);
         cancellationToken.ThrowIfCancellationRequested();
-        throw new NotSupportedException(
-            "Remote WebRTC negotiation is outside Increment 55C.");
+        EnsureUiThread();
+        if (!captureActive || webView.CoreWebView2 is null)
+        {
+            throw new InvalidOperationException(
+                "Media capture is not active for negotiation.");
+        }
+        if (message.Kind is RuntimeHostMediaNegotiationKind.Offer)
+        {
+            throw new ArgumentException(
+                "The Runtime Host is the only WebRTC offerer.",
+                nameof(message));
+        }
+
+        var command = new
+        {
+            version = 1,
+            kind = "apply-negotiation",
+            sequence = message.Sequence,
+            negotiationKind = ToWireKind(message.Kind),
+            sensitivePayload = message.SensitivePayload
+        };
+        webView.CoreWebView2.PostWebMessageAsJson(
+            JsonSerializer.Serialize(command));
+        return ValueTask.CompletedTask;
     }
 
     public ValueTask CloseAsync(CancellationToken cancellationToken)
@@ -242,4 +264,14 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
                 "The WebView2 media boundary requires its owning UI thread.");
         }
     }
+
+    private static string ToWireKind(RuntimeHostMediaNegotiationKind kind) =>
+        kind switch
+        {
+            RuntimeHostMediaNegotiationKind.Answer => "answer",
+            RuntimeHostMediaNegotiationKind.IceCandidate => "ice-candidate",
+            RuntimeHostMediaNegotiationKind.IceComplete => "ice-complete",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(kind), kind, "A Client negotiation message is required.")
+        };
 }

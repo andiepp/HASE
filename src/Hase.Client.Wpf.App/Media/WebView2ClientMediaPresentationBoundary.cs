@@ -1,4 +1,6 @@
 using System.IO;
+using System.Text.Json;
+using Hase.Client.Media;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -15,6 +17,7 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
     private readonly ClientMediaWebViewPolicy policy;
     private readonly ClientMediaWebMessageValidator validator;
     private bool initialized;
+    private bool presentationActive;
 
     public WebView2ClientMediaPresentationBoundary(
         WebView2 webView,
@@ -78,6 +81,54 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
             webView.CoreWebView2.PostWebMessageAsJson(
                 "{\"version\":1,\"kind\":\"clear-presentation\"}");
         }
+        presentationActive = false;
+    }
+
+    public async Task BeginAsync(
+        bool includeAudio,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureUiThread();
+        await InitializeAsync(cancellationToken).ConfigureAwait(true);
+        if (presentationActive)
+        {
+            throw new InvalidOperationException(
+                "Media presentation is already active.");
+        }
+
+        presentationActive = true;
+        webView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+        {
+            version = 1,
+            kind = "begin-presentation",
+            includeAudio
+        }));
+    }
+
+    public void SubmitNegotiation(RemoteMediaNegotiationMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        EnsureUiThread();
+        if (!presentationActive || webView.CoreWebView2 is null)
+        {
+            throw new InvalidOperationException(
+                "Media presentation is not active for negotiation.");
+        }
+        if (message.Kind == RemoteMediaNegotiationKind.Answer)
+        {
+            throw new ArgumentException(
+                "The Client is the only WebRTC answerer.", nameof(message));
+        }
+
+        webView.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new
+        {
+            version = 1,
+            kind = "apply-negotiation",
+            sequence = message.Sequence,
+            negotiationKind = ToWireKind(message.Kind),
+            sensitivePayload = message.SensitivePayload
+        }));
     }
 
     public ValueTask DisposeAsync()
@@ -85,8 +136,11 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
         EnsureUiThread();
         if (initialized && webView.CoreWebView2 is not null)
         {
+            webView.CoreWebView2.PostWebMessageAsJson(
+                "{\"version\":1,\"kind\":\"clear-presentation\"}");
             Detach(webView.CoreWebView2);
         }
+        presentationActive = false;
         initialized = false;
         return ValueTask.CompletedTask;
     }
@@ -158,4 +212,14 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
                 "The WebView2 presentation boundary requires its owning UI thread.");
         }
     }
+
+    private static string ToWireKind(RemoteMediaNegotiationKind kind) =>
+        kind switch
+        {
+            RemoteMediaNegotiationKind.Offer => "offer",
+            RemoteMediaNegotiationKind.IceCandidate => "ice-candidate",
+            RemoteMediaNegotiationKind.IceComplete => "ice-complete",
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(kind), kind, "A Runtime Host negotiation message is required.")
+        };
 }

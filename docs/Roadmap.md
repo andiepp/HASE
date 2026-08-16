@@ -1557,7 +1557,7 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55E1 authenticated duplex media-control source
+**Status:** [Active] Increment 55E2 encrypted WebView2 peer-boundary source
 prepared; automated validation pending and no application composition or
 physical capture authorized
 
@@ -1603,11 +1603,14 @@ Stages:
    selection, WPF Client Start/Stop and audio controls, and receiver-only
    WebView2 presentation; committed as
    `199356222f8763ed6e6fbb5f481fe46aa70ec679`;
-5. 55E1 — source prepared, validation pending: authenticated transport-neutral
+5. 55E1 — implemented and automatically validated: authenticated
+   transport-neutral
    media-control service, Client gRPC adapter, duplex offer/answer/ICE exchange,
-   sequencing, acknowledgments, bounds, and lease renewal;
-6. 55E2 — planned: Runtime Host offerer and Client answerer WebView2 peer
-   boundaries with mandatory DTLS-SRTP;
+   sequencing, acknowledgments, bounds, lease renewal, and 6,158-test complete
+   Release validation; committed as
+   `c7d509f43a34948695656614ba5131fb526a4450`;
+6. 55E2 — source prepared, validation pending: Runtime Host offerer and Client
+   answerer WebView2 peer boundaries with mandatory DTLS-SRTP;
 7. 55E3 — planned: explicit local configuration and application composition,
    packaging, failure recovery, and complete automated validation; and
 8. 55F — planned: separately authorized controlled physical validation,
@@ -1676,12 +1679,30 @@ messages, empty exchanges renew the lease, and invalid ownership, ordering,
 role, count, size, timeout, or authorization fails closed with sanitized
 status.
 
-55E1 validation uses fakes and direct service/client calls. It does not start
+55E1 validation used fakes and direct service/client calls. Focused validation
+and the complete Release suite succeeded on AEPRAKETE with 6,158 passed, zero
+failed, and zero skipped. It did not start
 an application, initialize WebView2, enumerate or access a device, capture
 media, create a browser peer connection, exchange live network signaling,
 register a gRPC endpoint, publish configuration, deploy, or change firewall,
-privacy, credential, firmware, or physical state. 55E2 and 55E3 remain
-separately proposed work.
+privacy, credential, firmware, or physical state. The exact implementation is
+committed as `c7d509f43a34948695656614ba5131fb526a4450`.
+
+Approved Increment 55E2 extends the repository-owned Runtime Host capture and
+Client presentation scripts with `RTCPeerConnection` boundaries. The Host is
+the only offerer and uses send-only transceivers; the Client is the only
+answerer and forces receive-only transceivers without `getUserMedia`. Both use
+an empty ICE-server list, no data channel, mandatory RTCP mux and SHA-256 DTLS
+fingerprints, VP8 video, and optional Opus audio. Local candidates are queued
+until the offer or answer is published so the 55E1 role and sequence contract
+remains authoritative.
+
+55E2 also extends both narrow web/native validators and adapters for bounded
+offer, answer, ICE, peer-connected, and sanitized-failure messages. It remains
+uncomposed until 55E3. Applying and testing the source does not initialize
+WebView2, create a live peer, enumerate or access a media device, capture or
+render media, exchange network signaling, register a service, deploy, or
+change firewall, privacy, credential, firmware, or physical state.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 

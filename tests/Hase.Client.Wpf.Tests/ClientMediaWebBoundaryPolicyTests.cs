@@ -1,4 +1,6 @@
 using Hase.Client.Wpf.AppHost.Media;
+using Hase.Client.Media;
+using System.Text.Json;
 
 namespace Hase.Client.Wpf.Tests;
 
@@ -51,5 +53,61 @@ public sealed class ClientMediaWebBoundaryPolicyTests
     {
         Assert.False(new ClientMediaWebMessageValidator()
             .TryValidate(json, out _));
+    }
+
+    [Fact]
+    public void ClientAnswerIsAcceptedAsSensitiveNegotiation()
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            version = 1,
+            kind = "negotiation",
+            sequence = 1,
+            negotiationKind = "answer",
+            sensitivePayload = "v=0\r\na=fingerprint:sha-256 AA:BB\r\n"
+        });
+
+        Assert.True(new ClientMediaWebMessageValidator()
+            .TryValidate(json, out var message));
+        Assert.Equal(ClientMediaWebMessageKind.Negotiation, message!.Kind);
+        Assert.Equal(RemoteMediaNegotiationKind.Answer,
+            message.NegotiationMessage!.Kind);
+    }
+
+    [Theory]
+    [InlineData(0, "answer", "sdp")]
+    [InlineData(1, "offer", "sdp")]
+    [InlineData(1, "ice-complete", "not-empty")]
+    [InlineData(1, "ice-candidate", "")]
+    public void InvalidClientNegotiationIsRejected(
+        uint sequence,
+        string negotiationKind,
+        string sensitivePayload)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            version = 1,
+            kind = "negotiation",
+            sequence,
+            negotiationKind,
+            sensitivePayload
+        });
+
+        Assert.False(new ClientMediaWebMessageValidator()
+            .TryValidate(json, out _));
+    }
+
+    [Theory]
+    [InlineData("negotiation-rejected")]
+    [InlineData("codec-unsupported")]
+    public void SanitizedPeerFailureIsAccepted(string failureCode)
+    {
+        var json = $$"""
+            {"version":1,"kind":"presentation-faulted","failureCode":"{{failureCode}}"}
+            """;
+
+        Assert.True(new ClientMediaWebMessageValidator()
+            .TryValidate(json, out var message));
+        Assert.Equal(failureCode, message!.FailureCode);
     }
 }
