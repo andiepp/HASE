@@ -15,6 +15,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
     public const int MaximumIceCandidateUtf8Bytes = 4_096;
     public const int MaximumIceCandidatesPerPeer = 32;
     public const int MaximumNegotiationMessagesPerPeer = 36;
+    public const int MaximumPendingDeliveryMessages = 16;
     public const int MaximumNegotiationExchanges = 128;
 
     public static readonly TimeSpan NegotiationIdleTimeout =
@@ -158,6 +159,24 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
+        RuntimeHostMediaNegotiationExchangeResult result =
+            await ExchangeNegotiationAsync(
+                principalId,
+                sessionId,
+                acknowledgedDeliverySequence: 0,
+                message,
+                cancellationToken).ConfigureAwait(false);
+        return new(result.Status, result.Session);
+    }
+
+    public async ValueTask<RuntimeHostMediaNegotiationExchangeResult>
+        ExchangeNegotiationAsync(
+            string principalId,
+            string sessionId,
+            uint acknowledgedDeliverySequence,
+            RuntimeHostMediaNegotiationMessage? submittedMessage,
+            CancellationToken cancellationToken = default)
+    {
         await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -165,7 +184,8 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
             var resolved = ResolveOwned(principalId, sessionId);
             if (resolved.Status != RuntimeHostMediaOperationStatus.Success)
             {
-                return RuntimeHostMediaOperationResult.Rejected(resolved.Status);
+                return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                    resolved.Status);
             }
 
             var session = resolved.Session!;
@@ -173,7 +193,125 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 .ConfigureAwait(false);
             if (timeout is not null)
             {
-                return timeout;
+                return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                    timeout.Status,
+                    timeout.Session);
+            }
+
+            if (session.State != RuntimeHostMediaSessionState.Negotiating)
+            {
+                return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                    RuntimeHostMediaOperationStatus.InvalidState,
+                    session.Snapshot());
+            }
+
+            if (session.ExchangeCount >= MaximumNegotiationExchanges)
+            {
+                await TerminateLockedAsync(
+                    session,
+                    RuntimeHostMediaSessionState.Faulted,
+                    RuntimeHostMediaTerminalReason.ProtocolRejected)
+                    .ConfigureAwait(false);
+                return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                    RuntimeHostMediaOperationStatus.LimitExceeded,
+                    session.Snapshot());
+            }
+
+            RuntimeHostMediaOperationStatus acknowledgmentValidation =
+                session.ValidateAcknowledgment(acknowledgedDeliverySequence);
+            if (acknowledgmentValidation !=
+                RuntimeHostMediaOperationStatus.Success)
+            {
+                return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                    acknowledgmentValidation,
+                    session.Snapshot());
+            }
+
+            if (submittedMessage is not null)
+            {
+                var validation = ValidateClientNegotiation(
+                    session,
+                    submittedMessage);
+                if (validation != RuntimeHostMediaOperationStatus.Success)
+                {
+                    if (validation == RuntimeHostMediaOperationStatus.LimitExceeded)
+                    {
+                        await TerminateLockedAsync(
+                            session,
+                            RuntimeHostMediaSessionState.Faulted,
+                            RuntimeHostMediaTerminalReason.ProtocolRejected)
+                            .ConfigureAwait(false);
+                    }
+
+                    return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                        validation,
+                        session.Snapshot());
+                }
+
+                try
+                {
+                    await boundary.SubmitNegotiationAsync(
+                        submittedMessage,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                    when (cancellationToken.IsCancellationRequested)
+                {
+                    await TerminateLockedAsync(
+                        session,
+                        RuntimeHostMediaSessionState.Faulted,
+                        RuntimeHostMediaTerminalReason.MediaBoundaryFailed)
+                        .ConfigureAwait(false);
+                    throw;
+                }
+                catch
+                {
+                    await TerminateLockedAsync(
+                        session,
+                        RuntimeHostMediaSessionState.Faulted,
+                        RuntimeHostMediaTerminalReason.MediaBoundaryFailed)
+                        .ConfigureAwait(false);
+                    return RuntimeHostMediaNegotiationExchangeResult.Rejected(
+                        RuntimeHostMediaOperationStatus.Faulted,
+                        session.Snapshot());
+                }
+
+                session.AcceptClient(submittedMessage, timeProvider.GetUtcNow());
+            }
+
+            session.Acknowledge(acknowledgedDeliverySequence);
+            session.RecordExchange(timeProvider.GetUtcNow());
+            IReadOnlyList<RuntimeHostMediaNegotiationMessage> deliveries =
+                session.GetPendingDeliveries();
+            return new(
+                RuntimeHostMediaOperationStatus.Success,
+                session.Snapshot(),
+                session.AcceptedSubmissionSequence,
+                deliveries,
+                session.PendingDeliveryCount > deliveries.Count);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async ValueTask<RuntimeHostMediaOperationResult>
+        PublishNegotiationAsync(
+            string sessionId,
+            RuntimeHostMediaNegotiationMessage message,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            Session? session = ResolveSession(sessionId);
+            if (session is null)
+            {
+                return RuntimeHostMediaOperationResult.Rejected(
+                    RuntimeHostMediaOperationStatus.SessionNotFound);
             }
 
             if (session.State != RuntimeHostMediaSessionState.Negotiating)
@@ -183,7 +321,8 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                     session.Snapshot());
             }
 
-            var validation = ValidateNegotiation(session, message);
+            RuntimeHostMediaOperationStatus validation =
+                ValidateHostNegotiation(session, message);
             if (validation != RuntimeHostMediaOperationStatus.Success)
             {
                 if (validation == RuntimeHostMediaOperationStatus.LimitExceeded)
@@ -198,25 +337,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 return new(validation, session.Snapshot());
             }
 
-            try
-            {
-                await boundary.SubmitNegotiationAsync(
-                    message,
-                    cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                await TerminateLockedAsync(
-                    session,
-                    RuntimeHostMediaSessionState.Faulted,
-                    RuntimeHostMediaTerminalReason.MediaBoundaryFailed)
-                    .ConfigureAwait(false);
-                return new(
-                    RuntimeHostMediaOperationStatus.Faulted,
-                    session.Snapshot());
-            }
-
-            session.Accept(message, timeProvider.GetUtcNow());
+            session.Publish(message, timeProvider.GetUtcNow());
             return Success(session);
         }
         finally
@@ -539,22 +660,68 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         return (RuntimeHostMediaOperationStatus.Success, activeSession);
     }
 
-    private static RuntimeHostMediaOperationStatus ValidateNegotiation(
+    private static RuntimeHostMediaOperationStatus ValidateClientNegotiation(
         Session session,
         RuntimeHostMediaNegotiationMessage message)
     {
-        if (message.Sequence != session.NextSequence)
+        if (message.Sequence != session.NextSubmissionSequence)
         {
             return RuntimeHostMediaOperationStatus.InvalidRequest;
         }
 
-        if (session.ExchangeCount >= MaximumNegotiationExchanges ||
-            session.MessageCount >= MaximumNegotiationMessagesPerPeer ||
+        if (session.ClientMessageCount >= MaximumNegotiationMessagesPerPeer ||
             (message.Kind == RuntimeHostMediaNegotiationKind.IceCandidate &&
-             session.IceCandidateCount >= MaximumIceCandidatesPerPeer))
+             session.ClientIceCandidateCount >= MaximumIceCandidatesPerPeer))
         {
             return RuntimeHostMediaOperationStatus.LimitExceeded;
         }
+
+        if (message.Kind == RuntimeHostMediaNegotiationKind.Offer ||
+            (message.Kind == RuntimeHostMediaNegotiationKind.Answer &&
+             (!session.HostOfferPublished || session.ClientAnswerAccepted)) ||
+            ((message.Kind is RuntimeHostMediaNegotiationKind.IceCandidate or
+                RuntimeHostMediaNegotiationKind.IceComplete) &&
+             !session.HostOfferPublished))
+        {
+            return RuntimeHostMediaOperationStatus.InvalidRequest;
+        }
+
+        return ValidateNegotiationPayload(message);
+    }
+
+    private static RuntimeHostMediaOperationStatus ValidateHostNegotiation(
+        Session session,
+        RuntimeHostMediaNegotiationMessage message)
+    {
+        if (message.Sequence != session.NextDeliverySequence)
+        {
+            return RuntimeHostMediaOperationStatus.InvalidRequest;
+        }
+
+        if (session.PendingDeliveryCount >= MaximumPendingDeliveryMessages ||
+            session.HostMessageCount >= MaximumNegotiationMessagesPerPeer ||
+            (message.Kind == RuntimeHostMediaNegotiationKind.IceCandidate &&
+             session.HostIceCandidateCount >= MaximumIceCandidatesPerPeer))
+        {
+            return RuntimeHostMediaOperationStatus.LimitExceeded;
+        }
+
+        if (message.Kind == RuntimeHostMediaNegotiationKind.Answer ||
+            (message.Kind == RuntimeHostMediaNegotiationKind.Offer &&
+             session.HostOfferPublished) ||
+            ((message.Kind is RuntimeHostMediaNegotiationKind.IceCandidate or
+                RuntimeHostMediaNegotiationKind.IceComplete) &&
+             !session.HostOfferPublished))
+        {
+            return RuntimeHostMediaOperationStatus.InvalidRequest;
+        }
+
+        return ValidateNegotiationPayload(message);
+    }
+
+    private static RuntimeHostMediaOperationStatus ValidateNegotiationPayload(
+        RuntimeHostMediaNegotiationMessage message)
+    {
 
         var bytes = Encoding.UTF8.GetByteCount(message.SensitivePayload ?? "");
         return message.Kind switch
@@ -570,6 +737,20 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 when bytes == 0 => RuntimeHostMediaOperationStatus.Success,
             _ => RuntimeHostMediaOperationStatus.InvalidRequest
         };
+    }
+
+    private Session? ResolveSession(string sessionId)
+    {
+        if (!IsValidIdentity(sessionId) || activeSession is null)
+        {
+            return null;
+        }
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(activeSession.Id),
+            Encoding.UTF8.GetBytes(sessionId))
+            ? activeSession
+            : null;
     }
 
     private static IReadOnlyList<RuntimeHostMediaSourceConfiguration>
@@ -659,27 +840,90 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         public DateTimeOffset LastNegotiationAtUtc { get; private set; }
         public DateTimeOffset LeaseExpiresAtUtc { get; set; }
         public RuntimeHostMediaTerminalReason TerminalReason { get; private set; }
-        public uint NextSequence { get; private set; } = 1;
-        public int MessageCount { get; private set; }
-        public int IceCandidateCount { get; private set; }
+        private readonly List<RuntimeHostMediaNegotiationMessage>
+            pendingDeliveries = [];
+        public uint NextSubmissionSequence { get; private set; } = 1;
+        public uint NextDeliverySequence { get; private set; } = 1;
+        public uint AcceptedSubmissionSequence { get; private set; }
+        public uint AcknowledgedDeliverySequence { get; private set; }
+        public int ClientMessageCount { get; private set; }
+        public int HostMessageCount { get; private set; }
+        public int ClientIceCandidateCount { get; private set; }
+        public int HostIceCandidateCount { get; private set; }
         public int ExchangeCount { get; private set; }
+        public bool HostOfferPublished { get; private set; }
+        public bool ClientAnswerAccepted { get; private set; }
+        public int PendingDeliveryCount => pendingDeliveries.Count;
         public bool IsTerminal =>
             State is RuntimeHostMediaSessionState.Ended or
                 RuntimeHostMediaSessionState.Faulted;
 
-        public void Accept(
+        public void AcceptClient(
             RuntimeHostMediaNegotiationMessage message,
             DateTimeOffset now)
         {
-            NextSequence++;
-            MessageCount++;
-            ExchangeCount++;
+            AcceptedSubmissionSequence = message.Sequence;
+            NextSubmissionSequence++;
+            ClientMessageCount++;
             if (message.Kind == RuntimeHostMediaNegotiationKind.IceCandidate)
             {
-                IceCandidateCount++;
+                ClientIceCandidateCount++;
+            }
+            if (message.Kind == RuntimeHostMediaNegotiationKind.Answer)
+            {
+                ClientAnswerAccepted = true;
             }
 
             LastNegotiationAtUtc = now;
+        }
+
+        public void Publish(
+            RuntimeHostMediaNegotiationMessage message,
+            DateTimeOffset now)
+        {
+            pendingDeliveries.Add(message);
+            NextDeliverySequence++;
+            HostMessageCount++;
+            if (message.Kind == RuntimeHostMediaNegotiationKind.IceCandidate)
+            {
+                HostIceCandidateCount++;
+            }
+            if (message.Kind == RuntimeHostMediaNegotiationKind.Offer)
+            {
+                HostOfferPublished = true;
+            }
+
+            LastNegotiationAtUtc = now;
+        }
+
+        public RuntimeHostMediaOperationStatus ValidateAcknowledgment(
+            uint sequence)
+        {
+            uint lastPublished = NextDeliverySequence - 1;
+            if (sequence < AcknowledgedDeliverySequence ||
+                sequence > lastPublished)
+            {
+                return RuntimeHostMediaOperationStatus.InvalidRequest;
+            }
+
+            return RuntimeHostMediaOperationStatus.Success;
+        }
+
+        public void Acknowledge(uint sequence)
+        {
+            AcknowledgedDeliverySequence = sequence;
+            pendingDeliveries.RemoveAll(item => item.Sequence <= sequence);
+        }
+
+        public IReadOnlyList<RuntimeHostMediaNegotiationMessage>
+            GetPendingDeliveries() =>
+            pendingDeliveries
+                .Take(MaximumPendingDeliveryMessages)
+                .ToArray();
+
+        public void RecordExchange(DateTimeOffset now)
+        {
+            ExchangeCount++;
             LeaseExpiresAtUtc = now + SessionLeaseDuration;
         }
 

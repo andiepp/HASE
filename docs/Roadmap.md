@@ -1557,9 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] revised Increment 55D logical multi-camera selection and
-Client presentation implemented and automatically validated with 6,139 passing
-tests; no application composition or physical capture authorized
+**Status:** [Active] Increment 55E1 authenticated duplex media-control source
+prepared; automated validation pending and no application composition or
+physical capture authorized
 
 ADR-0055 adds one explicitly selected view-only live camera from locally
 configured sources on a Windows HASE Runtime Host and presents it in one remote
@@ -1603,9 +1603,14 @@ Stages:
    selection, WPF Client Start/Stop and audio controls, and receiver-only
    WebView2 presentation; committed as
    `199356222f8763ed6e6fbb5f481fe46aa70ec679`;
-5. 55E — planned: encrypted end-to-end media transport and automated
-   validation; and
-6. 55F — planned: separately authorized controlled physical validation,
+5. 55E1 — source prepared, validation pending: authenticated transport-neutral
+   media-control service, Client gRPC adapter, duplex offer/answer/ICE exchange,
+   sequencing, acknowledgments, bounds, and lease renewal;
+6. 55E2 — planned: Runtime Host offerer and Client answerer WebView2 peer
+   boundaries with mandatory DTLS-SRTP;
+7. 55E3 — planned: explicit local configuration and application composition,
+   packaging, failure recovery, and complete automated validation; and
+8. 55F — planned: separately authorized controlled physical validation,
    documentation, and closure.
 
 The initial objective excludes recording, snapshots, PTZ, public-internet
@@ -1644,7 +1649,7 @@ The 55D source adds multi-source session ownership and capability projection,
 the additive sanitized `display_name` contract field, Client-side media models
 and control seam, logical camera selector, optional-audio and Start/Stop
 controls, a reserved presentation surface, and repository-owned receiver-only
-WebView2 assets and browser policy. The boundary remains uncomposed until 55E;
+WebView2 assets and browser policy. The boundary remains uncomposed until 55E3;
 it requests no Client camera or microphone permission and receives no transport
 or media during 55D repository application or automated validation.
 
@@ -1657,8 +1662,26 @@ media, exchange signaling, deploy, or change firewall, privacy, credential,
 firmware, or physical state.
 
 The exact 27-path 55D implementation is committed as
-`199356222f8763ed6e6fbb5f481fe46aa70ec679`. Synchronization of LABC and LTAEP
-remains required before Increment 55E.
+`199356222f8763ed6e6fbb5f481fe46aa70ec679`; its final documentation
+reconciliation and synchronized 55E1 baseline is
+`7b4ffe78920aeaa2e356b5d7a3e84b43ca493dc4`.
+
+Approved Increment 55E1 adds the concrete generated gRPC service adapter and
+Client media-control adapter without registering either in application
+startup. The process-local owner now maintains independent Host delivery and
+Client submission sequence spaces. The Runtime Host may publish exactly one
+initial offer plus bounded ICE messages; the Client may submit exactly one
+answer plus bounded ICE messages. Acknowledgments remove only delivered Host
+messages, empty exchanges renew the lease, and invalid ownership, ordering,
+role, count, size, timeout, or authorization fails closed with sanitized
+status.
+
+55E1 validation uses fakes and direct service/client calls. It does not start
+an application, initialize WebView2, enumerate or access a device, capture
+media, create a browser peer connection, exchange live network signaling,
+register a gRPC endpoint, publish configuration, deploy, or change firewall,
+privacy, credential, firmware, or physical state. 55E2 and 55E3 remain
+separately proposed work.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 

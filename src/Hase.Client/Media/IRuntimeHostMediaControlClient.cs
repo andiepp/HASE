@@ -15,6 +15,16 @@ public interface IRuntimeHostMediaControlClient
         bool includeAudio,
         CancellationToken cancellationToken = default);
 
+    Task<RemoteMediaExchangeResult> ExchangeAsync(
+        string sessionId,
+        uint acknowledgedDeliverySequence,
+        RemoteMediaNegotiationMessage? submittedMessage,
+        CancellationToken cancellationToken = default);
+
+    Task<RemoteMediaStatusResult> GetStatusAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
+
     Task<RemoteMediaStopResult> StopAsync(
         string sessionId,
         CancellationToken cancellationToken = default);

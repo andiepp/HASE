@@ -369,6 +369,40 @@ credential, firmware, or physical state.
 The exact 27-path implementation is committed as
 `199356222f8763ed6e6fbb5f481fe46aa70ec679`.
 
+## Increment 55E1 authenticated duplex control boundary
+
+Increment 55E1 starts from synchronized commit
+`7b4ffe78920aeaa2e356b5d7a3e84b43ca493dc4`. It implements, but does not
+register, the generated `RuntimeHostMediaControl` service and a Client gRPC
+adapter over the existing authenticated channel. Every service operation
+requires its fixed media permission set; session operations additionally
+require the same authenticated principal that owns the opaque session.
+
+The Runtime Host is the sole offerer. Host-to-Client delivery and
+Client-to-Host submission use independent one-based sequence spaces. The Host
+may publish one offer followed by ICE candidates/completion; the Client may
+submit one answer followed by ICE candidates/completion. An exchange may
+acknowledge a previously delivered Host sequence, submit at most one Client
+message, and retrieve the bounded pending Host batch. Invalid or regressive
+acknowledgments, gaps, duplicates, role reversal, second offer or answer,
+overflow, timeout, or ownership mismatch fail closed. An accepted exchange,
+including an empty poll, renews the session lease.
+
+SDP and ICE remain sensitive dedicated exchange fields. The adapters do not
+log them or project them into capabilities, status, failure details, or
+diagnostics. Error projection uses fixed operation statuses or sanitized gRPC
+permission/argument details. Local device identities remain outside the wire
+contract.
+
+55E1 is transport-neutral repository work. It does not compose the Runtime
+Host capture boundary or Client presentation boundary, initialize WebView2,
+create `RTCPeerConnection`, enumerate or access a device, capture or render
+media, exchange live network signaling, register a service endpoint, change
+configuration, deploy, or mutate firewall, privacy, credential, firmware, or
+physical state. WebView2 offerer/answerer behavior remains 55E2 and explicit
+configuration/application composition remains 55E3. Automated validation of
+the prepared source is required before commit.
+
 ## Automated validation obligations
 
 Before physical validation, automated coverage must prove at least:

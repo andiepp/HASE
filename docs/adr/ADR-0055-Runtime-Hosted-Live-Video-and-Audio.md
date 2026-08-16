@@ -1,7 +1,7 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; revised Increment 55D logical camera selection implemented
-  and automatically validated
+- Status: Accepted; Increment 55E1 authenticated duplex media-control source
+  prepared and awaiting automated validation
 - Date: 2026-08-16
 
 ## Context
@@ -296,9 +296,14 @@ contract is direct private-network only.
 4. **55D — revised implementation automatically validated:** WPF Client logical camera selection,
    WebView2 presentation boundary, explicit Start/Stop, audio control, and
    lifecycle UI; complete Release validation passes 6,139 tests.
-5. **55E — planned:** encrypted end-to-end WebRTC transport, failure recovery,
-   security tests, packaging, and complete automated validation.
-6. **55F — planned:** separately approved controlled physical validation,
+5. **55E1 — source prepared, validation pending:** authenticated generated
+   media-control service, Client gRPC adapter, transport-neutral duplex
+   negotiation, acknowledgments, limits, ownership, and leases.
+6. **55E2 — planned:** Runtime Host offerer and Client answerer WebView2 peer
+   boundaries with mandatory DTLS-SRTP.
+7. **55E3 — planned:** configuration and application composition, packaging,
+   failure recovery, security tests, and complete automated validation.
+8. **55F — planned:** separately approved controlled physical validation,
    documentation reconciliation, and closure.
 
 Every stage requires a separate proposal and approval. No later stage is
@@ -397,7 +402,7 @@ one source it may preselect it but never starts automatically. Selection is
 locked while a session is active. Changing Runtime Host clears capabilities,
 selection, and session state and never replays Start. The abstract media-control
 client seam is deliberately not composed to generated gRPC until Increment
-55E, so repository application cannot create a remote media session.
+55E3, so repository application cannot create a remote media session.
 
 The Client application pins the same WebView2 SDK version as the Runtime Host
 and packages receiver-only local assets. The native presentation boundary
@@ -405,7 +410,8 @@ denies all camera, microphone, geolocation, notification, and other browser
 permissions, external navigation and resources, new windows, downloads, host
 objects, developer tools, autofill, and password saving. Its local script has
 no device enumeration or `getUserMedia` path. The boundary is not initialized
-or composed in this increment and encrypted media transport remains 55E.
+or composed in this increment; peer transport remains 55E2 and application
+composition remains 55E3.
 
 Automated validation covers exact multi-source selection, no fallback,
 duplicate logical IDs, deterministic sanitized capability publication,
@@ -426,6 +432,42 @@ adapter, Client, XAML, and test paths and removes the new mapper, Client media
 models, view models, presentation boundary, local assets, and tests. Because
 the increment has no deployment, configuration, device, network, credential,
 firmware, or physical effect, no external state requires rollback.
+
+## Increment 55E1 effects, validation, and rollback
+
+Increment 55E1 starts from exact reconciled commit
+`7b4ffe78920aeaa2e356b5d7a3e84b43ca493dc4`. It completes the previously
+abstract transport-neutral control path: the generated five-operation media
+service authenticates the existing client principal, evaluates the fixed
+permission set for every call, retains exact session ownership, and maps only
+sanitized capabilities, lifecycle state, and errors. The Client adapter uses
+the existing protected gRPC channel and maps the same logical source and
+session contract without logging SDP or ICE.
+
+The process-local owner now separates Host delivery from Client submission.
+The Runtime Host alone may publish the initial offer; the Client alone may
+submit the answer. Both directions then permit bounded ICE messages using
+independent sequences. The exchange acknowledges delivered Host messages,
+returns a bounded pending batch, records accepted Client sequence, enforces
+count and time ceilings, and renews the lease on successful polls. Invalid
+roles, gaps, acknowledgments, duplicates, overflow, timeout, or cross-principal
+access fail closed and terminal protocol overflow releases the boundary.
+
+Focused validation covers authorization sets, logical-source redaction,
+principal ownership, offerer/answerer roles, delivery replay until
+acknowledgment, Client submission, sequence and pending-delivery bounds, lease
+renewal, sanitized failures, and Client wire mapping. Complete Release
+validation remains required on AEPRAKETE before commit.
+
+No 55E1 production registration or application composition is added. Applying
+or validating the source does not start an application, initialize WebView2,
+enumerate or access a device, capture or render media, create a browser peer
+connection, exchange live network signaling, publish configuration, deploy,
+or change firewall, privacy, credentials, firmware, or physical state.
+Rollback restores the modified media-domain and Client abstractions and tests,
+removes the new Host service, authorization gate, wire mapper, Client adapter,
+and focused tests, and restores these documentation paths. No external state
+requires rollback.
 
 ## Increment 55A effects, validation, and rollback
 

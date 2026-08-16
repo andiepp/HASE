@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — revised Increment 55D logical camera selection and Client presentation implemented and automatically validated with 6,139 passing tests**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E1 authenticated duplex media-control source prepared; automated validation pending**
 
 - One camera selected from locally configured Windows Runtime Host sources,
   with optional associated microphone audio, will be presented view-only in
@@ -71,6 +71,20 @@
   capture, signaling, deployment, configuration publication, or physical work.
   The exact 27-path implementation is committed as
   `199356222f8763ed6e6fbb5f481fe46aa70ec679`.
+- Approved Increment 55E is divided into transport-neutral 55E1, WebView2 peer
+  boundaries in 55E2, and configuration/application composition in 55E3.
+  Increment 55E1 starts from reconciled commit
+  `7b4ffe78920aeaa2e356b5d7a3e84b43ca493dc4`.
+- The prepared 55E1 source adds an authenticated generated gRPC service and
+  Client adapter for the five existing media-control operations. The Runtime
+  Host remains the sole WebRTC offerer; independent submission and delivery
+  sequence spaces, acknowledgments, bounded pending delivery, exchange limits,
+  principal ownership, permissions, and renewable leases fail closed.
+- 55E1 deliberately does not register the service, compose either application,
+  initialize WebView2, enumerate or access a device, capture media, create a
+  peer connection, exchange live signaling, change configuration, deploy, or
+  perform physical work. Focused and complete Release validation remains
+  required on AEPRAKETE before commit.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

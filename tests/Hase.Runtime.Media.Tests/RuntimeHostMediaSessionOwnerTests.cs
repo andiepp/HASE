@@ -155,10 +155,13 @@ public sealed class RuntimeHostMediaSessionOwnerTests
         var boundary = new RecordingBoundary();
         await using var owner = CreateOwner(boundary);
         var start = await owner.StartAsync(Request());
+        await owner.PublishNegotiationAsync(
+            start.Session!.SessionId,
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "offer"));
 
         var rejected = await owner.ExchangeAsync(
             "principal-01",
-            start.Session!.SessionId,
+            start.Session.SessionId,
             new(2, RuntimeHostMediaNegotiationKind.Answer, "answer"));
         var accepted = await owner.ExchangeAsync(
             "principal-01",
@@ -168,6 +171,126 @@ public sealed class RuntimeHostMediaSessionOwnerTests
         Assert.Equal(RuntimeHostMediaOperationStatus.InvalidRequest, rejected.Status);
         Assert.Equal(RuntimeHostMediaOperationStatus.Success, accepted.Status);
         Assert.Single(boundary.Submitted);
+    }
+
+    [Fact]
+    public async Task HostOfferIsDeliveredUntilClientAcknowledgesIt()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+        await owner.PublishNegotiationAsync(
+            start.Session!.SessionId,
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "host-offer"));
+
+        var first = await owner.ExchangeNegotiationAsync(
+            "principal-01", start.Session.SessionId, 0, null);
+        var acknowledged = await owner.ExchangeNegotiationAsync(
+            "principal-01", start.Session.SessionId, 1, null);
+
+        var delivery = Assert.Single(first.DeliveredMessages);
+        Assert.Equal("host-offer", delivery.SensitivePayload);
+        Assert.Empty(acknowledged.DeliveredMessages);
+        Assert.Equal((uint)0, acknowledged.AcceptedSubmissionSequence);
+    }
+
+    [Fact]
+    public async Task EmptyExchangePollRenewsSessionLease()
+    {
+        var clock = new ManualTimeProvider();
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary, clock: clock);
+        var start = await owner.StartAsync(Request());
+        clock.Advance(TimeSpan.FromSeconds(10));
+
+        var poll = await owner.ExchangeNegotiationAsync(
+            "principal-01", start.Session!.SessionId, 0, null);
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.Success, poll.Status);
+        Assert.Equal(
+            clock.GetUtcNow() + RuntimeHostMediaSessionOwner.SessionLeaseDuration,
+            poll.Session!.LeaseExpiresAtUtc);
+    }
+
+    [Fact]
+    public async Task InvalidDeliveryAcknowledgmentIsRejected()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+
+        var result = await owner.ExchangeNegotiationAsync(
+            "principal-01", start.Session!.SessionId, 1, null);
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.InvalidRequest, result.Status);
+    }
+
+    [Fact]
+    public async Task ClientCannotBecomeTheOfferer()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+
+        var result = await owner.ExchangeNegotiationAsync(
+            "principal-01",
+            start.Session!.SessionId,
+            0,
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "client-offer"));
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.InvalidRequest, result.Status);
+        Assert.Empty(boundary.Submitted);
+    }
+
+    [Fact]
+    public async Task HostCannotPublishSecondOffer()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+        await owner.PublishNegotiationAsync(
+            start.Session!.SessionId,
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "first"));
+
+        var result = await owner.PublishNegotiationAsync(
+            start.Session.SessionId,
+            new(2, RuntimeHostMediaNegotiationKind.Offer, "second"));
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.InvalidRequest, result.Status);
+    }
+
+    [Fact]
+    public async Task PendingHostDeliveryOverflowFaultsAndClosesBoundary()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+        await owner.PublishNegotiationAsync(
+            start.Session!.SessionId,
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "offer"));
+        for (uint sequence = 2;
+             sequence <= RuntimeHostMediaSessionOwner.MaximumPendingDeliveryMessages;
+             sequence++)
+        {
+            await owner.PublishNegotiationAsync(
+                start.Session.SessionId,
+                new(sequence,
+                    RuntimeHostMediaNegotiationKind.IceCandidate,
+                    $"candidate-{sequence}"));
+        }
+
+        var overflow = await owner.PublishNegotiationAsync(
+            start.Session.SessionId,
+            new(
+                RuntimeHostMediaSessionOwner.MaximumPendingDeliveryMessages + 1U,
+                RuntimeHostMediaNegotiationKind.IceCandidate,
+                "overflow"));
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.LimitExceeded,
+            overflow.Status);
+        Assert.Equal(RuntimeHostMediaSessionState.Faulted,
+            overflow.Session!.State);
+        Assert.Equal(1, boundary.CloseCount);
     }
 
     [Theory]

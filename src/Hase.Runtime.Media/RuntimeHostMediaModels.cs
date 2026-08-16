@@ -110,3 +110,16 @@ public sealed record RuntimeHostMediaOperationResult(
     public static RuntimeHostMediaOperationResult Rejected(
         RuntimeHostMediaOperationStatus status) => new(status, null);
 }
+
+public sealed record RuntimeHostMediaNegotiationExchangeResult(
+    RuntimeHostMediaOperationStatus Status,
+    RuntimeHostMediaSessionSnapshot? Session,
+    uint AcceptedSubmissionSequence,
+    IReadOnlyList<RuntimeHostMediaNegotiationMessage> DeliveredMessages,
+    bool HasMore)
+{
+    public static RuntimeHostMediaNegotiationExchangeResult Rejected(
+        RuntimeHostMediaOperationStatus status,
+        RuntimeHostMediaSessionSnapshot? session = null) =>
+        new(status, session, 0, [], false);
+}

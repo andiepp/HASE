@@ -176,6 +176,24 @@ public sealed class RuntimeHostMediaViewModelTests
                 : new RemoteMediaStartResult(false, null, StartFailureCode));
         }
 
+        public Task<RemoteMediaExchangeResult> ExchangeAsync(
+            string sessionId,
+            uint acknowledgedDeliverySequence,
+            RemoteMediaNegotiationMessage? submittedMessage,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaExchangeResult(
+                true,
+                null,
+                null,
+                submittedMessage?.Sequence ?? 0,
+                [],
+                false));
+
+        public Task<RemoteMediaStatusResult> GetStatusAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaStatusResult(true, null, null));
+
         public Task<RemoteMediaStopResult> StopAsync(
             string sessionId,
             CancellationToken cancellationToken = default)
