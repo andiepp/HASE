@@ -283,9 +283,9 @@ contract is direct private-network only.
 
 1. **55A — complete:** architecture decision, read-only technology discovery,
    compatibility contract, and machine readiness.
-2. **55B — complete pending commit and synchronization:** media capability
-   model, authorization actions, protobuf control service, fixed input limits,
-   validation, compatibility tests, and complete Release validation.
+2. **55B — complete:** media capability model, authorization actions, protobuf
+   control service, fixed input limits, validation, compatibility tests, and
+   complete Release validation.
 3. **55C — planned:** Windows Runtime Host WebView2 capture and device/session
    ownership boundary without remote viewing.
 4. **55D — planned:** WPF Client WebView2 presentation, explicit Start/Stop,

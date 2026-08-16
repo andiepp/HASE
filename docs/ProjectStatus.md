@@ -32,8 +32,8 @@
   software, change configuration or credentials, or perform physical work.
 - Release focused contract and adapter validation succeeded on AEPRAKETE. The
   complete Release suite passes 6,061 tests with zero failures and zero skips;
-  the successful build reports 59 warnings. The exact 17-path scope remains
-  unstaged at the accepted 55A commit pending commit and synchronization.
+  the successful build reports 59 warnings. The exact 17-path implementation
+  is committed as `23131a44733f13b4a60d71a22d7ce5da5948809b`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

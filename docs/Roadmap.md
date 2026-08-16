@@ -1590,9 +1590,9 @@ Stages:
 
 1. 55A — complete: architecture decision, technology discovery, compatibility
    contract, and read-only host/client readiness;
-2. 55B — complete pending commit and synchronization: media capability model,
-   exact authorization actions, versioned protobuf control service, fixed
-   limits, compatibility tests, and 6,061-test complete Release validation;
+2. 55B — complete: media capability model, exact authorization actions,
+   versioned protobuf control service, fixed limits, compatibility tests, and
+   6,061-test complete Release validation;
 3. 55C — planned: Windows Runtime Host camera and microphone capture boundary;
 4. 55D — planned: WPF Client live video and audio presentation;
 5. 55E — planned: encrypted end-to-end media transport and automated
