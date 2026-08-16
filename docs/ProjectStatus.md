@@ -49,8 +49,8 @@
 - Focused session-owner, Desktop Host/WebView2 policy, and retained media
   control adapter tests succeeded on AEPRAKETE. The complete Release suite
   passes 6,113 tests with zero failures and zero skips; the successful build
-  reports 56 warnings. The exact 22-path implementation remains based on
-  `8f5a594053debb53aae120ba72edac415a7a2976` pending commit.
+  reports 56 warnings. The exact 22-path implementation is committed as
+  `654ce26560d4e7688984a31bd515a2590ca2448d`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

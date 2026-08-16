@@ -332,7 +332,8 @@ deployment, device, network, firmware, or physical state to undo.
 ## Increment 55C effects, validation, and rollback
 
 Increment 55C starts from exact commit
-`8f5a594053debb53aae120ba72edac415a7a2976`. It adds the dependency-light
+`8f5a594053debb53aae120ba72edac415a7a2976` and is committed as
+`654ce26560d4e7688984a31bd515a2590ca2448d`. It adds the dependency-light
 `Hase.Runtime.Media` project and its test project. The process-local session
 owner accepts only one exact configured logical source and generation, keeps
 the Windows camera and optional microphone identifiers local, binds one opaque
@@ -360,10 +361,10 @@ resource policy, permission revocation, event schema, size limits, and
 rejection of expanded or sensitive messages. Those focused suites and the
 complete Release suite succeeded on AEPRAKETE. The complete result is 6,113
 passed, zero failed, and zero skipped; the successful build reports 56
-warnings. Repository application and automated validation do not compose the adapter into application startup,
-initialize WebView2, open a device, capture media, exchange signaling, deploy,
-change configuration, authorization, credentials, firewall or privacy state,
-or perform physical work.
+warnings. Repository application and automated validation do not compose the
+adapter into application startup, initialize WebView2, open a device, capture
+media, exchange signaling, deploy, change configuration, authorization,
+credentials, firewall or privacy state, or perform physical work.
 
 Rollback removes both new media project directories and the Desktop Host media
 source/assets, restores the solution, Desktop Host application and test project

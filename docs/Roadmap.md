@@ -1595,8 +1595,8 @@ Stages:
    6,061-test complete Release validation;
 3. 55C — implemented and automatically validated: Windows Runtime Host camera
    and microphone capture boundary, exact device/session ownership, hardened
-   local WebView2 origin, and 6,113-test complete Release validation; commit
-   remains pending;
+   local WebView2 origin, and 6,113-test complete Release validation; committed
+   as `654ce26560d4e7688984a31bd515a2590ca2448d`;
 4. 55D — planned: WPF Client live video and audio presentation;
 5. 55E — planned: encrypted end-to-end media transport and automated
    validation; and
@@ -1607,8 +1607,9 @@ The initial objective excludes recording, snapshots, PTZ, public-internet
 relay, STUN/TURN service deployment, multiple Runtime Host sources, multiple
 simultaneous viewers, ESP32 media, and physical deployment.
 
-Increment 55C is based on exact commit
-`8f5a594053debb53aae120ba72edac415a7a2976`. It adds a new dependency-light
+Increment 55C starts from exact commit
+`8f5a594053debb53aae120ba72edac415a7a2976` and is committed as
+`654ce26560d4e7688984a31bd515a2590ca2448d`. It adds a new dependency-light
 media-domain project and tests, pins the WebView2 SDK in the Windows Desktop
 Host application, and adds repository-owned HTML, JavaScript, CSS, browser
 policy, bridge validation, and a non-composed capture adapter. The session
@@ -1619,10 +1620,10 @@ negotiation is rejected until the separately approved end-to-end stage.
 
 55C focused validation and the complete Release suite succeeded on AEPRAKETE:
 6,113 tests passed with zero failures and zero skips, and the successful build
-reported 56 warnings. Repository application and automated validation do not initialize
-WebView2, open a camera or microphone, start HASE, exchange signaling, publish
-configuration, deploy software, change firewall or privacy policy, or perform
-physical work. Focused and complete Release tests must succeed before commit.
+reported 56 warnings. Repository application and automated validation did not
+initialize WebView2, open a camera or microphone, start HASE, exchange
+signaling, publish configuration, deploy software, change firewall or privacy
+policy, or perform physical work.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 
