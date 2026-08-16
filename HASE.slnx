@@ -24,6 +24,7 @@
   <Project Path="src/Hase.Runtime.Remote.Grpc.Adapter/Hase.Runtime.Remote.Grpc.Adapter.csproj" />
   <Project Path="src/Hase.Runtime.Remote.Grpc.Contracts/Hase.Runtime.Remote.Grpc.Contracts.csproj" />
   <Project Path="src/Hase.Runtime.Remote.Grpc.Hosting/Hase.Runtime.Remote.Grpc.Hosting.csproj" />
+  <Project Path="src/Hase.Runtime.Media/Hase.Runtime.Media.csproj" />
   <Project Path="src/Hase.Runtime.Transport/Hase.Runtime.Transport.csproj" />
   <Project Path="src/Hase.Runtime/Hase.Runtime.csproj" />
   <Project Path="src/Hase.Scpi/Hase.Scpi.csproj" />
@@ -48,6 +49,7 @@
   <Project Path="tests/Hase.Runtime.Remote.Grpc.Adapter.Tests/Hase.Runtime.Remote.Grpc.Adapter.Tests.csproj" />
   <Project Path="tests/Hase.Runtime.Remote.Grpc.Contracts.Tests/Hase.Runtime.Remote.Grpc.Contracts.Tests.csproj" />
   <Project Path="tests/Hase.Runtime.Remote.Grpc.Hosting.Tests/Hase.Runtime.Remote.Grpc.Hosting.Tests.csproj" />
+  <Project Path="tests/Hase.Runtime.Media.Tests/Hase.Runtime.Media.Tests.csproj" />
   <Project Path="tests/Hase.Runtime.Tests.Northbound/Hase.Runtime.Tests.Northbound.csproj" Id="4a178abe-5359-4708-a3a0-b3ff22d2e4e4" />
   <Project Path="tests/Hase.Runtime.Tests/Hase.Runtime.Tests.csproj" Id="7e45f1c9-8a2b-47ff-965f-2d201808c872" />
   <Project Path="tests/Hase.Runtime.Transport.Tests/Hase.Runtime.Transport.Tests.csproj" Id="ffdefcd1-c441-4e0d-9988-4cd9a7e0e032" />
@@ -60,5 +62,4 @@
   <Project Path="tests/Hase.Simulation.Tests/Hase.Simulation.Tests.csproj" Id="247f97b0-a24e-4397-a135-9202844299d2" />
   <Project Path="tests/Hase.Transport.Tests/Hase.Transport.Tests.csproj" Id="704608b2-a88f-450b-a9a9-9cbd9f327268" />
 </Solution>
-
 

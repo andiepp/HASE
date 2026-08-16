@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55B media control contracts implemented and automatically validated with 6,061 passing tests**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55C Runtime Host capture and session-ownership boundary implemented and automatically validated with 6,113 passing tests**
 
 - One Windows Runtime Host camera, with optional associated microphone audio,
   will be presented view-only in one remote HASE WPF Client session.
@@ -34,6 +34,23 @@
   complete Release suite passes 6,061 tests with zero failures and zero skips;
   the successful build reports 59 warnings. The exact 17-path implementation
   is committed as `23131a44733f13b4a60d71a22d7ce5da5948809b`.
+- Increment 55C adds a dependency-light Runtime Host media session owner and a
+  hardened, repository-owned WebView2 capture boundary. It pins
+  `Microsoft.Web.WebView2` `1.0.4129.50`, fixes the single-session lifecycle,
+  exact logical and local source binding, principal ownership, negotiation and
+  lease limits, terminal cleanup, local-origin navigation and permission
+  policy, and a versioned sanitized web/native event envelope.
+- The 55C source is deliberately not composed into Runtime Host startup or the
+  gRPC listener. Its browser adapter rejects remote negotiation because remote
+  viewing remains outside 55C. Automated tests use controlled fakes and pure
+  policy validation; no application start, WebView2 initialization, device
+  access, capture, signaling, deployment, or physical validation is part of
+  this repository increment.
+- Focused session-owner, Desktop Host/WebView2 policy, and retained media
+  control adapter tests succeeded on AEPRAKETE. The complete Release suite
+  passes 6,113 tests with zero failures and zero skips; the successful build
+  reports 56 warnings. The exact 22-path implementation remains based on
+  `8f5a594053debb53aae120ba72edac415a7a2976` pending commit.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

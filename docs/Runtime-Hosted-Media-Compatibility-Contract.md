@@ -257,8 +257,17 @@ The version 1 control limits are fixed as follows:
 Sequence zero, an unspecified message kind, blank required payload, an ICE
 completion payload, and any UTF-8 byte overflow are rejected before session or
 browser-media state. Stateful count, order, ownership, and timeout enforcement
-is required when 55C composes the first session owner; the published constants
-cannot be expanded by remote input.
+is implemented by the 55C process-local session owner; the published constants
+cannot be expanded by remote input. The owner is dependency-light, accepts one
+exact locally configured source, binds the opaque session to one principal,
+rejects a second session without disturbing the first, and closes the injected
+capture boundary exactly once on every terminal path.
+
+55C does not compose the owner or generated media service into application
+startup. Its WebView2 adapter can open only the exact locally configured device
+identities after an explicit owner request, but is not instantiated by the
+Runtime Host application in this increment. It rejects negotiation because
+remote WebRTC transport remains a later stage.
 
 ## Existing behavior preserved
 
@@ -291,6 +300,30 @@ approved increment and preceded by a read-only preflight.
 The first physical topology is AEPRAKETE as Runtime Host and LTAEP as Viewing
 Client. Naming those machines does not authorize application start, camera or
 microphone access, network signaling, capture, deployment, or physical change.
+
+Increment 55C pins the WPF WebView2 SDK at `1.0.4129.50` and packages only
+repository-owned local capture assets. The local document fixes a restrictive
+content-security policy and uses exact `deviceId` constraints without browser
+enumeration or fallback. The native adapter disables developer tools, default
+context menus, host objects, downloads, new windows, external navigation,
+unexpected subresources, password saving, and autofill. Camera and microphone
+permissions remain denied except for the fixed local HTTPS virtual host during
+an explicitly active session; microphone permission additionally requires the
+session's independent audio request.
+
+The versioned web/native event validator accepts only ready, capture-started,
+capture-stopped, and capture-faulted events. Faults use a fixed sanitized code
+allowlist; arbitrary driver text, URLs, scripts, paths, device identifiers,
+signaling, and media content are rejected. This source boundary adds no
+deployment, application start, WebView2 initialization, Runtime installation,
+device access, capture, signaling, firewall, privacy, credential, or physical
+effect during repository application and automated validation.
+
+The 55C focused session-owner, Desktop Host/WebView2 policy, and retained
+media-control adapter tests succeeded on AEPRAKETE. The complete Release suite
+passes 6,113 tests with zero failures and zero skips; the successful build
+reports 56 warnings. Validation did not initialize WebView2 or access a media
+device.
 
 ## Automated validation obligations
 

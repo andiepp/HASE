@@ -1557,9 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55B media control contracts implemented and
-automatically validated at 6,061 passing tests; no application composition or
-physical capture authorized
+**Status:** [Active] Increment 55C Runtime Host capture and session-ownership
+boundary implemented and automatically validated at 6,113 passing tests; no
+application composition or physical capture authorized
 
 ADR-0055 adds one view-only live camera source hosted by a Windows HASE Runtime
 Host and viewed in one remote HASE WPF Client session. Optional microphone
@@ -1593,7 +1593,10 @@ Stages:
 2. 55B — complete: media capability model, exact authorization actions,
    versioned protobuf control service, fixed limits, compatibility tests, and
    6,061-test complete Release validation;
-3. 55C — planned: Windows Runtime Host camera and microphone capture boundary;
+3. 55C — implemented and automatically validated: Windows Runtime Host camera
+   and microphone capture boundary, exact device/session ownership, hardened
+   local WebView2 origin, and 6,113-test complete Release validation; commit
+   remains pending;
 4. 55D — planned: WPF Client live video and audio presentation;
 5. 55E — planned: encrypted end-to-end media transport and automated
    validation; and
@@ -1603,6 +1606,23 @@ Stages:
 The initial objective excludes recording, snapshots, PTZ, public-internet
 relay, STUN/TURN service deployment, multiple Runtime Host sources, multiple
 simultaneous viewers, ESP32 media, and physical deployment.
+
+Increment 55C is based on exact commit
+`8f5a594053debb53aae120ba72edac415a7a2976`. It adds a new dependency-light
+media-domain project and tests, pins the WebView2 SDK in the Windows Desktop
+Host application, and adds repository-owned HTML, JavaScript, CSS, browser
+policy, bridge validation, and a non-composed capture adapter. The session
+owner enforces one exact source and principal, one active session, ordered and
+bounded negotiation, lease and negotiation timeouts, explicit stop, and
+exactly-once cleanup. The adapter is not registered at startup and remote
+negotiation is rejected until the separately approved end-to-end stage.
+
+55C focused validation and the complete Release suite succeeded on AEPRAKETE:
+6,113 tests passed with zero failures and zero skips, and the successful build
+reported 56 warnings. Repository application and automated validation do not initialize
+WebView2, open a camera or microphone, start HASE, exchange signaling, publish
+configuration, deploy software, change firewall or privacy policy, or perform
+physical work. Focused and complete Release tests must succeed before commit.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 

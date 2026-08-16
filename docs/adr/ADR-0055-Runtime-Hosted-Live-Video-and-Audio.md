@@ -286,8 +286,9 @@ contract is direct private-network only.
 2. **55B — complete:** media capability model, authorization actions, protobuf
    control service, fixed input limits, validation, compatibility tests, and
    complete Release validation.
-3. **55C — planned:** Windows Runtime Host WebView2 capture and device/session
-   ownership boundary without remote viewing.
+3. **55C — implemented and automatically validated:** Windows Runtime Host
+   WebView2 capture and device/session ownership boundary without remote
+   viewing; complete Release validation passes 6,113 tests.
 4. **55D — planned:** WPF Client WebView2 presentation, explicit Start/Stop,
    audio control, and lifecycle UI.
 5. **55E — planned:** encrypted end-to-end WebRTC transport, failure recovery,
@@ -327,6 +328,48 @@ Rollback restores the modified contracts project, permission model, and four
 documentation paths and removes the new protobuf, adapter, and test files.
 There is no dependency, generated artifact, configuration, credential,
 deployment, device, network, firmware, or physical state to undo.
+
+## Increment 55C effects, validation, and rollback
+
+Increment 55C starts from exact commit
+`8f5a594053debb53aae120ba72edac415a7a2976`. It adds the dependency-light
+`Hase.Runtime.Media` project and its test project. The process-local session
+owner accepts only one exact configured logical source and generation, keeps
+the Windows camera and optional microphone identifiers local, binds one opaque
+session to one principal, rejects a second viewer without disturbing the
+first, enforces the 55B sequence, count, payload, lease, idle, and lifetime
+limits, and releases its injected capture boundary exactly once on explicit
+Stop, disconnect, expiry, timeout, source loss, browser failure, shutdown, or
+protocol rejection.
+
+The Desktop Host application pins `Microsoft.Web.WebView2` `1.0.4129.50` and
+packages repository-owned HTML, JavaScript, and CSS. The non-composed adapter
+maps only a fixed local HTTPS virtual host, denies unexpected navigation,
+subresources, new windows, downloads, host objects, developer tools, autofill,
+password saving, and unrelated permission prompts, and grants camera or
+microphone only while C# has an explicit active session. The local capture
+script uses exact device constraints and no enumeration or fallback. Its
+version 1 web/native envelope carries only fixed lifecycle events and sanitized
+failure codes. Remote negotiation is rejected because viewing and end-to-end
+WebRTC remain later stages.
+
+Focused validation covers exact source and generation, unavailable and busy
+sources, independent audio support, principal ownership, one-session behavior,
+ordered and bounded negotiation, timeout and terminal cleanup, local-origin
+resource policy, permission revocation, event schema, size limits, and
+rejection of expanded or sensitive messages. Those focused suites and the
+complete Release suite succeeded on AEPRAKETE. The complete result is 6,113
+passed, zero failed, and zero skipped; the successful build reports 56
+warnings. Repository application and automated validation do not compose the adapter into application startup,
+initialize WebView2, open a device, capture media, exchange signaling, deploy,
+change configuration, authorization, credentials, firewall or privacy state,
+or perform physical work.
+
+Rollback removes both new media project directories and the Desktop Host media
+source/assets, restores the solution, Desktop Host application and test project
+files, and restores these four documentation files. No installed Runtime,
+application, configuration, device, network, credential, firmware, or physical
+state requires rollback.
 
 ## Increment 55A effects, validation, and rollback
 

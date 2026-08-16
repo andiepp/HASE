@@ -11,6 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
     <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
   </ItemGroup>
 
@@ -21,6 +22,7 @@
     <ProjectReference Include="..\Hase.Operator.Input\Hase.Operator.Input.csproj" />
     <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
+    <ProjectReference Include="..\Hase.Runtime.Media\Hase.Runtime.Media.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Adapter\Hase.Runtime.Remote.Grpc.Adapter.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Hosting\Hase.Runtime.Remote.Grpc.Hosting.csproj" />
@@ -29,6 +31,13 @@
     <ProjectReference Include="..\Hase.Scpi.Kel103.Hosting\Hase.Scpi.Kel103.Hosting.csproj" />
     <ProjectReference Include="..\Hase.Simulation.Runtime\Hase.Simulation.Runtime.csproj" />
     <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Media\Assets\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Media\Assets\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+    </Content>
   </ItemGroup>
 
 </Project>
