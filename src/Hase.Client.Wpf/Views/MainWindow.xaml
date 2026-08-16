@@ -128,6 +128,84 @@
                     <Button MinWidth="150" Padding="16,8" Command="{Binding ConnectSelectedRuntimeHostCommand}" Content="Connect Selected Host" />
                     <Button MinWidth="170" Margin="12,0,0,0" Padding="16,8" Command="{Binding DisconnectSelectedRuntimeHostCommand}" Content="Disconnect Selected Host" />
                 </StackPanel>
+                <Border
+                    Margin="0,0,0,20"
+                    Padding="16"
+                    BorderBrush="#FFD0D0D0"
+                    BorderThickness="1"
+                    CornerRadius="4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="280" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="18"
+                                FontWeight="SemiBold"
+                                Text="Live camera" />
+                            <TextBlock
+                                Margin="0,4,0,12"
+                                Foreground="#FF666666"
+                                Text="Select a Runtime Host camera. Device identities remain local to the host."
+                                TextWrapping="Wrap" />
+                            <Button
+                                Padding="12,6"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Media.RefreshCommand}"
+                                Content="Refresh Cameras" />
+                            <ComboBox
+                                MinWidth="240"
+                                Margin="0,10,0,0"
+                                DisplayMemberPath="DisplayName"
+                                IsEnabled="{Binding Media.CanSelectSource}"
+                                ItemsSource="{Binding Media.Sources}"
+                                SelectedItem="{Binding Media.SelectedSource, Mode=TwoWay}" />
+                            <CheckBox
+                                Margin="0,10,0,0"
+                                Content="Include microphone audio"
+                                IsChecked="{Binding Media.IncludeAudio, Mode=TwoWay}"
+                                IsEnabled="{Binding Media.CanRequestAudio}" />
+                            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                                <Button
+                                    MinWidth="100"
+                                    Padding="12,6"
+                                    Command="{Binding Media.StartCommand}"
+                                    Content="Start Video" />
+                                <Button
+                                    MinWidth="100"
+                                    Margin="10,0,0,0"
+                                    Padding="12,6"
+                                    Command="{Binding Media.StopCommand}"
+                                    Content="Stop" />
+                            </StackPanel>
+                            <TextBlock
+                                Margin="0,10,0,0"
+                                Text="{Binding Media.SessionState, StringFormat='Media state: {0}'}" />
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                Foreground="#FF315A7D"
+                                Text="{Binding Media.StatusText}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <Border
+                            Grid.Column="2"
+                            MinHeight="220"
+                            Background="#FF101010"
+                            BorderBrush="#FF303030"
+                            BorderThickness="1">
+                            <TextBlock
+                                Margin="24"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="#FFD0D0D0"
+                                Text="Encrypted live video presentation is composed in Increment 55E."
+                                TextAlignment="Center"
+                                TextWrapping="Wrap" />
+                        </Border>
+                    </Grid>
+                </Border>
                 <TextBlock
                     Foreground="#FFB00020"
                     Text="{Binding FailureMessage}"

@@ -2,10 +2,11 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55C Runtime Host capture and session-ownership boundary implemented and automatically validated with 6,113 passing tests**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — revised Increment 55D logical camera selection and Client presentation implemented and automatically validated with 6,139 passing tests**
 
-- One Windows Runtime Host camera, with optional associated microphone audio,
-  will be presented view-only in one remote HASE WPF Client session.
+- One camera selected from locally configured Windows Runtime Host sources,
+  with optional associated microphone audio, will be presented view-only in
+  one remote HASE WPF Client session.
 - The existing HASE gRPC/mTLS path remains the control plane for capability
   discovery, exact authorization, bounded signaling, status, and explicit
   Client-controlled start and stop.
@@ -51,6 +52,23 @@
   passes 6,113 tests with zero failures and zero skips; the successful build
   reports 56 warnings. The exact 22-path implementation is committed as
   `654ce26560d4e7688984a31bd515a2590ca2448d`.
+- The approved 55D amendment permits multiple locally configured built-in or
+  USB cameras on one Runtime Host while retaining exactly one active media
+  session application-wide. The Client selects only an operator-defined
+  logical source ID, sanitized display name, and current generation; Windows
+  device identifiers and operating-system friendly names remain host-local.
+- 55D adds the sanitized display-name field, multi-source ownership and
+  capability projection, explicit Client camera selection, independent audio,
+  Start/Stop lifecycle controls, a reserved video surface, and a receiver-only
+  hardened Client WebView2 boundary. There is no automatic source selection,
+  fallback, switching, Start replay, or Client media-device permission.
+- The 55D presentation and control seams are not composed into a live gRPC or
+  WebRTC path. Focused contract, multi-source owner, capability projection,
+  Client selection, and WebView2 policy suites succeeded on AEPRAKETE. The
+  complete Release suite passes 6,139 tests with zero failures and zero skips;
+  the successful build reports 45 warnings. Validation performed no
+  application start, WebView2 initialization, device enumeration or access,
+  capture, signaling, deployment, configuration publication, or physical work.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hase.Runtime.Media\Hase.Runtime.Media.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Northbound\Hase.Runtime.Northbound.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Contracts\Hase.Runtime.Remote.Grpc.Contracts.csproj" />
   </ItemGroup>

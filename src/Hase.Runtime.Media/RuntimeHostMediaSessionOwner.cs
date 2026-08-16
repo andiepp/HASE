@@ -5,7 +5,8 @@ namespace Hase.Runtime.Media;
 
 /// <summary>
 /// Owns the single process-local media session. It never discovers or selects
-/// a device; only the exact locally configured source can be opened.
+/// a device; only an exact locally configured source can be opened and only
+/// one source can own the process-wide session at a time.
 /// </summary>
 public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
 {
@@ -23,7 +24,9 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
     public static readonly TimeSpan SessionLeaseDuration =
         TimeSpan.FromSeconds(30);
 
-    private readonly RuntimeHostMediaSourceConfiguration source;
+    private readonly IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources;
+    private readonly IReadOnlyDictionary<string, RuntimeHostMediaSourceConfiguration>
+        sourcesById;
     private readonly IRuntimeHostMediaCaptureBoundary boundary;
     private readonly TimeProvider timeProvider;
     private readonly SemaphoreSlim gate = new(1, 1);
@@ -34,14 +37,28 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         RuntimeHostMediaSourceConfiguration source,
         IRuntimeHostMediaCaptureBoundary boundary,
         TimeProvider? timeProvider = null)
+        : this([source], boundary, timeProvider)
     {
-        this.source = ValidateSource(source);
+    }
+
+    public RuntimeHostMediaSessionOwner(
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources,
+        IRuntimeHostMediaCaptureBoundary boundary,
+        TimeProvider? timeProvider = null)
+    {
+        this.sources = ValidateSources(sources);
+        sourcesById = this.sources.ToDictionary(
+            item => item.Target.MediaSourceId,
+            StringComparer.Ordinal);
         this.boundary = boundary ??
             throw new ArgumentNullException(nameof(boundary));
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public RuntimeHostMediaSourceConfiguration Source => source;
+    public IReadOnlyList<RuntimeHostMediaSourceConfiguration> Sources => sources;
+
+    // Retained for callers built against the original single-source boundary.
+    public RuntimeHostMediaSourceConfiguration Source => sources[0];
 
     public async ValueTask<RuntimeHostMediaOperationResult> StartAsync(
         RuntimeHostMediaStartRequest request,
@@ -58,19 +75,22 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                     RuntimeHostMediaOperationStatus.InvalidRequest);
             }
 
-            if (request.Target != source.Target)
+            if (!sourcesById.TryGetValue(
+                    request.Target.MediaSourceId,
+                    out var selectedSource) ||
+                request.Target != selectedSource.Target)
             {
                 return RuntimeHostMediaOperationResult.Rejected(
                     RuntimeHostMediaOperationStatus.SourceNotCurrent);
             }
 
-            if (source.Availability != RuntimeHostMediaSourceAvailability.Idle)
+            if (selectedSource.Availability != RuntimeHostMediaSourceAvailability.Idle)
             {
                 return RuntimeHostMediaOperationResult.Rejected(
                     RuntimeHostMediaOperationStatus.SourceUnavailable);
             }
 
-            if (request.IncludeAudio && !source.SupportsAudio)
+            if (request.IncludeAudio && !selectedSource.SupportsAudio)
             {
                 return RuntimeHostMediaOperationResult.Rejected(
                     RuntimeHostMediaOperationStatus.AudioNotSupported);
@@ -87,13 +107,14 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 CreateSessionId(),
                 request.PrincipalId,
                 request.IncludeAudio,
+                selectedSource,
                 now);
             activeSession = session;
 
             try
             {
                 await boundary.OpenAsync(
-                    source,
+                    selectedSource,
                     request.IncludeAudio,
                     cancellationToken).ConfigureAwait(false);
                 session.Transition(
@@ -121,7 +142,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                     .ConfigureAwait(false);
                 return new(
                     RuntimeHostMediaOperationStatus.Faulted,
-                    session.Snapshot(source.Target));
+                    session.Snapshot());
             }
         }
         finally
@@ -159,7 +180,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
             {
                 return new(
                     RuntimeHostMediaOperationStatus.InvalidState,
-                    session.Snapshot(source.Target));
+                    session.Snapshot());
             }
 
             var validation = ValidateNegotiation(session, message);
@@ -174,7 +195,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                         .ConfigureAwait(false);
                 }
 
-                return new(validation, session.Snapshot(source.Target));
+                return new(validation, session.Snapshot());
             }
 
             try
@@ -192,7 +213,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                     .ConfigureAwait(false);
                 return new(
                     RuntimeHostMediaOperationStatus.Faulted,
-                    session.Snapshot(source.Target));
+                    session.Snapshot());
             }
 
             session.Accept(message, timeProvider.GetUtcNow());
@@ -224,7 +245,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
             {
                 return new(
                     RuntimeHostMediaOperationStatus.InvalidState,
-                    session.Snapshot(source.Target));
+                    session.Snapshot());
             }
 
             session.Transition(
@@ -440,7 +461,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 .ConfigureAwait(false);
             return new(
                 RuntimeHostMediaOperationStatus.TimedOut,
-                session.Snapshot(source.Target));
+                session.Snapshot());
         }
 
         if (session.State == RuntimeHostMediaSessionState.Negotiating &&
@@ -454,7 +475,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
                 .ConfigureAwait(false);
             return new(
                 RuntimeHostMediaOperationStatus.TimedOut,
-                session.Snapshot(source.Target));
+                session.Snapshot());
         }
 
         return null;
@@ -551,23 +572,40 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         };
     }
 
-    private static RuntimeHostMediaSourceConfiguration ValidateSource(
-        RuntimeHostMediaSourceConfiguration value)
+    private static IReadOnlyList<RuntimeHostMediaSourceConfiguration>
+        ValidateSources(IReadOnlyList<RuntimeHostMediaSourceConfiguration> values)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        ArgumentNullException.ThrowIfNull(value.Target);
-        if (!IsValidIdentity(value.Target.MediaSourceId) ||
-            !IsValidIdentity(value.Target.MediaSourceGeneration) ||
-            string.IsNullOrWhiteSpace(value.VideoDeviceId) ||
-            (value.AudioDeviceId is not null &&
-             string.IsNullOrWhiteSpace(value.AudioDeviceId)))
+        ArgumentNullException.ThrowIfNull(values);
+        if (values.Count == 0)
         {
             throw new ArgumentException(
-                "The configured media source is invalid.",
-                nameof(value));
+                "At least one configured media source is required.",
+                nameof(values));
         }
 
-        return value;
+        var validated = new List<RuntimeHostMediaSourceConfiguration>(values.Count);
+        var sourceIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var value in values)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            ArgumentNullException.ThrowIfNull(value.Target);
+            if (!IsValidIdentity(value.Target.MediaSourceId) ||
+                !IsValidIdentity(value.Target.MediaSourceGeneration) ||
+                !IsValidIdentity(value.DisplayName) ||
+                string.IsNullOrWhiteSpace(value.VideoDeviceId) ||
+                (value.AudioDeviceId is not null &&
+                 string.IsNullOrWhiteSpace(value.AudioDeviceId)) ||
+                !sourceIds.Add(value.Target.MediaSourceId))
+            {
+                throw new ArgumentException(
+                    "The configured media source inventory is invalid.",
+                    nameof(values));
+            }
+
+            validated.Add(value);
+        }
+
+        return validated.AsReadOnly();
     }
 
     private static bool IsValidIdentity(string? value) =>
@@ -584,7 +622,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
     private RuntimeHostMediaOperationResult Success(Session session) =>
         new(
             RuntimeHostMediaOperationStatus.Success,
-            session.Snapshot(source.Target));
+            session.Snapshot());
 
     private void ThrowIfDisposed()
     {
@@ -597,11 +635,13 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
             string id,
             string principalId,
             bool audioRequested,
+            RuntimeHostMediaSourceConfiguration source,
             DateTimeOffset now)
         {
             Id = id;
             PrincipalId = principalId;
             AudioRequested = audioRequested;
+            Source = source;
             State = RuntimeHostMediaSessionState.Starting;
             StartedAtUtc = now;
             LastTransitionAtUtc = now;
@@ -612,6 +652,7 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         public string Id { get; }
         public string PrincipalId { get; }
         public bool AudioRequested { get; }
+        public RuntimeHostMediaSourceConfiguration Source { get; }
         public RuntimeHostMediaSessionState State { get; private set; }
         public DateTimeOffset StartedAtUtc { get; }
         public DateTimeOffset LastTransitionAtUtc { get; private set; }
@@ -652,11 +693,10 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
             TerminalReason = reason;
         }
 
-        public RuntimeHostMediaSessionSnapshot Snapshot(
-            RuntimeHostMediaSourceTarget target) =>
+        public RuntimeHostMediaSessionSnapshot Snapshot() =>
             new(
                 Id,
-                target,
+                Source.Target,
                 AudioRequested,
                 State,
                 StartedAtUtc,

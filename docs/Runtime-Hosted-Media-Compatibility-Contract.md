@@ -8,8 +8,8 @@ device access, media capture, deployment, or physical validation.
 ## Initial supported topology
 
 ```text
-one configured Windows Runtime Host camera
-  + zero or one associated Runtime Host microphone
+one camera explicitly selected from locally configured Runtime Host sources
+  + zero or one locally associated Runtime Host microphone
   -> one authenticated HASE Client profile
   -> one view-only WPF Client session
 ```
@@ -18,6 +18,8 @@ one configured Windows Runtime Host camera
 - Audio direction, when separately requested and authorized, is Runtime Host
   send-only and Client receive-only.
 - Only one active media session is supported application-wide.
+- The remote Client selects only a published logical source ID and generation;
+  it never supplies or receives a Windows media-device identity.
 - No camera or microphone on the Viewing Client is opened.
 - No ESP32 endpoint or HASE instrument is a media source.
 
@@ -57,13 +59,15 @@ RuntimeHostId + MediaSourceId + MediaSourceGeneration
   Host configuration.
 - `MediaSourceGeneration` changes when the configured binding or authoritative
   availability is recreated.
+- `DisplayName` is a sanitized operator-defined label. It is not populated
+  automatically from a Windows friendly name.
 - The exact Windows device identifier and friendly name are local configuration
   data and are not accepted from or disclosed to the Client.
 - A Start request for a stale generation is rejected before device opening.
 - Missing, disabled, busy, or incompatible devices make the source unavailable
   or fault the requested session without selecting a different device.
 
-No automatic camera or microphone selection is part of the initial contract.
+No automatic camera or microphone selection or fallback is part of the initial contract.
 Configuration publication and deployment require a later explicit increment.
 
 ## Plane separation
@@ -111,12 +115,13 @@ Increment 55B fixes the independent protobuf package
    and
 5. `StopMediaSession` idempotently stops the authenticated caller's session.
 
-The contract publishes only logical source identity, generation, availability,
-the VP8/Opus allowlist, lifecycle state, sanitized terminal reason, timestamps,
-and aggregate counters. Windows device identifiers, friendly names, network
-addresses, SDP, ICE, credentials, tokens, and media content are never
-capability or status fields. Negotiation payloads exist only in the dedicated
-exchange messages and retain their sensitive classification.
+The contract publishes only logical source identity, generation, a sanitized
+operator-defined display name, availability, the VP8/Opus allowlist, lifecycle
+state, sanitized terminal reason, timestamps, and aggregate counters. Windows
+device identifiers, Windows-derived friendly names, network addresses, SDP,
+ICE, credentials, tokens, and media content are never capability or status
+fields. Negotiation payloads exist only in the dedicated exchange messages and
+retain their sensitive classification.
 
 The planned authorization vocabulary is:
 
@@ -259,9 +264,10 @@ completion payload, and any UTF-8 byte overflow are rejected before session or
 browser-media state. Stateful count, order, ownership, and timeout enforcement
 is implemented by the 55C process-local session owner; the published constants
 cannot be expanded by remote input. The owner is dependency-light, accepts one
-exact locally configured source, binds the opaque session to one principal,
-rejects a second session without disturbing the first, and closes the injected
-capture boundary exactly once on every terminal path.
+exact logical source and generation from its locally configured inventory,
+binds the opaque session to one principal, rejects unknown or stale selections
+without fallback, rejects a second session without disturbing the first, and
+closes the injected capture boundary exactly once on every terminal path.
 
 55C does not compose the owner or generated media service into application
 startup. Its WebView2 adapter can open only the exact locally configured device
@@ -326,6 +332,41 @@ reports 56 warnings. Validation did not initialize WebView2 or access a media
 device. The exact 22-path implementation is committed as
 `654ce26560d4e7688984a31bd515a2590ca2448d`.
 
+Increment 55D extends the additive version 1 capability message with field 7,
+`display_name`. The Runtime Host maps one or more locally configured camera
+bindings to unique logical source IDs, generations, sanitized operator labels,
+availability, and fixed media ceilings. Publication is deterministically
+ordered by display name and logical ID and never includes either local camera
+or microphone device identities. Duplicate logical IDs are invalid local
+configuration.
+
+The Client presents the published logical cameras for explicit selection and
+sends the selected logical ID and generation unchanged on Start. An unknown,
+stale, or unavailable selection fails closed; neither the Runtime Host nor the
+Client selects a replacement. Only one media session remains active
+application-wide, source selection is locked while it is active, and changing
+the Runtime Host clears capabilities and session state without replay. A sole
+published source may be preselected for convenience, but it is never started
+automatically.
+
+The 55D Client WebView2 presentation boundary is receiver-only and remains
+uncomposed until encrypted transport is added in 55E. It uses repository-owned
+local assets, denies every browser permission including camera and microphone,
+performs no device enumeration or `getUserMedia` call, rejects external
+navigation and subresources, and accepts only a bounded versioned lifecycle
+envelope with sanitized failure codes. Repository application and automated
+validation do not initialize WebView2 or access any media device.
+
+The 55D focused media contract, multi-source session-owner, capability
+projection, Client selection, and Client WebView2 policy suites succeeded on
+AEPRAKETE. The complete Release suite passes 6,139 tests with zero failures and
+zero skips; the successful build reports 45 warnings. The single compile-time
+validation interruption was corrected by explicitly typing an existing test
+helper constructor; it did not change production behavior. Validation did not
+start an application, initialize WebView2, enumerate or access a media device,
+capture media, exchange signaling, deploy, or change firewall, privacy,
+credential, firmware, or physical state.
+
 ## Automated validation obligations
 
 Before physical validation, automated coverage must prove at least:
@@ -350,8 +391,9 @@ and automated validation are complete.
 ## Explicit exclusions
 
 The initial contract excludes recording, snapshots, thumbnails, PTZ, talkback,
-Client-originated capture, multiple simultaneous viewers, multiple configured
-sources, public-internet operation, STUN/TURN infrastructure, cloud services,
+Client-originated capture, multiple simultaneous viewers, remotely managed or
+automatically selected sources, public-internet operation, STUN/TURN
+infrastructure, cloud services,
 automatic start, automatic resume, background recording, file export, media in
 diagnostics, ESP32 media, mobile or browser Clients, and non-Windows Runtime
 Hosts.

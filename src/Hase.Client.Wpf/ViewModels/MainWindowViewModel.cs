@@ -66,6 +66,7 @@ public sealed class MainWindowViewModel
 
     public MainWindowViewModel()
     {
+        Media = new RuntimeHostMediaViewModel();
         ConnectCommand =
             new DelegateCommand(
                 ExecuteConnect,
@@ -123,6 +124,8 @@ public sealed class MainWindowViewModel
 
     public string Title =>
         "HASE Laptop Client";
+
+    public RuntimeHostMediaViewModel Media { get; }
 
     public RuntimeHostClientSessionStatus SessionStatus =>
         sessionStatus;
@@ -259,6 +262,7 @@ public sealed class MainWindowViewModel
         if (profileId is not null && !registry.TryGet(profileId, out _))
             throw new ArgumentException("The selected runtime-host profile is not registered.", nameof(profileId));
         selectedRuntimeHostProfileId = profileId;
+        Media.ResetForRuntimeHostChange();
         if (multiHostSnapshot is not null)
         {
             ApplyRuntimeHostProjection(registry, multiHostSnapshot);

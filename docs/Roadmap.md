@@ -1557,14 +1557,15 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55C Runtime Host capture and session-ownership
-boundary implemented and automatically validated at 6,113 passing tests; no
-application composition or physical capture authorized
+**Status:** [Active] revised Increment 55D logical multi-camera selection and
+Client presentation implemented and automatically validated with 6,139 passing
+tests; no application composition or physical capture authorized
 
-ADR-0055 adds one view-only live camera source hosted by a Windows HASE Runtime
-Host and viewed in one remote HASE WPF Client session. Optional microphone
-audio is associated with that camera and requires its own authorization.
-Viewing starts and stops only through explicit Client actions.
+ADR-0055 adds one explicitly selected view-only live camera from locally
+configured sources on a Windows HASE Runtime Host and presents it in one remote
+HASE WPF Client session. Optional microphone audio is associated locally with
+that camera and requires its own authorization. Selection, Start, and Stop are
+explicit Client actions.
 
 The existing HASE gRPC/mTLS connection remains the control plane for sanitized
 capability discovery, authorization, status, signaling, and session teardown.
@@ -1597,15 +1598,19 @@ Stages:
    and microphone capture boundary, exact device/session ownership, hardened
    local WebView2 origin, and 6,113-test complete Release validation; committed
    as `654ce26560d4e7688984a31bd515a2590ca2448d`;
-4. 55D — planned: WPF Client live video and audio presentation;
+4. 55D — revised implementation automatically validated: multiple operator-configured logical
+   Runtime Host cameras, remote sanitized camera selection, WPF Client
+   Start/Stop and audio controls, and receiver-only WebView2 presentation;
+   commit remains pending;
 5. 55E — planned: encrypted end-to-end media transport and automated
    validation; and
 6. 55F — planned: separately authorized controlled physical validation,
    documentation, and closure.
 
 The initial objective excludes recording, snapshots, PTZ, public-internet
-relay, STUN/TURN service deployment, multiple Runtime Host sources, multiple
-simultaneous viewers, ESP32 media, and physical deployment.
+relay, STUN/TURN service deployment, multiple simultaneous viewers, remotely
+managed or automatically selected Runtime Host sources, ESP32 media, and
+physical deployment.
 
 Increment 55C starts from exact commit
 `8f5a594053debb53aae120ba72edac415a7a2976` and is committed as
@@ -1624,6 +1629,31 @@ reported 56 warnings. Repository application and automated validation did not
 initialize WebView2, open a camera or microphone, start HASE, exchange
 signaling, publish configuration, deploy software, change firewall or privacy
 policy, or perform physical work.
+
+The approved 55D architecture amendment supports multiple cameras configured
+locally on a Runtime Host. Each source has an operator-defined sanitized ID and
+display name, a current generation, an exact host-local Windows device binding,
+and optional associated microphone. Capability discovery exposes only the
+logical fields. The Client explicitly selects one exact generation before
+Start; switching requires Stop and a fresh Start, and unavailable or stale
+sources never fall back to another camera. One session remains active
+application-wide.
+
+The 55D source adds multi-source session ownership and capability projection,
+the additive sanitized `display_name` contract field, Client-side media models
+and control seam, logical camera selector, optional-audio and Start/Stop
+controls, a reserved presentation surface, and repository-owned receiver-only
+WebView2 assets and browser policy. The boundary remains uncomposed until 55E;
+it requests no Client camera or microphone permission and receives no transport
+or media during 55D repository application or automated validation.
+
+The focused media contract, multi-source session-owner, capability-projection,
+Client selection, and Client WebView2 policy suites succeeded on AEPRAKETE.
+The complete Release suite passes 6,139 tests with zero failures and zero
+skips; the successful build reports 45 warnings. Validation did not start an
+application, initialize WebView2, enumerate or access a media device, capture
+media, exchange signaling, deploy, or change firewall, privacy, credential,
+firmware, or physical state.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 

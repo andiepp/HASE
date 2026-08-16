@@ -49,6 +49,8 @@ message MediaSourceCapability {
   bool supports_audio = 4;
   repeated MediaVideoProfile video_profiles = 5;
   repeated MediaAudioProfile audio_profiles = 6;
+  // Sanitized operator-defined label; never an operating-system device name.
+  string display_name = 7;
 }
 
 enum MediaSourceAvailability {

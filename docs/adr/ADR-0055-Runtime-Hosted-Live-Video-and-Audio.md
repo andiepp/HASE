@@ -1,7 +1,7 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; Increment 55B media control contracts implemented and
-  automatically validated
+- Status: Accepted; revised Increment 55D logical camera selection implemented
+  and automatically validated
 - Date: 2026-08-16
 
 ## Context
@@ -10,12 +10,13 @@ HASE can discover and control endpoints through Runtime Hosts and can present
 authorized live diagnostics in the remote WPF Client. It does not have a
 boundary for low-latency camera video or associated microphone audio.
 
-The initial objective is deliberately narrow: one webcam connected to one
-Windows Runtime Host, optional audio from one microphone associated with that
-camera, and one view-only remote WPF Client session. The Client explicitly
-starts and stops viewing. Existing endpoint, Runtime Host, Client, security,
-shortcut, diagnostics, lifecycle, recovery, and ESP32 behavior must remain
-unchanged.
+The initial objective is deliberately narrow: one camera explicitly selected
+from one or more locally configured sources on a Windows Runtime Host, optional
+audio from the microphone locally associated with that camera, and one
+view-only remote WPF Client session. The Client explicitly selects a published
+logical camera and starts and stops viewing. Existing endpoint, Runtime Host,
+Client, security, shortcut, diagnostics, lifecycle, recovery, and ESP32
+behavior must remain unchanged.
 
 Continuous media has materially different bandwidth, timing, congestion,
 codec, and privacy requirements from HASE Properties, Events, diagnostics, and
@@ -95,10 +96,12 @@ changes when the configured source is rebound or its authoritative availability
 is recreated. A session request must target the current generation; stale
 generation requests fail without opening a device.
 
-The initial implementation supports one configured camera source per Runtime
-Host and at most one active media session application-wide. A second viewer or
-second session request is rejected deterministically and does not disturb the
-active session.
+The initial implementation supports one or more locally configured camera
+sources per Runtime Host and at most one active media session
+application-wide. The Client selects only an exact published logical source ID
+and generation. Unknown, stale, unavailable, or duplicate logical identities
+fail closed without automatic fallback. A second viewer or second session
+request is rejected deterministically and does not disturb the active session.
 
 ### Lifecycle
 
@@ -179,8 +182,9 @@ buffer is persisted by the initial implementation.
 
 The normative initial compatibility contract is
 [Runtime-Hosted Media Compatibility Contract](../Runtime-Hosted-Media-Compatibility-Contract.md).
-Its key limits are Windows x64, .NET 10 WPF, one configured source, one viewer,
-direct private-network WebRTC, DTLS-SRTP, and no relay. The initial negotiation
+Its key limits are Windows x64, .NET 10 WPF, one explicitly selected locally
+configured source per active session, one viewer, direct private-network
+WebRTC, DTLS-SRTP, and no relay. The initial negotiation
 target is VP8 video and Opus audio, nominally 640x480 at up to 30 frames per
 second, subject to implementation-time automated confirmation of both machines'
 WebRTC capabilities. Unsupported formats fail visibly; they do not silently
@@ -289,8 +293,9 @@ contract is direct private-network only.
 3. **55C — implemented and automatically validated:** Windows Runtime Host
    WebView2 capture and device/session ownership boundary without remote
    viewing; complete Release validation passes 6,113 tests.
-4. **55D — planned:** WPF Client WebView2 presentation, explicit Start/Stop,
-   audio control, and lifecycle UI.
+4. **55D — revised implementation automatically validated:** WPF Client logical camera selection,
+   WebView2 presentation boundary, explicit Start/Stop, audio control, and
+   lifecycle UI; complete Release validation passes 6,139 tests.
 5. **55E — planned:** encrypted end-to-end WebRTC transport, failure recovery,
    security tests, packaging, and complete automated validation.
 6. **55F — planned:** separately approved controlled physical validation,
@@ -372,6 +377,55 @@ files, and restores these four documentation files. No installed Runtime,
 application, configuration, device, network, credential, firmware, or physical
 state requires rollback.
 
+## Revised Increment 55D effects, validation, and rollback
+
+Increment 55D starts from exact commit
+`4f495a27af3ac3e3a4c5aae1a9b3d4a3de981e71`. It revises the source inventory
+without weakening the one-session rule. The process-local owner accepts one or
+more unique logical camera configurations and opens only the exact local camera
+and optional microphone binding selected by logical ID and generation. The
+additive protobuf field `display_name = 7` carries a sanitized operator-defined
+label. A deterministic capability mapper publishes the logical target, label,
+availability, and fixed VP8/Opus ceilings but never a Windows device ID or
+Windows-derived friendly name. Unknown, stale, unavailable, or duplicate
+logical identities fail closed without selecting another camera.
+
+The WPF Client adds an explicit camera list, audio opt-in, Start, Stop, and
+lifecycle status. With multiple sources it requires a selection; with exactly
+one source it may preselect it but never starts automatically. Selection is
+locked while a session is active. Changing Runtime Host clears capabilities,
+selection, and session state and never replays Start. The abstract media-control
+client seam is deliberately not composed to generated gRPC until Increment
+55E, so repository application cannot create a remote media session.
+
+The Client application pins the same WebView2 SDK version as the Runtime Host
+and packages receiver-only local assets. The native presentation boundary
+denies all camera, microphone, geolocation, notification, and other browser
+permissions, external navigation and resources, new windows, downloads, host
+objects, developer tools, autofill, and password saving. Its local script has
+no device enumeration or `getUserMedia` path. The boundary is not initialized
+or composed in this increment and encrypted media transport remains 55E.
+
+Automated validation covers exact multi-source selection, no fallback,
+duplicate logical IDs, deterministic sanitized capability publication,
+selection locking and reset, independent audio choice, no automatic Start,
+Client WebView2 origin and permission policy, bounded messages, focused
+contract/runtime/adapter/Client tests, and the complete Release solution. No
+application start, WebView2 initialization, device access, capture, signaling,
+deployment, firewall or privacy change, credential change, or physical action
+is authorized by application or validation. The focused suites and complete
+Release suite succeeded on AEPRAKETE with 6,139 passed, zero failed, and zero
+skipped; the successful build reports 45 warnings. A compile-time ambiguity in
+an existing target-typed test helper was corrected by naming the
+`RuntimeHostMediaSourceConfiguration` type explicitly; production behavior was
+unchanged.
+
+Rollback restores all modified documentation, protobuf, project, runtime,
+adapter, Client, XAML, and test paths and removes the new mapper, Client media
+models, view models, presentation boundary, local assets, and tests. Because
+the increment has no deployment, configuration, device, network, credential,
+firmware, or physical effect, no external state requires rollback.
+
 ## Increment 55A effects, validation, and rollback
 
 Increment 55A changes documentation only. It adds this ADR and the compatibility
@@ -392,6 +446,7 @@ requires rollback.
 ## Deferred scope
 
 Recording, snapshots, PTZ, talkback, Client-originated media, public-internet
-operation, STUN/TURN or cloud relay, multiple viewers, multiple sources,
-automatic start or resume, headless non-WebView2 media, ESP32 media, and
-physical deployment are outside ADR-0055's initial objective.
+operation, STUN/TURN or cloud relay, multiple viewers, remotely managed or
+automatically selected sources, automatic start or resume, headless
+non-WebView2 media, ESP32 media, and physical deployment are outside ADR-0055's
+initial objective.

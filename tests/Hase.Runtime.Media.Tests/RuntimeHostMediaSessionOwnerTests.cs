@@ -78,6 +78,63 @@ public sealed class RuntimeHostMediaSessionOwnerTests
     }
 
     [Fact]
+    public async Task ExplicitSecondLogicalCameraOpensItsExactLocalBinding()
+    {
+        var boundary = new RecordingBoundary();
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources =
+        [
+            new(Target(), "camera-device-local", null,
+                RuntimeHostMediaSourceAvailability.Idle, "Built-in camera"),
+            new(new("usb-camera", "generation-02"),
+                "usb-camera-device-local", "usb-microphone-device-local",
+                RuntimeHostMediaSourceAvailability.Idle, "USB camera")
+        ];
+        await using var owner = new RuntimeHostMediaSessionOwner(
+            sources,
+            boundary);
+
+        var result = await owner.StartAsync(
+            Request(
+                target: new("usb-camera", "generation-02"),
+                includeAudio: true));
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.Success, result.Status);
+        Assert.Equal("usb-camera", result.Session!.Target.MediaSourceId);
+        Assert.Equal("usb-camera-device-local",
+            Assert.Single(boundary.Opened).Source.VideoDeviceId);
+        Assert.True(boundary.Opened[0].IncludeAudio);
+    }
+
+    [Fact]
+    public async Task UnknownCameraDoesNotFallBackToAnotherConfiguredSource()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+
+        var result = await owner.StartAsync(
+            Request(target: new("unknown-camera", "generation-01")));
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.SourceNotCurrent,
+            result.Status);
+        Assert.Empty(boundary.Opened);
+    }
+
+    [Fact]
+    public void DuplicateLogicalSourceIdsAreRejected()
+    {
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources =
+        [
+            new(Target(), "device-01", null,
+                RuntimeHostMediaSourceAvailability.Idle, "Camera one"),
+            new(new("camera-01", "generation-02"), "device-02", null,
+                RuntimeHostMediaSourceAvailability.Idle, "Camera two")
+        ];
+
+        Assert.Throws<ArgumentException>(() =>
+            new RuntimeHostMediaSessionOwner(sources, new RecordingBoundary()));
+    }
+
+    [Fact]
     public async Task SessionOperationsRequireOwningPrincipal()
     {
         var boundary = new RecordingBoundary();
@@ -271,7 +328,7 @@ public sealed class RuntimeHostMediaSessionOwnerTests
         string? audioDeviceId = "microphone-device-local",
         TimeProvider? clock = null) =>
         new(
-            new(
+            new RuntimeHostMediaSourceConfiguration(
                 Target(),
                 "camera-device-local",
                 audioDeviceId,

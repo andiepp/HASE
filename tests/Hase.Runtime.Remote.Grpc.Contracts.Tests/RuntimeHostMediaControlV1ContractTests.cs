@@ -82,7 +82,8 @@ public sealed class RuntimeHostMediaControlV1ContractTests
             ("supports_video", 3, FieldType.Bool, false),
             ("supports_audio", 4, FieldType.Bool, false),
             ("video_profiles", 5, FieldType.Message, true),
-            ("audio_profiles", 6, FieldType.Message, true));
+            ("audio_profiles", 6, FieldType.Message, true),
+            ("display_name", 7, FieldType.String, false));
 
         string[] fieldNames =
             RuntimeHostMediaControlV1Reflection.Descriptor.MessageTypes

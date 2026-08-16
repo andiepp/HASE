@@ -63,8 +63,23 @@ public sealed record RuntimeHostMediaSourceConfiguration(
     RuntimeHostMediaSourceTarget Target,
     string VideoDeviceId,
     string? AudioDeviceId,
-    RuntimeHostMediaSourceAvailability Availability)
+    RuntimeHostMediaSourceAvailability Availability,
+    string DisplayName)
 {
+    public RuntimeHostMediaSourceConfiguration(
+        RuntimeHostMediaSourceTarget target,
+        string videoDeviceId,
+        string? audioDeviceId,
+        RuntimeHostMediaSourceAvailability availability)
+        : this(
+            target,
+            videoDeviceId,
+            audioDeviceId,
+            availability,
+            target.MediaSourceId)
+    {
+    }
+
     public bool SupportsAudio => !string.IsNullOrWhiteSpace(AudioDeviceId);
 }
 
