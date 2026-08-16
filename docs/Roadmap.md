@@ -1552,8 +1552,54 @@ Events, reconnect recovery, and the complete native Protocol Version 1
 descriptor were physically validated. The native descriptor has no Compact
 Serial numeric descriptor-version field.
 
-Diagnostic Export and Offline Analysis remains the agreed objective after
-ADR-0054.
+Diagnostic Export and Offline Analysis remains accepted but is deferred. The
+selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
+
+## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
+
+**Status:** [Active] Increment 55A architecture decision and read-only media
+readiness complete; no media implementation or physical capture authorized
+
+ADR-0055 adds one view-only live camera source hosted by a Windows HASE Runtime
+Host and viewed in one remote HASE WPF Client session. Optional microphone
+audio is associated with that camera and requires its own authorization.
+Viewing starts and stops only through explicit Client actions.
+
+The existing HASE gRPC/mTLS connection remains the control plane for sanitized
+capability discovery, authorization, status, signaling, and session teardown.
+Continuous video and audio use a separate, direct private-network WebRTC media
+plane protected by DTLS-SRTP. Media is not represented as HASE Properties,
+Events, diagnostics, ordinary gRPC payloads, or ESP32 Protocol Version 1
+traffic.
+
+The accepted initial implementation boundary embeds Microsoft Edge WebView2 in
+the existing WPF Runtime Host and Client. WebView2 owns browser media capture,
+WebRTC transport, decode, and rendering; C# owns HASE identity, authorization,
+session policy, lifecycle, configuration, and sanitized diagnostics. The
+[Runtime-Hosted Media Compatibility Contract](Runtime-Hosted-Media-Compatibility-Contract.md)
+records the fixed 55A behavior and exclusions.
+
+Read-only readiness succeeded on AEPRAKETE as Runtime Host and LTAEP as Viewing
+Client. It confirmed the required Windows x64, .NET 10 Windows Desktop,
+WebView2 Runtime, private-network, and privacy-policy prerequisites without
+opening a camera or microphone, starting capture, installing dependencies,
+running HASE applications, deploying software, or changing physical state.
+
+Stages:
+
+1. 55A — complete: architecture decision, technology discovery, compatibility
+   contract, and read-only host/client readiness;
+2. 55B — planned: media capability model and versioned control-plane contracts;
+3. 55C — planned: Windows Runtime Host camera and microphone capture boundary;
+4. 55D — planned: WPF Client live video and audio presentation;
+5. 55E — planned: encrypted end-to-end media transport and automated
+   validation; and
+6. 55F — planned: separately authorized controlled physical validation,
+   documentation, and closure.
+
+The initial objective excludes recording, snapshots, PTZ, public-internet
+relay, STUN/TURN service deployment, multiple Runtime Host sources, multiple
+simultaneous viewers, ESP32 media, and physical deployment.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 
@@ -1622,7 +1668,6 @@ replacement custody for explicit Laptop cutover.
 ## Agreed later objectives
 
 - Diagnostic Export and Offline Analysis.
-- Remote Media Feedback.
 
 ## Completed objective — ADR-0049 Authorized Remote Runtime Diagnostics
 

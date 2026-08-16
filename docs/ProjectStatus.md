@@ -1,5 +1,36 @@
 # Project Status
 
+## Active architectural objective — ADR-0055
+
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55A architecture and read-only readiness complete at the unchanged 6,024-test baseline**
+
+- One Windows Runtime Host camera, with optional associated microphone audio,
+  will be presented view-only in one remote HASE WPF Client session.
+- The existing HASE gRPC/mTLS path remains the control plane for capability
+  discovery, exact authorization, bounded signaling, status, and explicit
+  Client-controlled start and stop.
+- Continuous media is excluded from HASE Properties, Events, ordinary gRPC
+  messages, diagnostics, and ESP32 Protocol Version 1. The separate media
+  plane will use direct private-network WebRTC with DTLS-SRTP encryption.
+- Microsoft Edge WebView2 embedded in the existing WPF applications is the
+  selected initial capture and presentation boundary. C# retains ownership of
+  HASE identity, authorization, lifecycle, configuration, and diagnostics.
+- Read-only readiness succeeded on AEPRAKETE as Runtime Host and LTAEP as
+  Viewing Client. Both have an x64 Windows and .NET 10 Windows Desktop
+  baseline, WebView2 Runtime `151.0.4129.86`, a private-network interface, and
+  media privacy preflight that is not denied. AEPRAKETE reports one enabled
+  camera-class device and two enabled microphone endpoints.
+- Readiness did not open a media device, request a stream, send signaling,
+  change privacy settings, install a dependency, start HASE, deploy software,
+  or change physical state.
+- The [Runtime-Hosted Media Compatibility Contract](Runtime-Hosted-Media-Compatibility-Contract.md)
+  fixes the 55A boundary. Increment 55B will require separate approval before
+  adding the media capability model or control-plane contracts.
+
+Diagnostic Export and Offline Analysis remains accepted but deferred.
+
+---
+
 ## Completed architectural objective — ADR-0054
 
 **ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary — implemented, physically validated, and closed at 6,024 passing tests**
