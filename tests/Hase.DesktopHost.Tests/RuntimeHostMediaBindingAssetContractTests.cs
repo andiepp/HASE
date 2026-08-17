@@ -25,10 +25,33 @@ public sealed class RuntimeHostMediaBindingAssetContractTests
     }
 
     [Fact]
+    public void BindingPage_ShouldShowMutedLocalPreviewAndReleaseItBeforeTerminalActions()
+    {
+        Assert.Contains("<video id=\"preview\" autoplay muted playsinline>", Html);
+        Assert.Contains("preview.srcObject = stream", Script);
+        Assert.Contains("preview.srcObject = null", Script);
+        Assert.Contains("preview.pause()", Script);
+        Assert.Contains("video: { deviceId: { exact: selectedVideoDeviceId } }", Script);
+        Assert.Contains("audio: false", Script);
+
+        int saveHandler = Script.IndexOf(
+            "save.addEventListener",
+            StringComparison.Ordinal);
+        int cancelHandler = Script.IndexOf(
+            "cancel.addEventListener",
+            StringComparison.Ordinal);
+        Assert.True(saveHandler >= 0);
+        Assert.True(cancelHandler > saveHandler);
+        Assert.Contains("stopTracks()", Script[saveHandler..cancelHandler]);
+        Assert.Contains("stopTracks()", Script[cancelHandler..]);
+    }
+
+    [Fact]
     public void BindingPage_ShouldRetainClosedContentSecurityPolicy()
     {
         Assert.Contains("default-src 'none'", Html);
         Assert.Contains("connect-src 'none'", Html);
+        Assert.Contains("media-src 'none'", Html);
         Assert.Contains("form-action 'none'", Html);
         Assert.DoesNotContain("http:", Html, StringComparison.OrdinalIgnoreCase);
     }
