@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Hase.Client.Media;
 
 namespace Hase.Client.Diagnostics;
 
@@ -12,7 +13,8 @@ public sealed class DiagnosticRuntimeHostClientSession
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
       IRuntimeHostEventSource,
-      IRuntimeHostDiagnosticSource
+      IRuntimeHostDiagnosticSource,
+      IRuntimeHostMediaControlClient
 {
     private readonly IRuntimeHostClientSession inner;
     private readonly ClientDiagnosticPublisher diagnostics;
@@ -47,6 +49,37 @@ public sealed class DiagnosticRuntimeHostClientSession
 
     public RuntimeHostClientSessionStatus Status => inner.Status;
     public RemoteObservationState? CurrentState => inner.CurrentState;
+
+    public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+        CancellationToken cancellationToken = default) =>
+        GetMediaClient().GetCapabilitiesAsync(cancellationToken);
+
+    public Task<RemoteMediaStartResult> StartAsync(
+        RemoteMediaSourceTarget target,
+        bool includeAudio,
+        CancellationToken cancellationToken = default) =>
+        GetMediaClient().StartAsync(target, includeAudio, cancellationToken);
+
+    public Task<RemoteMediaExchangeResult> ExchangeAsync(
+        string sessionId,
+        uint acknowledgedDeliverySequence,
+        RemoteMediaNegotiationMessage? submittedMessage,
+        CancellationToken cancellationToken = default) =>
+        GetMediaClient().ExchangeAsync(
+            sessionId,
+            acknowledgedDeliverySequence,
+            submittedMessage,
+            cancellationToken);
+
+    public Task<RemoteMediaStatusResult> GetStatusAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        GetMediaClient().GetStatusAsync(sessionId, cancellationToken);
+
+    public Task<RemoteMediaStopResult> StopAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        GetMediaClient().StopAsync(sessionId, cancellationToken);
 
     public async IAsyncEnumerable<RemoteObservationState> ReadStatesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -288,6 +321,14 @@ public sealed class DiagnosticRuntimeHostClientSession
 
         await inner.DisposeAsync().ConfigureAwait(false);
         Publish(ClientDiagnosticCategory.ClientLifecycle, "SessionStopped");
+    }
+
+    private IRuntimeHostMediaControlClient GetMediaClient()
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        return inner as IRuntimeHostMediaControlClient
+            ?? throw new NotSupportedException(
+                "The client session does not support media control.");
     }
 
     private async Task<RemotePropertyOperationResult> RunPropertyOperationAsync(

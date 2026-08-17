@@ -1,4 +1,5 @@
 using Hase.Client.Diagnostics;
+using Hase.Client.Media;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 
@@ -6,6 +7,32 @@ namespace Hase.Client.Tests;
 
 public sealed class DiagnosticRuntimeHostClientSessionTests
 {
+    [Fact]
+    public async Task MediaCapability_IsPreservedAndForwardedWithoutMutation()
+    {
+        IReadOnlyList<RemoteMediaSourceCapability> expected =
+        [
+            new(
+                new("camera-01", "generation-01"),
+                "Configured camera",
+                RemoteMediaSourceAvailability.Idle,
+                SupportsVideo: true,
+                SupportsAudio: false)
+        ];
+        var inner = new MediaStubSession(expected);
+        await using var session = new DiagnosticRuntimeHostClientSession(
+            inner,
+            new ClientDiagnosticPublisher());
+
+        var media = Assert.IsAssignableFrom<IRuntimeHostMediaControlClient>(
+            session);
+        IReadOnlyList<RemoteMediaSourceCapability> actual =
+            await media.GetCapabilitiesAsync();
+
+        Assert.Same(expected, actual);
+        Assert.Equal(1, inner.CapabilityRequestCount);
+    }
+
     [Fact]
     public async Task ReadStatesAsync_ProtocolCapture_CorrelatesObserveRequestAndResponse()
     {
@@ -365,5 +392,66 @@ public sealed class DiagnosticRuntimeHostClientSessionTests
             DiagnosticStreamFaulted?.Invoke(this, args);
             return args;
         }
+    }
+
+    private sealed class MediaStubSession
+        : StubSession,
+          IRuntimeHostMediaControlClient
+    {
+        private readonly IReadOnlyList<RemoteMediaSourceCapability> capabilities;
+
+        public MediaStubSession(
+            IReadOnlyList<RemoteMediaSourceCapability> capabilities)
+            : base([])
+        {
+            this.capabilities = capabilities;
+        }
+
+        public int CapabilityRequestCount { get; private set; }
+
+        public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            CapabilityRequestCount++;
+            return Task.FromResult(capabilities);
+        }
+
+        public Task<RemoteMediaStartResult> StartAsync(
+            RemoteMediaSourceTarget target,
+            bool includeAudio,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaStartResult(
+                false,
+                null,
+                "not-used"));
+
+        public Task<RemoteMediaExchangeResult> ExchangeAsync(
+            string sessionId,
+            uint acknowledgedDeliverySequence,
+            RemoteMediaNegotiationMessage? submittedMessage,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaExchangeResult(
+                false,
+                null,
+                "not-used",
+                0,
+                [],
+                false));
+
+        public Task<RemoteMediaStatusResult> GetStatusAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaStatusResult(
+                false,
+                null,
+                "not-used"));
+
+        public Task<RemoteMediaStopResult> StopAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new RemoteMediaStopResult(
+                false,
+                null,
+                "not-used"));
     }
 }
