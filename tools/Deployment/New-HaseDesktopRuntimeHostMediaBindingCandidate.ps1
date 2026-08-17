@@ -53,26 +53,25 @@ foreach ($required in @(
 }
 
 $outputDirectory = Split-Path -Parent $outputFullPath
-if (-not (Test-Path -LiteralPath $outputDirectory -PathType Container)) {
-    [void](New-Item -ItemType Directory -Path $outputDirectory)
+$directoryAlreadyExisted = Test-Path -LiteralPath $outputDirectory `
+    -PathType Container
+$currentUserSid = (
+    [System.Security.Principal.WindowsIdentity]::GetCurrent()).User
+if ($directoryAlreadyExisted) {
+    if (-not (Test-HaseProtectedDirectoryAccessControl `
+            $outputDirectory $currentUserSid)) {
+        throw "The existing media preparation directory permissions are not exact."
+    }
 }
-$directoryAcl = Get-Acl -LiteralPath $outputDirectory
-$directoryAcl.SetAccessRuleProtection($true, $false)
-$directoryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-$directoryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        "SYSTEM",
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-Set-Acl -LiteralPath $outputDirectory -AclObject $directoryAcl
+else {
+    [void](New-Item -ItemType Directory -Path $outputDirectory)
+    Set-HaseProtectedDirectoryAccessControl `
+        $outputDirectory $currentUserSid
+}
+if (-not (Test-HaseProtectedDirectoryAccessControl `
+        $outputDirectory $currentUserSid)) {
+    throw "The media preparation directory permissions are not exact."
+}
 
 $generation = [System.Guid]::NewGuid().ToString("N")
 $processArguments = @(
@@ -113,6 +112,8 @@ Write-Host "Camera selected            :" $true
 Write-Host "Microphone selected        :" $audioConfigured
 Write-Host "Device identifiers withheld:" $true
 Write-Host "Candidate active           :" $false
+Write-Host "Protected directory reused :" $directoryAlreadyExisted
+Write-Host "Protected directory exact  :" $true
 Write-Host ""
 Write-Host "Temporary local media access was explicitly operator initiated and"
 Write-Host "released. No Runtime Host service, signaling, deployment, configuration,"

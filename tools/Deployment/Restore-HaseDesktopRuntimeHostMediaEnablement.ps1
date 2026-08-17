@@ -64,8 +64,8 @@ if ((Get-HaseRequiredFileHash $profilePath "enabled profile") -cne
     throw "Installed or recovery state changed after media enablement."
 }
 
-$profileAcl = Get-Acl -LiteralPath $profilePath
-$policyAcl = Get-Acl -LiteralPath $policyPath
+$profileAccessSddl = Get-HaseFileAccessSddl $profilePath
+$policyAccessSddl = Get-HaseFileAccessSddl $policyPath
 $profileTemporary = $profilePath + ".restore." + $TransactionId + ".tmp"
 $policyTemporary = $policyPath + ".restore." + $TransactionId + ".tmp"
 try {
@@ -76,13 +76,13 @@ try {
         $profilePath,
         $null,
         $true)
-    Set-Acl -LiteralPath $profilePath -AclObject $profileAcl
+    Set-HaseFileAccessSddl $profilePath $profileAccessSddl
     [System.IO.File]::Replace(
         $policyTemporary,
         $policyPath,
         $null,
         $true)
-    Set-Acl -LiteralPath $policyPath -AclObject $policyAcl
+    Set-HaseFileAccessSddl $policyPath $policyAccessSddl
     Remove-Item -LiteralPath $mediaPath -Force
 
     if ((Get-HaseRequiredFileHash $profilePath "restored profile") -cne

@@ -92,6 +92,33 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
             script);
     }
 
+    [Fact]
+    public void MediaTools_ShouldPersistOnlyAccessRulesAndAvoidSetAcl()
+    {
+        string common = ReadScript("HaseMediaEnablement.Common.ps1");
+        string binding = ReadScript(
+            "New-HaseDesktopRuntimeHostMediaBindingCandidate.ps1");
+        string enable = ReadScript("Enable-HaseDesktopRuntimeHostMedia.ps1");
+        string restore = ReadScript(
+            "Restore-HaseDesktopRuntimeHostMediaEnablement.ps1");
+
+        Assert.Contains("AccessControlSections]::Access", common);
+        Assert.Contains("GetSecurityDescriptorSddlForm", common);
+        Assert.Contains("SetSecurityDescriptorSddlForm", common);
+        Assert.Contains("$directoryInfo.SetAccessControl($directorySecurity)",
+            common);
+        Assert.Contains("$directoryAlreadyExisted", binding);
+        Assert.Contains("Test-HaseProtectedDirectoryAccessControl", binding);
+        Assert.Contains("grants = $grantDocuments.ToArray()", enable);
+        Assert.Contains("Set-HaseFileAccessSddl", enable);
+        Assert.Contains("Set-HaseFileAccessSddl", restore);
+
+        foreach (string scriptName in ScriptNames)
+        {
+            Assert.DoesNotContain("Set-Acl", ReadScript(scriptName));
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Scripts))]
     public async Task Script_ShouldParseWithWindowsPowerShell(string scriptName)

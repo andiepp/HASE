@@ -49,23 +49,14 @@ if (Test-Path -LiteralPath $transactionDirectory) {
     throw "Recovery evidence already exists for this transaction."
 }
 [void](New-Item -ItemType Directory -Path $transactionDirectory -Force)
-$recoveryAcl = Get-Acl -LiteralPath $transactionDirectory
-$recoveryAcl.SetAccessRuleProtection($true, $false)
-$recoveryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-$recoveryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        "SYSTEM",
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-Set-Acl -LiteralPath $transactionDirectory -AclObject $recoveryAcl
+$currentUserSid = (
+    [System.Security.Principal.WindowsIdentity]::GetCurrent()).User
+Set-HaseProtectedDirectoryAccessControl `
+    $transactionDirectory $currentUserSid
+if (-not (Test-HaseProtectedDirectoryAccessControl `
+        $transactionDirectory $currentUserSid)) {
+    throw "The recovery directory permissions are not exact."
+}
 
 $profileBackup = Join-Path $transactionDirectory `
     "desktop-runtime-host.before.json"
@@ -102,7 +93,7 @@ foreach ($permission in $plan.Permissions) {
 }
 $policyDocument = [ordered]@{
     formatVersion = 1
-    grants = @($grantDocuments)
+    grants = $grantDocuments.ToArray()
 }
 
 $profileTemporary = $plan.ProfilePath + ".55f2." + `
@@ -118,8 +109,8 @@ foreach ($temporaryPath in $temporaryPaths) {
     }
 }
 
-$profileAcl = Get-Acl -LiteralPath $plan.ProfilePath
-$policyAcl = Get-Acl -LiteralPath $plan.PolicyPath
+$profileAccessSddl = Get-HaseFileAccessSddl $plan.ProfilePath
+$policyAccessSddl = Get-HaseFileAccessSddl $plan.PolicyPath
 $mutationStarted = $false
 try {
     Write-HaseUtf8Json $profileTemporary $profileDocument
@@ -163,19 +154,19 @@ try {
 
     $mutationStarted = $true
     [System.IO.File]::Move($mediaTemporary, $plan.MediaPath)
-    Set-Acl -LiteralPath $plan.MediaPath -AclObject $profileAcl
+    Set-HaseFileAccessSddl $plan.MediaPath $profileAccessSddl
     [System.IO.File]::Replace(
         $policyTemporary,
         $plan.PolicyPath,
         $null,
         $true)
-    Set-Acl -LiteralPath $plan.PolicyPath -AclObject $policyAcl
+    Set-HaseFileAccessSddl $plan.PolicyPath $policyAccessSddl
     [System.IO.File]::Replace(
         $profileTemporary,
         $plan.ProfilePath,
         $null,
         $true)
-    Set-Acl -LiteralPath $plan.ProfilePath -AclObject $profileAcl
+    Set-HaseFileAccessSddl $plan.ProfilePath $profileAccessSddl
 
     if ((Get-HaseRequiredFileHash $plan.ProfilePath "enabled profile") -cne
             $enabledProfileHash -or
@@ -205,10 +196,10 @@ catch {
     if ($mutationStarted) {
         Copy-Item -LiteralPath $profileBackup `
             -Destination $plan.ProfilePath -Force
-        Set-Acl -LiteralPath $plan.ProfilePath -AclObject $profileAcl
+        Set-HaseFileAccessSddl $plan.ProfilePath $profileAccessSddl
         Copy-Item -LiteralPath $policyBackup `
             -Destination $plan.PolicyPath -Force
-        Set-Acl -LiteralPath $plan.PolicyPath -AclObject $policyAcl
+        Set-HaseFileAccessSddl $plan.PolicyPath $policyAccessSddl
         if (Test-Path -LiteralPath $plan.MediaPath -PathType Leaf) {
             Remove-Item -LiteralPath $plan.MediaPath -Force
         }
