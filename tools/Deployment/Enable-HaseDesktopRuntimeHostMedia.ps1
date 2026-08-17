@@ -45,31 +45,40 @@ if ($plan.TransactionId -cne $ExpectedTransactionId) {
 $recoveryRoot = Join-Path $plan.InstallationRoot `
     "Recovery\ADR-0055-55F"
 $transactionDirectory = Join-Path $recoveryRoot $plan.TransactionId
-if (Test-Path -LiteralPath $transactionDirectory) {
-    throw "Recovery evidence already exists for this transaction."
-}
-[void](New-Item -ItemType Directory -Path $transactionDirectory -Force)
 $currentUserSid = (
     [System.Security.Principal.WindowsIdentity]::GetCurrent()).User
-Set-HaseProtectedDirectoryAccessControl `
-    $transactionDirectory $currentUserSid
-if (-not (Test-HaseProtectedDirectoryAccessControl `
-        $transactionDirectory $currentUserSid)) {
-    throw "The recovery directory permissions are not exact."
-}
-
 $profileBackup = Join-Path $transactionDirectory `
     "desktop-runtime-host.before.json"
 $policyBackup = Join-Path $transactionDirectory `
     "runtime-host-authorization.before.json"
 $manifestPath = Join-Path $transactionDirectory "transaction.json"
-Copy-Item -LiteralPath $plan.ProfilePath -Destination $profileBackup
-Copy-Item -LiteralPath $plan.PolicyPath -Destination $policyBackup
+$transactionDirectoryReused = Test-Path -LiteralPath $transactionDirectory
+if ($transactionDirectoryReused) {
+    if (-not (Test-Path -LiteralPath $transactionDirectory `
+            -PathType Container)) {
+        throw "The recovery transaction path is not a directory."
+    }
+}
+else {
+    [void](New-Item -ItemType Directory -Path $transactionDirectory -Force)
+    Set-HaseProtectedDirectoryAccessControl `
+        $transactionDirectory $currentUserSid
+    Copy-Item -LiteralPath $plan.ProfilePath -Destination $profileBackup
+    Copy-Item -LiteralPath $plan.PolicyPath -Destination $policyBackup
+}
+if (-not (Test-HaseProtectedDirectoryAccessControl `
+        $transactionDirectory $currentUserSid)) {
+    throw "The recovery directory permissions are not exact."
+}
 if ((Get-HaseRequiredFileHash $profileBackup "profile backup") -cne
         $plan.ProfileHash -or
     (Get-HaseRequiredFileHash $policyBackup "policy backup") -cne
         $plan.PolicyHash) {
     throw "The recovery copies are not byte-exact."
+}
+if ($transactionDirectoryReused -and
+    -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "The existing recovery transaction manifest is missing."
 }
 
 $profileDocument = [ordered]@{}
@@ -102,7 +111,17 @@ $policyTemporary = $plan.PolicyPath + ".55f2." + `
     $plan.TransactionId + ".tmp"
 $mediaTemporary = $plan.MediaPath + ".55f2." + `
     $plan.TransactionId + ".tmp"
-$temporaryPaths = @($profileTemporary, $policyTemporary, $mediaTemporary)
+$profileReplacementBackup = Join-Path $transactionDirectory `
+    "desktop-runtime-host.replace-backup.json"
+$policyReplacementBackup = Join-Path $transactionDirectory `
+    "runtime-host-authorization.replace-backup.json"
+$temporaryPaths = @(
+    $profileTemporary,
+    $policyTemporary,
+    $mediaTemporary,
+    $profileReplacementBackup,
+    $policyReplacementBackup
+)
 foreach ($temporaryPath in $temporaryPaths) {
     if (Test-Path -LiteralPath $temporaryPath) {
         throw "A transaction temporary file already exists."
@@ -137,7 +156,7 @@ try {
         throw "The prepared media enablement documents failed validation."
     }
 
-    Write-HaseUtf8Json $manifestPath ([ordered]@{
+    $preparedManifestDocument = [ordered]@{
         formatVersion = 1
         transactionId = $plan.TransactionId
         state = "prepared"
@@ -150,7 +169,55 @@ try {
         authorizationRequestSha256 = $plan.AuthorizationRequestHash
         mediaGrantCount = $plan.Permissions.Count
         audioConfigured = $plan.AudioConfigured
-    })
+    }
+    if ($transactionDirectoryReused) {
+        $existingManifest = Read-HaseBoundedJson $manifestPath `
+            "existing media enablement recovery manifest"
+        Assert-HaseExactProperties $existingManifest @(
+            "formatVersion",
+            "transactionId",
+            "state",
+            "originalProfileSha256",
+            "originalPolicySha256",
+            "enabledProfileSha256",
+            "enabledPolicySha256",
+            "enabledMediaSha256",
+            "candidateSha256",
+            "authorizationRequestSha256",
+            "mediaGrantCount",
+            "audioConfigured"
+        ) "existing media enablement recovery manifest"
+        $existingManifestMatches =
+            [int]$existingManifest.formatVersion -eq 1 -and
+            [string]$existingManifest.transactionId -ceq
+                $plan.TransactionId -and
+            [string]$existingManifest.state -ceq "prepared" -and
+            [string]$existingManifest.originalProfileSha256 -ceq
+                $plan.ProfileHash -and
+            [string]$existingManifest.originalPolicySha256 -ceq
+                $plan.PolicyHash -and
+            [string]$existingManifest.enabledProfileSha256 -ceq
+                $enabledProfileHash -and
+            [string]$existingManifest.enabledPolicySha256 -ceq
+                $enabledPolicyHash -and
+            [string]$existingManifest.enabledMediaSha256 -ceq
+                $enabledMediaHash -and
+            [string]$existingManifest.candidateSha256 -ceq
+                $plan.CandidateHash -and
+            [string]$existingManifest.authorizationRequestSha256 -ceq
+                $plan.AuthorizationRequestHash -and
+            [int]$existingManifest.mediaGrantCount -eq
+                $plan.Permissions.Count -and
+            $existingManifest.audioConfigured -is [bool] -and
+            [bool]$existingManifest.audioConfigured -eq
+                $plan.AudioConfigured
+        if (-not $existingManifestMatches) {
+            throw "The existing prepared recovery transaction does not match the current plan."
+        }
+    }
+    else {
+        Write-HaseUtf8Json $manifestPath $preparedManifestDocument
+    }
 
     $mutationStarted = $true
     [System.IO.File]::Move($mediaTemporary, $plan.MediaPath)
@@ -158,14 +225,22 @@ try {
     [System.IO.File]::Replace(
         $policyTemporary,
         $plan.PolicyPath,
-        $null,
+        $policyReplacementBackup,
         $true)
+    if ((Get-HaseRequiredFileHash $policyReplacementBackup `
+            "authorization replacement backup") -cne $plan.PolicyHash) {
+        throw "The authorization replacement backup is not byte-exact."
+    }
     Set-HaseFileAccessSddl $plan.PolicyPath $policyAccessSddl
     [System.IO.File]::Replace(
         $profileTemporary,
         $plan.ProfilePath,
-        $null,
+        $profileReplacementBackup,
         $true)
+    if ((Get-HaseRequiredFileHash $profileReplacementBackup `
+            "profile replacement backup") -cne $plan.ProfileHash) {
+        throw "The profile replacement backup is not byte-exact."
+    }
     Set-HaseFileAccessSddl $plan.ProfilePath $profileAccessSddl
 
     if ((Get-HaseRequiredFileHash $plan.ProfilePath "enabled profile") -cne

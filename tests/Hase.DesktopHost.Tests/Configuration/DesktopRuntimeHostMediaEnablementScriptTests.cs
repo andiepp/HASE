@@ -78,6 +78,64 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
     }
 
     [Fact]
+    public void Enablement_ShouldUseProtectedReplacementBackups()
+    {
+        string script = ReadScript("Enable-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("desktop-runtime-host.replace-backup.json", script);
+        Assert.Contains(
+            "runtime-host-authorization.replace-backup.json",
+            script);
+        Assert.Contains("authorization replacement backup", script);
+        Assert.Contains("profile replacement backup", script);
+        Assert.DoesNotContain(
+            "$plan.PolicyPath," + Environment.NewLine + "        $null",
+            script);
+        Assert.DoesNotContain(
+            "$plan.ProfilePath," + Environment.NewLine + "        $null",
+            script);
+    }
+
+    [Fact]
+    public void Enablement_ShouldReuseOnlyExactPreparedRecoveryTransaction()
+    {
+        string script = ReadScript("Enable-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("$transactionDirectoryReused", script);
+        Assert.Contains("New-Item -ItemType Directory", script);
+        Assert.Contains("Copy-Item -LiteralPath $plan.ProfilePath", script);
+        Assert.Contains("Write-HaseUtf8Json $manifestPath", script);
+        Assert.Contains("existing media enablement recovery manifest", script);
+        Assert.Contains("[string]$existingManifest.state -ceq \"prepared\"",
+            script);
+        Assert.Contains("$existingManifestMatches", script);
+        Assert.Contains(
+            "does not match the current plan",
+            script);
+        Assert.Contains("$temporaryPaths", script);
+        Assert.Contains("Remove-Item -LiteralPath $temporaryPath", script);
+    }
+
+    [Fact]
+    public void Enablement_ShouldRollbackEveryLiveDocumentAfterMutationFailure()
+    {
+        string script = ReadScript("Enable-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("catch {", script);
+        Assert.Contains(
+            "Copy-Item -LiteralPath $profileBackup",
+            script);
+        Assert.Contains(
+            "Copy-Item -LiteralPath $policyBackup",
+            script);
+        Assert.Contains("Set-HaseFileAccessSddl $plan.ProfilePath", script);
+        Assert.Contains("Set-HaseFileAccessSddl $plan.PolicyPath", script);
+        Assert.Contains("Remove-Item -LiteralPath $plan.MediaPath", script);
+        Assert.Contains("finally {", script);
+        Assert.Contains("Remove-Item -LiteralPath $temporaryPath", script);
+    }
+
+    [Fact]
     public void Restore_ShouldRetainEvidenceAndRequireExactEnabledHashes()
     {
         string script = ReadScript(
