@@ -152,7 +152,7 @@ try {
             $plan.MediaPath -or
         @($preparedPolicy.grants).Count -ne
             (@($plan.Policy.grants).Count + $plan.Permissions.Count) -or
-        @($preparedMedia.sources).Count -ne 1) {
+        @($preparedMedia.sources).Count -ne $plan.SourceCount) {
         throw "The prepared media enablement documents failed validation."
     }
 

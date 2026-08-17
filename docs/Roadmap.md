@@ -1557,9 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55F1 read-only installed-state discovery
-complete; Increment 55F2 media binding and enablement tooling implemented for
-automated validation; no deployment or physical capture authorized
+**Status:** [Active] first controlled 55F3 live-video validation complete;
+Increment 55F4 multi-camera local binding automatically validated with 6,272
+passing tests; no additional deployment or device access authorized
 
 ADR-0055 adds one explicitly selected view-only live camera from locally
 configured sources on a Windows HASE Runtime Host and presents it in one remote
@@ -1623,9 +1623,19 @@ Stages:
    protected preparation artifacts, exact Client credential correlation,
    least-privilege media authorization, transactional enablement, verification,
    and retained rollback tooling without execution; and
-10. 55F3 through 55F5 — planned and separately authorized: application-only
-   updates and binding preparation, controlled enablement and live validation,
-   documentation reconciliation, and closure.
+10. 55F3 — controlled application update, protected binding and authorization
+   preparation, transactional enablement, and one-camera end-to-end live-video
+   validation complete. Explicit Start displayed live video on LTAEP; Stop
+   released capture; Runtime Host and three existing endpoints remained
+   running and the Client remained connected.
+11. 55F4 — implemented and automatically validated: select one through sixteen
+   distinct cameras in the local protected binding flow and expose only
+   deterministic logical names through the existing Client selector. Focused
+   validation passes 63 tests and the complete Release suite passes 6,272 tests
+   with 61 build warnings. Any deployment or multi-device validation remains a
+   separate approval.
+12. 55F5 — planned and separately authorized: final documentation
+   reconciliation, recovery-evidence disposition, and closure.
 
 The initial objective excludes recording, snapshots, PTZ, public-internet
 relay, STUN/TURN service deployment, multiple simultaneous viewers, remotely

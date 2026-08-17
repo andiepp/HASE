@@ -92,14 +92,27 @@ $candidate = Read-HaseBoundedJson $outputFullPath `
 Assert-HaseExactProperties $candidate @("formatVersion", "sources") `
     "media binding candidate"
 $sources = @($candidate.sources)
-if ([int]$candidate.formatVersion -ne 1 -or $sources.Count -ne 1 -or
-    [string]::IsNullOrWhiteSpace([string]$sources[0].videoDeviceId)) {
+if ([int]$candidate.formatVersion -ne 1 -or
+    $sources.Count -lt 1 -or $sources.Count -gt 16) {
     throw "The media binding candidate is not valid."
+}
+$sourceIds = @($sources | ForEach-Object { [string]$_.mediaSourceId })
+$videoDeviceIds = @($sources | ForEach-Object { [string]$_.videoDeviceId })
+if (@($sourceIds | Sort-Object -Unique).Count -ne $sources.Count -or
+    @($videoDeviceIds | Sort-Object -Unique).Count -ne $sources.Count -or
+    @($sources | Where-Object {
+        [string]::IsNullOrWhiteSpace([string]$_.mediaSourceId) -or
+        [string]::IsNullOrWhiteSpace([string]$_.mediaSourceGeneration) -or
+        [string]::IsNullOrWhiteSpace([string]$_.displayName) -or
+        [string]::IsNullOrWhiteSpace([string]$_.videoDeviceId)
+    }).Count -ne 0) {
+    throw "The media binding candidate sources are not valid."
 }
 $candidateHash = Get-HaseRequiredFileHash $outputFullPath `
     "media binding candidate"
-$audioConfigured = -not [string]::IsNullOrWhiteSpace(
-    [string]$sources[0].audioDeviceId)
+$audioConfigured = @($sources | Where-Object {
+    -not [string]::IsNullOrWhiteSpace([string]$_.audioDeviceId)
+}).Count -gt 0
 
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host media binding candidate prepared"
@@ -109,6 +122,7 @@ Write-Host "Repository commit exact    :" $true
 Write-Host "Candidate path             :" $outputFullPath
 Write-Host "Candidate SHA-256          :" $candidateHash
 Write-Host "Camera selected            :" $true
+Write-Host "Selected camera count      :" $sources.Count
 Write-Host "Microphone selected        :" $audioConfigured
 Write-Host "Device identifiers withheld:" $true
 Write-Host "Candidate active           :" $false

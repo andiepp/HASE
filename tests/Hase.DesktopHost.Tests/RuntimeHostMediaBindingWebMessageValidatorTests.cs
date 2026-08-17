@@ -26,12 +26,25 @@ public sealed class RuntimeHostMediaBindingWebMessageValidatorTests
     {
         const string json =
             "{\"version\":1,\"kind\":\"selection-confirmed\"," +
-            "\"videoDeviceId\":\"opaque-video\"," +
-            "\"audioDeviceId\":\"opaque-audio\"}";
+            "\"selections\":[{\"videoDeviceId\":\"opaque-video\"," +
+            "\"audioDeviceId\":\"opaque-audio\"}]}";
 
         Assert.True(validator.TryValidate(json, out var message));
-        Assert.Equal("opaque-video", message!.VideoDeviceId);
-        Assert.Equal("opaque-audio", message.AudioDeviceId);
+        var selection = Assert.Single(message!.Selections!);
+        Assert.Equal("opaque-video", selection.VideoDeviceId);
+        Assert.Equal("opaque-audio", selection.AudioDeviceId);
+    }
+
+    [Fact]
+    public void MultipleDistinctSelections_ShouldSucceed()
+    {
+        const string json =
+            "{\"version\":1,\"kind\":\"selection-confirmed\",\"selections\":[" +
+            "{\"videoDeviceId\":\"video-1\",\"audioDeviceId\":null}," +
+            "{\"videoDeviceId\":\"video-2\",\"audioDeviceId\":null}]}";
+
+        Assert.True(validator.TryValidate(json, out var message));
+        Assert.Equal(2, message!.Selections!.Count);
     }
 
     [Theory]
@@ -40,7 +53,9 @@ public sealed class RuntimeHostMediaBindingWebMessageValidatorTests
     [InlineData("not-json")]
     [InlineData("{\"version\":2,\"kind\":\"ready\"}")]
     [InlineData("{\"version\":1,\"kind\":\"selection-confirmed\"}")]
-    [InlineData("{\"version\":1,\"kind\":\"ready\",\"videoDeviceId\":\"secret\"}")]
+    [InlineData("{\"version\":1,\"kind\":\"ready\",\"selections\":[]}")]
+    [InlineData("{\"version\":1,\"kind\":\"selection-confirmed\",\"selections\":[]}")]
+    [InlineData("{\"version\":1,\"kind\":\"selection-confirmed\",\"selections\":[{\"videoDeviceId\":\"same\"},{\"videoDeviceId\":\"same\"}]}")]
     [InlineData("{\"version\":1,\"kind\":\"faulted\",\"failureCode\":\"driver-secret\"}")]
     [InlineData("{\"version\":1,\"kind\":\"ready\",\"url\":\"https://example.test\"}")]
     public void ExpandedOrMalformedMessage_ShouldReject(string? json)

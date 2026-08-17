@@ -5,8 +5,9 @@ namespace Hase.DesktopHost.App.Media;
 
 public sealed class RuntimeHostMediaBindingWebMessageValidator
 {
-    public const int MaximumMessageUtf8Bytes = 16 * 1024;
+    public const int MaximumMessageUtf8Bytes = 64 * 1024;
     public const int MaximumDeviceIdCharacters = 4096;
+    public const int MaximumSelections = 16;
 
     private static readonly HashSet<string> FailureCodes =
         new(StringComparer.Ordinal)
@@ -69,22 +70,12 @@ public sealed class RuntimeHostMediaBindingWebMessageValidator
                 return false;
             }
 
-            string? videoDeviceId = ReadOptionalString(root, "videoDeviceId");
-            string? audioDeviceId = ReadOptionalString(root, "audioDeviceId");
             string? failureCode = ReadOptionalString(root, "failureCode");
-            if (videoDeviceId is { Length: > MaximumDeviceIdCharacters } ||
-                audioDeviceId is { Length: > MaximumDeviceIdCharacters })
-            {
-                return false;
-            }
-
             bool selection =
                 kind == RuntimeHostMediaBindingWebMessageKind.SelectionConfirmed;
-            if (selection != !string.IsNullOrWhiteSpace(videoDeviceId))
-            {
-                return false;
-            }
-            if (!selection && audioDeviceId is not null)
+            IReadOnlyList<RuntimeHostMediaBindingSelection>? selections =
+                ReadSelections(root, selection);
+            if (selection != (selections is not null))
             {
                 return false;
             }
@@ -98,10 +89,7 @@ public sealed class RuntimeHostMediaBindingWebMessageValidator
 
             message = new RuntimeHostMediaBindingWebMessage(
                 kind.Value,
-                videoDeviceId,
-                string.IsNullOrWhiteSpace(audioDeviceId)
-                    ? null
-                    : audioDeviceId,
+                selections,
                 failureCode);
             return true;
         }
@@ -109,6 +97,45 @@ public sealed class RuntimeHostMediaBindingWebMessageValidator
         {
             return false;
         }
+    }
+
+    private static IReadOnlyList<RuntimeHostMediaBindingSelection>? ReadSelections(
+        JsonElement root,
+        bool required)
+    {
+        if (!root.TryGetProperty("selections", out JsonElement value))
+        {
+            return null;
+        }
+        if (!required || value.ValueKind != JsonValueKind.Array ||
+            value.GetArrayLength() is < 1 or > MaximumSelections)
+        {
+            throw new JsonException("selections must be a bounded array.");
+        }
+
+        var selections = new List<RuntimeHostMediaBindingSelection>();
+        var videoIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (JsonElement item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object ||
+                !HasOnlySelectionProperties(item))
+            {
+                throw new JsonException("A selection has an invalid structure.");
+            }
+            string? videoDeviceId = ReadOptionalString(item, "videoDeviceId");
+            string? audioDeviceId = ReadOptionalString(item, "audioDeviceId");
+            if (string.IsNullOrWhiteSpace(videoDeviceId) ||
+                videoDeviceId.Length > MaximumDeviceIdCharacters ||
+                audioDeviceId is { Length: > MaximumDeviceIdCharacters } ||
+                !videoIds.Add(videoDeviceId))
+            {
+                throw new JsonException("A selection contains invalid device identities.");
+            }
+            selections.Add(new RuntimeHostMediaBindingSelection(
+                videoDeviceId,
+                string.IsNullOrWhiteSpace(audioDeviceId) ? null : audioDeviceId));
+        }
+        return selections;
     }
 
     private static string? ReadOptionalString(
@@ -134,9 +161,20 @@ public sealed class RuntimeHostMediaBindingWebMessageValidator
             if (property.Name is not (
                 "version" or
                 "kind" or
-                "videoDeviceId" or
-                "audioDeviceId" or
+                "selections" or
                 "failureCode"))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool HasOnlySelectionProperties(JsonElement root)
+    {
+        foreach (JsonProperty property in root.EnumerateObject())
+        {
+            if (property.Name is not ("videoDeviceId" or "audioDeviceId"))
             {
                 return false;
             }

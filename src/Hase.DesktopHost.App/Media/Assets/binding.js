@@ -91,6 +91,9 @@
       if (cameras.some((item) => item.deviceId === activeVideoDeviceId)) {
         video.value = activeVideoDeviceId;
       }
+      if (video.selectedOptions.length === 0 && video.options.length > 0) {
+        video.options[0].selected = true;
+      }
       audio.replaceChildren(new Option("No microphone", ""));
       for (const [index, microphone] of microphones.entries()) {
         audio.append(option(microphone, index, "Microphone"));
@@ -137,7 +140,7 @@
   });
 
   video.addEventListener("change", async () => {
-    const selectedVideoDeviceId = video.value;
+    const selectedVideoDeviceId = video.selectedOptions[0]?.value;
     stopTracks();
     const revision = operationRevision;
     if (!selectedVideoDeviceId) {
@@ -181,14 +184,19 @@
   });
 
   save.addEventListener("click", () => {
+    const selectedVideoDeviceIds = Array.from(video.selectedOptions,
+      (item) => item.value).filter(Boolean);
     stopTracks();
-    if (!video.value) {
+    if (selectedVideoDeviceIds.length === 0 ||
+        selectedVideoDeviceIds.length > 16) {
       return;
     }
     post({
       kind: "selection-confirmed",
-      videoDeviceId: video.value,
-      audioDeviceId: audio.value || null
+      selections: selectedVideoDeviceIds.map((videoDeviceId) => ({
+        videoDeviceId,
+        audioDeviceId: audio.value || null
+      }))
     });
     save.disabled = true;
     discoverButton.disabled = true;

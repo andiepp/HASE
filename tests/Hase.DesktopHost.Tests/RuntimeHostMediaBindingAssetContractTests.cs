@@ -20,6 +20,9 @@ public sealed class RuntimeHostMediaBindingAssetContractTests
         Assert.Contains("navigator.mediaDevices.getUserMedia", Script);
         Assert.Contains("track.stop()", Script);
         Assert.Contains("selection-confirmed", Script);
+        Assert.Contains("selectedOptions", Script);
+        Assert.Contains("selections: selectedVideoDeviceIds.map", Script);
+        Assert.Contains("multiple size=\"6\"", Html);
         Assert.DoesNotContain("RTCPeerConnection", Script);
         Assert.DoesNotContain("fetch(", Script);
     }

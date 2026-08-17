@@ -11,6 +11,9 @@ public enum RuntimeHostMediaBindingWebMessageKind
 
 public sealed record RuntimeHostMediaBindingWebMessage(
     RuntimeHostMediaBindingWebMessageKind Kind,
-    string? VideoDeviceId = null,
-    string? AudioDeviceId = null,
+    IReadOnlyList<RuntimeHostMediaBindingSelection>? Selections = null,
     string? FailureCode = null);
+
+public sealed record RuntimeHostMediaBindingSelection(
+    string VideoDeviceId,
+    string? AudioDeviceId);

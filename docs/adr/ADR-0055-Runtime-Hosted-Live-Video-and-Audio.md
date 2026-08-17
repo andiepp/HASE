@@ -311,9 +311,16 @@ contract is direct private-network only.
    LTAEP without deployment or mutation.
 9. **55F2 — implemented for automated validation:** local media binding and
    least-privilege transactional enablement/recovery tooling without execution.
-10. **55F3 through 55F5 — planned:** separately approved application updates,
-   controlled local binding, enablement, live validation, documentation
-   reconciliation, and closure.
+10. **55F3 — controlled physical validation complete:** application updates,
+   protected local binding and request transfer, transactional enablement, and
+   explicit Start/Stop live-video proof while existing endpoints and the Client
+   remained healthy.
+11. **55F4 — implemented and automatically validated:** bounded multi-camera selection in
+   the local binding candidate and enablement preflight, retaining local device
+   custody and the existing sanitized Client selector; 63 focused and 6,272
+   complete Release tests pass.
+12. **55F5 — planned:** final documentation reconciliation, evidence custody,
+   and closure.
 
 Every stage requires a separate proposal and approval. No later stage is
 authorized by acceptance of this decision.
@@ -386,7 +393,9 @@ selection is accepted. Production `media.js` retains no `enumerateDevices`
 surface.
 
 The selected opaque identifiers are written new-file-only into a protected
-single-source version 1 candidate. Device identifiers never enter console
+version 1 candidate. The original flow writes one source; approved 55F4
+extends the same schema and custody to one through sixteen distinct selected
+cameras. Device identifiers never enter console
 output, the Client, gRPC, diagnostics, the authorization request, or recovery
 metadata. The Client request contains only enabled profiles' expected Runtime
 Host identities and SHA-256 certificate credential identities under protected
@@ -412,6 +421,45 @@ capture media, create signaling, change configuration, authorization,
 credentials, firewall or privacy state, deploy, access serial hardware, upload
 firmware, or mutate physical state. Those actions remain separate 55F3 and
 55F4 approvals.
+
+## Increment 55F3 live proof and 55F4 multi-camera boundary
+
+The controlled 55F3 path proved the complete private-network media flow with
+microphone audio disabled. AEPRAKETE published the sanitized logical camera,
+LTAEP selected it, explicit Start displayed live video, and explicit Stop
+released the capture and cleared the receiver. The Runtime Host remained
+`Running` with all three established endpoints and the Client remained
+`Connected`. No recording, snapshot, fallback, automatic restart, or second
+viewer was introduced. The tested camera exposes no visible activity indicator;
+HASE does not infer capture state from an absent hardware lamp.
+
+55F4 changes only local source preparation and validation. The binding page may
+select between one and sixteen enumerated video inputs after the existing
+explicit permission handshake. It previews one selected camera at a time and
+releases all temporary tracks before writing a candidate. Each chosen video
+device occurs once. The Runtime Host assigns deterministic logical source IDs
+and sanitized display names from the operator-provided base values; Windows
+device identifiers remain solely in the protected candidate and deployed local
+media configuration. One optional locally selected microphone may be associated
+with the chosen sources. Capability discovery and the Client continue to expose
+only logical ID, generation, display name, availability, and media ceilings.
+
+The one-source candidate remains accepted without a schema-version change.
+The existing one-session, one-viewer, explicit Start/Stop, exact-generation,
+no-fallback, mTLS authorization, DTLS-SRTP, and rollback contracts are
+unchanged. Repository validation does not initialize WebView2, enumerate or
+open devices, modify the enabled configuration, deploy an application, or
+perform physical work. Any installed-application update, new candidate,
+restoration/re-enable transaction, or multi-device proof remains a separate
+explicit approval after source acceptance.
+
+Focused 55F4 validation passes 63 tests. The complete Release suite passes
+6,272 tests with zero failures and zero skips; the successful build reports 61
+warnings. The exact 20-path source and documentation scope remains unstaged
+pending acceptance and commit. Automated validation performed no application
+start, WebView2 initialization, device enumeration or access, capture,
+signaling, deployment, configuration or authorization mutation, credential or
+ACL change, recovery change, serial access, firmware upload, or physical work.
 
 Focused 55E3 validation and the complete Release suite succeeded on
 AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero

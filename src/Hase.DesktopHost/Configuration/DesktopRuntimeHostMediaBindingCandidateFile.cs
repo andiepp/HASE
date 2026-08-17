@@ -14,8 +14,33 @@ public static class DesktopRuntimeHostMediaBindingCandidateFile
         DesktopRuntimeHostMediaBindingCandidate candidate,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(candidate);
+        await WriteNewAsync(
+            filePath,
+            new[] { candidate },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public static async Task WriteNewAsync(
+        string filePath,
+        IReadOnlyList<DesktopRuntimeHostMediaBindingCandidate> candidates,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        ArgumentNullException.ThrowIfNull(candidates);
+        if (candidates.Count is < 1 or > 16 || candidates.Any(item => item is null))
+        {
+            throw new ArgumentException(
+                "A media binding candidate requires between one and sixteen sources.",
+                nameof(candidates));
+        }
+        if (candidates.Select(item => item.VideoDeviceId)
+            .Distinct(StringComparer.Ordinal).Count() != candidates.Count)
+        {
+            throw new ArgumentException(
+                "Each camera may occur only once in a media binding candidate.",
+                nameof(candidates));
+        }
         if (!Path.IsPathFullyQualified(filePath))
         {
             throw new ArgumentException(
@@ -39,8 +64,7 @@ public static class DesktopRuntimeHostMediaBindingCandidateFile
         var document = new
         {
             formatVersion = 1,
-            sources = new[]
-            {
+            sources = candidates.Select(candidate =>
                 new
                 {
                     mediaSourceId = candidate.MediaSourceId,
@@ -48,8 +72,7 @@ public static class DesktopRuntimeHostMediaBindingCandidateFile
                     displayName = candidate.DisplayName,
                     videoDeviceId = candidate.VideoDeviceId,
                     audioDeviceId = candidate.AudioDeviceId
-                }
-            }
+                }).ToArray()
         };
 
         string temporaryPath = fullPath + "." + Guid.NewGuid().ToString("N") +

@@ -42,7 +42,7 @@ Write-Host "Repository commit exact        :" $true
 Write-Host "Applications stopped           :" $true
 Write-Host "Client credential match unique :" $true
 Write-Host "Enrolled principal match unique:" $true
-Write-Host "Configured source count        :" 1
+Write-Host "Configured source count        :" $plan.SourceCount
 Write-Host "Microphone configured          :" $plan.AudioConfigured
 Write-Host "New media grant count          :" $plan.Permissions.Count
 Write-Host "Transaction ID                 :" $plan.TransactionId

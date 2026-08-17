@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55F2 media binding and enablement tooling implemented for automated validation**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55F4 multi-camera local binding automatically validated**
 
 - One camera selected from locally configured Windows Runtime Host sources,
   with optional associated microphone audio, will be presented view-only in
@@ -39,6 +39,25 @@
   evidence, and independently hash-bound restoration. Production `media.js`
   retains no device enumeration. Repository application and automated tests do
   not execute any of the physical or mutating tools.
+- Controlled 55F3 validation completed the first live path. AEPRAKETE retained
+  `Running` status and all three published endpoints, LTAEP remained
+  `Connected`, the sanitized logical source `Runtime Host Camera` was
+  selectable, explicit Start displayed live video, and explicit Stop released
+  capture and returned the presentation surface to black. Microphone audio was
+  not enabled. The camera exposes no visible hardware activity indicator; this
+  is recorded as a device limitation rather than a HASE status signal.
+- Increment 55F4 extends only the local binding/preflight boundary from one
+  selected camera to one through sixteen distinct cameras. Device identities
+  remain protected on the Runtime Host. Deterministic logical IDs and
+  sanitized display names are what the already implemented Client selector
+  receives. One active viewer/session remains the application-wide limit.
+- Focused 55F4 multi-camera binding validation passes 63 tests. The complete
+  Release suite passes 6,272 tests with zero failures and zero skips; the
+  successful build reports 61 warnings. The exact implementation remains 20
+  unstaged paths pending documentation acceptance and commit. Validation did
+  not start an application, initialize WebView2, access a media device, deploy,
+  or change configuration, authorization, credentials, recovery, or physical
+  state.
 - Increment 55B adds a separately versioned `hase.runtime.media.v1` protobuf
   control service, sanitized capability and session models, the six accepted
   media authorization actions, fixed negotiation limits, pre-session input

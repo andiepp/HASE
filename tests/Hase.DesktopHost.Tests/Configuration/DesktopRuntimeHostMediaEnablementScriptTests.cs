@@ -32,6 +32,21 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
     }
 
     [Fact]
+    public void BindingAndEnablement_ShouldAcceptBoundedMultipleCameraCandidate()
+    {
+        string binding = ReadScript(
+            "New-HaseDesktopRuntimeHostMediaBindingCandidate.ps1");
+        string common = ReadScript("HaseMediaEnablement.Common.ps1");
+        string enablement = ReadScript("Enable-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("$sources.Count -gt 16", binding);
+        Assert.Contains("Selected camera count", binding);
+        Assert.Contains("$sources.Count -gt 16", common);
+        Assert.Contains("$plan.SourceCount", enablement);
+        Assert.Contains("video-device identities must be unique", common);
+    }
+
+    [Fact]
     public void ClientRequest_ShouldHashCertificatesWithoutPrintingIdentifiers()
     {
         string script = ReadScript(

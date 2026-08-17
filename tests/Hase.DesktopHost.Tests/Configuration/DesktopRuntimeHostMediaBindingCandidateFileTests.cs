@@ -30,6 +30,81 @@ public sealed class DesktopRuntimeHostMediaBindingCandidateFileTests
     }
 
     [Fact]
+    public async Task WriteNewAsync_MultipleSources_ShouldPreserveLogicalOrder()
+    {
+        using var directory = new TemporaryDirectory();
+        string path = Path.Combine(directory.Path, "candidate.json");
+        var candidates = new[]
+        {
+            new DesktopRuntimeHostMediaBindingCandidate(
+                "camera-01", "generation-01", "Camera 1", "video-1", null),
+            new DesktopRuntimeHostMediaBindingCandidate(
+                "camera-02", "generation-02", "Camera 2", "video-2", "audio")
+        };
+
+        await DesktopRuntimeHostMediaBindingCandidateFile.WriteNewAsync(
+            path,
+            candidates);
+        DesktopRuntimeHostMediaConfiguration configuration =
+            await DesktopRuntimeHostMediaConfigurationFile.LoadAsync(path);
+
+        Assert.Collection(
+            configuration.Sources,
+            source =>
+            {
+                Assert.Equal("camera-01", source.Target.MediaSourceId);
+                Assert.Equal("Camera 1", source.DisplayName);
+                Assert.Null(source.AudioDeviceId);
+            },
+            source =>
+            {
+                Assert.Equal("camera-02", source.Target.MediaSourceId);
+                Assert.Equal("Camera 2", source.DisplayName);
+                Assert.Equal("audio", source.AudioDeviceId);
+            });
+    }
+
+    [Fact]
+    public async Task WriteNewAsync_MoreThanSixteenSources_ShouldReject()
+    {
+        using var directory = new TemporaryDirectory();
+        string path = Path.Combine(directory.Path, "candidate.json");
+        DesktopRuntimeHostMediaBindingCandidate[] candidates =
+            Enumerable.Range(1, 17)
+                .Select(index => new DesktopRuntimeHostMediaBindingCandidate(
+                    $"camera-{index:D2}",
+                    $"generation-{index:D2}",
+                    $"Camera {index}",
+                    $"video-{index}",
+                    null))
+                .ToArray();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            DesktopRuntimeHostMediaBindingCandidateFile.WriteNewAsync(
+                path,
+                candidates));
+    }
+
+    [Fact]
+    public async Task WriteNewAsync_DuplicateVideoDevice_ShouldReject()
+    {
+        using var directory = new TemporaryDirectory();
+        string path = Path.Combine(directory.Path, "candidate.json");
+        var candidates = new[]
+        {
+            new DesktopRuntimeHostMediaBindingCandidate(
+                "camera-01", "generation-01", "Camera 1", "same", null),
+            new DesktopRuntimeHostMediaBindingCandidate(
+                "camera-02", "generation-02", "Camera 2", "same", null)
+        };
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            DesktopRuntimeHostMediaBindingCandidateFile.WriteNewAsync(
+                path,
+                candidates));
+    }
+
+    [Fact]
     public async Task WriteNewAsync_ExistingFile_ShouldNotOverwrite()
     {
         using var directory = new TemporaryDirectory();

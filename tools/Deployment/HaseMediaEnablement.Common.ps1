@@ -395,22 +395,31 @@ function Get-HaseMediaEnablementPlan {
     Assert-HaseExactProperties $candidate `
         @("formatVersion", "sources") "media binding candidate"
     $sources = @($candidate.sources)
-    if ([int]$candidate.formatVersion -ne 1 -or $sources.Count -ne 1) {
-        throw "The media binding candidate must contain exactly one source."
+    if ([int]$candidate.formatVersion -ne 1 -or
+        $sources.Count -lt 1 -or $sources.Count -gt 16) {
+        throw "The media binding candidate must contain between one and sixteen sources."
     }
-    Assert-HaseExactProperties $sources[0] @(
-        "mediaSourceId",
-        "mediaSourceGeneration",
-        "displayName",
-        "videoDeviceId",
-        "audioDeviceId"
-    ) "media binding source"
-    if ([string]::IsNullOrWhiteSpace([string]$sources[0].mediaSourceId) -or
-        [string]::IsNullOrWhiteSpace(
-            [string]$sources[0].mediaSourceGeneration) -or
-        [string]::IsNullOrWhiteSpace([string]$sources[0].displayName) -or
-        [string]::IsNullOrWhiteSpace([string]$sources[0].videoDeviceId)) {
-        throw "The media binding source is incomplete."
+    foreach ($source in $sources) {
+        Assert-HaseExactProperties $source @(
+            "mediaSourceId",
+            "mediaSourceGeneration",
+            "displayName",
+            "videoDeviceId",
+            "audioDeviceId"
+        ) "media binding source"
+        if ([string]::IsNullOrWhiteSpace([string]$source.mediaSourceId) -or
+            [string]::IsNullOrWhiteSpace(
+                [string]$source.mediaSourceGeneration) -or
+            [string]::IsNullOrWhiteSpace([string]$source.displayName) -or
+            [string]::IsNullOrWhiteSpace([string]$source.videoDeviceId)) {
+            throw "A media binding source is incomplete."
+        }
+    }
+    $sourceIds = @($sources | ForEach-Object { [string]$_.mediaSourceId })
+    $videoDeviceIds = @($sources | ForEach-Object { [string]$_.videoDeviceId })
+    if (@($sourceIds | Sort-Object -Unique).Count -ne $sources.Count -or
+        @($videoDeviceIds | Sort-Object -Unique).Count -ne $sources.Count) {
+        throw "Media binding source and video-device identities must be unique."
     }
 
     $policy = Read-HaseBoundedJson $policyPath `
@@ -434,8 +443,9 @@ function Get-HaseMediaEnablementPlan {
     }
 
     $permissions = @($script:HaseMediaPermissions)
-    $audioConfigured = -not [string]::IsNullOrWhiteSpace(
-        [string]$sources[0].audioDeviceId)
+    $audioConfigured = @($sources | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string]$_.audioDeviceId)
+    }).Count -gt 0
     if ($audioConfigured) {
         $permissions += "media.audio.receive"
     }
@@ -490,6 +500,7 @@ function Get-HaseMediaEnablementPlan {
         PrincipalId = $principalId
         Permissions = $permissions
         AudioConfigured = $audioConfigured
+        SourceCount = $sources.Count
         CandidateHash = $candidateHash
         AuthorizationRequestHash = $requestHash
         ProfileHash = $profileHash

@@ -507,6 +507,22 @@ temporary tracks are released, and the chosen opaque identifiers are retained
 only in a protected local candidate. The production capture page continues to
 forbid device enumeration.
 
+Approved 55F4 retains that origin, permission handshake, and protected
+candidate format while allowing one through sixteen distinct selected camera
+devices. The local page may preview only the current selection and releases
+temporary tracks before candidate creation. It never transmits enumeration
+results. Deterministic logical IDs and sanitized display names are generated
+from the explicit base identity and name; Windows device IDs remain only in
+Runtime Host custody. Duplicate logical or video-device identities, zero
+sources, more than sixteen sources, malformed members, and oversized input fail
+closed. A single-source candidate remains compatible with the existing flow.
+
+Focused automated validation of this 55F4 boundary passes 63 tests. The
+complete Release suite passes 6,272 tests with zero failures and zero skips and
+reports 61 build warnings. This evidence does not authorize an installed
+application update, device enumeration, a new binding candidate, configuration
+replacement, or physical multi-camera validation.
+
 A Client preparation request reveals neither an address, certificate
 thumbprint, principal, private key, nor policy content in console output. The
 Host accepts it only when one requested expected Host identity equals the local

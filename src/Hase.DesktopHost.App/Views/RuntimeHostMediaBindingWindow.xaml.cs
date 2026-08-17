@@ -74,20 +74,18 @@ public partial class RuntimeHostMediaBindingWindow : Window
     private async Task WriteCandidateAsync(
         RuntimeHostMediaBindingWebMessage message)
     {
-        if (terminal || string.IsNullOrWhiteSpace(message.VideoDeviceId))
+        if (terminal || message.Selections is null)
         {
             return;
         }
         terminal = true;
         try
         {
-            DesktopRuntimeHostMediaBindingCandidate candidate =
-                request.CreateCandidate(
-                    message.VideoDeviceId,
-                    message.AudioDeviceId);
+            IReadOnlyList<DesktopRuntimeHostMediaBindingCandidate> candidates =
+                request.CreateCandidates(message.Selections);
             await DesktopRuntimeHostMediaBindingCandidateFile.WriteNewAsync(
                 request.OutputFilePath,
-                candidate);
+                candidates);
             OutcomeText.Text =
                 "The protected media binding candidate was written successfully.";
             MessageBox.Show(
