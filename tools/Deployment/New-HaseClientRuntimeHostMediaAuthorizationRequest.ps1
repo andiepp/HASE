@@ -126,7 +126,7 @@ Set-Acl -LiteralPath $outputDirectory -AclObject $directoryAcl
 
 Write-HaseUtf8Json $outputFullPath ([ordered]@{
     formatVersion = 1
-    profiles = @($requestProfiles)
+    profiles = $requestProfiles.ToArray()
 })
 $requestHash = Get-HaseRequiredFileHash $outputFullPath `
     "Client media authorization request"

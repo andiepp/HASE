@@ -32,6 +32,15 @@ public sealed class HaseClientMediaAuthorizationRequestScriptTests
         Assert.Contains("Output SHA-256", script);
     }
 
+    [Fact]
+    public void Request_ShouldMaterializeGenericProfileListExplicitly()
+    {
+        string script = ReadScript();
+
+        Assert.Contains("profiles = $requestProfiles.ToArray()", script);
+        Assert.DoesNotContain("profiles = @($requestProfiles)", script);
+    }
+
     private static string ReadScript(
         [CallerFilePath] string testSourceFilePath = "")
     {
