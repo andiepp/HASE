@@ -95,6 +95,17 @@ public sealed class DesktopRuntimeHostRemoteDiagnosticsMigrationContractTests
         Assert.Contains("Get-OptionalFileHash -Path $authorizationPolicyPath", script);
     }
 
+    [Fact]
+    public void Updater_ShouldPreserveMediaConfigurationBytes()
+    {
+        string script = ReadUpdater();
+
+        Assert.Contains("mediaConfigurationFilePath", script);
+        Assert.Contains("$mediaConfigurationHash = Get-OptionalFileHash", script);
+        Assert.Contains("$mediaConfigurationChanged", script);
+        Assert.Contains("Get-OptionalFileHash -Path $mediaConfigurationPath", script);
+    }
+
     private static string ReadMigration(
         [CallerFilePath] string testSourceFilePath = "") =>
         ReadDeploymentScript(

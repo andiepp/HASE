@@ -11,7 +11,8 @@ param(
     [switch]$EnableRemoteDiagnostics,
     [ValidateSet("Operational", "Protocol", "Bytes")]
     [string]$RemoteDiagnosticsMaximumLevel = "Operational",
-    [string]$AuthorizationPolicyPath
+    [string]$AuthorizationPolicyPath,
+    [string]$MediaConfigurationPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,6 +69,7 @@ $applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-hos
 $endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
 $privateNetworkDestinationPath = Join-Path $configurationDirectory "desktop-private-network.json"
 $authorizationPolicyDestinationPath = Join-Path $configurationDirectory "runtime-host-authorization.json"
+$mediaConfigurationDestinationPath = Join-Path $configurationDirectory "desktop-runtime-media.json"
 $identityFilePath = Join-Path $identityDirectory "runtime-host-identity.json"
 $desktopDirectory = [Environment]::GetFolderPath(
     [Environment+SpecialFolder]::Desktop)
@@ -78,6 +80,7 @@ $protectedTargets = @(
     $endpointCompositionPath,
     $privateNetworkDestinationPath,
     $authorizationPolicyDestinationPath,
+    $mediaConfigurationDestinationPath,
     $shortcutPath
 )
 
@@ -153,6 +156,46 @@ if ($EnableRemoteDiagnostics -and $null -eq $authorizationPolicySourcePath) {
     throw "Remote diagnostics require an explicit authorization-policy source."
 }
 
+$mediaConfigurationSourcePath = $null
+if ($PSBoundParameters.ContainsKey("MediaConfigurationPath")) {
+    if ([string]::IsNullOrWhiteSpace($MediaConfigurationPath)) {
+        throw "The media-configuration source path must not be empty."
+    }
+    if ($null -eq $authorizationPolicySourcePath) {
+        throw "Runtime Host media requires an explicit authorization-policy source."
+    }
+    $mediaConfigurationSourcePath = Get-FullyQualifiedFilePath `
+        -Path $MediaConfigurationPath `
+        -Role "media-configuration source"
+    if (-not (Test-Path -LiteralPath $mediaConfigurationSourcePath -PathType Leaf)) {
+        throw "The selected media-configuration source file does not exist."
+    }
+    $mediaFile = Get-Item -LiteralPath $mediaConfigurationSourcePath
+    if ($mediaFile.Length -gt (64 * 1024)) {
+        throw "The media-configuration source exceeds the supported size."
+    }
+    try {
+        $mediaDocument = Get-Content -LiteralPath $mediaConfigurationSourcePath `
+            -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
+    catch {
+        throw "The media-configuration source is not valid JSON configuration."
+    }
+    if ($null -eq $mediaDocument) {
+        throw "The media-configuration source does not have the supported structure."
+    }
+    $mediaPropertyNames = @($mediaDocument.PSObject.Properties.Name)
+    if ($mediaPropertyNames.Count -ne 2 -or
+        $mediaPropertyNames -notcontains "formatVersion" -or
+        $mediaPropertyNames -notcontains "sources" -or
+        $mediaDocument.formatVersion -ne 1 -or
+        $mediaDocument.sources -isnot [System.Array] -or
+        $mediaDocument.sources.Count -lt 1 -or
+        $mediaDocument.sources.Count -gt 16) {
+        throw "The media-configuration source does not have the supported structure."
+    }
+}
+
 if (-not $EnableRemoteDiagnostics -and
     $PSBoundParameters.ContainsKey("RemoteDiagnosticsMaximumLevel")) {
     throw "A remote diagnostics maximum level requires explicit remote diagnostics enablement."
@@ -218,6 +261,10 @@ if ($null -ne $authorizationPolicySourcePath) {
     $applicationProfile.authorizationPolicyFilePath =
         $authorizationPolicyDestinationPath
 }
+if ($null -ne $mediaConfigurationSourcePath) {
+    $applicationProfile.mediaConfigurationFilePath =
+        $mediaConfigurationDestinationPath
+}
 $applicationProfile.remoteDiagnosticsEnabled = [bool]$EnableRemoteDiagnostics
 
 $endpointComposition = [ordered]@{
@@ -250,6 +297,12 @@ try {
             -LiteralPath $authorizationPolicySourcePath `
             -Destination $authorizationPolicyDestinationPath
         $installedFiles.Add($authorizationPolicyDestinationPath)
+    }
+
+    if ($null -ne $mediaConfigurationSourcePath) {
+        Copy-Item -LiteralPath $mediaConfigurationSourcePath `
+            -Destination $mediaConfigurationDestinationPath
+        $installedFiles.Add($mediaConfigurationDestinationPath)
     }
 
     Set-Content `
@@ -300,3 +353,4 @@ Write-Host "Startup arguments    : one application-profile path"
 Write-Host "Endpoint composition : $EndpointCompositionMode"
 Write-Host "Remote diagnostics   : $([bool]$EnableRemoteDiagnostics)"
 Write-Host "Authorization policy : $(if ($null -eq $authorizationPolicySourcePath) { 'not installed' } else { 'installed' })"
+Write-Host "Media configuration   : $(if ($null -eq $mediaConfigurationSourcePath) { 'not installed' } else { 'installed' })"

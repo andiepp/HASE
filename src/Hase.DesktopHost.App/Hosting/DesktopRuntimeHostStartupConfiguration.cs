@@ -17,6 +17,7 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
 {
     public DesktopRuntimeHostInstallationProfile? InstallationProfile { get; init; }
     public DesktopRuntimeHostEndpointCompositionProfile? EndpointCompositionProfile { get; init; }
+    public DesktopRuntimeHostMediaConfiguration? MediaConfiguration { get; init; }
 
     public string PrivateNetworkBindingDisplay =>
         $"https://{DeploymentOptions.Binding.Address}:{DeploymentOptions.Binding.Port}";
@@ -52,6 +53,12 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
             RuntimeHostPrivateNetworkDeploymentOptionsFile.LoadAsync(installation.PrivateNetworkConfigurationFilePath)
                 .GetAwaiter()
                 .GetResult();
+        DesktopRuntimeHostMediaConfiguration? media =
+            installation.MediaConfigurationFilePath is string mediaPath
+                ? DesktopRuntimeHostMediaConfigurationFile.LoadAsync(mediaPath)
+                    .GetAwaiter()
+                    .GetResult()
+                : null;
 
         if (endpoints.NativeNetworkEndpoints.Count > 1)
         {
@@ -72,7 +79,8 @@ public sealed record DesktopRuntimeHostStartupConfiguration(
             installation.RemoteDiagnosticsMaximumLevel)
         {
             InstallationProfile = installation,
-            EndpointCompositionProfile = endpoints
+            EndpointCompositionProfile = endpoints,
+            MediaConfiguration = media
         };
     }
 

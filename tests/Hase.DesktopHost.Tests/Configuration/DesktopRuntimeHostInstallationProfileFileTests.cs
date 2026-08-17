@@ -91,6 +91,35 @@ public sealed class DesktopRuntimeHostInstallationProfileFileTests
                     """)));
     }
 
+    [Fact]
+    public async Task LoadAsync_MediaConfigurationWithPolicy_ShouldLoadExactPath()
+    {
+        string policyPath = MissingReferencedPath("runtime-host-authorization.json");
+        string mediaPath = MissingReferencedPath("desktop-runtime-media.json");
+        DesktopRuntimeHostInstallationProfile profile = await LoadDocumentAsync(
+            ValidDocument(
+                $$"""
+                ,
+                  "authorizationPolicyFilePath": {{JsonSerializer.Serialize(policyPath)}},
+                  "mediaConfigurationFilePath": {{JsonSerializer.Serialize(mediaPath)}}
+                """));
+
+        Assert.Equal(policyPath, profile.AuthorizationPolicyFilePath);
+        Assert.Equal(mediaPath, profile.MediaConfigurationFilePath);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MediaConfigurationWithoutPolicy_ShouldReject()
+    {
+        string mediaPath = MissingReferencedPath("desktop-runtime-media.json");
+        await Assert.ThrowsAsync<InvalidDataException>(() => LoadDocumentAsync(
+            ValidDocument(
+                $$"""
+                ,
+                  "mediaConfigurationFilePath": {{JsonSerializer.Serialize(mediaPath)}}
+                """)));
+    }
+
     [Theory]
     [InlineData("Operational", RuntimeDiagnosticLevel.Operational)]
     [InlineData("Protocol", RuntimeDiagnosticLevel.Protocol)]

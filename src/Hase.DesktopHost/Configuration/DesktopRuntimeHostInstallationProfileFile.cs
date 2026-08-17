@@ -108,7 +108,8 @@ public static class DesktopRuntimeHostInstallationProfileFile
                     parsed.RemoteDiagnosticsEnabled,
                     ParseRemoteDiagnosticLevel(
                         parsed.RemoteDiagnosticsMaximumLevel),
-                    parsed.AuthorizationPolicyFilePath)
+                    parsed.AuthorizationPolicyFilePath,
+                    parsed.MediaConfigurationFilePath)
                 : new DesktopRuntimeHostInstallationProfile(
                     identityFilePath,
                     privateNetworkFilePath,
@@ -118,7 +119,8 @@ public static class DesktopRuntimeHostInstallationProfileFile
                     parsed.RemoteDiagnosticsEnabled,
                     ParseRemoteDiagnosticLevel(
                         parsed.RemoteDiagnosticsMaximumLevel),
-                    parsed.AuthorizationPolicyFilePath);
+                    parsed.AuthorizationPolicyFilePath,
+                    parsed.MediaConfigurationFilePath);
         }
         catch (JsonException exception)
         {
@@ -171,5 +173,7 @@ public static class DesktopRuntimeHostInstallationProfileFile
         public string? RemoteDiagnosticsMaximumLevel { get; set; }
         [JsonPropertyName("authorizationPolicyFilePath")]
         public string? AuthorizationPolicyFilePath { get; set; }
+        [JsonPropertyName("mediaConfigurationFilePath")]
+        public string? MediaConfigurationFilePath { get; set; }
     }
 }

@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Hase.Runtime.Diagnostics;
+using Hase.Runtime.Media;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +71,8 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         Assert.Null(
             application.Services.GetService<
                 IRuntimeHostRemoteAuthorizationGate>());
+        Assert.Null(
+            application.Services.GetService<RuntimeHostMediaSessionOwner>());
     }
 
     [Fact]
@@ -116,6 +119,45 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         Assert.NotNull(
             application.Services.GetRequiredService<
                 IRuntimeHostRemoteAuthorizationGate>());
+    }
+
+    [Fact]
+    public async Task CreateCore_WithMediaOwnerAndPolicy_ShouldRegisterMediaComposition()
+    {
+        using X509Certificate2 certificate =
+            CreateSelfSignedServerCertificate();
+        var snapshotProvider = new TestSnapshotProvider();
+        var observationService = new TestObservationService();
+        var authorizationPolicy = new RuntimeHostAuthorizationPolicy([]);
+        var boundary = new TestMediaCaptureBoundary();
+        await using var owner = new RuntimeHostMediaSessionOwner(
+            new RuntimeHostMediaSourceConfiguration(
+                new("camera", "generation"),
+                "video-device",
+                null,
+                RuntimeHostMediaSourceAvailability.Idle),
+            boundary);
+
+        await using WebApplication application =
+            MutualTlsLoopbackGrpcHostFactory.Create(
+                new LoopbackGrpcBinding(IPAddress.Loopback, 0),
+                RuntimeHostMutualTlsOptions.EnabledWith(certificate),
+                snapshotProvider,
+                propertyService: null,
+                commandService: null,
+                observationService,
+                new TestCertificateAuthenticationService(),
+                authorizationPolicy: authorizationPolicy,
+                mediaSessionOwner: owner);
+
+        Assert.Same(owner, application.Services.GetRequiredService<
+            RuntimeHostMediaSessionOwner>());
+        Assert.NotNull(application.Services.GetRequiredService<
+            RuntimeHostMediaAuthorizationGate>());
+        Assert.NotNull(application.Services.GetRequiredService<
+            RuntimeHostMediaGrpcMapper>());
+        Assert.Equal("runtime-host-c034-composition",
+            application.Services.GetRequiredService<string>());
     }
 
     private static X509Certificate2 CreateSelfSignedServerCertificate()
@@ -182,6 +224,24 @@ public sealed class MutualTlsLoopbackGrpcObservationCompositionTests
         {
             throw new NotSupportedException();
         }
+    }
+
+    private sealed class TestMediaCaptureBoundary
+        : IRuntimeHostMediaCaptureBoundary
+    {
+        public ValueTask OpenAsync(
+            RuntimeHostMediaSourceConfiguration source,
+            bool includeAudio,
+            CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask SubmitNegotiationAsync(
+            RuntimeHostMediaNegotiationMessage message,
+            CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask CloseAsync(CancellationToken cancellationToken) =>
+            ValueTask.CompletedTask;
     }
 
     private sealed class TestCertificateAuthenticationService

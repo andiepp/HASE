@@ -81,7 +81,15 @@ public sealed class RuntimeHostAuthorizationPolicyFileTests
             ("observation.subscribe",
                 RuntimeHostPermission.SubscribeObservation),
             ("diagnostics.subscribe",
-                RuntimeHostPermission.SubscribeDiagnostics)
+                RuntimeHostPermission.SubscribeDiagnostics),
+            ("media.capability.read",
+                RuntimeHostPermission.ReadMediaCapabilities),
+            ("media.video.receive", RuntimeHostPermission.ReceiveMediaVideo),
+            ("media.audio.receive", RuntimeHostPermission.ReceiveMediaAudio),
+            ("media.session.start", RuntimeHostPermission.StartMediaSession),
+            ("media.session.negotiate",
+                RuntimeHostPermission.NegotiateMediaSession),
+            ("media.session.stop", RuntimeHostPermission.StopMediaSession)
         ];
         string grants = string.Join(
             ",",

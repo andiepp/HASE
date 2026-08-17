@@ -1,4 +1,5 @@
 using Hase.Runtime.Remote.Grpc.Adapter;
+using Hase.Runtime.Media;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -128,7 +129,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider = null,
-        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -148,7 +150,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
             certificateAuthenticationService,
             timeProvider,
             clearLoggingProviders:
-                false);
+                false,
+            mediaSessionOwner);
     }
 
     /// <summary>
@@ -167,7 +170,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider = null,
-        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
@@ -184,7 +188,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
             authorizationPolicy,
             certificateAuthenticationService,
             timeProvider,
-            clearLoggingProviders: false);
+            clearLoggingProviders: false,
+            mediaSessionOwner);
     }
 
     internal static WebApplication CreateCore(
@@ -201,7 +206,8 @@ public static class MutualTlsLoopbackGrpcHostFactory
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider,
-        bool clearLoggingProviders)
+        bool clearLoggingProviders,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(
             address);
@@ -340,6 +346,24 @@ public static class MutualTlsLoopbackGrpcHostFactory
                             IRuntimeHostAuthorizationService>()));
         }
 
+        if (mediaSessionOwner is not null)
+        {
+            if (authorizationPolicy is null)
+            {
+                throw new InvalidOperationException(
+                    "Runtime Host media requires an explicit authorization policy.");
+            }
+
+            builder.Services.AddSingleton(mediaSessionOwner);
+            builder.Services.AddSingleton(
+                snapshotProvider.Capture().RuntimeHostId.Value);
+            builder.Services.AddSingleton<RuntimeHostMediaAuthorizationGate>();
+            builder.Services.AddSingleton<RuntimeHostMediaCapabilityMapper>();
+            builder.Services.AddSingleton<RuntimeHostMediaControlLimitsMapper>();
+            builder.Services.AddSingleton<RuntimeHostMediaControlContractValidator>();
+            builder.Services.AddSingleton<RuntimeHostMediaGrpcMapper>();
+        }
+
         builder.Services.AddSingleton(
             certificateAuthenticationService);
         builder.Services.AddSingleton(
@@ -359,6 +383,10 @@ public static class MutualTlsLoopbackGrpcHostFactory
         application.UseMiddleware<
             RuntimeHostMutualTlsAuthenticationMiddleware>();
         application.MapGrpcService<RuntimeHostRemoteApiService>();
+        if (mediaSessionOwner is not null)
+        {
+            application.MapGrpcService<RuntimeHostMediaControlService>();
+        }
 
         return application;
     }

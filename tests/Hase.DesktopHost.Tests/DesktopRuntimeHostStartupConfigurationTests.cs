@@ -123,6 +123,23 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
     }
 
     [Fact]
+    public void Parse_WithMediaConfiguration_ShouldLoadExactLocalBinding()
+    {
+        using var files = new ApplicationProfileFiles(
+            [CompactEndpoint("arduino-uno-01")],
+            includeMedia: true);
+
+        DesktopRuntimeHostStartupConfiguration configuration =
+            DesktopRuntimeHostStartupConfiguration.Parse(
+                ["Hase.DesktopHost.App.exe", files.ApplicationProfilePath]);
+
+        var source = Assert.Single(configuration.MediaConfiguration!.Sources);
+        Assert.Equal("primary-camera", source.Target.MediaSourceId);
+        Assert.Equal("video-device", source.VideoDeviceId);
+        Assert.Equal("audio-device", source.AudioDeviceId);
+    }
+
+    [Fact]
     public void Parse_WithMultipleNativeEndpoints_ShouldReject()
     {
         using var files = new ApplicationProfileFiles(
@@ -172,7 +189,9 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
     {
         private readonly string directory;
 
-        public ApplicationProfileFiles(object[] endpoints)
+        public ApplicationProfileFiles(
+            object[] endpoints,
+            bool includeMedia = false)
         {
             directory = Path.Combine(
                 Path.GetTempPath(),
@@ -184,6 +203,10 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
             string privateNetworkPath = Path.Combine(directory, "private-network.json");
             string endpointCompositionPath = Path.Combine(directory, "runtime-endpoints.json");
             string enrollmentPath = Path.Combine(directory, "client-enrollment.json");
+            string authorizationPolicyPath = Path.Combine(
+                directory, "runtime-host-authorization.json");
+            string mediaConfigurationPath = Path.Combine(
+                directory, "desktop-runtime-media.json");
             ApplicationProfilePath = Path.Combine(directory, "runtime-host.json");
 
             WriteJson(
@@ -207,22 +230,43 @@ public sealed class DesktopRuntimeHostStartupConfigurationTests
                     formatVersion = 1,
                     endpoints
                 });
-            WriteJson(
-                ApplicationProfilePath,
-                new
+            if (includeMedia)
+            {
+                WriteJson(mediaConfigurationPath, new
                 {
                     formatVersion = 1,
-                    identityFilePath = identityPath,
-                    privateNetworkConfigurationFilePath = privateNetworkPath,
-                    endpointCompositionFilePath = endpointCompositionPath,
-                    maximumDiagnosticLevel = "Bytes",
-                    includeByteBufferSimulation = false,
-                    remoteDiagnosticsEnabled = true,
-                    remoteDiagnosticsMaximumLevel = "Protocol",
-                    authorizationPolicyFilePath = Path.Combine(
-                        directory,
-                        "runtime-host-authorization.json")
+                    sources = new[]
+                    {
+                        new
+                        {
+                            mediaSourceId = "primary-camera",
+                            mediaSourceGeneration = "generation-01",
+                            displayName = "Primary camera",
+                            videoDeviceId = "video-device",
+                            audioDeviceId = "audio-device"
+                        }
+                    }
                 });
+            }
+
+            var applicationProfile = new Dictionary<string, object?>
+            {
+                ["formatVersion"] = 1,
+                ["identityFilePath"] = identityPath,
+                ["privateNetworkConfigurationFilePath"] = privateNetworkPath,
+                ["endpointCompositionFilePath"] = endpointCompositionPath,
+                ["maximumDiagnosticLevel"] = "Bytes",
+                ["includeByteBufferSimulation"] = false,
+                ["remoteDiagnosticsEnabled"] = true,
+                ["remoteDiagnosticsMaximumLevel"] = "Protocol",
+                ["authorizationPolicyFilePath"] = authorizationPolicyPath
+            };
+            if (includeMedia)
+            {
+                applicationProfile["mediaConfigurationFilePath"] =
+                    mediaConfigurationPath;
+            }
+            WriteJson(ApplicationProfilePath, applicationProfile);
         }
 
         public string ApplicationProfilePath { get; }

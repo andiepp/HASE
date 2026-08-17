@@ -8,7 +8,7 @@ namespace Hase.Runtime.Remote.Grpc.Hosting.Tests;
 public sealed class RuntimeHostPrivateNetworkDeploymentTests
 {
     [Fact]
-    public void CreateAsync_OptionalComposition_ShouldRemainAtEnd()
+    public void CreateAsync_OptionalComposition_ShouldRetainCompatibilityOrder()
     {
         MethodInfo method = Assert.Single(
             typeof(RuntimeHostPrivateNetworkDeployment)
@@ -16,8 +16,9 @@ public sealed class RuntimeHostPrivateNetworkDeploymentTests
             candidate => candidate.Name == nameof(
                 RuntimeHostPrivateNetworkDeployment.CreateAsync));
         ParameterInfo[] parameters = method.GetParameters();
-        ParameterInfo diagnosticParameter = parameters[^2];
-        ParameterInfo authorizationParameter = parameters[^1];
+        ParameterInfo diagnosticParameter = parameters[^3];
+        ParameterInfo authorizationParameter = parameters[^2];
+        ParameterInfo mediaParameter = parameters[^1];
 
         Assert.Equal("diagnosticProjectionService", diagnosticParameter.Name);
         Assert.Equal(
@@ -31,6 +32,12 @@ public sealed class RuntimeHostPrivateNetworkDeploymentTests
             authorizationParameter.ParameterType);
         Assert.True(authorizationParameter.HasDefaultValue);
         Assert.Null(authorizationParameter.DefaultValue);
+        Assert.Equal("mediaSessionOwner", mediaParameter.Name);
+        Assert.Equal(
+            typeof(Hase.Runtime.Media.RuntimeHostMediaSessionOwner),
+            mediaParameter.ParameterType);
+        Assert.True(mediaParameter.HasDefaultValue);
+        Assert.Null(mediaParameter.DefaultValue);
     }
 
     [Fact]

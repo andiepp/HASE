@@ -2,11 +2,30 @@
 using Grpc.Core;
 using Hase.Client;
 using Hase.Client.Grpc;
+using Hase.Client.Media;
 
 namespace Hase.Client.Grpc.Tests;
 
 public sealed class RuntimeHostGrpcRecoveringClientSessionTests
 {
+    [Fact]
+    public async Task MediaOperation_ShouldUseCurrentConnectedSession()
+    {
+        ScriptedSession session = ScriptedSession.WithStates(
+            [CreateState("runtime-01")]);
+        await using RuntimeHostGrpcRecoveringClientSession recovering =
+            CreateRecoveringSession(new Queue<ScriptedSession>([session]), []);
+        await using IAsyncEnumerator<RemoteObservationState> states =
+            recovering.ReadStatesAsync().GetAsyncEnumerator();
+        Assert.True(await states.MoveNextAsync());
+
+        IReadOnlyList<RemoteMediaSourceCapability> capabilities =
+            await recovering.GetCapabilitiesAsync();
+
+        Assert.Same(session.MediaCapabilities, capabilities);
+        Assert.Equal(1, session.MediaCapabilityRequestCount);
+    }
+
     [Fact]
     public async Task DiagnosticObservation_ShouldForwardFromActiveSession()
     {
@@ -381,7 +400,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
 
     private sealed class ScriptedSession
         : IRuntimeHostGrpcRecoverableSession,
-          IRuntimeHostDiagnosticSource
+          IRuntimeHostDiagnosticSource,
+          IRuntimeHostMediaControlClient
     {
         private readonly Exception? connectFailure;
         private readonly IReadOnlyList<RemoteObservationState> states;
@@ -427,6 +447,15 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
             get;
             private set;
         }
+
+        public IReadOnlyList<RemoteMediaSourceCapability> MediaCapabilities
+        {
+            get;
+        } =
+            [new(new("camera", "generation"), "Camera",
+                RemoteMediaSourceAvailability.Idle, true, false)];
+
+        public int MediaCapabilityRequestCount { get; private set; }
 
         public static ScriptedSession FailingConnect(
             Exception exception)
@@ -514,6 +543,36 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionTests
 
             return Task.CompletedTask;
         }
+
+        public Task<IReadOnlyList<RemoteMediaSourceCapability>>
+            GetCapabilitiesAsync(CancellationToken cancellationToken = default)
+        {
+            MediaCapabilityRequestCount++;
+            return Task.FromResult(MediaCapabilities);
+        }
+
+        public Task<RemoteMediaStartResult> StartAsync(
+            RemoteMediaSourceTarget target,
+            bool includeAudio,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaExchangeResult> ExchangeAsync(
+            string sessionId,
+            uint acknowledgedDeliverySequence,
+            RemoteMediaNegotiationMessage? submittedMessage,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaStatusResult> GetStatusAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaStopResult> StopAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
 
         public ValueTask DisposeAsync()
         {

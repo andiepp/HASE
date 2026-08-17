@@ -54,6 +54,16 @@ public static class DesktopRuntimeHostInstallationAudit
                 expectedEndpointCompositionPath,
                 cancellationToken)
             .ConfigureAwait(false);
+        if (profile.MediaConfigurationFilePath is string mediaPath)
+        {
+            string expectedMediaPath = Path.Combine(
+                configurationDirectory, "desktop-runtime-media.json");
+            RequireEqualPath(mediaPath, expectedMediaPath,
+                "media-configuration profile");
+            RequireFile(expectedMediaPath, "media configuration");
+            _ = await DesktopRuntimeHostMediaConfigurationFile.LoadAsync(
+                expectedMediaPath, cancellationToken).ConfigureAwait(false);
+        }
         RuntimeHostPrivateNetworkDeploymentOptions privateNetwork =
             await RuntimeHostPrivateNetworkDeploymentOptionsFile.LoadAsync(
                 expectedPrivateNetworkPath,

@@ -1,11 +1,14 @@
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Web.WebView2.Wpf;
 using Prism.Commands;
 
 namespace Hase.DesktopHost.App.Views;
 
 public partial class MainWindow : Window
 {
+    private WebView2? mediaCaptureWebView;
+
     public MainWindow(
         IDesktopDiagnosticsWindowService
             diagnosticsWindowService)
@@ -25,6 +28,26 @@ public partial class MainWindow : Window
     public DelegateCommand OpenDiagnosticsCommand
     {
         get;
+    }
+
+    public WebView2 CreateMediaCaptureWebView()
+    {
+        if (mediaCaptureWebView is not null)
+        {
+            throw new InvalidOperationException(
+                "The Runtime Host media capture surface already exists.");
+        }
+
+        mediaCaptureWebView = new WebView2
+        {
+            Width = 1,
+            Height = 1,
+            IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        ResolveContentGrid().Children.Add(mediaCaptureWebView);
+        return mediaCaptureWebView;
     }
 
     private void RemoveEmbeddedDiagnosticsPanel()

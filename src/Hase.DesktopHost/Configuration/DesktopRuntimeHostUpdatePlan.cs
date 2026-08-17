@@ -21,6 +21,7 @@ public sealed record DesktopRuntimeHostUpdatePlan
         ApplicationProfileFilePath = Path.Combine(ConfigurationDirectory, "desktop-runtime-host.json");
         EndpointCompositionFilePath = Path.Combine(ConfigurationDirectory, "desktop-runtime-endpoints.json");
         PrivateNetworkConfigurationFilePath = Path.Combine(ConfigurationDirectory, "desktop-private-network.json");
+        MediaConfigurationFilePath = Path.Combine(ConfigurationDirectory, "desktop-runtime-media.json");
         IdentityFilePath = Path.Combine(IdentityDirectory, "runtime-host-identity.json");
         ShortcutFilePath = Path.Combine(DesktopDirectory, "HASE Runtime Host.lnk");
         ExpectedShortcut = new DesktopRuntimeHostShortcutPlan(
@@ -33,6 +34,7 @@ public sealed record DesktopRuntimeHostUpdatePlan
             ApplicationProfileFilePath,
             EndpointCompositionFilePath,
             PrivateNetworkConfigurationFilePath,
+            MediaConfigurationFilePath,
             ShortcutFilePath
         ];
     }
@@ -46,6 +48,7 @@ public sealed record DesktopRuntimeHostUpdatePlan
     public string ApplicationProfileFilePath { get; }
     public string EndpointCompositionFilePath { get; }
     public string PrivateNetworkConfigurationFilePath { get; }
+    public string MediaConfigurationFilePath { get; }
     public string IdentityFilePath { get; }
     public string ShortcutFilePath { get; }
     public DesktopRuntimeHostShortcutPlan ExpectedShortcut { get; }

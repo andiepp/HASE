@@ -2,6 +2,7 @@
 using System.Threading.Channels;
 using Hase.Client;
 using Hase.Client.Grpc;
+using Hase.Client.Media;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
 using Hase.Core.Domain.Identity;
@@ -212,6 +213,20 @@ public sealed class RuntimeHostGrpcClientSessionTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => session.ConnectAsync());
+    }
+
+    [Fact]
+    public async Task ConnectedSession_ShouldUseItsExistingMediaClient()
+    {
+        var resources = new StubSessionResources(CreateInitialSnapshot());
+        await using var session = CreateSession(resources);
+        await session.ConnectAsync();
+
+        IReadOnlyList<RemoteMediaSourceCapability> capabilities =
+            await session.GetCapabilitiesAsync();
+
+        Assert.Same(resources.MediaClient.Capabilities, capabilities);
+        Assert.Equal(1, resources.MediaClient.CapabilityRequestCount);
     }
 
     [Fact]
@@ -471,6 +486,11 @@ public sealed class RuntimeHostGrpcClientSessionTests
         } =
             new StubCommandClient();
 
+        public StubMediaClient MediaClient { get; } = new();
+
+        IRuntimeHostMediaControlClient IRuntimeHostGrpcSessionResources.MediaClient =>
+            MediaClient;
+
         public IRemoteRuntimeDiagnosticStream CreateDiagnosticStream() =>
             diagnosticStream;
 
@@ -515,6 +535,45 @@ public sealed class RuntimeHostGrpcClientSessionTests
 
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class StubMediaClient : IRuntimeHostMediaControlClient
+    {
+        public IReadOnlyList<RemoteMediaSourceCapability> Capabilities { get; } =
+            [new(new("camera", "generation"), "Camera",
+                RemoteMediaSourceAvailability.Idle, true, false)];
+
+        public int CapabilityRequestCount { get; private set; }
+
+        public Task<IReadOnlyList<RemoteMediaSourceCapability>>
+            GetCapabilitiesAsync(CancellationToken cancellationToken = default)
+        {
+            CapabilityRequestCount++;
+            return Task.FromResult(Capabilities);
+        }
+
+        public Task<RemoteMediaStartResult> StartAsync(
+            RemoteMediaSourceTarget target,
+            bool includeAudio,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaExchangeResult> ExchangeAsync(
+            string sessionId,
+            uint acknowledgedDeliverySequence,
+            RemoteMediaNegotiationMessage? submittedMessage,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaStatusResult> GetStatusAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<RemoteMediaStopResult> StopAsync(
+            string sessionId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class StubDiagnosticStream

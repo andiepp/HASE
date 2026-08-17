@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hase.Runtime.Media\Hase.Runtime.Media.csproj" />
     <ProjectReference Include="..\Hase.Runtime.Remote.Grpc.Adapter\Hase.Runtime.Remote.Grpc.Adapter.csproj" />
   </ItemGroup>
 

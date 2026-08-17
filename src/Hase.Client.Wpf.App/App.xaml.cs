@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using Hase.Client.Diagnostics;
 using Hase.Client.Wpf.AppHost.Hosting;
@@ -6,6 +7,10 @@ using Hase.Client.Wpf.ViewModels;
 using Hase.Client.Wpf.Views;
 using Hase.Client.Configuration;
 using Hase.Client.Grpc.Configuration;
+using Hase.Client.Wpf.AppHost.Media;
+using Microsoft.Web.WebView2.Wpf;
+using System.ComponentModel;
+using System.Windows.Threading;
 using Prism.DryIoc;
 using Prism.Ioc;
 
@@ -23,6 +28,7 @@ public partial class App
     private IMultiHostClientSessionCoordinator? multiHostCoordinator;
     private IClientUiDispatcher? uiDispatcher;
     private MainWindowViewModel? mainWindowViewModel;
+    private ClientMediaApplicationControlClient? mediaControlClient;
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -75,8 +81,22 @@ public partial class App
         multiHostCoordinator.SnapshotChanged += MultiHostSnapshotChanged;
         multiHostCoordinator.EventOccurred += MultiHostEventOccurred;
 
-        Window window =
-            Container.Resolve<MainWindow>();
+        MainWindow window = Container.Resolve<MainWindow>();
+        var mediaWebView = new WebView2();
+        window.MediaPresentationSurface.Content = mediaWebView;
+        var mediaBoundary = new WebView2ClientMediaPresentationBoundary(
+            mediaWebView,
+            Path.Combine(AppContext.BaseDirectory, "Media", "Assets"));
+        mediaControlClient = new ClientMediaApplicationControlClient(
+            profileId =>
+                ((MultiHostClientSessionCoordinator)multiHostCoordinator)
+                    .GetMediaControlClient(profileId),
+            mediaBoundary,
+            new DispatcherSynchronizationContext(Dispatcher));
+        viewModel.Media.Configure(mediaControlClient);
+        mediaControlClient.SelectRuntimeHost(
+            viewModel.SelectedRuntimeHost?.ProfileId);
+        viewModel.PropertyChanged += MainWindowViewModelPropertyChanged;
 
         return window;
     }
@@ -133,6 +153,12 @@ public partial class App
     {
         try
         {
+            if (mainWindowViewModel is not null)
+            {
+                mainWindowViewModel.PropertyChanged -=
+                    MainWindowViewModelPropertyChanged;
+            }
+            mediaControlClient?.DisposeAsync().AsTask().GetAwaiter().GetResult();
             diagnosticsWindowController ??=
                 Container.Resolve<IClientDiagnosticsWindowController>();
             diagnosticsWindowController.Close();
@@ -162,10 +188,32 @@ public partial class App
         }
     }
 
+    private void MainWindowViewModelPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName == nameof(MainWindowViewModel.SelectedRuntimeHost))
+        {
+            mediaControlClient?.SelectRuntimeHost(
+                mainWindowViewModel?.SelectedRuntimeHost?.ProfileId);
+        }
+    }
+
     private void MultiHostSnapshotChanged(object? sender, EventArgs eventArgs)
     {
         MultiHostClientSessionSnapshot snapshot = multiHostCoordinator!.Snapshot;
-        uiDispatcher!.Post(() => mainWindowViewModel!.ApplyMultiHostSnapshot(snapshot));
+        uiDispatcher!.Post(() =>
+        {
+            mainWindowViewModel!.ApplyMultiHostSnapshot(snapshot);
+            RuntimeHostProfileItemViewModel? selected =
+                mainWindowViewModel.SelectedRuntimeHost;
+            if (selected is not null)
+            {
+                mediaControlClient?.NotifyRuntimeHostState(
+                    selected.ProfileId,
+                    selected.SessionState);
+            }
+        });
     }
 
     private void MultiHostEventOccurred(object? sender, RuntimeHostProfileEventOccurredEventArgs eventArgs)

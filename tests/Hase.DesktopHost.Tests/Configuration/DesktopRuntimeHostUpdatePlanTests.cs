@@ -20,6 +20,7 @@ public sealed class DesktopRuntimeHostUpdatePlanTests
         Assert.Contains(plan.ApplicationProfileFilePath, plan.PreservedFilePaths);
         Assert.Contains(plan.EndpointCompositionFilePath, plan.PreservedFilePaths);
         Assert.Contains(plan.PrivateNetworkConfigurationFilePath, plan.PreservedFilePaths);
+        Assert.Contains(plan.MediaConfigurationFilePath, plan.PreservedFilePaths);
         Assert.Contains(plan.ShortcutFilePath, plan.PreservedFilePaths);
     }
 

@@ -9,11 +9,11 @@ namespace Hase.DesktopHost.App.Media;
 /// <summary>
 /// Hardened Windows capture adapter. Application composition is intentionally
 /// deferred: constructing this type does not initialize WebView2 or open a
-/// device, and 55C does not add it to Runtime Host startup.
+/// device. Application composition initializes it only for an authorized
+/// media-session Start operation.
 /// </summary>
 public sealed class WebView2RuntimeHostMediaCaptureBoundary :
-    IRuntimeHostMediaCaptureBoundary,
-    IAsyncDisposable
+    IRuntimeHostMediaWebBoundary
 {
     private readonly WebView2 webView;
     private readonly string assetDirectory;
@@ -50,6 +50,13 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
     {
         ArgumentNullException.ThrowIfNull(source);
         cancellationToken.ThrowIfCancellationRequested();
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => OpenAsync(source, includeAudio, cancellationToken).AsTask())
+                .Task.Unwrap().ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         if (!Directory.Exists(assetDirectory))
         {
@@ -76,12 +83,19 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
             JsonSerializer.Serialize(command));
     }
 
-    public ValueTask SubmitNegotiationAsync(
+    public async ValueTask SubmitNegotiationAsync(
         RuntimeHostMediaNegotiationMessage message,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(message);
         cancellationToken.ThrowIfCancellationRequested();
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => SubmitNegotiationAsync(message, cancellationToken).AsTask())
+                .Task.Unwrap().ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         if (!captureActive || webView.CoreWebView2 is null)
         {
@@ -105,11 +119,17 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
         };
         webView.CoreWebView2.PostWebMessageAsJson(
             JsonSerializer.Serialize(command));
-        return ValueTask.CompletedTask;
     }
 
-    public ValueTask CloseAsync(CancellationToken cancellationToken)
+    public async ValueTask CloseAsync(CancellationToken cancellationToken)
     {
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => CloseAsync(cancellationToken).AsTask())
+                .Task.Unwrap().ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         if (captureActive && webView.CoreWebView2 is not null)
         {
@@ -119,11 +139,17 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
 
         captureActive = false;
         policy.EndCapture();
-        return ValueTask.CompletedTask;
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => DisposeAsync().AsTask()).Task.Unwrap()
+                .ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         captureActive = false;
         policy.EndCapture();
@@ -133,7 +159,6 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
         }
 
         initialized = false;
-        return ValueTask.CompletedTask;
     }
 
     private async Task EnsureInitializedAsync()

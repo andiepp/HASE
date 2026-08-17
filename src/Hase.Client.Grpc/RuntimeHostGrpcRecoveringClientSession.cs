@@ -1,5 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Hase.Runtime.Remote.Grpc.Hosting;
+using Hase.Client.Media;
 
 namespace Hase.Client.Grpc;
 
@@ -13,7 +14,8 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
       IRuntimeHostEventSource,
-      IRuntimeHostDiagnosticSource
+      IRuntimeHostDiagnosticSource,
+      IRuntimeHostMediaControlClient
 {
     private readonly object gate =
         new();
@@ -465,6 +467,74 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
         {
             throw failureMapper.Map(
                 exception);
+        }
+    }
+
+    public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.GetCapabilitiesAsync(token),
+            cancellationToken);
+
+    public Task<RemoteMediaStartResult> StartAsync(
+        RemoteMediaSourceTarget target,
+        bool includeAudio,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.StartAsync(target, includeAudio, token),
+            cancellationToken);
+
+    public Task<RemoteMediaExchangeResult> ExchangeAsync(
+        string sessionId,
+        uint acknowledgedDeliverySequence,
+        RemoteMediaNegotiationMessage? submittedMessage,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.ExchangeAsync(
+                sessionId, acknowledgedDeliverySequence, submittedMessage, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStatusResult> GetStatusAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.GetStatusAsync(sessionId, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStopResult> StopAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.StopAsync(sessionId, token),
+            cancellationToken);
+
+    private async Task<TResult> ExecuteMediaAsync<TResult>(
+        Func<IRuntimeHostMediaControlClient, CancellationToken, Task<TResult>> operation,
+        CancellationToken cancellationToken)
+    {
+        IRuntimeHostGrpcRecoverableSession session;
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            session = activeSession ?? throw new RuntimeHostClientException(
+                RuntimeHostClientFailureCategory.TransportUnavailable,
+                "The runtime-host session is not connected.");
+        }
+
+        if (session is not IRuntimeHostMediaControlClient mediaClient)
+        {
+            throw new NotSupportedException(
+                "The connected runtime-host session does not support media control.");
+        }
+
+        try
+        {
+            return await operation(mediaClient, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            throw failureMapper.Map(exception);
         }
     }
 

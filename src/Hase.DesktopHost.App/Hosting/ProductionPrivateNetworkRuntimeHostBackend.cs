@@ -6,9 +6,11 @@ using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.DesktopHost.App.Physical;
+using Hase.DesktopHost.App.Media;
 using Hase.Protocol;
 using Hase.Runtime.Connections;
 using Hase.Runtime.Diagnostics;
+using Hase.Runtime.Media;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Remote.Grpc.Adapter;
 using Hase.Runtime.Remote.Grpc.Hosting;
@@ -45,6 +47,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private RuntimeHostPrivateNetworkDeployment? deployment;
     private DesktopRuntimeHostOperator? runtimeOperator;
     private DesktopRuntimeDiagnosticSession? diagnosticSession;
+    private IRuntimeHostMediaWebBoundary? mediaBoundary;
+    private RuntimeHostMediaApplicationCoordinator? mediaCoordinator;
+    private RuntimeHostMediaSessionOwner? mediaSessionOwner;
 
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration)
@@ -69,6 +74,23 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         this.kel103AttachmentServiceProvider =
             kel103AttachmentServiceProvider
             ?? throw new ArgumentNullException(nameof(kel103AttachmentServiceProvider));
+    }
+
+    public void ConfigureMediaBoundary(
+        IRuntimeHostMediaWebBoundary boundary)
+    {
+        ArgumentNullException.ThrowIfNull(boundary);
+        if (configuration.MediaConfiguration is null)
+        {
+            throw new InvalidOperationException(
+                "A media boundary requires explicit local media configuration.");
+        }
+        if (mediaBoundary is not null || deployment is not null)
+        {
+            throw new InvalidOperationException(
+                "The Runtime Host media boundary is already configured or started.");
+        }
+        mediaBoundary = boundary;
     }
 
     public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture()
@@ -309,6 +331,18 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                         authorizationPolicyFilePath,
                         cancellationToken)
                     : null;
+            if (configuration.MediaConfiguration is not null)
+            {
+                IRuntimeHostMediaWebBoundary configuredBoundary =
+                    mediaBoundary ?? throw new InvalidOperationException(
+                        "Configured Runtime Host media requires its WPF capture boundary.");
+                mediaSessionOwner = new RuntimeHostMediaSessionOwner(
+                    configuration.MediaConfiguration.Sources,
+                    configuredBoundary);
+                mediaCoordinator = new RuntimeHostMediaApplicationCoordinator(
+                    configuredBoundary,
+                    mediaSessionOwner);
+            }
             var session =
                 new DesktopRuntimeDiagnosticSession(
                     configuration.MaximumDiagnosticLevel);
@@ -460,7 +494,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     composition.ObservationService,
                     cancellationToken: cancellationToken,
                     diagnosticProjectionService: projectionService,
-                    authorizationPolicy: authorizationPolicy);
+                    authorizationPolicy: authorizationPolicy,
+                    mediaSessionOwner: mediaSessionOwner);
 
             await deployment.Application.StartAsync(cancellationToken);
         }
@@ -729,16 +764,25 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             composition;
         RuntimeEndpointAttachmentHost? attachmentHostToDispose =
             attachmentHost;
+        RuntimeHostMediaApplicationCoordinator? mediaCoordinatorToDispose =
+            mediaCoordinator;
 
         deployment = null;
         composition = null;
         attachmentHost = null;
         runtimeOperator = null;
         diagnosticSession = null;
+        mediaCoordinator = null;
+        mediaSessionOwner = null;
 
         if (deploymentToDispose is not null)
         {
             await deploymentToDispose.DisposeAsync();
+        }
+
+        if (mediaCoordinatorToDispose is not null)
+        {
+            await mediaCoordinatorToDispose.DisposeAsync();
         }
 
         if (compositionToDispose is not null)

@@ -7,10 +7,11 @@ using Microsoft.Web.WebView2.Wpf;
 namespace Hase.Client.Wpf.AppHost.Media;
 
 /// <summary>
-/// Hardened receiver-only presentation boundary. 55D does not compose this
-/// class into application startup and does not supply WebRTC transport state.
+/// Hardened receiver-only presentation boundary. Application composition
+/// initializes it only after an explicit Client Start action.
 /// </summary>
-public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
+public sealed class WebView2ClientMediaPresentationBoundary :
+    IClientMediaPresentationBoundary
 {
     private readonly WebView2 webView;
     private readonly string assetDirectory;
@@ -42,6 +43,13 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => InitializeAsync(cancellationToken)).Task.Unwrap()
+                .ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         if (initialized)
         {
@@ -75,6 +83,11 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
 
     public void ClearPresentation()
     {
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            webView.Dispatcher.Invoke(ClearPresentation);
+            return;
+        }
         EnsureUiThread();
         if (webView.CoreWebView2 is not null)
         {
@@ -89,6 +102,13 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => BeginAsync(includeAudio, cancellationToken)).Task.Unwrap()
+                .ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         await InitializeAsync(cancellationToken).ConfigureAwait(true);
         if (presentationActive)
@@ -109,6 +129,11 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
     public void SubmitNegotiation(RemoteMediaNegotiationMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            webView.Dispatcher.Invoke(() => SubmitNegotiation(message));
+            return;
+        }
         EnsureUiThread();
         if (!presentationActive || webView.CoreWebView2 is null)
         {
@@ -131,8 +156,15 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
         }));
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
+        if (!webView.Dispatcher.CheckAccess())
+        {
+            await webView.Dispatcher.InvokeAsync(
+                () => DisposeAsync().AsTask()).Task.Unwrap()
+                .ConfigureAwait(false);
+            return;
+        }
         EnsureUiThread();
         if (initialized && webView.CoreWebView2 is not null)
         {
@@ -142,7 +174,6 @@ public sealed class WebView2ClientMediaPresentationBoundary : IAsyncDisposable
         }
         presentationActive = false;
         initialized = false;
-        return ValueTask.CompletedTask;
     }
 
     private void Attach(CoreWebView2 core)

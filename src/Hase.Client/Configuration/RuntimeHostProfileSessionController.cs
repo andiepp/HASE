@@ -1,8 +1,11 @@
 namespace Hase.Client.Configuration;
 using Hase.Client.Diagnostics;
+using Hase.Client.Media;
 
 /// <summary>Owns one independent runtime-host profile session.</summary>
-public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSessionController
+public sealed class RuntimeHostProfileSessionController :
+    IRuntimeHostProfileSessionController,
+    IRuntimeHostMediaControlClient
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly RuntimeHostProfile profile;
@@ -116,6 +119,69 @@ public sealed class RuntimeHostProfileSessionController : IRuntimeHostProfileSes
     public Task<RemoteCommandOperationResult> ExecuteCommandAsync(RemoteCommandExecutionRequest request, CancellationToken cancellationToken = default) =>
         UseSessionAsync<IRuntimeHostCommandExecutor, RemoteCommandExecutionRequest, RemoteCommandOperationResult>(
             request, (executor, value) => executor.ExecuteCommandAsync(value, cancellationToken), cancellationToken);
+
+    public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+        CancellationToken cancellationToken = default) =>
+        UseMediaSessionAsync(
+            (client, token) => client.GetCapabilitiesAsync(token), cancellationToken);
+
+    public Task<RemoteMediaStartResult> StartAsync(
+        RemoteMediaSourceTarget target, bool includeAudio,
+        CancellationToken cancellationToken = default) =>
+        UseMediaSessionAsync(
+            (client, token) => client.StartAsync(target, includeAudio, token),
+            cancellationToken);
+
+    public Task<RemoteMediaExchangeResult> ExchangeAsync(
+        string sessionId, uint acknowledgedDeliverySequence,
+        RemoteMediaNegotiationMessage? submittedMessage,
+        CancellationToken cancellationToken = default) =>
+        UseMediaSessionAsync(
+            (client, token) => client.ExchangeAsync(sessionId,
+                acknowledgedDeliverySequence, submittedMessage, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStatusResult> GetStatusAsync(
+        string sessionId, CancellationToken cancellationToken = default) =>
+        UseMediaSessionAsync(
+            (client, token) => client.GetStatusAsync(sessionId, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStopResult> StopAsync(
+        string sessionId, CancellationToken cancellationToken = default) =>
+        UseMediaSessionAsync(
+            (client, token) => client.StopAsync(sessionId, token),
+            cancellationToken);
+
+    private async Task<TResult> UseMediaSessionAsync<TResult>(
+        Func<IRuntimeHostMediaControlClient, CancellationToken, Task<TResult>> operation,
+        CancellationToken cancellationToken)
+    {
+        IRuntimeHostClientSession active;
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            active = session ?? throw new InvalidOperationException(
+                "A runtime-host profile session is not active.");
+            if (Snapshot.Status.State != RuntimeHostClientSessionState.Connected)
+            {
+                throw new InvalidOperationException(
+                    "The runtime-host profile session is not connected.");
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        if (active is not IRuntimeHostMediaControlClient client)
+        {
+            throw new NotSupportedException(
+                "The active runtime-host session does not support media control.");
+        }
+        return await operation(client, cancellationToken).ConfigureAwait(false);
+    }
 
     private async Task<TResult> UseSessionAsync<TCapability, TTarget, TResult>(
         TTarget target,

@@ -108,6 +108,10 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         }
 
         client = mediaClient;
+        if (mediaClient is IRuntimeHostMediaSessionNotifications notifications)
+        {
+            notifications.SessionChanged += OnSessionChanged;
+        }
         StatusText = "Select Refresh Cameras to load configured sources.";
         RaiseStateChanged();
     }
@@ -192,7 +196,7 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
             }
 
             session = result.Session;
-            StatusText = "Media session started; transport is awaiting composition.";
+            StatusText = "Encrypted media negotiation started.";
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -255,6 +259,19 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         "audio-not-supported" => "Audio is unavailable for the selected camera.",
         _ => "The media operation failed."
     };
+
+    private void OnSessionChanged(
+        object? sender,
+        RemoteMediaSessionChangedEventArgs eventArgs)
+    {
+        session = eventArgs.Session;
+        StatusText = eventArgs.StatusText;
+        if (session is null)
+        {
+            IncludeAudio = false;
+        }
+        RaiseStateChanged();
+    }
 
     private async void ExecuteRefresh() => await RefreshAsync();
     private async void ExecuteStart() => await StartAsync();

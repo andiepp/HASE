@@ -435,6 +435,41 @@ exchange network signaling, register a gRPC service, publish configuration,
 deploy, or change firewall, privacy, credential, firmware, or physical state.
 Those application effects remain 55E3 and physical proof remains 55F.
 
+## Increment 55E3 composition contract
+
+Media is absent by default. A Runtime Host exposes media only when its existing
+application profile references a valid external version 1 media configuration
+and an explicit authorization policy. Source configuration is local custody;
+Windows camera and microphone identifiers never enter Client configuration,
+capability responses, logs, or retained evidence. Changing a local binding
+requires a new opaque source generation.
+
+The media service shares the existing private-network HTTPS/HTTP2 listener,
+mTLS authentication middleware, enrolled principal, and exact authorization
+policy. It adds no listener or trust path. All six `media.*` permissions remain
+independent explicit grants, and no installer or migration grants them
+automatically.
+
+WebView2 construction is not device access. Runtime initialization, permission
+grant, `getUserMedia`, peer creation, and presentation begin only after an
+authorized explicit Start. The Runtime Host marshals every capture-boundary
+operation to its WPF dispatcher. The Client uses the selected connected profile
+and never captures locally. Its bounded exchange pump does not survive profile
+selection change, disconnect, reconnect, peer failure, Stop, or process exit.
+
+Application-only updates preserve the external media configuration exactly.
+55E3 does not install WebView2 Runtime, create firewall rules, publish machine
+configuration, alter privacy settings, deploy applications, or perform live
+media validation.
+
+Focused 55E3 tests and the complete Release suite succeeded on AEPRAKETE. The
+complete suite passes 6,202 tests with zero failures and zero skips; the
+successful build reports 39 warnings. Automated validation retained the exact
+54-path scope without starting either application, initializing WebView2,
+accessing a media device, capturing media, creating a live peer, exchanging
+live signaling, deploying, changing authorization or credentials, or mutating
+physical state.
+
 ## Automated validation obligations
 
 Before physical validation, automated coverage must prove at least:

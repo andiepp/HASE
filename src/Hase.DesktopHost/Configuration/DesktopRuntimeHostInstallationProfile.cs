@@ -16,7 +16,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
         bool remoteDiagnosticsEnabled = false,
         RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
             RuntimeDiagnosticLevel.Operational,
-        string? authorizationPolicyFilePath = null)
+        string? authorizationPolicyFilePath = null,
+        string? mediaConfigurationFilePath = null)
         : this(
             identityFilePath,
             privateNetworkConfigurationFilePath,
@@ -27,7 +28,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
             includeByteBufferSimulation,
             remoteDiagnosticsEnabled,
             remoteDiagnosticsMaximumLevel,
-            authorizationPolicyFilePath)
+            authorizationPolicyFilePath,
+            mediaConfigurationFilePath)
     {
     }
 
@@ -40,7 +42,8 @@ public sealed record DesktopRuntimeHostInstallationProfile
         bool remoteDiagnosticsEnabled = false,
         RuntimeDiagnosticLevel remoteDiagnosticsMaximumLevel =
             RuntimeDiagnosticLevel.Operational,
-        string? authorizationPolicyFilePath = null)
+        string? authorizationPolicyFilePath = null,
+        string? mediaConfigurationFilePath = null)
     {
         IdentityFilePath = NormalizeFullyQualifiedPath(identityFilePath, nameof(identityFilePath), "installation identity");
         PrivateNetworkConfigurationFilePath = NormalizeFullyQualifiedPath(
@@ -57,6 +60,12 @@ public sealed record DesktopRuntimeHostInstallationProfile
                 authorizationPolicyFilePath,
                 nameof(authorizationPolicyFilePath),
                 "authorization policy");
+        MediaConfigurationFilePath = mediaConfigurationFilePath is null
+            ? null
+            : NormalizeFullyQualifiedPath(
+                mediaConfigurationFilePath,
+                nameof(mediaConfigurationFilePath),
+                "media configuration");
 
         StringComparer comparer = OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
@@ -90,6 +99,32 @@ public sealed record DesktopRuntimeHostInstallationProfile
         {
             throw new ArgumentException(
                 "The authorization-policy reference must use a distinct file.",
+                nameof(authorizationPolicyFilePath));
+        }
+
+        if (MediaConfigurationFilePath is not null
+            && (comparer.Equals(MediaConfigurationFilePath, IdentityFilePath)
+                || comparer.Equals(
+                    MediaConfigurationFilePath,
+                    PrivateNetworkConfigurationFilePath)
+                || comparer.Equals(
+                    MediaConfigurationFilePath,
+                    EndpointCompositionFilePath)
+                || (AuthorizationPolicyFilePath is not null
+                    && comparer.Equals(
+                        MediaConfigurationFilePath,
+                        AuthorizationPolicyFilePath))))
+        {
+            throw new ArgumentException(
+                "The media-configuration reference must use a distinct file.",
+                nameof(mediaConfigurationFilePath));
+        }
+
+        if (MediaConfigurationFilePath is not null
+            && AuthorizationPolicyFilePath is null)
+        {
+            throw new ArgumentException(
+                "Configured Runtime Host media requires an explicit authorization-policy file.",
                 nameof(authorizationPolicyFilePath));
         }
 
@@ -133,6 +168,7 @@ public sealed record DesktopRuntimeHostInstallationProfile
     public bool RemoteDiagnosticsEnabled { get; }
     public RuntimeDiagnosticLevel RemoteDiagnosticsMaximumLevel { get; }
     public string? AuthorizationPolicyFilePath { get; }
+    public string? MediaConfigurationFilePath { get; }
 
     public override string ToString() => "Desktop Runtime Host installation profile";
 

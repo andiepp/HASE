@@ -2,6 +2,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using Grpc.Net.Client;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
+using MediaV1 = global::Hase.Runtime.Media.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Hosting;
 
@@ -16,6 +17,8 @@ public sealed class RuntimeHostPrivateNetworkGrpcClient
     private readonly GrpcChannel channel;
     private readonly GrpcV1.RuntimeHostRemoteApi.RuntimeHostRemoteApiClient
         client;
+    private readonly MediaV1.RuntimeHostMediaControl.RuntimeHostMediaControlClient
+        mediaClient;
     private bool disposed;
 
     private RuntimeHostPrivateNetworkGrpcClient(
@@ -28,6 +31,9 @@ public sealed class RuntimeHostPrivateNetworkGrpcClient
             channel;
         client =
             new GrpcV1.RuntimeHostRemoteApi.RuntimeHostRemoteApiClient(
+                channel);
+        mediaClient =
+            new MediaV1.RuntimeHostMediaControl.RuntimeHostMediaControlClient(
                 channel);
     }
 
@@ -43,6 +49,16 @@ public sealed class RuntimeHostPrivateNetworkGrpcClient
                 this);
 
             return client;
+        }
+    }
+
+    public MediaV1.RuntimeHostMediaControl.RuntimeHostMediaControlClient
+        MediaClient
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            return mediaClient;
         }
     }
 

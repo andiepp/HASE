@@ -1557,9 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55E2 encrypted WebView2 peer-boundary source
-prepared; automated validation pending and no application composition or
-physical capture authorized
+**Status:** [Active] Increment 55E3 configuration and application composition
+implemented and automatically validated; no deployment or physical capture
+authorized
 
 ADR-0055 adds one explicitly selected view-only live camera from locally
 configured sources on a Windows HASE Runtime Host and presents it in one remote
@@ -1609,10 +1609,13 @@ Stages:
    sequencing, acknowledgments, bounds, lease renewal, and 6,158-test complete
    Release validation; committed as
    `c7d509f43a34948695656614ba5131fb526a4450`;
-6. 55E2 — source prepared, validation pending: Runtime Host offerer and Client
-   answerer WebView2 peer boundaries with mandatory DTLS-SRTP;
-7. 55E3 — planned: explicit local configuration and application composition,
-   packaging, failure recovery, and complete automated validation; and
+6. 55E2 — implemented and automatically validated: Runtime Host offerer and
+   Client answerer WebView2 peer boundaries with mandatory DTLS-SRTP; complete
+   Release validation passes 6,177 tests and the implementation is committed as
+   `1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`;
+7. 55E3 — implemented and automatically validated: explicit local
+   configuration, conditional service and application composition, packaging
+   custody, failure recovery, and 6,202-test complete Release validation; and
 8. 55F — planned: separately authorized controlled physical validation,
    documentation, and closure.
 
@@ -1703,6 +1706,31 @@ uncomposed until 55E3. Applying and testing the source does not initialize
 WebView2, create a live peer, enumerate or access a media device, capture or
 render media, exchange network signaling, register a service, deploy, or
 change firewall, privacy, credential, firmware, or physical state.
+
+Approved Increment 55E3 keeps media disabled when the Runtime Host application
+profile omits an external media-configuration path. When configured, a strict
+version 1 file binds sanitized logical source identity and generation to exact
+local Windows camera and optional microphone device identities. The file is
+separate from endpoint composition, requires an explicit authorization policy,
+and is preserved by application-only updates. No device is enumerated while
+configuration is loaded.
+
+The existing private-network host registers the generated media-control
+service only for configured media and uses the existing authenticated principal
+and exact policy. The Runtime Host capture and Client presentation WebViews are
+constructed by their WPF shells but initialize only after explicit Start. The
+Client reuses its selected connected profile, serializes bounded negotiation,
+renews the lease after the peer connects, and clears local presentation on
+Stop, selection change, disconnect, failure, or shutdown. Existing reconnect
+never replays Start or resumes a media session.
+
+Focused 55E3 validation and the complete Release suite succeeded on
+AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero
+skips; the successful build reports 39 warnings. The exact 54-path source
+scope was explicitly accepted for commit. Validation did not start
+either application, initialize WebView2, deploy, enumerate or access a media
+device, capture media, create a live peer, exchange live signaling, alter
+authorization or credentials, or mutate physical state.
 
 ## Completed objective — ADR-0053 Python Credential Lifecycle and Recovery
 

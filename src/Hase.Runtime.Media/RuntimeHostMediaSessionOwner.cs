@@ -346,6 +346,111 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Accepts one validated negotiation message from the process-local
+    /// capture boundary for the sole active session.
+    /// </summary>
+    public async ValueTask<RuntimeHostMediaOperationResult>
+        PublishActiveNegotiationAsync(
+            RuntimeHostMediaNegotiationMessage message,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            Session? session = activeSession;
+            if (session is null || session.IsTerminal)
+            {
+                return RuntimeHostMediaOperationResult.Rejected(
+                    RuntimeHostMediaOperationStatus.SessionNotFound);
+            }
+
+            RuntimeHostMediaOperationStatus validation =
+                ValidateHostNegotiation(session, message);
+            if (session.State != RuntimeHostMediaSessionState.Negotiating ||
+                validation != RuntimeHostMediaOperationStatus.Success)
+            {
+                if (validation == RuntimeHostMediaOperationStatus.LimitExceeded)
+                {
+                    await TerminateLockedAsync(
+                        session,
+                        RuntimeHostMediaSessionState.Faulted,
+                        RuntimeHostMediaTerminalReason.ProtocolRejected)
+                        .ConfigureAwait(false);
+                }
+                return new(
+                    session.State == RuntimeHostMediaSessionState.Negotiating
+                        ? validation
+                        : RuntimeHostMediaOperationStatus.InvalidState,
+                    session.Snapshot());
+            }
+
+            session.Publish(message, timeProvider.GetUtcNow());
+            return Success(session);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async ValueTask<RuntimeHostMediaOperationResult>
+        MarkActiveStreamingAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            Session? session = activeSession;
+            if (session is null || session.IsTerminal)
+            {
+                return RuntimeHostMediaOperationResult.Rejected(
+                    RuntimeHostMediaOperationStatus.SessionNotFound);
+            }
+            if (session.State != RuntimeHostMediaSessionState.Negotiating)
+            {
+                return new(RuntimeHostMediaOperationStatus.InvalidState,
+                    session.Snapshot());
+            }
+
+            session.Transition(RuntimeHostMediaSessionState.Streaming,
+                timeProvider.GetUtcNow(), RuntimeHostMediaTerminalReason.None);
+            return Success(session);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    public async ValueTask<RuntimeHostMediaOperationResult>
+        FailActiveBoundaryAsync(CancellationToken cancellationToken = default)
+    {
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            Session? session = activeSession;
+            if (session is null || session.IsTerminal)
+            {
+                return RuntimeHostMediaOperationResult.Rejected(
+                    RuntimeHostMediaOperationStatus.SessionNotFound);
+            }
+
+            await TerminateLockedAsync(session,
+                RuntimeHostMediaSessionState.Faulted,
+                RuntimeHostMediaTerminalReason.MediaBoundaryFailed)
+                .ConfigureAwait(false);
+            return Success(session);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     public async ValueTask<RuntimeHostMediaOperationResult> MarkStreamingAsync(
         string principalId,
         string sessionId,

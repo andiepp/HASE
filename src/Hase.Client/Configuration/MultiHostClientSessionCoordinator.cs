@@ -1,5 +1,7 @@
 namespace Hase.Client.Configuration;
 
+using Hase.Client.Media;
+
 /// <summary>
 /// Owns an ordered set of isolated runtime-host profile session controllers.
 /// </summary>
@@ -88,6 +90,27 @@ public sealed class MultiHostClientSessionCoordinator
         ArgumentNullException.ThrowIfNull(request);
         IRuntimeHostProfileSessionController controller = await GetConnectedControllerAsync(request.RuntimeHostId, cancellationToken).ConfigureAwait(false);
         return await controller.ExecuteCommandAsync(request.Request, cancellationToken).ConfigureAwait(false);
+    }
+
+    public IRuntimeHostMediaControlClient GetMediaControlClient(
+        RuntimeHostProfileId profileId)
+    {
+        ArgumentNullException.ThrowIfNull(profileId);
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (!registry.TryGet(profileId, out RuntimeHostProfile? profile))
+        {
+            throw new KeyNotFoundException(
+                $"Runtime-host profile '{profileId}' is not registered.");
+        }
+        if (!profile.IsEnabled)
+        {
+            throw new InvalidOperationException(
+                $"Runtime-host profile '{profileId}' is disabled.");
+        }
+        return controllersByProfileId[profileId]
+            as IRuntimeHostMediaControlClient
+            ?? throw new NotSupportedException(
+                "The Runtime Host profile session does not support media control.");
     }
 
     public async ValueTask DisposeAsync()

@@ -6,8 +6,9 @@ using MediaV1 = global::Hase.Runtime.Media.Grpc.V1;
 namespace Hase.Runtime.Remote.Grpc.Adapter;
 
 /// <summary>
-/// Authenticated unary adapter for the version 1 media control plane. It is
-/// deliberately not registered by an application in Increment 55E1.
+/// Authenticated unary adapter for the version 1 media control plane. Runtime
+/// Host composition registers it only when explicit local media configuration
+/// and an authorization policy are both present.
 /// </summary>
 public sealed class RuntimeHostMediaControlService
     : MediaV1.RuntimeHostMediaControl.RuntimeHostMediaControlBase

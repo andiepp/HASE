@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Hase.Client.Wpf.ViewModels;
@@ -12,6 +13,8 @@ public partial class MainWindow
     {
         InitializeComponent();
     }
+
+    public ContentControl MediaPresentationSurface => MediaPresentationHost;
 
     private void OnModeCommandPreviewMouseLeftButtonDown(
         object sender,

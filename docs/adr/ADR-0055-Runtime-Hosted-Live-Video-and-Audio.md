@@ -1,7 +1,7 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; Increment 55E2 encrypted WebView2 peer-boundary source
-  prepared and awaiting automated validation
+- Status: Accepted; Increment 55E3 configuration and application composition
+  implemented and automatically validated
 - Date: 2026-08-16
 
 ## Context
@@ -300,15 +300,70 @@ contract is direct private-network only.
    media-control service, Client gRPC adapter, transport-neutral duplex
    negotiation, acknowledgments, limits, ownership, leases, and 6,158-test
    complete Release validation.
-6. **55E2 — source prepared, validation pending:** Runtime Host offerer and
-   Client answerer WebView2 peer boundaries with mandatory DTLS-SRTP.
-7. **55E3 — planned:** configuration and application composition, packaging,
-   failure recovery, security tests, and complete automated validation.
+6. **55E2 — implemented and automatically validated:** Runtime Host offerer and
+   Client answerer WebView2 peer boundaries with mandatory DTLS-SRTP; complete
+   Release validation passes 6,177 tests and is committed as
+   `1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`.
+7. **55E3 — implemented and automatically validated:** configuration and
+   application composition, packaging, failure recovery, security tests, and
+   6,202-test complete Release validation.
 8. **55F — planned:** separately approved controlled physical validation,
    documentation reconciliation, and closure.
 
 Every stage requires a separate proposal and approval. No later stage is
 authorized by acceptance of this decision.
+
+## Increment 55E3 configuration and application composition
+
+55E3 starts from exact synchronized commit
+`1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`. The Runtime Host application
+profile gains an optional fully qualified external media-configuration path.
+The referenced bounded version 1 document contains one to sixteen exact local
+bindings: logical source identity, opaque generation, sanitized display name,
+Windows video device identity, and optional Windows audio device identity.
+Duplicate logical identities, unexpected members, missing values, oversized
+documents, and media configuration without an authorization policy fail
+closed. Omitting the path preserves media-disabled startup.
+
+Configured media adds the existing `RuntimeHostMediaControl` service to the
+existing mTLS listener. It does not add a listener, certificate, credential,
+firewall rule, or alternate authentication path. The six media permission
+strings become valid external policy entries, but 55E3 does not modify any
+deployed policy or grant them to any principal.
+
+When media is configured, the Runtime Host WPF shell owns a noninteractive
+WebView2 capture surface. Construction does not initialize WebView2. An
+authorized explicit Start lazily initializes the fixed local assets and exact
+device constraints. Validated
+offer, ICE, connected, and failure messages are serialized into the sole
+process-local session owner. All browser operations are marshalled to the WPF
+dispatcher, including teardown initiated by gRPC timeout or shutdown.
+
+The Client WPF shell replaces the reserved placeholder with the existing
+receiver-only WebView2 presentation boundary. Media control resolves through
+the currently selected connected Runtime Host profile and its existing mTLS
+session resources. The application coordinator begins presentation only after
+Start succeeds, exchanges one bounded message per control call, acknowledges
+delivered Host messages, and renews the lease after the peer connects. Stop,
+selection change, disconnect, peer failure, or shutdown cancels the pump and
+clears presentation. Reconnect cannot replay Start.
+
+Runtime Host installation accepts an optional external media configuration and
+application-only update validation preserves its exact bytes. Repository-owned
+HTML, CSS, JavaScript, and the pinned WebView2 SDK output remain application
+content. No Evergreen Runtime installation is introduced.
+
+Repository application and automated validation do not start either WPF
+application, initialize WebView2, enumerate or access a device, create a live
+peer, capture or render media, exchange live signaling, deploy software,
+publish configuration, change authorization or credentials, or mutate physical
+state. Those effects remain separately authorized 55F work.
+
+Focused 55E3 validation and the complete Release suite succeeded on
+AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero
+skips; the successful build reports 39 warnings. The exact implementation
+scope is 54 paths and was explicitly accepted for commit from baseline
+`1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`.
 
 ## Increment 55B effects, validation, and rollback
 

@@ -195,14 +195,7 @@
                             Background="#FF101010"
                             BorderBrush="#FF303030"
                             BorderThickness="1">
-                            <TextBlock
-                                Margin="24"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Foreground="#FFD0D0D0"
-                                Text="Encrypted live video presentation is composed in Increment 55E."
-                                TextAlignment="Center"
-                                TextWrapping="Wrap" />
+                            <ContentControl x:Name="MediaPresentationHost" />
                         </Border>
                     </Grid>
                 </Border>

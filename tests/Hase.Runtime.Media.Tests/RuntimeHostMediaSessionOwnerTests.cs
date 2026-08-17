@@ -420,6 +420,55 @@ public sealed class RuntimeHostMediaSessionOwnerTests
         Assert.Equal(1, boundary.CloseCount);
     }
 
+    [Fact]
+    public async Task LocalCaptureOfferPublishesOnlyToActiveSession()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+
+        var missing = await owner.PublishActiveNegotiationAsync(
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "offer"));
+        var start = await owner.StartAsync(Request());
+        var published = await owner.PublishActiveNegotiationAsync(
+            new(1, RuntimeHostMediaNegotiationKind.Offer, "offer"));
+        var delivery = await owner.ExchangeNegotiationAsync(
+            "principal-01", start.Session!.SessionId, 0, null);
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.SessionNotFound, missing.Status);
+        Assert.Equal(RuntimeHostMediaOperationStatus.Success, published.Status);
+        Assert.Equal("offer", Assert.Single(delivery.DeliveredMessages).SensitivePayload);
+    }
+
+    [Fact]
+    public async Task LocalPeerConnectedMarksSoleSessionStreaming()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        var start = await owner.StartAsync(Request());
+
+        var streaming = await owner.MarkActiveStreamingAsync();
+        var status = await owner.GetStatusAsync(
+            "principal-01", start.Session!.SessionId);
+
+        Assert.Equal(RuntimeHostMediaOperationStatus.Success, streaming.Status);
+        Assert.Equal(RuntimeHostMediaSessionState.Streaming, status.Session!.State);
+    }
+
+    [Fact]
+    public async Task LocalBoundaryFailureReleasesSoleSession()
+    {
+        var boundary = new RecordingBoundary();
+        await using var owner = CreateOwner(boundary);
+        await owner.StartAsync(Request());
+
+        var result = await owner.FailActiveBoundaryAsync();
+
+        Assert.Equal(RuntimeHostMediaSessionState.Faulted, result.Session!.State);
+        Assert.Equal(RuntimeHostMediaTerminalReason.MediaBoundaryFailed,
+            result.Session.TerminalReason);
+        Assert.Equal(1, boundary.CloseCount);
+    }
+
     [Theory]
     [InlineData(true, RuntimeHostMediaTerminalReason.SourceLost)]
     [InlineData(false, RuntimeHostMediaTerminalReason.MediaBoundaryFailed)]

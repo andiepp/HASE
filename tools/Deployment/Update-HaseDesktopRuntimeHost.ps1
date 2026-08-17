@@ -103,6 +103,8 @@ $applicationProfilePropertyNames = @(
     $applicationProfile.PSObject.Properties.Name)
 $authorizationPolicyHash = $null
 $authorizationPolicyPath = $null
+$mediaConfigurationHash = $null
+$mediaConfigurationPath = $null
 if ($applicationProfilePropertyNames -contains "authorizationPolicyFilePath") {
     if ([string]::IsNullOrWhiteSpace(
             $applicationProfile.authorizationPolicyFilePath)) {
@@ -129,6 +131,25 @@ if ($applicationProfilePropertyNames -contains "authorizationPolicyFilePath") {
         -Path $authorizationPolicyPath
 }
 
+if ($applicationProfilePropertyNames -contains "mediaConfigurationFilePath") {
+    if ([string]::IsNullOrWhiteSpace(
+            $applicationProfile.mediaConfigurationFilePath)) {
+        throw "The installed Runtime Host media-configuration path is invalid."
+    }
+    $mediaConfigurationPath = [System.IO.Path]::GetFullPath(
+        $applicationProfile.mediaConfigurationFilePath)
+    $expectedMediaConfigurationPath = Join-Path `
+        $configurationDirectory `
+        "desktop-runtime-media.json"
+    Assert-EqualPath -Actual $mediaConfigurationPath `
+        -Expected $expectedMediaConfigurationPath `
+        -Role "media-configuration path"
+    if (-not (Test-Path -LiteralPath $mediaConfigurationPath -PathType Leaf)) {
+        throw "The installed Runtime Host media configuration is missing."
+    }
+    $mediaConfigurationHash = Get-OptionalFileHash -Path $mediaConfigurationPath
+}
+
 & $publisherPath -InstallationDirectory $installationDirectory
 
 if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
@@ -140,13 +161,19 @@ if ($null -ne $authorizationPolicyPath) {
     $authorizationPolicyChanged =
         $authorizationPolicyHash -ne (Get-OptionalFileHash -Path $authorizationPolicyPath)
 }
+$mediaConfigurationChanged = $false
+if ($null -ne $mediaConfigurationPath) {
+    $mediaConfigurationChanged = $mediaConfigurationHash -ne `
+        (Get-OptionalFileHash -Path $mediaConfigurationPath)
+}
 
 if ($applicationProfileHash -ne (Get-OptionalFileHash -Path $applicationProfilePath) -or
     $endpointCompositionHash -ne (Get-OptionalFileHash -Path $endpointCompositionPath) -or
     $privateNetworkConfigurationHash -ne (Get-OptionalFileHash -Path $privateNetworkConfigurationPath) -or
     $shortcutHash -ne (Get-OptionalFileHash -Path $shortcutPath) -or
     $identityHash -ne (Get-OptionalFileHash -Path $identityFilePath) -or
-    $authorizationPolicyChanged) {
+    $authorizationPolicyChanged -or
+    $mediaConfigurationChanged) {
     throw "The application update changed configuration, identity, or shortcut custody."
 }
 

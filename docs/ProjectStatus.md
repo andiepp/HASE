@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E2 encrypted WebView2 peer-boundary source prepared; automated validation pending**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E3 configuration and application composition implemented and automatically validated**
 
 - One camera selected from locally configured Windows Runtime Host sources,
   with optional associated microphone audio, will be presented view-only in
@@ -87,17 +87,28 @@
   succeeded on AEPRAKETE with 6,158 passed, zero failed, and zero skipped. The
   exact 16-path implementation is committed as
   `c7d509f43a34948695656614ba5131fb526a4450`.
-- Approved Increment 55E2 extends the existing non-composed Runtime Host and
+- Increment 55E2 extends the existing non-composed Runtime Host and
   Client WebView2 boundaries into fixed offerer and answerer peers. It uses no
   ICE servers or data channels, fixes send-only and receive-only roles, selects
   VP8 and optional Opus, requires SHA-256 DTLS fingerprints and RTCP mux, and
   exchanges only the existing bounded offer, answer, and ICE messages.
-- The prepared 55E2 source remains unregistered and uncomposed. Repository
-  application and automated tests cannot initialize WebView2, create a live
-  peer connection, enumerate or access a media device, capture or render
-  media, exchange network signaling, deploy, change firewall or privacy state,
-  or perform physical work. Focused and complete Release validation is
-  required on AEPRAKETE before commit.
+- The 55E2 source is committed as
+  `1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`. Focused validation and the
+  complete Release suite succeeded on AEPRAKETE with 6,177 passed, zero failed,
+  and zero skipped.
+- Approved Increment 55E3 adds strict optional Runtime Host media
+  configuration, explicit media-permission parsing, conditional registration
+  on the existing mTLS listener, lazy dispatcher-owned Runtime Host capture,
+  selected-profile Client media control, receiver-only presentation, bounded
+  signaling and lease coordination, terminal cleanup, and application-update
+  custody. The source does not publish machine configuration or grants and
+  automated validation does not start either application or initialize
+  WebView2.
+- Focused 55E3 validation and the complete Release suite succeeded on
+  AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero
+  skips; the successful build reports 39 warnings. The exact 54-path scope
+  was explicitly accepted for commit from baseline
+  `1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
 

@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Hase.Runtime.Remote.Grpc.Hosting;
+using Hase.Client.Media;
 using GrpcV1 = Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Client.Grpc;
@@ -19,7 +20,8 @@ public sealed class RuntimeHostGrpcClientSession
       IRuntimeHostPropertyWriter,
       IRuntimeHostCommandExecutor,
       IRuntimeHostEventSource,
-      IRuntimeHostDiagnosticSource
+      IRuntimeHostDiagnosticSource,
+      IRuntimeHostMediaControlClient
 {
     public event EventHandler<RemoteEventOccurredEventArgs>? EventOccurred;
     public event EventHandler<RemoteRuntimeDiagnosticObservedEventArgs>?
@@ -367,6 +369,57 @@ public sealed class RuntimeHostGrpcClientSession
 
         return mapper.MapResult(
             result);
+    }
+
+    public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.GetCapabilitiesAsync(token),
+            cancellationToken);
+
+    public Task<RemoteMediaStartResult> StartAsync(
+        RemoteMediaSourceTarget target,
+        bool includeAudio,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.StartAsync(target, includeAudio, token),
+            cancellationToken);
+
+    public Task<RemoteMediaExchangeResult> ExchangeAsync(
+        string sessionId,
+        uint acknowledgedDeliverySequence,
+        RemoteMediaNegotiationMessage? submittedMessage,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.ExchangeAsync(
+                sessionId, acknowledgedDeliverySequence, submittedMessage, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStatusResult> GetStatusAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.GetStatusAsync(sessionId, token),
+            cancellationToken);
+
+    public Task<RemoteMediaStopResult> StopAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default) =>
+        ExecuteMediaAsync(
+            (client, token) => client.StopAsync(sessionId, token),
+            cancellationToken);
+
+    private async Task<TResult> ExecuteMediaAsync<TResult>(
+        Func<IRuntimeHostMediaControlClient, CancellationToken, Task<TResult>> operation,
+        CancellationToken cancellationToken)
+    {
+        IRuntimeHostGrpcSessionResources activeResources =
+            GetConnectedResources("media operation");
+        using var operationCancellation =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken, sessionCancellation.Token);
+        return await operation(activeResources.MediaClient,
+            operationCancellation.Token).ConfigureAwait(false);
     }
 
     private IRuntimeHostGrpcSessionResources GetConnectedResources(
@@ -749,6 +802,10 @@ internal interface IRuntimeHostGrpcSessionResources
         get;
     }
 
+    IRuntimeHostMediaControlClient MediaClient =>
+        throw new NotSupportedException(
+            "The session resources do not provide media control.");
+
     IRemoteRuntimeDiagnosticStream CreateDiagnosticStream();
 }
 
@@ -786,13 +843,15 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
     private readonly RuntimeHostGrpcObservationStream observationStream;
     private readonly RuntimeHostGrpcPropertyClient propertyClient;
     private readonly RuntimeHostGrpcCommandClient commandClient;
+    private readonly RuntimeHostGrpcMediaControlClient mediaClient;
     private bool disposed;
 
     private RuntimeHostPrivateNetworkSessionResources(
         RuntimeHostPrivateNetworkClientDeployment deployment,
         RuntimeHostGrpcObservationStream observationStream,
         RuntimeHostGrpcPropertyClient propertyClient,
-        RuntimeHostGrpcCommandClient commandClient)
+        RuntimeHostGrpcCommandClient commandClient,
+        RuntimeHostGrpcMediaControlClient mediaClient)
     {
         this.deployment =
             deployment;
@@ -802,6 +861,7 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
             propertyClient;
         this.commandClient =
             commandClient;
+        this.mediaClient = mediaClient;
     }
 
     public IRemoteObservationStream ObservationStream =>
@@ -812,6 +872,8 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
 
     public IRuntimeHostGrpcCommandClient CommandClient =>
         commandClient;
+
+    public IRuntimeHostMediaControlClient MediaClient => mediaClient;
 
     public IRemoteRuntimeDiagnosticStream CreateDiagnosticStream() =>
         new RuntimeHostGrpcDiagnosticStream(deployment.Client.Client);
@@ -832,7 +894,9 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
                 new RuntimeHostGrpcPropertyClient(
                     deployment.Client.Client),
                 new RuntimeHostGrpcCommandClient(
-                    deployment.Client.Client));
+                    deployment.Client.Client),
+                new RuntimeHostGrpcMediaControlClient(
+                    deployment.Client.MediaClient));
         }
         catch
         {

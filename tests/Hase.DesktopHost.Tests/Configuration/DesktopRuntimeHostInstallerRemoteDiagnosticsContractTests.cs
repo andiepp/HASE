@@ -108,6 +108,28 @@ public sealed class DesktopRuntimeHostInstallerRemoteDiagnosticsContractTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Installer_MediaConfiguration_ShouldRequirePolicyAndRetainCustody()
+    {
+        string script = ReadInstaller();
+
+        Assert.Contains("[string]$MediaConfigurationPath", script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Runtime Host media requires an explicit authorization-policy source.",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains("$mediaConfigurationDestinationPath",
+            ExtractProtectedTargets(script), StringComparison.Ordinal);
+        Assert.Contains("-Destination $mediaConfigurationDestinationPath",
+            script, StringComparison.Ordinal);
+        Assert.Contains("$installedFiles.Add($mediaConfigurationDestinationPath)",
+            script, StringComparison.Ordinal);
+        Assert.DoesNotContain("PrincipalId", script[..script.IndexOf(
+            ")\n\n$ErrorActionPreference", StringComparison.Ordinal)],
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string ExtractProtectedTargets(string script)
     {
         int start = script.IndexOf("$protectedTargets = @(", StringComparison.Ordinal);

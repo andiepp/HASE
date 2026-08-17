@@ -1,5 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 using Hase.Runtime.Remote.Grpc.Adapter;
+using Hase.Runtime.Media;
 using Microsoft.AspNetCore.Builder;
 using Northbound = global::Hase.Runtime.Northbound;
 
@@ -46,7 +47,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         CancellationToken cancellationToken = default,
         Northbound.RuntimeHostDiagnosticProjectionService?
             diagnosticProjectionService = null,
-        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(
             options);
@@ -87,7 +89,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                     diagnosticProjectionService,
                     authorizationPolicy,
                     certificateAuthenticationService,
-                    timeProvider);
+                    timeProvider,
+                    mediaSessionOwner);
 
             return new RuntimeHostPrivateNetworkDeployment(
                 application,
@@ -133,7 +136,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
         RuntimeHostAuthorizationPolicy? authorizationPolicy,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider)
+        TimeProvider? timeProvider,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner)
     {
         if (diagnosticProjectionService is not null)
         {
@@ -147,7 +151,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                 diagnosticProjectionService,
                 certificateAuthenticationService,
                 timeProvider,
-                authorizationPolicy);
+                authorizationPolicy,
+                mediaSessionOwner);
         }
 
         if (observationService is not null)
@@ -161,7 +166,8 @@ public sealed class RuntimeHostPrivateNetworkDeployment
                 observationService,
                 certificateAuthenticationService,
                 timeProvider,
-                authorizationPolicy);
+                authorizationPolicy,
+                mediaSessionOwner);
         }
 
         if (authorizationPolicy is not null)

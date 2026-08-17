@@ -1,9 +1,11 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.ViewModels;
 using Hase.DesktopHost.App.Views;
+using Hase.DesktopHost.App.Media;
 using Hase.Runtime.Northbound;
 using Prism.DryIoc;
 using Prism.Ioc;
@@ -25,6 +27,7 @@ public partial class App : PrismApplication
     private MainWindowViewModel? mainWindowViewModel;
     private DesktopRuntimeHostWindowShutdownCoordinator? shutdownCoordinator;
     private DesktopRuntimeHostSingleInstanceLease? singleInstanceLease;
+    private ProductionPrivateNetworkRuntimeHostBackend? productionBackend;
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -56,6 +59,15 @@ public partial class App : PrismApplication
 
         var window =
             Container.Resolve<MainWindow>();
+        if (productionBackend is not null
+            && Container.Resolve<DesktopRuntimeHostStartupConfiguration>()
+                .MediaConfiguration is not null)
+        {
+            productionBackend.ConfigureMediaBoundary(
+                new WebView2RuntimeHostMediaCaptureBoundary(
+                    window.CreateMediaCaptureWebView(),
+                    Path.Combine(AppContext.BaseDirectory, "Media", "Assets")));
+        }
         window.DataContext =
             mainWindowViewModel;
 
@@ -84,7 +96,7 @@ public partial class App : PrismApplication
         containerRegistry.RegisterInstance(
             startupConfiguration);
 
-        var productionBackend =
+        productionBackend =
             new ProductionPrivateNetworkRuntimeHostBackend(
                 startupConfiguration);
 
@@ -257,4 +269,3 @@ public partial class App : PrismApplication
         }
     }
 }
-

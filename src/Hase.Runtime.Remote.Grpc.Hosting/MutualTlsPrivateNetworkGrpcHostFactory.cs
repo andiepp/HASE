@@ -1,4 +1,5 @@
 using Hase.Runtime.Remote.Grpc.Adapter;
+using Hase.Runtime.Media;
 using Microsoft.AspNetCore.Builder;
 using Northbound = global::Hase.Runtime.Northbound;
 
@@ -109,7 +110,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider = null,
-        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(
             observationService);
@@ -124,7 +126,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             diagnosticProjectionService: null,
             authorizationPolicy,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            mediaSessionOwner);
     }
 
     /// <summary>
@@ -143,7 +146,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
         TimeProvider? timeProvider = null,
-        RuntimeHostAuthorizationPolicy? authorizationPolicy = null)
+        RuntimeHostAuthorizationPolicy? authorizationPolicy = null,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(diagnosticProjectionService);
 
@@ -157,7 +161,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             diagnosticProjectionService,
             authorizationPolicy,
             certificateAuthenticationService,
-            timeProvider);
+            timeProvider,
+            mediaSessionOwner);
     }
 
     private static WebApplication CreateCore(
@@ -172,7 +177,8 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
         RuntimeHostAuthorizationPolicy? authorizationPolicy,
         IRuntimeHostCertificateAuthenticationService
             certificateAuthenticationService,
-        TimeProvider? timeProvider)
+        TimeProvider? timeProvider,
+        RuntimeHostMediaSessionOwner? mediaSessionOwner = null)
     {
         ArgumentNullException.ThrowIfNull(
             binding);
@@ -208,6 +214,7 @@ public static class MutualTlsPrivateNetworkGrpcHostFactory
             certificateAuthenticationService,
             effectiveTimeProvider,
             clearLoggingProviders:
-                true);
+                true,
+            mediaSessionOwner);
     }
 }
