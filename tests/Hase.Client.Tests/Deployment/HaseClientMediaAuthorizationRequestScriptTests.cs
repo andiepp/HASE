@@ -27,8 +27,8 @@ public sealed class HaseClientMediaAuthorizationRequestScriptTests
 
         Assert.Contains("[bool]$profile.enabled", script);
         Assert.Contains("SetAccessRuleProtection($true, $false)", script);
-        Assert.Contains("CurrentUser", script);
-        Assert.Contains("SYSTEM", script);
+        Assert.Contains("SecurityIdentifier(\"S-1-5-18\")", script);
+        Assert.Contains("Protected directory exact", script);
         Assert.Contains("Output SHA-256", script);
     }
 
@@ -39,6 +39,18 @@ public sealed class HaseClientMediaAuthorizationRequestScriptTests
 
         Assert.Contains("profiles = $requestProfiles.ToArray()", script);
         Assert.DoesNotContain("profiles = @($requestProfiles)", script);
+    }
+
+    [Fact]
+    public void Request_ShouldReuseExactAclAndPersistOnlyAccessRules()
+    {
+        string script = ReadScript();
+
+        Assert.Contains("$directoryAlreadyExisted", script);
+        Assert.Contains("existing authorization-request directory permissions are not exact", script);
+        Assert.Contains("AccessControlSections]::Access", script);
+        Assert.Contains("$directoryInfo.SetAccessControl($directorySecurity)", script);
+        Assert.DoesNotContain("Set-Acl", script);
     }
 
     private static string ReadScript(

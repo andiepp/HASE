@@ -12,6 +12,91 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaEnablement.Common.ps1")
 
+function Test-HaseAuthorizationRequestDirectoryAcl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [System.Security.Principal.SecurityIdentifier]$CurrentUserSid
+    )
+
+    $directoryInfo = New-Object System.IO.DirectoryInfo($Path)
+    $directorySecurity = $directoryInfo.GetAccessControl(
+        [System.Security.AccessControl.AccessControlSections]::Access)
+    if (-not $directorySecurity.AreAccessRulesProtected) {
+        return $false
+    }
+
+    $rules = @($directorySecurity.GetAccessRules(
+        $true,
+        $false,
+        [System.Security.Principal.SecurityIdentifier]))
+    if ($rules.Count -ne 2) {
+        return $false
+    }
+
+    $systemSid = New-Object `
+        System.Security.Principal.SecurityIdentifier("S-1-5-18")
+    $expectedSids = @(
+        $CurrentUserSid.Value,
+        $systemSid.Value
+    ) | Sort-Object
+    $expectedInheritance = (
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit)
+    $actualSids = New-Object System.Collections.Generic.List[string]
+    foreach ($rule in $rules) {
+        if ($rule.IsInherited -or
+            $rule.AccessControlType -ne
+                [System.Security.AccessControl.AccessControlType]::Allow -or
+            $rule.FileSystemRights -ne
+                [System.Security.AccessControl.FileSystemRights]::FullControl -or
+            $rule.InheritanceFlags -ne $expectedInheritance -or
+            $rule.PropagationFlags -ne
+                [System.Security.AccessControl.PropagationFlags]::None) {
+            return $false
+        }
+        $actualSids.Add($rule.IdentityReference.Value)
+    }
+    $actualSidArray = @($actualSids.ToArray() | Sort-Object)
+    for ($index = 0; $index -lt $expectedSids.Count; $index++) {
+        if ($actualSidArray[$index] -cne $expectedSids[$index]) {
+            return $false
+        }
+    }
+    return $true
+}
+
+function Set-HaseAuthorizationRequestDirectoryAcl {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [System.Security.Principal.SecurityIdentifier]$CurrentUserSid
+    )
+
+    $directorySecurity = New-Object `
+        System.Security.AccessControl.DirectorySecurity
+    $directorySecurity.SetAccessRuleProtection($true, $false)
+    $systemSid = New-Object `
+        System.Security.Principal.SecurityIdentifier("S-1-5-18")
+    $inheritance = (
+        [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit)
+    foreach ($sid in @($CurrentUserSid, $systemSid)) {
+        $rule = New-Object `
+            System.Security.AccessControl.FileSystemAccessRule(
+                $sid,
+                [System.Security.AccessControl.FileSystemRights]::FullControl,
+                $inheritance,
+                [System.Security.AccessControl.PropagationFlags]::None,
+                [System.Security.AccessControl.AccessControlType]::Allow)
+        $directorySecurity.AddAccessRule($rule)
+    }
+    $directoryInfo = New-Object System.IO.DirectoryInfo($Path)
+    $directoryInfo.SetAccessControl($directorySecurity)
+}
+
 if ($env:COMPUTERNAME -cne "LTAEP") {
     throw "Run this tool only on LTAEP."
 }
@@ -103,26 +188,25 @@ if ($requestProfiles.Count -lt 1 -or $requestProfiles.Count -gt 16) {
 }
 
 $outputDirectory = Split-Path -Parent $outputFullPath
-if (-not (Test-Path -LiteralPath $outputDirectory -PathType Container)) {
-    [void](New-Item -ItemType Directory -Path $outputDirectory)
+$directoryAlreadyExisted = Test-Path -LiteralPath $outputDirectory `
+    -PathType Container
+$currentUserSid = (
+    [System.Security.Principal.WindowsIdentity]::GetCurrent()).User
+if ($directoryAlreadyExisted) {
+    if (-not (Test-HaseAuthorizationRequestDirectoryAcl `
+            $outputDirectory $currentUserSid)) {
+        throw "The existing authorization-request directory permissions are not exact."
+    }
 }
-$directoryAcl = Get-Acl -LiteralPath $outputDirectory
-$directoryAcl.SetAccessRuleProtection($true, $false)
-$directoryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        [System.Security.Principal.WindowsIdentity]::GetCurrent().Name,
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-$directoryAcl.SetAccessRule(
-    (New-Object System.Security.AccessControl.FileSystemAccessRule(
-        "SYSTEM",
-        "FullControl",
-        "ContainerInherit,ObjectInherit",
-        "None",
-        "Allow")))
-Set-Acl -LiteralPath $outputDirectory -AclObject $directoryAcl
+else {
+    [void](New-Item -ItemType Directory -Path $outputDirectory)
+    Set-HaseAuthorizationRequestDirectoryAcl `
+        $outputDirectory $currentUserSid
+}
+if (-not (Test-HaseAuthorizationRequestDirectoryAcl `
+        $outputDirectory $currentUserSid)) {
+    throw "The authorization-request directory permissions are not exact."
+}
 
 Write-HaseUtf8Json $outputFullPath ([ordered]@{
     formatVersion = 1
@@ -139,6 +223,8 @@ Write-Host "Repository commit exact    :" $true
 Write-Host "Enabled profile count      :" $requestProfiles.Count
 Write-Host "Output path                 :" $outputFullPath
 Write-Host "Output SHA-256              :" $requestHash
+Write-Host "Protected directory reused :" $directoryAlreadyExisted
+Write-Host "Protected directory exact  :" $true
 Write-Host "Certificate values withheld:" $true
 Write-Host ""
 Write-Host "No certificate, credential, profile, authorization, application,"
