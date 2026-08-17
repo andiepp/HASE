@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55E3 configuration and application composition implemented and automatically validated**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55F2 media binding and enablement tooling implemented for automated validation**
 
 - One camera selected from locally configured Windows Runtime Host sources,
   with optional associated microphone audio, will be presented view-only in
@@ -24,6 +24,21 @@
 - Readiness did not open a media device, request a stream, send signaling,
   change privacy settings, install a dependency, start HASE, deploy software,
   or change physical state.
+- The separately approved 55F1 installed-state discovery succeeded without
+  mutation. AEPRAKETE has two enrolled principals, both already carrying
+  ordinary grants, thirteen total grants, no media grant, no active media
+  configuration, and no deployed WebView2 application assets. LTAEP has two
+  enabled Runtime Host profiles and both private-network profiles have ready
+  certificates. Its installed Client also has no deployed WebView2 application
+  assets. Both applications therefore require application-only updates before
+  controlled physical validation; no credential replacement is required.
+- Increment 55F2 adds dormant repository-owned tooling for explicit local
+  WebView2 binding, protected candidate custody, Client credential-to-Host
+  enrollment correlation, least-privilege media grant preparation, exact
+  preflight transaction identity, atomic enablement, retained recovery
+  evidence, and independently hash-bound restoration. Production `media.js`
+  retains no device enumeration. Repository application and automated tests do
+  not execute any of the physical or mutating tools.
 - Increment 55B adds a separately versioned `hase.runtime.media.v1` protobuf
   control service, sanitized capability and session models, the six accepted
   media authorization actions, fixed negotiation limits, pre-session input

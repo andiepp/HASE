@@ -28,10 +28,13 @@ public partial class App : PrismApplication
     private DesktopRuntimeHostWindowShutdownCoordinator? shutdownCoordinator;
     private DesktopRuntimeHostSingleInstanceLease? singleInstanceLease;
     private ProductionPrivateNetworkRuntimeHostBackend? productionBackend;
+    private RuntimeHostMediaBindingStartupRequest? mediaBindingRequest;
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
     {
+        mediaBindingRequest =
+            RuntimeHostMediaBindingStartupRequest.Parse(eventArgs.Args);
         singleInstanceLease =
             DesktopRuntimeHostSingleInstanceLease.TryAcquire(
                 SingleInstanceMutexName);
@@ -54,6 +57,13 @@ public partial class App : PrismApplication
 
     protected override Window CreateShell()
     {
+        if (mediaBindingRequest is not null)
+        {
+            return new RuntimeHostMediaBindingWindow(
+                mediaBindingRequest,
+                Path.Combine(AppContext.BaseDirectory, "Media", "Assets"));
+        }
+
         mainWindowViewModel =
             Container.Resolve<MainWindowViewModel>();
 
@@ -89,6 +99,11 @@ public partial class App : PrismApplication
     protected override void RegisterTypes(
         IContainerRegistry containerRegistry)
     {
+        if (mediaBindingRequest is not null)
+        {
+            return;
+        }
+
         DesktopRuntimeHostStartupConfiguration startupConfiguration =
             DesktopRuntimeHostStartupConfiguration.Parse(
                 Environment.GetCommandLineArgs());

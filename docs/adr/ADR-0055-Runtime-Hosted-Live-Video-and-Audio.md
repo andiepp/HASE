@@ -307,8 +307,13 @@ contract is direct private-network only.
 7. **55E3 — implemented and automatically validated:** configuration and
    application composition, packaging, failure recovery, security tests, and
    6,202-test complete Release validation.
-8. **55F — planned:** separately approved controlled physical validation,
-   documentation reconciliation, and closure.
+8. **55F1 — complete:** read-only installed-state discovery on AEPRAKETE and
+   LTAEP without deployment or mutation.
+9. **55F2 — implemented for automated validation:** local media binding and
+   least-privilege transactional enablement/recovery tooling without execution.
+10. **55F3 through 55F5 — planned:** separately approved application updates,
+   controlled local binding, enablement, live validation, documentation
+   reconciliation, and closure.
 
 Every stage requires a separate proposal and approval. No later stage is
 authorized by acceptance of this decision.
@@ -358,6 +363,55 @@ application, initialize WebView2, enumerate or access a device, create a live
 peer, capture or render media, exchange live signaling, deploy software,
 publish configuration, change authorization or credentials, or mutate physical
 state. Those effects remain separately authorized 55F work.
+
+## Increment 55F1 discovery and 55F2 tooling boundary
+
+55F1 confirmed the installed physical-validation prerequisites without
+changing them. AEPRAKETE has a guided Runtime Host, a ready server certificate,
+two enrolled principals with existing non-media grants, thirteen total grants,
+no media grant, no media configuration, and no currently deployed WebView2
+application assets. LTAEP has a guided Client, two enabled and certificate-ready
+Runtime Host profiles, and no currently deployed WebView2 application assets.
+Both application-only updates are therefore required before physical media
+work; no credential replacement is required.
+
+55F2 starts from exact synchronized commit
+`0d0b94ce796c3090e1a1fed24445201007bea446`. It adds an explicit local binding
+mode to the installed Runtime Host executable. The mode is distinct from
+normal Prism composition, uses the same fixed `hase-media.local` WebView2
+origin as production capture, permits only dedicated repository-owned binding
+assets, and arms camera and microphone permission only after an explicit local
+discovery handshake. Temporary discovery tracks are stopped before a
+selection is accepted. Production `media.js` retains no `enumerateDevices`
+surface.
+
+The selected opaque identifiers are written new-file-only into a protected
+single-source version 1 candidate. Device identifiers never enter console
+output, the Client, gRPC, diagnostics, the authorization request, or recovery
+metadata. The Client request contains only enabled profiles' expected Runtime
+Host identities and SHA-256 certificate credential identities under protected
+local custody. AEPRAKETE matches exactly one request profile to its local Host
+identity and exactly one existing enrollment before resolving the principal.
+
+The read-only enablement preflight binds candidate, request, application
+profile, authorization policy, Host identity, private-network configuration,
+and enrollment registry hashes into one transaction identity. Enablement adds
+the five video-session permissions only to the resolved existing principal and
+adds `media.audio.receive` only when the candidate contains an audio binding.
+It writes exactly the external media configuration, application-profile
+reference, and authorization policy while applications are stopped. Byte-exact
+pre-state copies and a bounded manifest remain under protected recovery
+custody. Restoration requires the exact manifest hash and exact enabled-state
+hashes, disables the profile first, restores the policy, removes only the
+transaction's media configuration, and retains recovery evidence.
+
+55F2 repository application and automated validation do not run the binding,
+request, preflight, enablement, or restoration tools. They do not update an
+installed application, initialize WebView2, enumerate or access a device,
+capture media, create signaling, change configuration, authorization,
+credentials, firewall or privacy state, deploy, access serial hardware, upload
+firmware, or mutate physical state. Those actions remain separate 55F3 and
+55F4 approvals.
 
 Focused 55E3 validation and the complete Release suite succeeded on
 AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero

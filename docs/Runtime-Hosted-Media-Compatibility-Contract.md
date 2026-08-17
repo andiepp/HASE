@@ -491,6 +491,39 @@ Before physical validation, automated coverage must prove at least:
 Physical validation remains a separate 55F authorization after implementation
 and automated validation are complete.
 
+## 55F local binding and enablement custody
+
+Read-only 55F1 discovery confirms that both installed applications require an
+application-only update, while existing mTLS credentials, enrollment, and
+ordinary authorization remain usable. Application update does not imply media
+enablement and must preserve configuration, identity, trust, authorization,
+and shortcuts byte-exact.
+
+The 55F2 binding page is a separate repository-owned local-only surface under
+the existing `hase-media.local` origin. It is unavailable during normal
+Runtime Host startup. It has no network, peer-connection, signaling, or remote
+control surface. Exact device enumeration follows an explicit operator action,
+temporary tracks are released, and the chosen opaque identifiers are retained
+only in a protected local candidate. The production capture page continues to
+forbid device enumeration.
+
+A Client preparation request reveals neither an address, certificate
+thumbprint, principal, private key, nor policy content in console output. The
+Host accepts it only when one requested expected Host identity equals the local
+identity and its credential identity matches exactly one existing enrollment.
+Media grants are not broad or automatic: video-only configuration adds five
+fixed permissions to that principal and audio configuration adds the sixth
+audio permission.
+
+Enablement is a stopped-application transaction over exactly the external
+media configuration, application-profile reference, and authorization policy.
+Every input and pre-state file is hash-bound before mutation. Original profile
+and policy bytes plus a bounded transaction manifest remain protected until a
+later cleanup approval. Restoration requires unchanged enabled files and
+retains its evidence. Repository validation never executes this tooling and
+therefore has no deployment, device, authorization, credential, network, or
+physical effect.
+
 ## Explicit exclusions
 
 The initial contract excludes recording, snapshots, thumbnails, PTZ, talkback,

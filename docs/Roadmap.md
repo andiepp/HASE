@@ -1557,9 +1557,9 @@ selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
 
 ## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] Increment 55E3 configuration and application composition
-implemented and automatically validated; no deployment or physical capture
-authorized
+**Status:** [Active] Increment 55F1 read-only installed-state discovery
+complete; Increment 55F2 media binding and enablement tooling implemented for
+automated validation; no deployment or physical capture authorized
 
 ADR-0055 adds one explicitly selected view-only live camera from locally
 configured sources on a Windows HASE Runtime Host and presents it in one remote
@@ -1616,8 +1616,16 @@ Stages:
 7. 55E3 — implemented and automatically validated: explicit local
    configuration, conditional service and application composition, packaging
    custody, failure recovery, and 6,202-test complete Release validation; and
-8. 55F — planned: separately authorized controlled physical validation,
-   documentation, and closure.
+8. 55F1 — complete: read-only installed Runtime Host and Client state,
+   certificate, enrollment, authorization, process, and WebView2 application
+   readiness discovery without mutation;
+9. 55F2 — implemented for automated validation: explicit local binding mode,
+   protected preparation artifacts, exact Client credential correlation,
+   least-privilege media authorization, transactional enablement, verification,
+   and retained rollback tooling without execution; and
+10. 55F3 through 55F5 — planned and separately authorized: application-only
+   updates and binding preparation, controlled enablement and live validation,
+   documentation reconciliation, and closure.
 
 The initial objective excludes recording, snapshots, PTZ, public-internet
 relay, STUN/TURN service deployment, multiple simultaneous viewers, remotely
