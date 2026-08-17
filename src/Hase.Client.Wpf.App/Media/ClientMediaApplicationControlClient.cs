@@ -1,5 +1,6 @@
 using System.Threading.Channels;
 using Hase.Client.Configuration;
+using Hase.Client.Diagnostics;
 using Hase.Client.Media;
 
 namespace Hase.Client.Wpf.AppHost.Media;
@@ -20,6 +21,7 @@ public sealed class ClientMediaApplicationControlClient :
         clientResolver;
     private readonly IClientMediaPresentationBoundary boundary;
     private readonly SynchronizationContext uiContext;
+    private readonly ClientDiagnosticPublisher diagnostics;
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Channel<RemoteMediaNegotiationMessage> submissions =
         Channel.CreateBounded<RemoteMediaNegotiationMessage>(64);
@@ -34,7 +36,8 @@ public sealed class ClientMediaApplicationControlClient :
     public ClientMediaApplicationControlClient(
         Func<RuntimeHostProfileId, IRuntimeHostMediaControlClient> clientResolver,
         IClientMediaPresentationBoundary boundary,
-        SynchronizationContext? uiContext = null)
+        SynchronizationContext? uiContext = null,
+        ClientDiagnosticPublisher? diagnostics = null)
     {
         this.clientResolver = clientResolver ??
             throw new ArgumentNullException(nameof(clientResolver));
@@ -42,6 +45,7 @@ public sealed class ClientMediaApplicationControlClient :
         this.uiContext = uiContext ?? SynchronizationContext.Current
             ?? throw new InvalidOperationException(
                 "Client media composition requires the WPF synchronization context.");
+        this.diagnostics = diagnostics ?? new ClientDiagnosticPublisher();
         boundary.ValidatedMessage += OnValidatedMessage;
     }
 
@@ -77,9 +81,33 @@ public sealed class ClientMediaApplicationControlClient :
         }
     }
 
-    public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
-        CancellationToken cancellationToken = default) =>
-        GetSelectedClient().GetCapabilitiesAsync(cancellationToken);
+    public async Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await GetSelectedClient()
+                .GetCapabilitiesAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            diagnostics.Publish(
+                ClientDiagnosticLevel.Operational,
+                () => new ClientDiagnosticEvent(
+                    ClientDiagnosticLevel.Operational,
+                    ClientDiagnosticCategory.ClientPresentation,
+                    "MediaCapabilitiesRefreshFailed",
+                    ClientDiagnosticSeverity.Warning,
+                    outcome: ClientDiagnosticOutcome.Failed,
+                    metadata: new Dictionary<string, string>
+                    {
+                        ["failureCategory"] = exception.Category.ToString(),
+                        ["safeMessage"] = exception.Message
+                    }));
+            throw;
+        }
+    }
 
     public async Task<RemoteMediaStartResult> StartAsync(
         RemoteMediaSourceTarget target,

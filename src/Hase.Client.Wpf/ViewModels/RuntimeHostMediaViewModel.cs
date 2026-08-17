@@ -1,3 +1,4 @@
+using Hase.Client;
 using Hase.Client.Media;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -157,6 +158,13 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
             StatusText = Sources.Count == 0
                 ? "No configured cameras are available."
                 : "Select a camera and choose Start Video.";
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            Sources = [];
+            SelectedSource = null;
+            StatusText = $"Camera capabilities failed ({exception.Category}): "
+                + exception.Message;
         }
         catch
         {

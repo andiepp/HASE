@@ -92,7 +92,8 @@ public partial class App
                 ((MultiHostClientSessionCoordinator)multiHostCoordinator)
                     .GetMediaControlClient(profileId),
             mediaBoundary,
-            new DispatcherSynchronizationContext(Dispatcher));
+            new DispatcherSynchronizationContext(Dispatcher),
+            Container.Resolve<ClientDiagnosticPublisher>());
         viewModel.Media.Configure(mediaControlClient);
         mediaControlClient.SelectRuntimeHost(
             viewModel.SelectedRuntimeHost?.ProfileId);

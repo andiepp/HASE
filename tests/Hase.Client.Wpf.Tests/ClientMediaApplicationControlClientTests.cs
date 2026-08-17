@@ -1,4 +1,6 @@
+using Hase.Client;
 using Hase.Client.Configuration;
+using Hase.Client.Diagnostics;
 using Hase.Client.Media;
 using Hase.Client.Wpf.AppHost.Media;
 
@@ -19,6 +21,47 @@ public sealed class ClientMediaApplicationControlClientTests
 
         Assert.Single(capabilities);
         Assert.Equal(0, boundary.BeginCount);
+    }
+
+    [Fact]
+    public async Task CapabilityFailurePublishesOnlyNormalizedDiagnostic()
+    {
+        var remote = new FakeRemoteClient
+        {
+            CapabilitiesFailure = new RuntimeHostClientException(
+                RuntimeHostClientFailureCategory.TransportUnavailable,
+                "The Runtime Host is unavailable.",
+                new InvalidOperationException("sensitive raw transport detail"))
+        };
+        var boundary = new FakeBoundary();
+        var collector = new BoundedClientDiagnosticCollector(10);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        await using var client = new ClientMediaApplicationControlClient(
+            _ => remote,
+            boundary,
+            new SynchronizationContext(),
+            diagnostics);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("host"));
+
+        RuntimeHostClientException exception = await Assert.ThrowsAsync<
+            RuntimeHostClientException>(() => client.GetCapabilitiesAsync());
+
+        Assert.Equal(RuntimeHostClientFailureCategory.TransportUnavailable,
+            exception.Category);
+        ClientDiagnosticRecord record = Assert.Single(
+            collector.GetSnapshot().Records);
+        Assert.Equal("MediaCapabilitiesRefreshFailed", record.EventName);
+        Assert.Equal(ClientDiagnosticCategory.ClientPresentation,
+            record.Category);
+        Assert.Equal(ClientDiagnosticSeverity.Warning, record.Severity);
+        Assert.Equal(ClientDiagnosticOutcome.Failed, record.Outcome);
+        Assert.Equal("TransportUnavailable",
+            record.Metadata["failureCategory"]);
+        Assert.Equal("The Runtime Host is unavailable.",
+            record.Metadata["safeMessage"]);
+        Assert.DoesNotContain("sensitive",
+            string.Join(" ", record.Metadata.Values),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -108,14 +151,18 @@ public sealed class ClientMediaApplicationControlClientTests
 
     private sealed class FakeRemoteClient : IRuntimeHostMediaControlClient
     {
+        public Exception? CapabilitiesFailure { get; init; }
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
 
         public Task<IReadOnlyList<RemoteMediaSourceCapability>>
             GetCapabilitiesAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<RemoteMediaSourceCapability>>(
-                [new(new("camera", "generation"), "Camera",
-                    RemoteMediaSourceAvailability.Idle, true, true)]);
+            CapabilitiesFailure is null
+                ? Task.FromResult<IReadOnlyList<RemoteMediaSourceCapability>>(
+                    [new(new("camera", "generation"), "Camera",
+                        RemoteMediaSourceAvailability.Idle, true, true)])
+                : Task.FromException<IReadOnlyList<RemoteMediaSourceCapability>>(
+                    CapabilitiesFailure);
 
         public Task<RemoteMediaStartResult> StartAsync(
             RemoteMediaSourceTarget target, bool includeAudio,

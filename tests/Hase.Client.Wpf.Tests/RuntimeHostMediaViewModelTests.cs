@@ -1,3 +1,4 @@
+using Hase.Client;
 using Hase.Client.Media;
 using Hase.Client.Wpf.ViewModels;
 
@@ -132,6 +133,30 @@ public sealed class RuntimeHostMediaViewModelTests
         Assert.False(viewModel.StopCommand.CanExecute());
     }
 
+    [Fact]
+    public async Task RefreshShowsOnlyNormalizedFailureCategoryAndSafeMessage()
+    {
+        var client = new FakeClient
+        {
+            CapabilitiesFailure = new RuntimeHostClientException(
+                RuntimeHostClientFailureCategory.Authorization,
+                "The runtime-host client is not authorized.",
+                new InvalidOperationException("sensitive raw transport detail"))
+        };
+        var viewModel = Create(client);
+
+        await viewModel.RefreshAsync();
+
+        Assert.Empty(viewModel.Sources);
+        Assert.Null(viewModel.SelectedSource);
+        Assert.Equal(
+            "Camera capabilities failed (Authorization): "
+            + "The runtime-host client is not authorized.",
+            viewModel.StatusText);
+        Assert.DoesNotContain("sensitive", viewModel.StatusText,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static RuntimeHostMediaViewModel Create(FakeClient client)
     {
         var viewModel = new RuntimeHostMediaViewModel();
@@ -153,13 +178,17 @@ public sealed class RuntimeHostMediaViewModelTests
     private sealed class FakeClient : IRuntimeHostMediaControlClient
     {
         public IReadOnlyList<RemoteMediaSourceCapability> Capabilities { get; init; } = [];
+        public Exception? CapabilitiesFailure { get; init; }
         public string? StartFailureCode { get; init; }
         public List<(RemoteMediaSourceTarget Target, bool IncludeAudio)> StartRequests { get; } = [];
         public List<string> StopSessionIds { get; } = [];
 
         public Task<IReadOnlyList<RemoteMediaSourceCapability>> GetCapabilitiesAsync(
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(Capabilities);
+            CapabilitiesFailure is null
+                ? Task.FromResult(Capabilities)
+                : Task.FromException<IReadOnlyList<RemoteMediaSourceCapability>>(
+                    CapabilitiesFailure);
 
         public Task<RemoteMediaStartResult> StartAsync(
             RemoteMediaSourceTarget target,
