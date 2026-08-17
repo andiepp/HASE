@@ -20,11 +20,33 @@ public sealed class RuntimeHostMediaBindingAssetContractTests
         Assert.Contains("navigator.mediaDevices.getUserMedia", Script);
         Assert.Contains("track.stop()", Script);
         Assert.Contains("selection-confirmed", Script);
-        Assert.Contains("selectedOptions", Script);
-        Assert.Contains("selections: selectedVideoDeviceIds.map", Script);
-        Assert.Contains("multiple size=\"6\"", Html);
+        Assert.Contains("selectedVideoDeviceIds = new Set()", Script);
+        Assert.Contains("selectedCameras.map", Script);
+        Assert.DoesNotContain("selectedOptions", Script);
+        Assert.DoesNotContain("multiple size=", Html);
         Assert.DoesNotContain("RTCPeerConnection", Script);
         Assert.DoesNotContain("fetch(", Script);
+    }
+
+    [Fact]
+    public void BindingPage_ShouldUseExplicitCameraCheckboxesAndAudioOptIn()
+    {
+        Assert.Contains("id=\"cameraChoices\"", Html);
+        Assert.Contains("id=\"selectedCameraCount\"", Html);
+        Assert.Contains("Selected cameras: 0", Html);
+        Assert.Contains("checkbox.type = \"checkbox\"", Script);
+        Assert.Contains("Selected cameras: ${count}", Script);
+        Assert.Contains("selectedVideoDeviceIds.add(deviceId)", Script);
+        Assert.Contains("selectedVideoDeviceIds.delete(deviceId)", Script);
+        Assert.Contains("save.disabled = count < 1 || count > 16", Script);
+        Assert.Contains(
+            "<input id=\"discoverAudio\" type=\"checkbox\">",
+            Html);
+        Assert.DoesNotContain(
+            "<input id=\"discoverAudio\" type=\"checkbox\" checked>",
+            Html);
+        Assert.Contains("audio.value = \"\"", Script);
+        Assert.Contains("audio.disabled = !discoverAudio.checked", Script);
     }
 
     [Fact]
@@ -34,7 +56,7 @@ public sealed class RuntimeHostMediaBindingAssetContractTests
         Assert.Contains("preview.srcObject = stream", Script);
         Assert.Contains("preview.srcObject = null", Script);
         Assert.Contains("preview.pause()", Script);
-        Assert.Contains("video: { deviceId: { exact: selectedVideoDeviceId } }", Script);
+        Assert.Contains("video: { deviceId: { exact: deviceId } }", Script);
         Assert.Contains("audio: false", Script);
 
         int saveHandler = Script.IndexOf(

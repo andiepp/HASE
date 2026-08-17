@@ -20,7 +20,7 @@ h1 {
   font-size: 1.4rem;
 }
 
-label:not(.check) {
+label:not(.check):not(.camera-choice) {
   display: block;
   margin-top: 1rem;
   margin-bottom: 0.3rem;
@@ -90,6 +90,47 @@ button.secondary {
 
 #previewPanel figcaption {
   margin-top: 0.4rem;
+  color: #4b5563;
+  font-size: 0.9rem;
+}
+
+.camera-selection {
+  margin: 1rem 0 0;
+  border: 1px solid #9aa3ad;
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+}
+
+.camera-selection legend {
+  font-weight: 600;
+}
+
+.camera-choices {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.camera-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem;
+  border: 1px solid #c5cbd3;
+  border-radius: 0.2rem;
+  background: white;
+}
+
+.camera-choice input {
+  flex: 0 0 auto;
+}
+
+.selection-count {
+  margin: 0.75rem 0 0;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0.35rem 0 0;
   color: #4b5563;
   font-size: 0.9rem;
 }

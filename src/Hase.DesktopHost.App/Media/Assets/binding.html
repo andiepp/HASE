@@ -14,7 +14,7 @@
     <p id="status">Ready to discover local media devices.</p>
 
     <label class="check">
-      <input id="discoverAudio" type="checkbox" checked>
+      <input id="discoverAudio" type="checkbox">
       Discover an optional microphone
     </label>
 
@@ -26,17 +26,24 @@
         <figcaption>Local camera preview. Video and audio are not transmitted or recorded.</figcaption>
       </figure>
 
-      <label for="video">Cameras</label>
-      <select id="video" multiple size="6"></select>
-      <p class="hint">Select one or more cameras. Use Ctrl or Shift to select multiple cameras.</p>
+      <fieldset class="camera-selection">
+        <legend>Cameras</legend>
+        <div id="cameraChoices" class="camera-choices"></div>
+        <p id="selectedCameraCount" class="selection-count" aria-live="polite">
+          Selected cameras: 0
+        </p>
+        <p class="hint">
+          Check every camera to include. Selecting a camera previews it locally.
+        </p>
+      </fieldset>
 
       <label for="audio">Microphone</label>
-      <select id="audio">
+      <select id="audio" disabled>
         <option value="">No microphone</option>
       </select>
 
       <div class="actions">
-        <button id="save" type="button">Save protected candidate</button>
+        <button id="save" type="button" disabled>Save protected candidate</button>
         <button id="cancel" type="button" class="secondary">Cancel</button>
       </div>
     </section>
