@@ -7,8 +7,10 @@ namespace Hase.Client.Wpf.AppHost.Media;
 public sealed class ClientMediaWebViewPolicy
 {
     public const string VirtualHostName = "hase-media-client.local";
+    public const string AssetVersion = "55f4c16";
     public static readonly Uri ApplicationUri =
-        new($"https://{VirtualHostName}/index.html", UriKind.Absolute);
+        new($"https://{VirtualHostName}/index.html?v={AssetVersion}",
+            UriKind.Absolute);
 
     public bool IsAllowedResource(string? uriText)
     {

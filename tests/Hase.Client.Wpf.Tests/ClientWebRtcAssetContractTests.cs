@@ -91,6 +91,15 @@ public sealed class ClientWebRtcAssetContractTests
     }
 
     [Fact]
+    public void PresentationSubresourcesUseCurrentAssetVersion()
+    {
+        Assert.Contains("href=\"media.css?v=55f4c16\"", Markup);
+        Assert.Contains("src=\"media.js?v=55f4c16\"", Markup);
+        Assert.DoesNotContain("href=\"media.css\"", Markup);
+        Assert.DoesNotContain("src=\"media.js\"", Markup);
+    }
+
+    [Fact]
     public void BlockedAudioActivationIsRetryableAndObservable()
     {
         int click = Script.IndexOf(

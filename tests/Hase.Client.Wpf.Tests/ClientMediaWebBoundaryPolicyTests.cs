@@ -7,8 +7,8 @@ namespace Hase.Client.Wpf.Tests;
 public sealed class ClientMediaWebBoundaryPolicyTests
 {
     [Theory]
-    [InlineData("https://hase-media-client.local/index.html")]
-    [InlineData("https://hase-media-client.local/media.js")]
+    [InlineData("https://hase-media-client.local/index.html?v=55f4c16")]
+    [InlineData("https://hase-media-client.local/media.js?v=55f4c16")]
     public void FixedLocalResourcesAreAllowed(string uri)
     {
         Assert.True(new ClientMediaWebViewPolicy().IsAllowedResource(uri));
@@ -28,6 +28,15 @@ public sealed class ClientMediaWebBoundaryPolicyTests
     public void ViewingClientNeverGrantsMediaOrOtherBrowserPermission()
     {
         Assert.False(new ClientMediaWebViewPolicy().IsPermissionAllowed());
+    }
+
+    [Fact]
+    public void ApplicationNavigationUsesCurrentAssetVersion()
+    {
+        Assert.Equal("55f4c16", ClientMediaWebViewPolicy.AssetVersion);
+        Assert.Equal(
+            "https://hase-media-client.local/index.html?v=55f4c16",
+            ClientMediaWebViewPolicy.ApplicationUri.AbsoluteUri);
     }
 
     [Theory]
