@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Sockets;
 using Hase.Runtime.Diagnostics;
+using Hase.Transport.Serial;
 
 namespace Hase.DesktopHost.App.Hosting;
 
@@ -75,7 +76,7 @@ internal sealed class DesktopRuntimeHostEndpointStartupCoordinator
                         }));
     }
 
-    private static bool TryClassifyUnavailableFailure(
+    internal static bool TryClassifyUnavailableFailure(
         Exception exception,
         out string failureCategory)
     {
@@ -103,6 +104,18 @@ internal sealed class DesktopRuntimeHostEndpointStartupCoordinator
 
         failureCategory = exception switch
         {
+            SerialPortOpenException serialPortFailure =>
+                serialPortFailure.Failure switch
+                {
+                    SerialPortOpenFailure.Busy => "SerialPortBusy",
+                    SerialPortOpenFailure.Unavailable =>
+                        "SerialPortUnavailable",
+                    SerialPortOpenFailure.AccessDenied =>
+                        "SerialPortAccessDenied",
+                    SerialPortOpenFailure.Failed =>
+                        "SerialPortOpenFailed",
+                    _ => string.Empty
+                },
             TimeoutException => "TimedOut",
             OperationCanceledException => "TimedOut",
             SocketException => "NetworkUnavailable",

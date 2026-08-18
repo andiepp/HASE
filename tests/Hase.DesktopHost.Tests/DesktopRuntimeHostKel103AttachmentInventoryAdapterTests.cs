@@ -148,6 +148,32 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         Assert.DoesNotContain(sensitiveTarget, exception.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [MemberData(nameof(AvailabilityFailures))]
+    public async Task AttachAsync_AvailabilityFailure_ShouldPreserveSanitizedClassification(
+        Exception failure,
+        string expectedCategory)
+    {
+        const string sensitiveTarget = "sensitive-target";
+        var factory = new RecordingFactory(
+            new RuntimeContext(),
+            openFailure: failure);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+
+        DesktopRuntimeHostEndpointUnavailableException exception =
+            await Assert.ThrowsAsync<
+                DesktopRuntimeHostEndpointUnavailableException>(
+                () => service.AttachAsync(
+                    Request("kel-01", sensitiveTarget)));
+
+        Assert.Equal(expectedCategory, exception.FailureCategory);
+        Assert.Equal(1, factory.OpenCount);
+        Assert.DoesNotContain(
+            sensitiveTarget,
+            exception.ToString(),
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Inventory_AttachFindObserveAndDetach_ShouldUseAuthoritativePath()
     {
@@ -369,6 +395,54 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         Assert.DoesNotContain(sensitiveTarget, exception.ToString(), StringComparison.Ordinal);
     }
 
+    public static IEnumerable<object[]> AvailabilityFailures()
+    {
+        const string sensitiveTarget = "sensitive-target";
+
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
+                SerialPortOpenFailure.Busy,
+                new IOException(sensitiveTarget)),
+            "SerialPortBusy"
+        ];
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
+                SerialPortOpenFailure.Unavailable,
+                new IOException(sensitiveTarget)),
+            "SerialPortUnavailable"
+        ];
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
+                SerialPortOpenFailure.AccessDenied,
+                new UnauthorizedAccessException(sensitiveTarget)),
+            "SerialPortAccessDenied"
+        ];
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
+                SerialPortOpenFailure.Failed,
+                new IOException(sensitiveTarget)),
+            "SerialPortOpenFailed"
+        ];
+        yield return
+        [
+            new TimeoutException(sensitiveTarget),
+            "TimedOut"
+        ];
+        yield return
+        [
+            new IOException(sensitiveTarget),
+            "IoUnavailable"
+        ];
+    }
+
     private static EndpointAttachmentRequest Request(
         string endpointId,
         string serialTarget) =>
@@ -382,6 +456,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
         RuntimeContext context,
         string? returnedEndpointId = null,
         bool cancelOpen = false,
+        Exception? openFailure = null,
         bool failDisposal = false,
         string sensitiveTarget = "unused-sensitive-target")
         : IDesktopRuntimeHostKel103AttachmentFactory
@@ -416,6 +491,11 @@ public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
                 throw new OperationCanceledException(
                     $"Opening {sensitiveTarget} was cancelled.",
                     cancellationToken);
+            }
+
+            if (openFailure is not null)
+            {
+                throw openFailure;
             }
 
             var actualEndpointId = new EndpointId(returnedEndpointId ?? endpointId.Value);

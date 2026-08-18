@@ -122,12 +122,27 @@ public sealed class DesktopRuntimeHostKel103AttachmentService
                 }
             }
 
-            Exception sanitizedPrimary = primaryFailure is OperationCanceledException
-                ? new OperationCanceledException(
+            Exception sanitizedPrimary;
+            if (primaryFailure is OperationCanceledException)
+            {
+                sanitizedPrimary = new OperationCanceledException(
                     "KEL-103 attachment was cancelled.",
-                    cancellationToken)
-                : new InvalidOperationException(
+                    cancellationToken);
+            }
+            else if (DesktopRuntimeHostEndpointStartupCoordinator
+                .TryClassifyUnavailableFailure(
+                    primaryFailure,
+                    out string failureCategory))
+            {
+                sanitizedPrimary =
+                    new DesktopRuntimeHostEndpointUnavailableException(
+                        failureCategory);
+            }
+            else
+            {
+                sanitizedPrimary = new InvalidOperationException(
                     "The configured KEL-103 endpoint could not be attached.");
+            }
 
             if (!cleanupFailed)
             {
