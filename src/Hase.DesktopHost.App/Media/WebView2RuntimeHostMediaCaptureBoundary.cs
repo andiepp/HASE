@@ -19,6 +19,7 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
     private readonly string assetDirectory;
     private readonly RuntimeHostMediaWebViewPolicy policy;
     private readonly RuntimeHostMediaWebMessageValidator validator;
+    private readonly RuntimeHostMediaWebViewReadiness readiness;
     private bool initialized;
     private bool captureActive;
 
@@ -27,6 +28,21 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
         string assetDirectory,
         RuntimeHostMediaWebViewPolicy? policy = null,
         RuntimeHostMediaWebMessageValidator? validator = null)
+        : this(
+            webView,
+            assetDirectory,
+            policy,
+            validator,
+            new RuntimeHostMediaWebViewReadiness())
+    {
+    }
+
+    internal WebView2RuntimeHostMediaCaptureBoundary(
+        WebView2 webView,
+        string assetDirectory,
+        RuntimeHostMediaWebViewPolicy? policy,
+        RuntimeHostMediaWebMessageValidator? validator,
+        RuntimeHostMediaWebViewReadiness readiness)
     {
         this.webView = webView ?? throw new ArgumentNullException(nameof(webView));
         if (string.IsNullOrWhiteSpace(assetDirectory))
@@ -39,6 +55,8 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
         this.assetDirectory = Path.GetFullPath(assetDirectory);
         this.policy = policy ?? new RuntimeHostMediaWebViewPolicy();
         this.validator = validator ?? new RuntimeHostMediaWebMessageValidator();
+        this.readiness = readiness ?? throw new ArgumentNullException(
+            nameof(readiness));
     }
 
     public event Action<RuntimeHostMediaWebMessage>? ValidatedMessage;
@@ -64,6 +82,19 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
         }
 
         await EnsureInitializedAsync().ConfigureAwait(true);
+        try
+        {
+            await readiness.WaitAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (TimeoutException exception)
+        {
+            ValidatedMessage?.Invoke(new(
+                RuntimeHostMediaWebMessageKind.CaptureFaulted,
+                "browser-failed"));
+            throw new InvalidOperationException(
+                "The Runtime Host media WebView did not become ready.",
+                exception);
+        }
         if (captureActive)
         {
             throw new InvalidOperationException("Media capture is already active.");
@@ -278,6 +309,10 @@ public sealed class WebView2RuntimeHostMediaCaptureBoundary :
             return;
         }
 
+        if (message!.Kind == RuntimeHostMediaWebMessageKind.Ready)
+        {
+            readiness.Signal();
+        }
         ValidatedMessage?.Invoke(message!);
     }
 
