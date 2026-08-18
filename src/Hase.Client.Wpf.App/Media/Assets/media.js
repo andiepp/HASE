@@ -124,6 +124,8 @@
     remoteStream = null;
     presentationStarted = false;
     video.pause();
+    video.defaultMuted = true;
+    video.muted = true;
     video.srcObject = null;
     if (notify) {
       send("presentation-stopped");
@@ -133,6 +135,8 @@
   const begin = (message) => {
     clear(false);
     includeAudio = message.includeAudio;
+    video.defaultMuted = !includeAudio;
+    video.muted = !includeAudio;
     nextOutboundSequence = 1;
     nextInboundSequence = 1;
     localDescriptionPublished = false;

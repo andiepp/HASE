@@ -32,4 +32,49 @@ public sealed class ClientWebRtcAssetContractTests
         Assert.Contains("ice-candidate", Script);
         Assert.Contains("ice-complete", Script);
     }
+
+    [Fact]
+    public void SilentPresentationIsMutedBeforePeerAndPlaybackCreation()
+    {
+        int audioSelection = Script.IndexOf(
+            "includeAudio = message.includeAudio",
+            StringComparison.Ordinal);
+        int defaultMute = Script.IndexOf(
+            "video.defaultMuted = !includeAudio",
+            StringComparison.Ordinal);
+        int activeMute = Script.IndexOf(
+            "video.muted = !includeAudio",
+            StringComparison.Ordinal);
+        int peerCreation = Script.IndexOf(
+            "new RTCPeerConnection(peerConfiguration)",
+            StringComparison.Ordinal);
+        int playback = Script.IndexOf(
+            "video.play()",
+            StringComparison.Ordinal);
+
+        Assert.True(audioSelection >= 0);
+        Assert.True(defaultMute > audioSelection);
+        Assert.True(activeMute > defaultMute);
+        Assert.True(peerCreation > activeMute);
+        Assert.True(playback > peerCreation);
+    }
+
+    [Fact]
+    public void PresentationCleanupRestoresMutedDefault()
+    {
+        int clearStart = Script.IndexOf(
+            "const clear = (notify = true) =>",
+            StringComparison.Ordinal);
+        int beginStart = Script.IndexOf(
+            "const begin = (message) =>",
+            StringComparison.Ordinal);
+        Assert.True(clearStart >= 0);
+        Assert.True(beginStart > clearStart);
+
+        string clear = Script[clearStart..beginStart];
+
+        Assert.Contains("video.defaultMuted = true", clear);
+        Assert.Contains("video.muted = true", clear);
+        Assert.Contains("video.srcObject = null", clear);
+    }
 }
