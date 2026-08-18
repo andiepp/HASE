@@ -438,51 +438,83 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             configuration.RemoteDiagnosticsMaximumLevel));
             }
 
+            var endpointStartup =
+                new DesktopRuntimeHostEndpointStartupCoordinator(
+                    session.Publisher);
+            int successfullyAttachedEndpointCount = 0;
+
             foreach (
                 DesktopRuntimeHostNativeNetworkEndpointProfile nativeEndpoint
                 in endpointComposition.NativeNetworkEndpoints)
             {
-                await AttachNativeEndpointAsync(
-                    attachmentHost,
-                    nativeEndpoint);
+                if (await endpointStartup.TryAttachAsync(
+                        nativeEndpoint.ExpectedEndpointId,
+                        "NativeNetwork",
+                        token => AttachNativeEndpointAsync(
+                            attachmentHost,
+                            nativeEndpoint,
+                            token),
+                        cancellationToken))
+                {
+                    successfullyAttachedEndpointCount++;
+                }
             }
 
             foreach (
                 DesktopRuntimeHostCompactSerialEndpointProfile compactEndpoint
                 in endpointComposition.CompactSerialEndpoints)
             {
-                await AttachCompactEndpointAsync(
-                    attachmentHost,
-                    definitionRepository,
-                    compactEndpoint);
+                if (await endpointStartup.TryAttachAsync(
+                        compactEndpoint.ExpectedEndpointId,
+                        "CompactSerial",
+                        token => AttachCompactEndpointAsync(
+                            attachmentHost,
+                            definitionRepository,
+                            compactEndpoint,
+                            token),
+                        cancellationToken))
+                {
+                    successfullyAttachedEndpointCount++;
+                }
             }
 
             for (int index = 0; index < kel103Plans.Count; index++)
             {
-                await AttachKel103EndpointAsync(
-                    attachmentHost,
-                    endpointComposition.Kel103SerialEndpoints[index],
-                    kel103Plans[index]);
+                DesktopRuntimeHostKel103SerialEndpointProfile kel103Endpoint =
+                    endpointComposition.Kel103SerialEndpoints[index];
+                DesktopRuntimeHostKel103EndpointPlan kel103Plan =
+                    kel103Plans[index];
+
+                if (await endpointStartup.TryAttachAsync(
+                        kel103Endpoint.ExpectedEndpointId,
+                        "Kel103Serial",
+                        token => AttachKel103EndpointAsync(
+                            attachmentHost,
+                            kel103Endpoint,
+                            kel103Plan,
+                            token),
+                        cancellationToken))
+                {
+                    successfullyAttachedEndpointCount++;
+                }
             }
 
             if (configuration.IncludeByteBufferSimulation)
             {
                 await AttachByteBufferSimulationAsync(
-                    attachmentHost);
+                    attachmentHost,
+                    cancellationToken);
+                successfullyAttachedEndpointCount++;
             }
 
             PublishedRuntimeHostSnapshot snapshot =
                 composition.SnapshotProvider.Capture();
 
-            int expectedEndpointCount =
-                productionPlan.ExpectedPublishedEndpointCount;
-
-            if (snapshot.Endpoints.Count != expectedEndpointCount)
+            if (snapshot.Endpoints.Count != successfullyAttachedEndpointCount)
             {
                 throw new InvalidDataException(
-                    $"The desktop runtime host requires exactly "
-                    + $"{expectedEndpointCount} published endpoints for the "
-                    + "selected startup mode.");
+                    "The published endpoint count does not match the "
+                    + "successful startup attachment count.");
             }
 
             deployment =
@@ -618,7 +650,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
     private static async Task AttachNativeEndpointAsync(
         RuntimeEndpointAttachmentHost host,
-        DesktopRuntimeHostNativeNetworkEndpointProfile endpoint)
+        DesktopRuntimeHostNativeNetworkEndpointProfile endpoint,
+        CancellationToken cancellationToken)
     {
         var request =
             new EndpointAttachmentRequest(
@@ -631,13 +664,15 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 EndpointProvidedDescriptorSource.Instance);
 
         await host.AttachmentInventory.AttachAsync(
-            request);
+            request,
+            cancellationToken);
     }
 
     private static async Task AttachCompactEndpointAsync(
         RuntimeEndpointAttachmentHost host,
         ICompactEndpointDefinitionRepository definitionRepository,
-        DesktopRuntimeHostCompactSerialEndpointProfile endpoint)
+        DesktopRuntimeHostCompactSerialEndpointProfile endpoint,
+        CancellationToken cancellationToken)
     {
         var descriptorRepository =
             new CompactEndpointDescriptorRepositoryAdapter(
@@ -658,9 +693,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
         UsbSerialEndpointDiscoveryResult discoveryResult =
             await discoveryService.DiscoverAsync(
-                discoveryOptions);
+                discoveryOptions,
+                cancellationToken);
 
-        if (discoveryResult.VerifiedEndpoints.Count != 1)
+        if (discoveryResult.VerifiedEndpoints.Count == 0)
+        {
+            throw new DesktopRuntimeHostEndpointUnavailableException(
+                "NoVerifiedCandidate");
+        }
+
+        if (discoveryResult.VerifiedEndpoints.Count > 1)
         {
             throw new InvalidOperationException(
                 "The desktop runtime host requires exactly one "
@@ -689,13 +731,15 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 HostRepositoryDescriptorSource.Instance);
 
         await host.AttachmentInventory.AttachAsync(
-            request);
+            request,
+            cancellationToken);
     }
 
     private static async Task AttachKel103EndpointAsync(
         RuntimeEndpointAttachmentHost host,
         DesktopRuntimeHostKel103SerialEndpointProfile endpoint,
-        DesktopRuntimeHostKel103EndpointPlan plan)
+        DesktopRuntimeHostKel103EndpointPlan plan,
+        CancellationToken cancellationToken)
     {
         if (new EndpointId(endpoint.ExpectedEndpointId) != plan.ExpectedEndpointId)
         {
@@ -712,11 +756,14 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     endpoint.BaudRate)),
             HostRepositoryDescriptorSource.Instance);
 
-        await host.AttachmentInventory.AttachAsync(request);
+        await host.AttachmentInventory.AttachAsync(
+            request,
+            cancellationToken);
     }
 
     private static async Task AttachByteBufferSimulationAsync(
-        RuntimeEndpointAttachmentHost host)
+        RuntimeEndpointAttachmentHost host,
+        CancellationToken cancellationToken)
     {
         var simulation =
             new ByteBufferSimulation();
@@ -737,7 +784,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 InProcessEndpointDescriptorSource.Instance);
 
         await host.AttachmentInventory.AttachAsync(
-            request);
+            request,
+            cancellationToken);
     }
 
     private static string GetRuntimeIdentityFilePath()
