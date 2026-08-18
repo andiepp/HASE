@@ -146,7 +146,7 @@ public sealed class ClientMediaApplicationControlClient :
             }
             catch
             {
-                await TryStopRemoteAsync(client, result.Session.SessionId)
+                _ = await TryStopRemoteAsync(client, result.Session.SessionId)
                     .ConfigureAwait(false);
                 boundary.ClearPresentation();
                 throw;
@@ -209,7 +209,8 @@ public sealed class ClientMediaApplicationControlClient :
         CancelLocalSession("Media session ended during Client shutdown.");
         if (active is not null && client is not null)
         {
-            await TryStopRemoteAsync(client, active.SessionId).ConfigureAwait(false);
+            _ = await TryStopRemoteAsync(client, active.SessionId)
+                .ConfigureAwait(false);
         }
         await boundary.DisposeAsync().ConfigureAwait(false);
         gate.Dispose();
@@ -250,8 +251,11 @@ public sealed class ClientMediaApplicationControlClient :
                     .ConfigureAwait(false);
                 if (!exchange.Succeeded || exchange.Session is null)
                 {
-                    ClearSessionIfCurrent(
-                        sessionId, "Media negotiation failed.");
+                    await FailNegotiationAndStopRemoteAsync(
+                        client,
+                        sessionId,
+                        "Media negotiation failed.",
+                        exchange.FailureCode).ConfigureAwait(false);
                     return;
                 }
 
@@ -268,10 +272,13 @@ public sealed class ClientMediaApplicationControlClient :
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
-        catch
+        catch (Exception exception)
         {
-            ClearSessionIfCurrent(
-                sessionId, "The media control connection failed.");
+            await FailNegotiationAndStopRemoteAsync(
+                client,
+                sessionId,
+                "The media control connection failed.",
+                FailureCategory(exception)).ConfigureAwait(false);
         }
     }
 
@@ -351,18 +358,95 @@ public sealed class ClientMediaApplicationControlClient :
         }
     }
 
-    private async Task TryStopRemoteAsync(
+    private async Task FailNegotiationAndStopRemoteAsync(
+        IRuntimeHostMediaControlClient client,
+        string sessionId,
+        string statusText,
+        string? failureCategory)
+    {
+        PublishFailureDiagnostic(
+            "MediaNegotiationExchangeFailed",
+            failureCategory);
+
+        string? cleanupFailure = await TryStopRemoteAsync(client, sessionId)
+            .ConfigureAwait(false);
+        if (cleanupFailure is not null)
+        {
+            PublishFailureDiagnostic(
+                "MediaSessionCleanupFailed",
+                cleanupFailure);
+        }
+
+        ClearSessionIfCurrent(sessionId, statusText);
+    }
+
+    private async Task<string?> TryStopRemoteAsync(
         IRuntimeHostMediaControlClient client,
         string sessionId)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         try
         {
-            await client.StopAsync(sessionId, timeout.Token).ConfigureAwait(false);
+            RemoteMediaStopResult result = await client.StopAsync(
+                sessionId, timeout.Token).ConfigureAwait(false);
+            return result.Succeeded
+                ? null
+                : NormalizeFailureCategory(result.FailureCode);
+        }
+        catch (RuntimeHostClientException exception)
+        {
+            return NormalizeFailureCategory(exception.Category.ToString());
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            return "timed-out";
         }
         catch
         {
+            return "client-failure";
         }
+    }
+
+    private void PublishFailureDiagnostic(
+        string eventName,
+        string? failureCategory)
+    {
+        diagnostics.Publish(
+            ClientDiagnosticLevel.Operational,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Operational,
+                ClientDiagnosticCategory.ClientPresentation,
+                eventName,
+                ClientDiagnosticSeverity.Warning,
+                outcome: ClientDiagnosticOutcome.Failed,
+                metadata: new Dictionary<string, string>
+                {
+                    ["failureCategory"] =
+                        NormalizeFailureCategory(failureCategory)
+                }));
+    }
+
+    private static string FailureCategory(Exception exception) =>
+        exception is RuntimeHostClientException clientException
+            ? NormalizeFailureCategory(clientException.Category.ToString())
+            : "client-failure";
+
+    private static string NormalizeFailureCategory(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 64)
+        {
+            return "unspecified";
+        }
+
+        foreach (char character in value)
+        {
+            if (!char.IsAsciiLetterOrDigit(character) && character != '-')
+            {
+                return "unspecified";
+            }
+        }
+
+        return value;
     }
 
     private void Publish(RemoteMediaSessionSnapshot? value, string statusText)
