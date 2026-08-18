@@ -62,6 +62,68 @@ function Get-HaseMediaReplacementSources {
     return $sources
 }
 
+function Get-HaseMediaAuthorizationState {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+        [Parameter(Mandatory = $true)]
+        [string]$Role,
+        [Parameter(Mandatory = $true)]
+        [bool]$ExpectedAudioConfigured,
+        [string]$ExpectedPrincipalId = ""
+    )
+
+    $policy = Read-HaseBoundedJson $Path $Role
+    Assert-HaseExactProperties $policy @("formatVersion", "grants") $Role
+    $grants = @($policy.grants)
+    if ([int]$policy.formatVersion -ne 1) {
+        throw "The $Role version is not exact."
+    }
+
+    foreach ($grant in $grants) {
+        Assert-HaseExactProperties $grant @("principalId", "permission") `
+            "$Role grant"
+        if ([string]::IsNullOrWhiteSpace([string]$grant.principalId) -or
+            [string]::IsNullOrWhiteSpace([string]$grant.permission)) {
+            throw "A $Role grant is incomplete."
+        }
+    }
+
+    $mediaGrants = @($grants | Where-Object {
+        [string]$_.permission -like "media.*"
+    })
+    $expectedPermissions = @($script:HaseMediaPermissions)
+    if ($ExpectedAudioConfigured) {
+        $expectedPermissions += "media.audio.receive"
+    }
+    $expectedPermissions = @($expectedPermissions | Sort-Object)
+    $actualPermissions = @($mediaGrants | ForEach-Object {
+        [string]$_.permission
+    } | Sort-Object -Unique)
+    $permissionDifference = @(Compare-Object `
+        -ReferenceObject $expectedPermissions `
+        -DifferenceObject $actualPermissions)
+    $mediaPrincipals = @($mediaGrants | ForEach-Object {
+        [string]$_.principalId
+    } | Sort-Object -Unique)
+
+    if ($mediaGrants.Count -ne $expectedPermissions.Count -or
+        $permissionDifference.Count -ne 0 -or
+        $mediaPrincipals.Count -ne 1 -or
+        [string]::IsNullOrWhiteSpace($mediaPrincipals[0]) -or
+        (-not [string]::IsNullOrWhiteSpace($ExpectedPrincipalId) -and
+            $mediaPrincipals[0] -cne $ExpectedPrincipalId)) {
+        throw "The $Role media authorization is not exact."
+    }
+
+    return [pscustomobject]@{
+        Policy = $policy
+        Grants = $grants
+        PrincipalId = $mediaPrincipals[0]
+        MediaGrantCount = $mediaGrants.Count
+    }
+}
+
 function Get-HaseMediaReplacementPlan {
     param(
         [Parameter(Mandatory = $true)]
@@ -72,7 +134,8 @@ function Get-HaseMediaReplacementPlan {
         [string]$ExpectedActiveMediaHash,
         [int]$ExpectedCurrentSourceCount = 1,
         [int]$ExpectedReplacementSourceCount = 2,
-        [bool]$ExpectedAudioConfigured = $false
+        [bool]$ExpectedCurrentAudioConfigured = $false,
+        [bool]$ExpectedReplacementAudioConfigured = $false
     )
 
     Assert-HaseApplicationsStopped
@@ -144,37 +207,53 @@ function Get-HaseMediaReplacementPlan {
         -Path $mediaPath `
         -Role "active media configuration" `
         -ExpectedSourceCount $ExpectedCurrentSourceCount `
-        -ExpectedAudioConfigured $ExpectedAudioConfigured)
+        -ExpectedAudioConfigured $ExpectedCurrentAudioConfigured)
     $replacementSources = @(Get-HaseMediaReplacementSources `
         -Path $candidateFullPath `
         -Role "replacement media candidate" `
         -ExpectedSourceCount $ExpectedReplacementSourceCount `
-        -ExpectedAudioConfigured $ExpectedAudioConfigured)
+        -ExpectedAudioConfigured $ExpectedReplacementAudioConfigured)
 
-    $policy = Read-HaseBoundedJson $policyPath `
-        "Runtime Host authorization policy"
-    Assert-HaseExactProperties $policy @("formatVersion", "grants") `
-        "Runtime Host authorization policy"
-    $grants = @($policy.grants)
-    $mediaGrants = @($grants | Where-Object {
-        [string]$_.permission -like "media.*"
-    })
-    $actualPermissions = @($mediaGrants | ForEach-Object {
-        [string]$_.permission
-    } | Sort-Object -Unique)
-    $expectedPermissions = @($script:HaseMediaPermissions | Sort-Object)
-    $permissionDifference = @(Compare-Object `
-        $expectedPermissions $actualPermissions)
-    $mediaPrincipals = @($mediaGrants | ForEach-Object {
-        [string]$_.principalId
-    } | Sort-Object -Unique)
-    if ([int]$policy.formatVersion -ne 1 -or
-        $mediaGrants.Count -ne $script:HaseMediaPermissions.Count -or
-        $permissionDifference.Count -ne 0 -or
-        $mediaPrincipals.Count -ne 1 -or
-        [string]::IsNullOrWhiteSpace($mediaPrincipals[0])) {
-        throw "The existing video-only media authorization is not exact."
+    $authorization = Get-HaseMediaAuthorizationState `
+        -Path $policyPath `
+        -Role "Runtime Host authorization policy" `
+        -ExpectedAudioConfigured $ExpectedCurrentAudioConfigured
+
+    $replacementGrantDocuments =
+        New-Object System.Collections.Generic.List[object]
+    foreach ($grant in $authorization.Grants) {
+        $isAudioGrant =
+            [string]$grant.principalId -ceq $authorization.PrincipalId -and
+            [string]$grant.permission -ceq "media.audio.receive"
+        if ($isAudioGrant -and
+            $ExpectedCurrentAudioConfigured -and
+            -not $ExpectedReplacementAudioConfigured) {
+            continue
+        }
+
+        $replacementGrantDocuments.Add([ordered]@{
+            principalId = [string]$grant.principalId
+            permission = [string]$grant.permission
+        })
     }
+    if (-not $ExpectedCurrentAudioConfigured -and
+        $ExpectedReplacementAudioConfigured) {
+        $replacementGrantDocuments.Add([ordered]@{
+            principalId = $authorization.PrincipalId
+            permission = "media.audio.receive"
+        })
+    }
+    $replacementPolicyDocument = [ordered]@{
+        formatVersion = 1
+        grants = $replacementGrantDocuments.ToArray()
+    }
+    $replacementMediaGrantCount = $script:HaseMediaPermissions.Count
+    if ($ExpectedReplacementAudioConfigured) {
+        $replacementMediaGrantCount++
+    }
+    $policyChangeRequired =
+        $ExpectedCurrentAudioConfigured -ne
+            $ExpectedReplacementAudioConfigured
 
     $profileHash = Get-HaseRequiredFileHash $profilePath `
         "Runtime Host application profile"
@@ -185,10 +264,11 @@ function Get-HaseMediaReplacementPlan {
         $candidateHash,
         $profileHash,
         $policyHash,
-        $mediaPrincipals[0],
+        $authorization.PrincipalId,
         $ExpectedCurrentSourceCount,
         $ExpectedReplacementSourceCount,
-        $ExpectedAudioConfigured
+        $ExpectedCurrentAudioConfigured,
+        $ExpectedReplacementAudioConfigured
     ) -join "`n"
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
@@ -214,7 +294,12 @@ function Get-HaseMediaReplacementPlan {
         CandidateHash = $candidateHash
         CurrentSourceCount = $activeSources.Count
         ReplacementSourceCount = $replacementSources.Count
-        AudioConfigured = $ExpectedAudioConfigured
-        MediaGrantCount = $mediaGrants.Count
+        CurrentAudioConfigured = $ExpectedCurrentAudioConfigured
+        ReplacementAudioConfigured = $ExpectedReplacementAudioConfigured
+        CurrentMediaGrantCount = $authorization.MediaGrantCount
+        ReplacementMediaGrantCount = $replacementMediaGrantCount
+        MediaPrincipalId = $authorization.PrincipalId
+        PolicyChangeRequired = $policyChangeRequired
+        ReplacementPolicyDocument = $replacementPolicyDocument
     }
 }

@@ -202,19 +202,25 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         Assert.Contains(
             "-ExpectedReplacementSourceCount $ExpectedReplacementSourceCount",
             script);
+        Assert.Contains("ExpectedCurrentAudioConfigured", script);
+        Assert.Contains("ExpectedReplacementAudioConfigured", script);
+        Assert.Contains("Policy change required", script);
         Assert.DoesNotContain("-ExpectedCurrentSourceCount 1", script);
         Assert.DoesNotContain("-ExpectedReplacementSourceCount 2", script);
     }
 
     [Fact]
-    public void ReplacementPlan_ShouldRequireExactVideoOnlyAuthorization()
+    public void ReplacementPlan_ShouldRequireExactCurrentAuthorizationAndAudioTransition()
     {
         string common = ReadScript("HaseMediaReplacement.Common.ps1");
 
         Assert.Contains("ExpectedCurrentSourceCount", common);
         Assert.Contains("ExpectedReplacementSourceCount", common);
-        Assert.Contains("ExpectedAudioConfigured", common);
-        Assert.Contains("The existing video-only media authorization is not exact", common);
+        Assert.Contains("ExpectedCurrentAudioConfigured", common);
+        Assert.Contains("ExpectedReplacementAudioConfigured", common);
+        Assert.Contains("Get-HaseMediaAuthorizationState", common);
+        Assert.Contains("media.audio.receive", common);
+        Assert.Contains("PolicyChangeRequired", common);
         Assert.Contains("$script:HaseMediaPermissions", common);
         Assert.Contains("mediaConfigurationFilePath", common);
         Assert.Contains("outside guided preparation custody", common);
@@ -222,7 +228,7 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
     }
 
     [Fact]
-    public void Replacement_ShouldBackUpAndAtomicallyReplaceOnlyMedia()
+    public void Replacement_ShouldBackUpAndReplaceMediaAndChangedPolicy()
     {
         string script = ReadScript(
             "Replace-HaseDesktopRuntimeHostMedia.ps1");
@@ -233,10 +239,15 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         Assert.Contains("desktop-runtime-media.before.json", script);
         Assert.Contains("[System.IO.File]::Replace", script);
         Assert.Contains("media replacement backup", script);
+        Assert.Contains("authorization replacement backup", script);
+        Assert.Contains("runtime-host-authorization.replace-backup.json", script);
+        Assert.Contains("originalMediaGrantCount", script);
+        Assert.Contains("replacementMediaGrantCount", script);
+        Assert.Contains("currentAudioConfigured", script);
+        Assert.Contains("replacementAudioConfigured", script);
         Assert.Contains("Profile hash preserved", script);
-        Assert.Contains("Policy hash preserved", script);
+        Assert.Contains("Policy changed", script);
         Assert.DoesNotContain("$plan.ProfilePath,", script);
-        Assert.DoesNotContain("$plan.PolicyPath,", script);
         Assert.DoesNotContain("Start-Process", script);
         Assert.DoesNotContain("GetUserMedia", script,
             StringComparison.OrdinalIgnoreCase);
@@ -257,20 +268,29 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         Assert.Contains(
             "-ExpectedReplacementSourceCount $ExpectedReplacementSourceCount",
             script);
+        Assert.Contains(
+            "-ExpectedCurrentAudioConfigured $ExpectedCurrentAudioConfigured",
+            script);
+        Assert.Contains(
+            "-ExpectedReplacementAudioConfigured $ExpectedReplacementAudioConfigured",
+            script);
         Assert.DoesNotContain("-ExpectedCurrentSourceCount 1", script);
         Assert.DoesNotContain("-ExpectedReplacementSourceCount 2", script);
     }
 
     [Fact]
-    public void Replacement_ShouldRollbackActiveMediaAfterMutationFailure()
+    public void Replacement_ShouldRollbackMediaAndPolicyAfterMutationFailure()
     {
         string script = ReadScript(
             "Replace-HaseDesktopRuntimeHostMedia.ps1");
 
         Assert.Contains("catch {", script);
         Assert.Contains("Copy-Item -LiteralPath $mediaBackup", script);
+        Assert.Contains("Copy-Item -LiteralPath $policyBackup", script);
         Assert.Contains("Set-HaseFileAccessSddl $plan.MediaPath", script);
+        Assert.Contains("Set-HaseFileAccessSddl $plan.PolicyPath", script);
         Assert.Contains("rolled-back media configuration", script);
+        Assert.Contains("rolled-back authorization policy", script);
         Assert.Contains("Write-HaseUtf8Json $manifestPath $preparedManifest", script);
         Assert.Contains("replacement and rollback both failed", script);
         Assert.Contains("finally {", script);

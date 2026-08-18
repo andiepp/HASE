@@ -12,6 +12,8 @@ param(
     [int]$ExpectedCurrentSourceCount = 1,
     [ValidateRange(1, 16)]
     [int]$ExpectedReplacementSourceCount = 2,
+    [bool]$ExpectedCurrentAudioConfigured = $false,
+    [bool]$ExpectedReplacementAudioConfigured = $false,
     [string]$RepositoryPath = "H:\Development"
 )
 
@@ -31,7 +33,8 @@ $plan = Get-HaseMediaReplacementPlan `
     -ExpectedActiveMediaHash $ActiveMediaSha256 `
     -ExpectedCurrentSourceCount $ExpectedCurrentSourceCount `
     -ExpectedReplacementSourceCount $ExpectedReplacementSourceCount `
-    -ExpectedAudioConfigured $false
+    -ExpectedCurrentAudioConfigured $ExpectedCurrentAudioConfigured `
+    -ExpectedReplacementAudioConfigured $ExpectedReplacementAudioConfigured
 
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host active-media replacement preflight"
@@ -41,9 +44,14 @@ Write-Host "Repository commit exact        :" $true
 Write-Host "Applications stopped           :" $true
 Write-Host "Current source count           :" $plan.CurrentSourceCount
 Write-Host "Replacement source count       :" $plan.ReplacementSourceCount
-Write-Host "Microphone configured          :" $plan.AudioConfigured
-Write-Host "Existing media grant count     :" $plan.MediaGrantCount
-Write-Host "Profile and policy unchanged   :" $true
+Write-Host "Current microphone configured  :" $plan.CurrentAudioConfigured
+Write-Host "Replacement microphone configured:" `
+    $plan.ReplacementAudioConfigured
+Write-Host "Current media grant count      :" $plan.CurrentMediaGrantCount
+Write-Host "Replacement media grant count  :" `
+    $plan.ReplacementMediaGrantCount
+Write-Host "Policy change required         :" $plan.PolicyChangeRequired
+Write-Host "Profile unchanged              :" $true
 Write-Host "Transaction ID                 :" $plan.TransactionId
 Write-Host "Sensitive values withheld      :" $true
 Write-Host "Preflight succeeded            :" $true

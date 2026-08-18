@@ -14,6 +14,8 @@ param(
     [int]$ExpectedCurrentSourceCount = 1,
     [ValidateRange(1, 16)]
     [int]$ExpectedReplacementSourceCount = 2,
+    [bool]$ExpectedCurrentAudioConfigured = $false,
+    [bool]$ExpectedReplacementAudioConfigured = $false,
     [string]$RepositoryPath = "H:\Development"
 )
 
@@ -36,7 +38,8 @@ $plan = Get-HaseMediaReplacementPlan `
     -ExpectedActiveMediaHash $ActiveMediaSha256 `
     -ExpectedCurrentSourceCount $ExpectedCurrentSourceCount `
     -ExpectedReplacementSourceCount $ExpectedReplacementSourceCount `
-    -ExpectedAudioConfigured $false
+    -ExpectedCurrentAudioConfigured $ExpectedCurrentAudioConfigured `
+    -ExpectedReplacementAudioConfigured $ExpectedReplacementAudioConfigured
 if ($plan.TransactionId -cne $ExpectedTransactionId) {
     throw "The active-media replacement transaction changed after preflight."
 }
@@ -55,9 +58,18 @@ $mediaBackup = Join-Path $transactionDirectory `
 $manifestPath = Join-Path $transactionDirectory "transaction.json"
 $mediaTemporary = $plan.MediaPath + ".55f4." + `
     $plan.TransactionId + ".tmp"
+$policyTemporary = $plan.PolicyPath + ".55f4." + `
+    $plan.TransactionId + ".tmp"
 $mediaReplacementBackup = Join-Path $transactionDirectory `
     "desktop-runtime-media.replace-backup.json"
-$temporaryPaths = @($mediaTemporary, $mediaReplacementBackup)
+$policyReplacementBackup = Join-Path $transactionDirectory `
+    "runtime-host-authorization.replace-backup.json"
+$temporaryPaths = @(
+    $mediaTemporary,
+    $policyTemporary,
+    $mediaReplacementBackup,
+    $policyReplacementBackup
+)
 foreach ($temporaryPath in $temporaryPaths) {
     if (Test-Path -LiteralPath $temporaryPath) {
         throw "A replacement transaction temporary file already exists."
@@ -92,21 +104,55 @@ if ((Get-HaseRequiredFileHash $profileBackup "profile backup") -cne
     throw "The replacement recovery copies are not byte-exact."
 }
 
+$mediaAccessSddl = Get-HaseFileAccessSddl $plan.MediaPath
+$policyAccessSddl = Get-HaseFileAccessSddl $plan.PolicyPath
+
+$policyMutated = $false
+$mediaMutated = $false
+try {
+Copy-Item -LiteralPath $plan.CandidatePath -Destination $mediaTemporary
+if ((Get-HaseRequiredFileHash $mediaTemporary `
+        "prepared replacement media") -cne $plan.CandidateHash) {
+    throw "The prepared replacement media hash is not exact."
+}
+[void](Get-HaseMediaReplacementSources `
+    -Path $mediaTemporary `
+    -Role "prepared replacement media" `
+    -ExpectedSourceCount $plan.ReplacementSourceCount `
+    -ExpectedAudioConfigured $plan.ReplacementAudioConfigured)
+
+$replacementPolicyHash = $plan.PolicyHash
+if ($plan.PolicyChangeRequired) {
+    Write-HaseUtf8Json $policyTemporary $plan.ReplacementPolicyDocument
+    $replacementPolicyHash = Get-HaseRequiredFileHash $policyTemporary `
+        "prepared replacement authorization policy"
+    [void](Get-HaseMediaAuthorizationState `
+        -Path $policyTemporary `
+        -Role "prepared replacement authorization policy" `
+        -ExpectedAudioConfigured $plan.ReplacementAudioConfigured `
+        -ExpectedPrincipalId $plan.MediaPrincipalId)
+}
+
 $preparedManifest = [ordered]@{
-    formatVersion = 1
+    formatVersion = 2
     transactionId = $plan.TransactionId
     state = "prepared"
     originalProfileSha256 = $plan.ProfileHash
     originalPolicySha256 = $plan.PolicyHash
+    replacementPolicySha256 = $replacementPolicyHash
     originalMediaSha256 = $plan.ActiveMediaHash
     replacementMediaSha256 = $plan.CandidateHash
     candidateSha256 = $plan.CandidateHash
     originalSourceCount = $plan.CurrentSourceCount
     replacementSourceCount = $plan.ReplacementSourceCount
-    mediaGrantCount = $plan.MediaGrantCount
-    audioConfigured = $plan.AudioConfigured
+    originalMediaGrantCount = $plan.CurrentMediaGrantCount
+    replacementMediaGrantCount = $plan.ReplacementMediaGrantCount
+    currentAudioConfigured = $plan.CurrentAudioConfigured
+    replacementAudioConfigured = $plan.ReplacementAudioConfigured
+    policyChanged = $plan.PolicyChangeRequired
 }
-if ($transactionDirectoryReused) {
+if ($transactionDirectoryReused -and
+    (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     $existingManifest = Read-HaseBoundedJson $manifestPath `
         "existing media replacement manifest"
     Assert-HaseExactProperties $existingManifest @(
@@ -115,16 +161,20 @@ if ($transactionDirectoryReused) {
         "state",
         "originalProfileSha256",
         "originalPolicySha256",
+        "replacementPolicySha256",
         "originalMediaSha256",
         "replacementMediaSha256",
         "candidateSha256",
         "originalSourceCount",
         "replacementSourceCount",
-        "mediaGrantCount",
-        "audioConfigured"
+        "originalMediaGrantCount",
+        "replacementMediaGrantCount",
+        "currentAudioConfigured",
+        "replacementAudioConfigured",
+        "policyChanged"
     ) "existing media replacement manifest"
     $existingManifestExact =
-        [int]$existingManifest.formatVersion -eq 1 -and
+        [int]$existingManifest.formatVersion -eq 2 -and
         [string]$existingManifest.transactionId -ceq
             $plan.TransactionId -and
         [string]$existingManifest.state -ceq "prepared" -and
@@ -132,6 +182,8 @@ if ($transactionDirectoryReused) {
             $plan.ProfileHash -and
         [string]$existingManifest.originalPolicySha256 -ceq
             $plan.PolicyHash -and
+        [string]$existingManifest.replacementPolicySha256 -ceq
+            $replacementPolicyHash -and
         [string]$existingManifest.originalMediaSha256 -ceq
             $plan.ActiveMediaHash -and
         [string]$existingManifest.replacementMediaSha256 -ceq
@@ -142,11 +194,19 @@ if ($transactionDirectoryReused) {
             $plan.CurrentSourceCount -and
         [int]$existingManifest.replacementSourceCount -eq
             $plan.ReplacementSourceCount -and
-        [int]$existingManifest.mediaGrantCount -eq
-            $plan.MediaGrantCount -and
-        $existingManifest.audioConfigured -is [bool] -and
-        [bool]$existingManifest.audioConfigured -eq
-            $plan.AudioConfigured
+        [int]$existingManifest.originalMediaGrantCount -eq
+            $plan.CurrentMediaGrantCount -and
+        [int]$existingManifest.replacementMediaGrantCount -eq
+            $plan.ReplacementMediaGrantCount -and
+        $existingManifest.currentAudioConfigured -is [bool] -and
+        [bool]$existingManifest.currentAudioConfigured -eq
+            $plan.CurrentAudioConfigured -and
+        $existingManifest.replacementAudioConfigured -is [bool] -and
+        [bool]$existingManifest.replacementAudioConfigured -eq
+            $plan.ReplacementAudioConfigured -and
+        $existingManifest.policyChanged -is [bool] -and
+        [bool]$existingManifest.policyChanged -eq
+            $plan.PolicyChangeRequired
     if (-not $existingManifestExact) {
         throw "The existing prepared replacement transaction is not exact."
     }
@@ -155,27 +215,27 @@ else {
     Write-HaseUtf8Json $manifestPath $preparedManifest
 }
 
-$mediaAccessSddl = Get-HaseFileAccessSddl $plan.MediaPath
-$mutationStarted = $false
-try {
-    Copy-Item -LiteralPath $plan.CandidatePath `
-        -Destination $mediaTemporary
-    if ((Get-HaseRequiredFileHash $mediaTemporary `
-            "prepared replacement media") -cne $plan.CandidateHash) {
-        throw "The prepared replacement media hash is not exact."
+    if ($plan.PolicyChangeRequired) {
+        [System.IO.File]::Replace(
+            $policyTemporary,
+            $plan.PolicyPath,
+            $policyReplacementBackup,
+            $true)
+        $policyMutated = $true
+        if ((Get-HaseRequiredFileHash $policyReplacementBackup `
+                "authorization replacement backup") -cne
+                $plan.PolicyHash) {
+            throw "The authorization replacement backup is not byte-exact."
+        }
+        Set-HaseFileAccessSddl $plan.PolicyPath $policyAccessSddl
     }
-    [void](Get-HaseMediaReplacementSources `
-        -Path $mediaTemporary `
-        -Role "prepared replacement media" `
-        -ExpectedSourceCount $plan.ReplacementSourceCount `
-        -ExpectedAudioConfigured $plan.AudioConfigured)
 
-    $mutationStarted = $true
     [System.IO.File]::Replace(
         $mediaTemporary,
         $plan.MediaPath,
         $mediaReplacementBackup,
         $true)
+    $mediaMutated = $true
     if ((Get-HaseRequiredFileHash $mediaReplacementBackup `
             "media replacement backup") -cne $plan.ActiveMediaHash) {
         throw "The media replacement backup is not byte-exact."
@@ -187,37 +247,42 @@ try {
         (Get-HaseRequiredFileHash $plan.ProfilePath `
             "preserved application profile") -cne $plan.ProfileHash -or
         (Get-HaseRequiredFileHash $plan.PolicyPath `
-            "preserved authorization policy") -cne $plan.PolicyHash) {
+            "replaced authorization policy") -cne
+            $replacementPolicyHash) {
         throw "The active-media replacement failed independent hash verification."
     }
     [void](Get-HaseMediaReplacementSources `
         -Path $plan.MediaPath `
         -Role "replaced media configuration" `
         -ExpectedSourceCount $plan.ReplacementSourceCount `
-        -ExpectedAudioConfigured $plan.AudioConfigured)
+        -ExpectedAudioConfigured $plan.ReplacementAudioConfigured)
+    [void](Get-HaseMediaAuthorizationState `
+        -Path $plan.PolicyPath `
+        -Role "replaced Runtime Host authorization policy" `
+        -ExpectedAudioConfigured $plan.ReplacementAudioConfigured `
+        -ExpectedPrincipalId $plan.MediaPrincipalId)
 
-    Write-HaseUtf8Json $manifestPath ([ordered]@{
-        formatVersion = 1
-        transactionId = $plan.TransactionId
-        state = "replaced"
-        originalProfileSha256 = $plan.ProfileHash
-        originalPolicySha256 = $plan.PolicyHash
-        originalMediaSha256 = $plan.ActiveMediaHash
-        replacementMediaSha256 = $plan.CandidateHash
-        candidateSha256 = $plan.CandidateHash
-        originalSourceCount = $plan.CurrentSourceCount
-        replacementSourceCount = $plan.ReplacementSourceCount
-        mediaGrantCount = $plan.MediaGrantCount
-        audioConfigured = $plan.AudioConfigured
-    })
+    $replacedManifest = [ordered]@{}
+    foreach ($property in $preparedManifest.GetEnumerator()) {
+        $replacedManifest[$property.Key] = $property.Value
+    }
+    $replacedManifest["state"] = "replaced"
+    Write-HaseUtf8Json $manifestPath $replacedManifest
 }
 catch {
     $replacementFailure = $_
-    if ($mutationStarted) {
+    if ($policyMutated -or $mediaMutated) {
         try {
-            Copy-Item -LiteralPath $mediaBackup `
-                -Destination $plan.MediaPath -Force
-            Set-HaseFileAccessSddl $plan.MediaPath $mediaAccessSddl
+            if ($mediaMutated) {
+                Copy-Item -LiteralPath $mediaBackup `
+                    -Destination $plan.MediaPath -Force
+                Set-HaseFileAccessSddl $plan.MediaPath $mediaAccessSddl
+            }
+            if ($policyMutated) {
+                Copy-Item -LiteralPath $policyBackup `
+                    -Destination $plan.PolicyPath -Force
+                Set-HaseFileAccessSddl $plan.PolicyPath $policyAccessSddl
+            }
             if ((Get-HaseRequiredFileHash $plan.MediaPath `
                     "rolled-back media configuration") -cne
                     $plan.ActiveMediaHash -or
@@ -225,10 +290,15 @@ catch {
                     "preserved application profile") -cne
                     $plan.ProfileHash -or
                 (Get-HaseRequiredFileHash $plan.PolicyPath `
-                    "preserved authorization policy") -cne
+                    "rolled-back authorization policy") -cne
                     $plan.PolicyHash) {
                 throw "The active-media rollback hashes are not exact."
             }
+            [void](Get-HaseMediaAuthorizationState `
+                -Path $plan.PolicyPath `
+                -Role "rolled-back Runtime Host authorization policy" `
+                -ExpectedAudioConfigured $plan.CurrentAudioConfigured `
+                -ExpectedPrincipalId $plan.MediaPrincipalId)
             Write-HaseUtf8Json $manifestPath $preparedManifest
         }
         catch {
@@ -249,18 +319,21 @@ $manifestHash = Get-HaseRequiredFileHash $manifestPath `
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host active-media replacement succeeded"
 Write-Host ""
-Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
-Write-Host "Transaction ID             :" $plan.TransactionId
-Write-Host "Recovery directory         :" $transactionDirectory
-Write-Host "Recovery manifest SHA-256  :" $manifestHash
-Write-Host "Original source count      :" $plan.CurrentSourceCount
-Write-Host "Replacement source count   :" $plan.ReplacementSourceCount
-Write-Host "Media grant count preserved:" $plan.MediaGrantCount
-Write-Host "Profile hash preserved     :" $true
-Write-Host "Policy hash preserved      :" $true
-Write-Host "Microphone configured      :" $plan.AudioConfigured
-Write-Host "Sensitive values withheld  :" $true
+Write-Host "Computer exact               :" `
+    ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Transaction ID               :" $plan.TransactionId
+Write-Host "Recovery directory           :" $transactionDirectory
+Write-Host "Recovery manifest SHA-256    :" $manifestHash
+Write-Host "Original source count        :" $plan.CurrentSourceCount
+Write-Host "Replacement source count     :" $plan.ReplacementSourceCount
+Write-Host "Original media grant count   :" $plan.CurrentMediaGrantCount
+Write-Host "Replacement media grant count:" $plan.ReplacementMediaGrantCount
+Write-Host "Current microphone configured:" $plan.CurrentAudioConfigured
+Write-Host "Replacement microphone configured:" `
+    $plan.ReplacementAudioConfigured
+Write-Host "Policy changed               :" $plan.PolicyChangeRequired
+Write-Host "Profile hash preserved       :" $true
+Write-Host "Sensitive values withheld    :" $true
 Write-Host ""
 Write-Host "No application was started and no device, capture, signaling,"
-Write-Host "authorization, credential, serial, firmware, or physical output"
-Write-Host "was accessed."
+Write-Host "credential, serial, firmware, or physical output was accessed."
