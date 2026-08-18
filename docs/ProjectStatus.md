@@ -1,18 +1,18 @@
 # Project Status
 
-## Active architectural objective — ADR-0055
+## Completed architectural objective — ADR-0055
 
-**ADR-0055 — Runtime-Hosted Live Video and Audio — Increment 55F4 multi-camera local binding automatically validated**
+**ADR-0055 — Runtime-Hosted Live Video and Audio — implemented, physically validated, and closed at 6,349 passing tests**
 
 - One camera selected from locally configured Windows Runtime Host sources,
-  with optional associated microphone audio, will be presented view-only in
-  one remote HASE WPF Client session.
+  with optional associated microphone audio, is presented view-only in one
+  remote HASE WPF Client session.
 - The existing HASE gRPC/mTLS path remains the control plane for capability
   discovery, exact authorization, bounded signaling, status, and explicit
   Client-controlled start and stop.
 - Continuous media is excluded from HASE Properties, Events, ordinary gRPC
   messages, diagnostics, and ESP32 Protocol Version 1. The separate media
-  plane will use direct private-network WebRTC with DTLS-SRTP encryption.
+  plane uses direct private-network WebRTC with DTLS-SRTP encryption.
 - Microsoft Edge WebView2 embedded in the existing WPF applications is the
   selected initial capture and presentation boundary. C# retains ownership of
   HASE identity, authorization, lifecycle, configuration, and diagnostics.
@@ -51,13 +51,32 @@
   remain protected on the Runtime Host. Deterministic logical IDs and
   sanitized display names are what the already implemented Client selector
   receives. One active viewer/session remains the application-wide limit.
-- Focused 55F4 multi-camera binding validation passes 63 tests. The complete
-  Release suite passes 6,272 tests with zero failures and zero skips; the
-  successful build reports 61 warnings. The exact implementation remains 20
-  unstaged paths pending documentation acceptance and commit. Validation did
-  not start an application, initialize WebView2, access a media device, deploy,
-  or change configuration, authorization, credentials, recovery, or physical
-  state.
+- Initial focused 55F4 multi-camera binding validation passed 63 tests and its
+  complete Release suite passed 6,272 tests. Approved follow-on increments
+  completed transactional two-camera and optional-audio rebind, durable
+  WebView2 custody, unavailable-endpoint containment, readiness waits,
+  sanitized failure classification, deterministic asset invalidation, and
+  separate video/audio presentation.
+- The final implementation baseline is commit
+  `0c8b113cd05641ccd478d4bed017ef0c12a5f92c`. Its complete Release suite passes
+  6,349 tests with zero failures and zero skips. AEPRAKETE, LABC, and LTAEP
+  were clean and synchronized for the accepted deployment and physical proof.
+- Physical validation confirmed two cameras, first-attempt live video and clean
+  stop for both, repeated switching, and optional microphone playback only
+  after explicit Client audio activation. Runtime Host remained Ready, the
+  Client remained connected, and the accepted run contained no media-boundary,
+  negotiation, cleanup, Error, or Critical diagnostic.
+- Unavailable ESP32 and KEL-103 validation confirmed that Runtime Host startup
+  publishes only available endpoints and records a scoped
+  `EndpointStartupUnavailable` warning instead of faulting. Restoring KEL-103
+  returned all three configured endpoints on the first startup without
+  changing the load input.
+- Protected transactional media-replacement recovery manifests and byte-exact
+  copies remain in local Runtime Host recovery custody. Closure does not delete
+  or publish them.
+- Increment 55F5 reconciles the ADR, Project Status, and Roadmap and adds the
+  [Arduino Uno Compact Endpoint How-To](Arduino-Uno-Compact-Endpoint-How-To.md).
+  It is documentation-only. ADR-0055 is closed.
 - Increment 55B adds a separately versioned `hase.runtime.media.v1` protobuf
   control service, sanitized capability and session models, the six accepted
   media authorization actions, fixed negotiation limits, pre-session input

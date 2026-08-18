@@ -1552,14 +1552,13 @@ Events, reconnect recovery, and the complete native Protocol Version 1
 descriptor were physically validated. The native descriptor has no Compact
 Serial numeric descriptor-version field.
 
-Diagnostic Export and Offline Analysis remains accepted but is deferred. The
-selected next objective is ADR-0055 Runtime-Hosted Live Video and Audio.
+Diagnostic Export and Offline Analysis remains accepted but is deferred.
+ADR-0055 was selected next and is now completed below.
 
-## Active objective — ADR-0055 Runtime-Hosted Live Video and Audio
+## Completed objective — ADR-0055 Runtime-Hosted Live Video and Audio
 
-**Status:** [Active] first controlled 55F3 live-video validation complete;
-Increment 55F4 multi-camera local binding automatically validated with 6,272
-passing tests; no additional deployment or device access authorized
+**Status:** [Completed] implemented, physically validated, documented, and
+closed by Increment 55F5 at the 6,349-test baseline
 
 ADR-0055 adds one explicitly selected view-only live camera from locally
 configured sources on a Windows HASE Runtime Host and presents it in one remote
@@ -1628,14 +1627,23 @@ Stages:
    validation complete. Explicit Start displayed live video on LTAEP; Stop
    released capture; Runtime Host and three existing endpoints remained
    running and the Client remained connected.
-11. 55F4 — implemented and automatically validated: select one through sixteen
-   distinct cameras in the local protected binding flow and expose only
-   deterministic logical names through the existing Client selector. Focused
-   validation passes 63 tests and the complete Release suite passes 6,272 tests
-   with 61 build warnings. Any deployment or multi-device validation remains a
-   separate approval.
-12. 55F5 — planned and separately authorized: final documentation
-   reconciliation, recovery-evidence disposition, and closure.
+11. 55F4 — complete: protected multi-camera preparation; transactional
+   two-camera and optional-audio rebind; durable WebView2 custody; available-
+   endpoint-only Runtime Host startup; deterministic first-attempt Client
+   presentation; explicit audio activation; and split video/audio rendering.
+   Controlled validation confirms both cameras, switching, clean stop,
+   optional microphone playback, and unavailable/restored endpoint behavior.
+   The final implementation commit is
+   `0c8b113cd05641ccd478d4bed017ef0c12a5f92c`, with 6,349 passing tests.
+12. 55F5 — complete: ADR, Project Status, and Roadmap reconciliation; retained
+   protected recovery evidence; Arduino Uno Compact endpoint authoring
+   guidance; and closure.
+
+The [Arduino Uno Compact Endpoint How-To](Arduino-Uno-Compact-Endpoint-How-To.md)
+records the supported Boolean and millivolt Property mappings, parameterless
+Commands, null-payload Events, descriptor registration, Runtime Host endpoint
+composition, and the C# discovery change required before multiple identical
+VID/PID boards can be attached deterministically.
 
 The initial objective excludes recording, snapshots, PTZ, public-internet
 relay, STUN/TURN service deployment, multiple simultaneous viewers, remotely

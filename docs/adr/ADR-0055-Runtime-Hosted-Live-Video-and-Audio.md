@@ -1,8 +1,9 @@
 # ADR-0055 — Runtime-Hosted Live Video and Audio
 
-- Status: Accepted; Increment 55E3 configuration and application composition
-  implemented and automatically validated
+- Status: Accepted, implemented, physically validated, and closed by Increment
+  55F5 at the 6,349-test baseline
 - Date: 2026-08-16
+- Closed: 2026-08-18
 
 ## Context
 
@@ -315,12 +316,13 @@ contract is direct private-network only.
    protected local binding and request transfer, transactional enablement, and
    explicit Start/Stop live-video proof while existing endpoints and the Client
    remained healthy.
-11. **55F4 — implemented and automatically validated:** bounded multi-camera selection in
-   the local binding candidate and enablement preflight, retaining local device
-   custody and the existing sanitized Client selector; 63 focused and 6,272
-   complete Release tests pass.
-12. **55F5 — planned:** final documentation reconciliation, evidence custody,
-   and closure.
+11. **55F4 — complete:** bounded two-camera binding, transactional rebind,
+   durable WebView2 custody, unavailable-endpoint containment, deterministic
+   first-attempt video presentation, optional microphone authorization and
+   explicit split video/audio presentation. The final complete Release suite
+   passes 6,349 tests and controlled physical validation succeeds.
+12. **55F5 — complete:** final documentation reconciliation, retained recovery
+   evidence, Arduino Uno Compact endpoint authoring guidance, and closure.
 
 Every stage requires a separate proposal and approval. No later stage is
 authorized by acceptance of this decision.
@@ -453,19 +455,89 @@ perform physical work. Any installed-application update, new candidate,
 restoration/re-enable transaction, or multi-device proof remains a separate
 explicit approval after source acceptance.
 
-Focused 55F4 validation passes 63 tests. The complete Release suite passes
-6,272 tests with zero failures and zero skips; the successful build reports 61
-warnings. The exact 20-path source and documentation scope remains unstaged
-pending acceptance and commit. Automated validation performed no application
-start, WebView2 initialization, device enumeration or access, capture,
-signaling, deployment, configuration or authorization mutation, credential or
-ACL change, recovery change, serial access, firmware upload, or physical work.
+The initial 55F4 multi-camera source passed 63 focused tests and 6,272 complete
+Release tests. Subsequent approved 55F4C4 through 55F4C17 increments completed
+the deployed boundary described below. The final implementation baseline is
+commit `0c8b113cd05641ccd478d4bed017ef0c12a5f92c`; its complete Release suite
+passes 6,349 tests with zero failures and zero skips.
 
 Focused 55E3 validation and the complete Release suite succeeded on
 AEPRAKETE. The complete suite passes 6,202 tests with zero failures and zero
 skips; the successful build reports 39 warnings. The exact implementation
 scope is 54 paths and was explicitly accepted for commit from baseline
 `1c115e0e4f12b0b10d2cddbca9b90f50bf70523f`.
+
+## Increment 55F4 completion evidence and 55F5 closure
+
+The approved 55F4C4 through 55F4C17 sequence completed the production media
+boundary without changing its architectural ownership or exclusions:
+
+- transactional active-media replacement retained exact pre-state recovery
+  copies, protected manifests, candidate custody, profile integrity, and
+  least-privilege authorization transitions;
+- two distinct camera bindings were activated and remained selectable through
+  sanitized logical identities; repeated Camera 1/Camera 2 switching and clean
+  stop succeeded;
+- Runtime Host endpoint startup now contains an unavailable native endpoint or
+  KEL-103 as a scoped `EndpointStartupUnavailable` warning while publishing
+  every successfully attached endpoint and remaining Ready;
+- Runtime Host WebView2 data moved from replaceable application custody to a
+  durable protected profile and survived application-only updates;
+- Runtime Host and Client media boundaries wait for WebView readiness and the
+  Client contains negotiation and presentation failures with sanitized,
+  observable classifications;
+- deterministic Client cache invalidation and separate video/audio elements
+  removed stale-asset ambiguity and browser autoplay coupling; and
+- optional microphone selection adds only `media.audio.receive`, presents
+  video silently first, and requires an explicit Client `Enable Audio` gesture
+  before remote audio playback.
+
+Automated validation at the final implementation commit
+`0c8b113cd05641ccd478d4bed017ef0c12a5f92c` passes 6,349 tests with zero
+failures and zero skips. AEPRAKETE, LABC, and LTAEP repositories were clean and
+synchronized before deployment and validation.
+
+Controlled physical validation on AEPRAKETE and LTAEP confirmed first-attempt
+Runtime Host and Client startup, Runtime Host Ready state, two listed cameras,
+first-attempt live video and clean stop for both cameras, repeated switching,
+optional microphone playback after the explicit Client activation gesture,
+and clean application shutdown. The durable WebView2 profile was preserved
+without manual cache clearing. No `MediaBoundaryFaulted`, negotiation failure,
+cleanup failure, Error, or Critical diagnostic remained in the accepted run.
+
+Unavailable-endpoint validation separately confirmed that a disconnected
+KEL-103 did not fault Runtime Host startup: Arduino Uno and ESP32 remained
+Ready, the KEL-103 was absent from Runtime Host and Client inventories, and one
+scoped warning reported `Kel103Serial` / `SerialPortUnavailable`. Reconnecting
+the KEL-103 restored all three endpoints on the first Runtime Host start
+without changing its load input. Earlier unavailable ESP32 validation likewise
+retained only the available endpoints.
+
+The protected recovery directories and manifests created by the transactional
+media replacements remain in local Runtime Host recovery custody. Closure does
+not delete, relocate, publish, or weaken them. They remain available for an
+explicitly authorized recovery action and are not ordinary repository
+artifacts.
+
+Sanitized retained recovery identities are:
+
+| Transaction | Purpose | Recovery manifest SHA-256 |
+| --- | --- | --- |
+| `16dadcc1519c3219bbbc67ea1955fd0a815b1dd66071407c049ca7d54a088522` | one-camera to two-camera replacement | `167CF38F0F170D6E32EF9DB179A5E71F10417C5AE27D8759D49C25B46CD96CF1` |
+| `4af7e9165be6abbe8ee59e0aae512a3123cc1f798f651c5116c66ea92383d7b8` | durable-profile two-camera rebind | `CDF32C9BAFCD62256F08789570EDE2A4126F76A9FD20273EF625FE57DC3FD844` |
+| `c7e0ea43dae81a0bd0820e572f50626d976a6821606bcec8771e7a28c16369fa` | optional-microphone authorization and rebind | `55017CA4F482D1CFF016C3BDB6A10A3F7A85E529E8A9214B6DC11B07C876E1D2` |
+
+The accepted active state contains two camera sources, one configured
+microphone binding, and six media grants. Device identifiers, credentials, and
+authorization subjects remain withheld from documentation.
+
+Increment 55F5 changes documentation only. It reconciles this ADR,
+`ProjectStatus.md`, and `Roadmap.md`, and adds the
+[Arduino Uno Compact Endpoint How-To](../Arduino-Uno-Compact-Endpoint-How-To.md).
+It adds no application, protocol, configuration, authorization, credential,
+deployment, recovery, device, media, serial, firmware, or physical change.
+ADR-0055 is closed. Any extension beyond the accepted initial scope requires a
+new architectural objective or an explicit follow-on decision.
 
 ## Increment 55B effects, validation, and rollback
 
