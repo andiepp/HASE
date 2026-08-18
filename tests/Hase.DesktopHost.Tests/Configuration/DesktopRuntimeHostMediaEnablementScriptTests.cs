@@ -188,6 +188,25 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
     }
 
     [Fact]
+    public void ReplacementPreflight_ShouldExposeBoundedCountsWithLegacyDefaults()
+    {
+        string script = ReadScript(
+            "Test-HaseDesktopRuntimeHostMediaReplacement.ps1");
+
+        Assert.Contains("[ValidateRange(1, 16)]", script);
+        Assert.Contains("[int]$ExpectedCurrentSourceCount = 1", script);
+        Assert.Contains("[int]$ExpectedReplacementSourceCount = 2", script);
+        Assert.Contains(
+            "-ExpectedCurrentSourceCount $ExpectedCurrentSourceCount",
+            script);
+        Assert.Contains(
+            "-ExpectedReplacementSourceCount $ExpectedReplacementSourceCount",
+            script);
+        Assert.DoesNotContain("-ExpectedCurrentSourceCount 1", script);
+        Assert.DoesNotContain("-ExpectedReplacementSourceCount 2", script);
+    }
+
+    [Fact]
     public void ReplacementPlan_ShouldRequireExactVideoOnlyAuthorization()
     {
         string common = ReadScript("HaseMediaReplacement.Common.ps1");
@@ -221,6 +240,25 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         Assert.DoesNotContain("Start-Process", script);
         Assert.DoesNotContain("GetUserMedia", script,
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Replacement_ShouldExposeBoundedCountsWithLegacyDefaults()
+    {
+        string script = ReadScript(
+            "Replace-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("[ValidateRange(1, 16)]", script);
+        Assert.Contains("[int]$ExpectedCurrentSourceCount = 1", script);
+        Assert.Contains("[int]$ExpectedReplacementSourceCount = 2", script);
+        Assert.Contains(
+            "-ExpectedCurrentSourceCount $ExpectedCurrentSourceCount",
+            script);
+        Assert.Contains(
+            "-ExpectedReplacementSourceCount $ExpectedReplacementSourceCount",
+            script);
+        Assert.DoesNotContain("-ExpectedCurrentSourceCount 1", script);
+        Assert.DoesNotContain("-ExpectedReplacementSourceCount 2", script);
     }
 
     [Fact]

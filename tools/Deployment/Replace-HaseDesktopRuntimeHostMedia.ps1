@@ -10,6 +10,10 @@ param(
     [string]$ActiveMediaSha256,
     [Parameter(Mandatory = $true)]
     [string]$ExpectedTransactionId,
+    [ValidateRange(1, 16)]
+    [int]$ExpectedCurrentSourceCount = 1,
+    [ValidateRange(1, 16)]
+    [int]$ExpectedReplacementSourceCount = 2,
     [string]$RepositoryPath = "H:\Development"
 )
 
@@ -30,8 +34,8 @@ $plan = Get-HaseMediaReplacementPlan `
     -CandidatePath $CandidatePath `
     -ExpectedCandidateHash $CandidateSha256 `
     -ExpectedActiveMediaHash $ActiveMediaSha256 `
-    -ExpectedCurrentSourceCount 1 `
-    -ExpectedReplacementSourceCount 2 `
+    -ExpectedCurrentSourceCount $ExpectedCurrentSourceCount `
+    -ExpectedReplacementSourceCount $ExpectedReplacementSourceCount `
     -ExpectedAudioConfigured $false
 if ($plan.TransactionId -cne $ExpectedTransactionId) {
     throw "The active-media replacement transaction changed after preflight."
