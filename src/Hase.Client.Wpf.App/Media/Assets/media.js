@@ -2,6 +2,11 @@
 
 (() => {
   const video = document.getElementById("presentation");
+  const audioActivationPanel = document.getElementById(
+    "audio-activation-panel");
+  const enableAudio = document.getElementById("enable-audio");
+  const audioActivationStatus = document.getElementById(
+    "audio-activation-status");
   const peerConfiguration = Object.freeze({
     iceServers: [],
     iceCandidatePoolSize: 0,
@@ -17,6 +22,7 @@
   let pendingLocalCandidates = [];
   let pendingRemoteCandidates = [];
   let presentationStarted = false;
+  let audioActivated = false;
 
   const send = (kind, failureCode) => {
     const message = { version: 1, kind };
@@ -104,6 +110,47 @@
     return value;
   };
 
+  const resetAudioActivation = () => {
+    audioActivated = false;
+    audioActivationPanel.hidden = true;
+    audioActivationStatus.textContent = "";
+  };
+
+  const offerAudioActivation = () => {
+    if (includeAudio && !audioActivated && remoteStream &&
+        remoteStream.getAudioTracks().length > 0) {
+      audioActivationPanel.hidden = false;
+    }
+  };
+
+  enableAudio.addEventListener("click", () => {
+    if (!peer || !includeAudio || !remoteStream ||
+        remoteStream.getAudioTracks().length === 0) {
+      return;
+    }
+
+    const current = peer;
+    video.muted = false;
+    void video.play().then(() => {
+      if (peer !== current) {
+        return;
+      }
+      audioActivated = true;
+      audioActivationPanel.hidden = true;
+      audioActivationStatus.textContent = "";
+    }).catch(() => {
+      if (peer !== current) {
+        return;
+      }
+      video.muted = true;
+      audioActivated = false;
+      audioActivationPanel.hidden = false;
+      audioActivationStatus.textContent =
+        "Audio playback is blocked. Select Enable Audio to retry.";
+      send("audio-activation-blocked", "playback-blocked");
+    });
+  });
+
   const clear = (notify = true) => {
     const closing = peer;
     peer = null;
@@ -123,6 +170,8 @@
     }
     remoteStream = null;
     presentationStarted = false;
+    includeAudio = false;
+    resetAudioActivation();
     video.pause();
     video.defaultMuted = true;
     video.muted = true;
@@ -135,8 +184,8 @@
   const begin = (message) => {
     clear(false);
     includeAudio = message.includeAudio;
-    video.defaultMuted = !includeAudio;
-    video.muted = !includeAudio;
+    video.defaultMuted = true;
+    video.muted = true;
     nextOutboundSequence = 1;
     nextInboundSequence = 1;
     localDescriptionPublished = false;
@@ -159,6 +208,7 @@
       }
       remoteStream.addTrack(event.track);
       video.srcObject = remoteStream;
+      offerAudioActivation();
       if (!presentationStarted) {
         void video.play().then(() => {
           if (peer === current && !presentationStarted) {

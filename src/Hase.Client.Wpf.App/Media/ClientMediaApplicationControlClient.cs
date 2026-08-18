@@ -299,6 +299,22 @@ public sealed class ClientMediaApplicationControlClient :
             peerConnected = true;
             return;
         }
+        if (message.Kind == ClientMediaWebMessageKind.AudioActivationBlocked)
+        {
+            diagnostics.Publish(
+                ClientDiagnosticLevel.Operational,
+                () => new ClientDiagnosticEvent(
+                    ClientDiagnosticLevel.Operational,
+                    ClientDiagnosticCategory.ClientPresentation,
+                    "MediaAudioActivationBlocked",
+                    ClientDiagnosticSeverity.Warning,
+                    outcome: ClientDiagnosticOutcome.Failed,
+                    metadata: new Dictionary<string, string>
+                    {
+                        ["failureCategory"] = "playback-blocked"
+                    }));
+            return;
+        }
         if (message.Kind == ClientMediaWebMessageKind.PresentationFaulted)
         {
             diagnostics.Publish(

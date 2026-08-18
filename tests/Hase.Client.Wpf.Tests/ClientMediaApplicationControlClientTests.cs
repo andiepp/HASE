@@ -115,6 +115,40 @@ public sealed class ClientMediaApplicationControlClientTests
     }
 
     [Fact]
+    public async Task AudioActivationBlockIsObservableWithoutStoppingSession()
+    {
+        var remote = new FakeRemoteClient();
+        var boundary = new FakeBoundary();
+        var collector = new BoundedClientDiagnosticCollector(10);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        await using var client = new ClientMediaApplicationControlClient(
+            _ => remote,
+            boundary,
+            new ImmediateSynchronizationContext(),
+            diagnostics);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("host"));
+        await client.StartAsync(new("camera", "generation"), true);
+        int clearCountBeforeBlock = boundary.ClearCount;
+
+        boundary.Publish(new(
+            ClientMediaWebMessageKind.AudioActivationBlocked,
+            "playback-blocked"));
+
+        ClientDiagnosticRecord record = Assert.Single(
+            collector.GetSnapshot().Records);
+        Assert.Equal("MediaAudioActivationBlocked", record.EventName);
+        Assert.Equal(ClientDiagnosticCategory.ClientPresentation,
+            record.Category);
+        Assert.Equal(ClientDiagnosticSeverity.Warning, record.Severity);
+        Assert.Equal(ClientDiagnosticOutcome.Failed, record.Outcome);
+        Assert.Equal("playback-blocked",
+            record.Metadata["failureCategory"]);
+        Assert.Single(record.Metadata);
+        Assert.Equal(0, remote.StopCount);
+        Assert.Equal(clearCountBeforeBlock, boundary.ClearCount);
+    }
+
+    [Fact]
     public async Task HostSelectionChangeClearsWithoutReplayingStart()
     {
         var remote = new FakeRemoteClient();

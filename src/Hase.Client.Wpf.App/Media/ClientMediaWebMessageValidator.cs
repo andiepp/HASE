@@ -10,6 +10,7 @@ public enum ClientMediaWebMessageKind
     PresentationStarted,
     PresentationStopped,
     PresentationFaulted,
+    AudioActivationBlocked,
     Negotiation,
     PeerConnected
 }
@@ -76,6 +77,8 @@ public sealed class ClientMediaWebMessageValidator
                     ClientMediaWebMessageKind.PresentationStopped,
                 "presentation-faulted" =>
                     ClientMediaWebMessageKind.PresentationFaulted,
+                "audio-activation-blocked" =>
+                    ClientMediaWebMessageKind.AudioActivationBlocked,
                 "negotiation" => ClientMediaWebMessageKind.Negotiation,
                 "peer-connected" => ClientMediaWebMessageKind.PeerConnected,
                 _ => (ClientMediaWebMessageKind?)null
@@ -95,8 +98,17 @@ public sealed class ClientMediaWebMessageValidator
                 failureCode = failureElement.GetString();
             }
 
-            if ((kind == ClientMediaWebMessageKind.PresentationFaulted) !=
-                (failureCode is not null && FailureCodes.Contains(failureCode)))
+            var presentationFaulted =
+                kind == ClientMediaWebMessageKind.PresentationFaulted;
+            var audioActivationBlocked =
+                kind == ClientMediaWebMessageKind.AudioActivationBlocked;
+            var failureIsValid = failureCode is not null &&
+                FailureCodes.Contains(failureCode);
+            if ((presentationFaulted && !failureIsValid) ||
+                (audioActivationBlocked &&
+                    failureCode != "playback-blocked") ||
+                (!presentationFaulted && !audioActivationBlocked &&
+                    failureCode is not null))
             {
                 return false;
             }

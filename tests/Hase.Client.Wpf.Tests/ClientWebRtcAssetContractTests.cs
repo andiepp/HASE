@@ -6,6 +6,10 @@ public sealed class ClientWebRtcAssetContractTests
 {
     private static readonly string Script = File.ReadAllText(
         Path.Combine(AppContext.BaseDirectory, "Media", "Assets", "media.js"));
+    private static readonly string Markup = File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "Media", "Assets", "index.html"));
+    private static readonly string Styles = File.ReadAllText(
+        Path.Combine(AppContext.BaseDirectory, "Media", "Assets", "media.css"));
 
     [Fact]
     public void ClientIsDirectEncryptedReceiveOnlyAnswerer()
@@ -34,22 +38,25 @@ public sealed class ClientWebRtcAssetContractTests
     }
 
     [Fact]
-    public void SilentPresentationIsMutedBeforePeerAndPlaybackCreation()
+    public void EveryPresentationIsMutedBeforePeerAndPlaybackCreation()
     {
         int audioSelection = Script.IndexOf(
             "includeAudio = message.includeAudio",
             StringComparison.Ordinal);
         int defaultMute = Script.IndexOf(
-            "video.defaultMuted = !includeAudio",
+            "video.defaultMuted = true",
+            audioSelection,
             StringComparison.Ordinal);
         int activeMute = Script.IndexOf(
-            "video.muted = !includeAudio",
+            "video.muted = true",
+            defaultMute,
             StringComparison.Ordinal);
         int peerCreation = Script.IndexOf(
             "new RTCPeerConnection(peerConfiguration)",
             StringComparison.Ordinal);
         int playback = Script.IndexOf(
             "video.play()",
+            peerCreation,
             StringComparison.Ordinal);
 
         Assert.True(audioSelection >= 0);
@@ -57,6 +64,49 @@ public sealed class ClientWebRtcAssetContractTests
         Assert.True(activeMute > defaultMute);
         Assert.True(peerCreation > activeMute);
         Assert.True(playback > peerCreation);
+    }
+
+    [Fact]
+    public void RequestedAudioRequiresExplicitInPreviewActivation()
+    {
+        int click = Script.IndexOf(
+            "enableAudio.addEventListener(\"click\"",
+            StringComparison.Ordinal);
+        int unmute = Script.IndexOf(
+            "video.muted = false",
+            click,
+            StringComparison.Ordinal);
+        int playback = Script.IndexOf(
+            "video.play()",
+            unmute,
+            StringComparison.Ordinal);
+
+        Assert.Contains("id=\"audio-activation-panel\"", Markup);
+        Assert.Contains("id=\"enable-audio\"", Markup);
+        Assert.Contains("Enable Audio", Markup);
+        Assert.Contains("#audio-activation-panel[hidden]", Styles);
+        Assert.True(click >= 0);
+        Assert.True(unmute > click);
+        Assert.True(playback > unmute);
+    }
+
+    [Fact]
+    public void BlockedAudioActivationIsRetryableAndObservable()
+    {
+        int click = Script.IndexOf(
+            "enableAudio.addEventListener(\"click\"",
+            StringComparison.Ordinal);
+        int clear = Script.IndexOf(
+            "const clear = (notify = true) =>",
+            StringComparison.Ordinal);
+        string activation = Script[click..clear];
+
+        Assert.Contains("video.muted = true", activation);
+        Assert.Contains("audioActivationPanel.hidden = false", activation);
+        Assert.Contains(
+            "send(\"audio-activation-blocked\", \"playback-blocked\")",
+            activation);
+        Assert.DoesNotContain("presentation-faulted", activation);
     }
 
     [Fact]
@@ -76,5 +126,6 @@ public sealed class ClientWebRtcAssetContractTests
         Assert.Contains("video.defaultMuted = true", clear);
         Assert.Contains("video.muted = true", clear);
         Assert.Contains("video.srcObject = null", clear);
+        Assert.Contains("resetAudioActivation()", clear);
     }
 }

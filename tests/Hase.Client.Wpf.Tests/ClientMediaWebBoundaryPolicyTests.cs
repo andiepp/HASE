@@ -110,4 +110,23 @@ public sealed class ClientMediaWebBoundaryPolicyTests
             .TryValidate(json, out var message));
         Assert.Equal(failureCode, message!.FailureCode);
     }
+
+    [Fact]
+    public void AudioActivationBlockIsAcceptedOnlyAsPlaybackBlock()
+    {
+        const string valid = """
+            {"version":1,"kind":"audio-activation-blocked","failureCode":"playback-blocked"}
+            """;
+        const string invalid = """
+            {"version":1,"kind":"audio-activation-blocked","failureCode":"browser-failed"}
+            """;
+
+        Assert.True(new ClientMediaWebMessageValidator()
+            .TryValidate(valid, out var message));
+        Assert.Equal(ClientMediaWebMessageKind.AudioActivationBlocked,
+            message!.Kind);
+        Assert.Equal("playback-blocked", message.FailureCode);
+        Assert.False(new ClientMediaWebMessageValidator()
+            .TryValidate(invalid, out _));
+    }
 }
