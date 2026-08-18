@@ -294,6 +294,18 @@ public sealed class ClientMediaApplicationControlClient :
         }
         if (message.Kind == ClientMediaWebMessageKind.PresentationFaulted)
         {
+            diagnostics.Publish(
+                ClientDiagnosticLevel.Operational,
+                () => new ClientDiagnosticEvent(
+                    ClientDiagnosticLevel.Operational,
+                    ClientDiagnosticCategory.ClientPresentation,
+                    "MediaBoundaryFaulted",
+                    ClientDiagnosticSeverity.Warning,
+                    outcome: ClientDiagnosticOutcome.Failed,
+                    metadata: new Dictionary<string, string>
+                    {
+                        ["failureCategory"] = message.FailureCode ?? "unspecified"
+                    }));
             StopRemoteAndCancelLocalSession(
                 "The media presentation boundary failed.");
         }

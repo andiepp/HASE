@@ -17,6 +17,7 @@ public sealed class WebView2ClientMediaPresentationBoundary :
     private readonly string assetDirectory;
     private readonly ClientMediaWebViewPolicy policy;
     private readonly ClientMediaWebMessageValidator validator;
+    private readonly ClientMediaWebViewReadiness readiness;
     private bool initialized;
     private bool presentationActive;
 
@@ -25,6 +26,17 @@ public sealed class WebView2ClientMediaPresentationBoundary :
         string assetDirectory,
         ClientMediaWebViewPolicy? policy = null,
         ClientMediaWebMessageValidator? validator = null)
+        : this(webView, assetDirectory, policy, validator,
+            new ClientMediaWebViewReadiness())
+    {
+    }
+
+    internal WebView2ClientMediaPresentationBoundary(
+        WebView2 webView,
+        string assetDirectory,
+        ClientMediaWebViewPolicy? policy,
+        ClientMediaWebMessageValidator? validator,
+        ClientMediaWebViewReadiness readiness)
     {
         this.webView = webView ?? throw new ArgumentNullException(nameof(webView));
         if (string.IsNullOrWhiteSpace(assetDirectory))
@@ -36,6 +48,8 @@ public sealed class WebView2ClientMediaPresentationBoundary :
         this.assetDirectory = Path.GetFullPath(assetDirectory);
         this.policy = policy ?? new ClientMediaWebViewPolicy();
         this.validator = validator ?? new ClientMediaWebMessageValidator();
+        this.readiness = readiness ??
+            throw new ArgumentNullException(nameof(readiness));
     }
 
     public event Action<ClientMediaWebMessage>? ValidatedMessage;
@@ -111,6 +125,18 @@ public sealed class WebView2ClientMediaPresentationBoundary :
         }
         EnsureUiThread();
         await InitializeAsync(cancellationToken).ConfigureAwait(true);
+        try
+        {
+            await readiness.WaitAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (TimeoutException exception)
+        {
+            ValidatedMessage?.Invoke(new(
+                ClientMediaWebMessageKind.PresentationFaulted,
+                "browser-failed"));
+            throw new InvalidOperationException(
+                "The Client media WebView did not become ready.", exception);
+        }
         if (presentationActive)
         {
             throw new InvalidOperationException(
@@ -231,6 +257,10 @@ public sealed class WebView2ClientMediaPresentationBoundary :
         if (policy.IsAllowedResource(args.Source) &&
             validator.TryValidate(args.WebMessageAsJson, out var message))
         {
+            if (message!.Kind == ClientMediaWebMessageKind.Ready)
+            {
+                readiness.Signal();
+            }
             ValidatedMessage?.Invoke(message!);
         }
     }

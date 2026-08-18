@@ -86,6 +86,35 @@ public sealed class ClientMediaApplicationControlClientTests
     }
 
     [Fact]
+    public async Task PresentationFaultPublishesOnlyNormalizedDiagnostic()
+    {
+        var remote = new FakeRemoteClient();
+        var boundary = new FakeBoundary();
+        var collector = new BoundedClientDiagnosticCollector(10);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        await using var client = new ClientMediaApplicationControlClient(
+            _ => remote,
+            boundary,
+            new SynchronizationContext(),
+            diagnostics);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("host"));
+
+        boundary.Publish(new(
+            ClientMediaWebMessageKind.PresentationFaulted,
+            "browser-failed"));
+
+        ClientDiagnosticRecord record = Assert.Single(
+            collector.GetSnapshot().Records);
+        Assert.Equal("MediaBoundaryFaulted", record.EventName);
+        Assert.Equal(ClientDiagnosticCategory.ClientPresentation,
+            record.Category);
+        Assert.Equal(ClientDiagnosticSeverity.Warning, record.Severity);
+        Assert.Equal(ClientDiagnosticOutcome.Failed, record.Outcome);
+        Assert.Equal("browser-failed", record.Metadata["failureCategory"]);
+        Assert.Single(record.Metadata);
+    }
+
+    [Fact]
     public async Task HostSelectionChangeClearsWithoutReplayingStart()
     {
         var remote = new FakeRemoteClient();
@@ -146,6 +175,8 @@ public sealed class ClientMediaApplicationControlClientTests
         }
 
         public void ClearPresentation() => ClearCount++;
+        public void Publish(ClientMediaWebMessage message) =>
+            ValidatedMessage?.Invoke(message);
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 
