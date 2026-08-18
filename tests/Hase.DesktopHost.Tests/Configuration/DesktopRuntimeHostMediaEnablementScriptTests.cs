@@ -14,7 +14,10 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         "New-HaseDesktopRuntimeHostMediaBindingCandidate.ps1",
         "Test-HaseDesktopRuntimeHostMediaEnablement.ps1",
         "Enable-HaseDesktopRuntimeHostMedia.ps1",
-        "Restore-HaseDesktopRuntimeHostMediaEnablement.ps1"
+        "Restore-HaseDesktopRuntimeHostMediaEnablement.ps1",
+        "HaseMediaReplacement.Common.ps1",
+        "Test-HaseDesktopRuntimeHostMediaReplacement.ps1",
+        "Replace-HaseDesktopRuntimeHostMedia.ps1"
     ];
 
     [Fact]
@@ -163,6 +166,74 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         Assert.Contains("Recovery evidence retained", script);
         Assert.DoesNotContain("Remove-Item -LiteralPath $transactionDirectory",
             script);
+    }
+
+    [Fact]
+    public void ReplacementPreflight_ShouldRemainReadOnlyAndBindExactPlan()
+    {
+        string script = ReadScript(
+            "Test-HaseDesktopRuntimeHostMediaReplacement.ps1");
+
+        Assert.Contains("Get-HaseMediaReplacementPlan", script);
+        Assert.Contains("Current source count", script);
+        Assert.Contains("Replacement source count", script);
+        Assert.Contains("Transaction ID", script);
+        Assert.Contains("made no file", script);
+        Assert.DoesNotContain("File]::Replace", script);
+        Assert.DoesNotContain("Copy-Item", script);
+        Assert.DoesNotContain("Remove-Item", script);
+    }
+
+    [Fact]
+    public void ReplacementPlan_ShouldRequireExactVideoOnlyAuthorization()
+    {
+        string common = ReadScript("HaseMediaReplacement.Common.ps1");
+
+        Assert.Contains("ExpectedCurrentSourceCount", common);
+        Assert.Contains("ExpectedReplacementSourceCount", common);
+        Assert.Contains("ExpectedAudioConfigured", common);
+        Assert.Contains("The existing video-only media authorization is not exact", common);
+        Assert.Contains("$script:HaseMediaPermissions", common);
+        Assert.Contains("mediaConfigurationFilePath", common);
+        Assert.Contains("outside guided preparation custody", common);
+        Assert.DoesNotContain("Set-Acl", common);
+    }
+
+    [Fact]
+    public void Replacement_ShouldBackUpAndAtomicallyReplaceOnlyMedia()
+    {
+        string script = ReadScript(
+            "Replace-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("Recovery\\ADR-0055-55F4-Rebind", script);
+        Assert.Contains("desktop-runtime-host.before.json", script);
+        Assert.Contains("runtime-host-authorization.before.json", script);
+        Assert.Contains("desktop-runtime-media.before.json", script);
+        Assert.Contains("[System.IO.File]::Replace", script);
+        Assert.Contains("media replacement backup", script);
+        Assert.Contains("Profile hash preserved", script);
+        Assert.Contains("Policy hash preserved", script);
+        Assert.DoesNotContain("$plan.ProfilePath,", script);
+        Assert.DoesNotContain("$plan.PolicyPath,", script);
+        Assert.DoesNotContain("Start-Process", script);
+        Assert.DoesNotContain("GetUserMedia", script,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Replacement_ShouldRollbackActiveMediaAfterMutationFailure()
+    {
+        string script = ReadScript(
+            "Replace-HaseDesktopRuntimeHostMedia.ps1");
+
+        Assert.Contains("catch {", script);
+        Assert.Contains("Copy-Item -LiteralPath $mediaBackup", script);
+        Assert.Contains("Set-HaseFileAccessSddl $plan.MediaPath", script);
+        Assert.Contains("rolled-back media configuration", script);
+        Assert.Contains("Write-HaseUtf8Json $manifestPath $preparedManifest", script);
+        Assert.Contains("replacement and rollback both failed", script);
+        Assert.Contains("finally {", script);
+        Assert.Contains("Remove-Item -LiteralPath $temporaryPath", script);
     }
 
     [Fact]
