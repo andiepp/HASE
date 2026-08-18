@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Media;
 
 namespace Hase.DesktopHost.App.Media;
@@ -11,6 +12,7 @@ public sealed class RuntimeHostMediaApplicationCoordinator : IAsyncDisposable
 {
     private readonly IRuntimeHostMediaWebBoundary boundary;
     private readonly RuntimeHostMediaSessionOwner owner;
+    private readonly RuntimeDiagnosticPublisher diagnostics;
     private readonly Channel<RuntimeHostMediaWebMessage> messages =
         Channel.CreateBounded<RuntimeHostMediaWebMessage>(64);
     private readonly CancellationTokenSource cancellation = new();
@@ -18,10 +20,12 @@ public sealed class RuntimeHostMediaApplicationCoordinator : IAsyncDisposable
 
     public RuntimeHostMediaApplicationCoordinator(
         IRuntimeHostMediaWebBoundary boundary,
-        RuntimeHostMediaSessionOwner owner)
+        RuntimeHostMediaSessionOwner owner,
+        RuntimeDiagnosticPublisher? diagnostics = null)
     {
         this.boundary = boundary ?? throw new ArgumentNullException(nameof(boundary));
         this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        this.diagnostics = diagnostics ?? new RuntimeDiagnosticPublisher();
         boundary.ValidatedMessage += OnValidatedMessage;
         pump = PumpAsync(cancellation.Token);
     }
@@ -72,10 +76,35 @@ public sealed class RuntimeHostMediaApplicationCoordinator : IAsyncDisposable
                     break;
                 case RuntimeHostMediaWebMessageKind.CaptureFaulted:
                 case RuntimeHostMediaWebMessageKind.PeerFaulted:
+                    PublishBoundaryFailure(message);
                     await owner.FailActiveBoundaryAsync(cancellationToken)
                         .ConfigureAwait(false);
                     break;
             }
         }
+    }
+
+    private void PublishBoundaryFailure(RuntimeHostMediaWebMessage message)
+    {
+        string boundaryKind = message.Kind ==
+            RuntimeHostMediaWebMessageKind.CaptureFaulted
+                ? "Capture"
+                : "Peer";
+        string failureCategory = message.FailureCode ?? "Unspecified";
+
+        diagnostics.Publish(
+            RuntimeDiagnosticLevel.Operational,
+            () => new RuntimeDiagnosticEvent(
+                RuntimeDiagnosticLevel.Operational,
+                RuntimeDiagnosticCategory.RuntimeConnection,
+                "MediaBoundaryFaulted",
+                RuntimeDiagnosticSeverity.Warning,
+                outcome: RuntimeDiagnosticOutcome.Failed,
+                details: new Dictionary<string, string>(
+                    StringComparer.Ordinal)
+                {
+                    ["BoundaryKind"] = boundaryKind,
+                    ["FailureCategory"] = failureCategory
+                }));
     }
 }

@@ -44,7 +44,11 @@ $installationDirectory = Join-Path $env:LOCALAPPDATA "HASE\RuntimeHost"
 $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
 $identityDirectory = Join-Path $installationDirectory "Identity"
+$webView2DataDirectory = Join-Path $installationDirectory "WebView2"
 $executableFilePath = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
+$legacyWebView2DataDirectory = Join-Path `
+    $applicationDirectory `
+    "Hase.DesktopHost.App.exe.WebView2"
 $applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-host.json"
 $endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
 $privateNetworkConfigurationPath = Join-Path $configurationDirectory "desktop-private-network.json"
@@ -69,6 +73,20 @@ foreach ($requiredFile in $requiredFiles) {
 
 if (-not (Test-Path -LiteralPath $identityDirectory -PathType Container)) {
     throw "The guided Runtime Host identity directory is missing. Run Install-HaseDesktopRuntimeHost.ps1 first."
+}
+
+if (Test-Path -LiteralPath $webView2DataDirectory -PathType Leaf) {
+    throw "The durable Runtime Host WebView2 custody path is a file."
+}
+
+$webView2PresentBefore = Test-Path `
+    -LiteralPath $webView2DataDirectory `
+    -PathType Container
+$legacyWebView2PresentBefore = Test-Path `
+    -LiteralPath $legacyWebView2DataDirectory `
+    -PathType Container
+if ($webView2PresentBefore -and $legacyWebView2PresentBefore) {
+    throw "Both legacy and durable Runtime Host WebView2 custody exist."
 }
 
 $shell = New-Object -ComObject WScript.Shell
@@ -156,6 +174,20 @@ if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The updated Desktop Runtime Host executable was not found."
 }
 
+$webView2ExpectedAfter =
+    $webView2PresentBefore -or $legacyWebView2PresentBefore
+if ($webView2ExpectedAfter -and
+    -not (Test-Path `
+        -LiteralPath $webView2DataDirectory `
+        -PathType Container)) {
+    throw "The Runtime Host WebView2 custody was not preserved."
+}
+if (Test-Path `
+    -LiteralPath $legacyWebView2DataDirectory `
+    -PathType Container) {
+    throw "Legacy WebView2 custody remained inside the replaceable application directory."
+}
+
 $authorizationPolicyChanged = $false
 if ($null -ne $authorizationPolicyPath) {
     $authorizationPolicyChanged =
@@ -184,3 +216,4 @@ Write-Host "Configuration profiles  : preserved"
 Write-Host "Private-network settings: preserved"
 Write-Host "Installation identity   : preserved"
 Write-Host "Desktop shortcut        : preserved"
+Write-Host "WebView2 custody        : $(if ($legacyWebView2PresentBefore) { 'migrated' } elseif ($webView2PresentBefore) { 'preserved' } else { 'ready for initialization' })"

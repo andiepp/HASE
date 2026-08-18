@@ -15,10 +15,15 @@ public partial class RuntimeHostMediaBindingWindow : Window
 
     public RuntimeHostMediaBindingWindow(
         RuntimeHostMediaBindingStartupRequest request,
-        string assetDirectory)
+        string assetDirectory,
+        string userDataDirectory)
     {
         this.request = request ?? throw new ArgumentNullException(nameof(request));
+        ArgumentException.ThrowIfNullOrWhiteSpace(userDataDirectory);
         InitializeComponent();
+        BindingWebView.CreationProperties =
+            RuntimeHostMediaWebView2Custody.CreateCreationProperties(
+                userDataDirectory);
         boundary = new WebView2RuntimeHostMediaBindingBoundary(
             BindingWebView,
             assetDirectory);

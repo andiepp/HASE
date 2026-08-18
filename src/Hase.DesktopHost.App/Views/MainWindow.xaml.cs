@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using Hase.DesktopHost.App.Media;
 using Microsoft.Web.WebView2.Wpf;
 using Prism.Commands;
 
@@ -30,8 +31,10 @@ public partial class MainWindow : Window
         get;
     }
 
-    public WebView2 CreateMediaCaptureWebView()
+    public WebView2 CreateMediaCaptureWebView(
+        string userDataDirectory)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userDataDirectory);
         if (mediaCaptureWebView is not null)
         {
             throw new InvalidOperationException(
@@ -44,7 +47,10 @@ public partial class MainWindow : Window
             Height = 1,
             IsHitTestVisible = false,
             HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top
+            VerticalAlignment = VerticalAlignment.Top,
+            CreationProperties =
+                RuntimeHostMediaWebView2Custody.CreateCreationProperties(
+                    userDataDirectory)
         };
         ResolveContentGrid().Children.Add(mediaCaptureWebView);
         return mediaCaptureWebView;

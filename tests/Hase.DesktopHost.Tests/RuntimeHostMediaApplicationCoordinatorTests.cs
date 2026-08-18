@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using Hase.DesktopHost.App.Media;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Media;
 
 namespace Hase.DesktopHost.Tests;
@@ -31,6 +33,47 @@ public sealed class RuntimeHostMediaApplicationCoordinatorTests
                 .Session?.State == RuntimeHostMediaSessionState.Streaming);
     }
 
+    [Fact]
+    public async Task CaptureFailure_PublishesOnlySanitizedCategory()
+    {
+        var boundary = new FakeBoundary();
+        var sink = new RecordingDiagnosticSink();
+        await using var owner = new RuntimeHostMediaSessionOwner(
+            new RuntimeHostMediaSourceConfiguration(
+                new("camera", "generation"), "sensitive-device", null,
+                RuntimeHostMediaSourceAvailability.Idle),
+            boundary);
+        await using var coordinator =
+            new RuntimeHostMediaApplicationCoordinator(
+                boundary,
+                owner,
+                new RuntimeDiagnosticPublisher(sink));
+        RuntimeHostMediaOperationResult start = await owner.StartAsync(new(
+            "principal", new("camera", "generation"), false));
+
+        boundary.Publish(new(
+            RuntimeHostMediaWebMessageKind.CaptureFaulted,
+            "device-unavailable"));
+
+        await WaitUntilAsync(() => Task.FromResult(sink.Records.Count == 1));
+        RuntimeDiagnosticRecord record = Assert.Single(sink.Records);
+        Assert.Equal("MediaBoundaryFaulted", record.EventName);
+        Assert.Equal(RuntimeDiagnosticSeverity.Warning, record.Severity);
+        Assert.Equal(RuntimeDiagnosticOutcome.Failed, record.Outcome);
+        Assert.Equal("Capture", record.Details["BoundaryKind"]);
+        Assert.Equal(
+            "device-unavailable",
+            record.Details["FailureCategory"]);
+        Assert.DoesNotContain(
+            record.Details.Values,
+            value => value.Contains("sensitive-device", StringComparison.Ordinal));
+        await WaitUntilAsync(async () =>
+            (await owner.GetStatusAsync(
+                "principal",
+                start.Session!.SessionId)).Session?.State ==
+                    RuntimeHostMediaSessionState.Faulted);
+    }
+
     private static async Task WaitUntilAsync(Func<Task<bool>> condition)
     {
         for (int index = 0; index < 100; index++)
@@ -58,5 +101,15 @@ public sealed class RuntimeHostMediaApplicationCoordinatorTests
         public ValueTask CloseAsync(CancellationToken cancellationToken) =>
             ValueTask.CompletedTask;
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    }
+
+    private sealed class RecordingDiagnosticSink : IRuntimeDiagnosticSink
+    {
+        public ConcurrentQueue<RuntimeDiagnosticRecord> Records { get; } = [];
+
+        public bool IsEnabled(RuntimeDiagnosticLevel level) => true;
+
+        public void Publish(RuntimeDiagnosticRecord record) =>
+            Records.Enqueue(record);
     }
 }

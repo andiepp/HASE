@@ -17,7 +17,10 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         "Restore-HaseDesktopRuntimeHostMediaEnablement.ps1",
         "HaseMediaReplacement.Common.ps1",
         "Test-HaseDesktopRuntimeHostMediaReplacement.ps1",
-        "Replace-HaseDesktopRuntimeHostMedia.ps1"
+        "Replace-HaseDesktopRuntimeHostMedia.ps1",
+        "Install-HaseDesktopRuntimeHost.ps1",
+        "Publish-HaseDesktopRuntimeHost.ps1",
+        "Update-HaseDesktopRuntimeHost.ps1"
     ];
 
     [Fact]

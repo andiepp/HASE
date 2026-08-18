@@ -85,15 +85,42 @@ if (-not (Test-Path -LiteralPath $projectFile -PathType Leaf)) {
 $applicationDirectory = Join-Path $installationRoot "Application"
 $configurationDirectory = Join-Path $installationRoot "Configuration"
 $identityDirectory = Join-Path $installationRoot "Identity"
+$webView2DataDirectory = Join-Path $installationRoot "WebView2"
 $executableFile = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
+$legacyWebView2DataDirectory = Join-Path `
+    $applicationDirectory `
+    "Hase.DesktopHost.App.exe.WebView2"
+
+if (Test-Path -LiteralPath $webView2DataDirectory -PathType Leaf) {
+    throw "The durable Runtime Host WebView2 custody path is a file."
+}
+
+$legacyWebView2Present = Test-Path `
+    -LiteralPath $legacyWebView2DataDirectory `
+    -PathType Container
+$durableWebView2Present = Test-Path `
+    -LiteralPath $webView2DataDirectory `
+    -PathType Container
+if ($legacyWebView2Present -and $durableWebView2Present) {
+    throw "Both legacy and durable Runtime Host WebView2 custody exist. Resolve the ambiguous state before publication."
+}
+
 $installationWasUpdate = Test-Path -LiteralPath $applicationDirectory -PathType Container
 $operationId = [Guid]::NewGuid().ToString("N")
 $stagingDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "hase-runtime-host-publish-$operationId"
 $backupDirectory = Join-Path $installationRoot ".Application.previous-$operationId"
 $applicationMovedToBackup = $false
 $stagingInstalled = $false
+$legacyWebView2Migrated = $false
 
 try {
+    if ($legacyWebView2Present) {
+        Move-Item `
+            -LiteralPath $legacyWebView2DataDirectory `
+            -Destination $webView2DataDirectory
+        $legacyWebView2Migrated = $true
+    }
+
     New-Item -ItemType Directory -Path $stagingDirectory | Out-Null
 
     & dotnet publish $projectFile `
@@ -128,6 +155,13 @@ try {
         throw "The installed Desktop Runtime Host executable could not be verified."
     }
 
+    if ($legacyWebView2Migrated -and
+        -not (Test-Path `
+            -LiteralPath $webView2DataDirectory `
+            -PathType Container)) {
+        throw "The migrated Runtime Host WebView2 custody could not be verified."
+    }
+
     if ($applicationMovedToBackup) {
         Remove-Item -LiteralPath $backupDirectory -Recurse -Force
         $applicationMovedToBackup = $false
@@ -141,6 +175,20 @@ catch {
     if ($applicationMovedToBackup -and (Test-Path -LiteralPath $backupDirectory)) {
         Move-Item -LiteralPath $backupDirectory -Destination $applicationDirectory
         $applicationMovedToBackup = $false
+    }
+
+    if ($legacyWebView2Migrated -and
+        (Test-Path `
+            -LiteralPath $webView2DataDirectory `
+            -PathType Container)) {
+        New-Item `
+            -ItemType Directory `
+            -Path $applicationDirectory `
+            -Force | Out-Null
+        Move-Item `
+            -LiteralPath $webView2DataDirectory `
+            -Destination $legacyWebView2DataDirectory
+        $legacyWebView2Migrated = $false
     }
 
     throw
@@ -162,3 +210,5 @@ Write-Host "Installation directory: $installationRoot"
 Write-Host "Executable             : $executableFile"
 Write-Host "Configuration custody : $configurationDirectory"
 Write-Host "Identity custody      : $identityDirectory"
+Write-Host "WebView2 custody      : $webView2DataDirectory"
+Write-Host "Legacy profile migrated: $legacyWebView2Present"

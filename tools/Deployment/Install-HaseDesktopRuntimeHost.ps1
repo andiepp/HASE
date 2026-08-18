@@ -64,6 +64,7 @@ $installationDirectory = Join-Path $env:LOCALAPPDATA "HASE\RuntimeHost"
 $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
 $identityDirectory = Join-Path $installationDirectory "Identity"
+$webView2DataDirectory = Join-Path $installationDirectory "WebView2"
 $executableFilePath = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
 $applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-host.json"
 $endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
@@ -81,7 +82,8 @@ $protectedTargets = @(
     $privateNetworkDestinationPath,
     $authorizationPolicyDestinationPath,
     $mediaConfigurationDestinationPath,
-    $shortcutPath
+    $shortcutPath,
+    $webView2DataDirectory
 )
 
 foreach ($target in $protectedTargets) {
@@ -354,3 +356,4 @@ Write-Host "Endpoint composition : $EndpointCompositionMode"
 Write-Host "Remote diagnostics   : $([bool]$EnableRemoteDiagnostics)"
 Write-Host "Authorization policy : $(if ($null -eq $authorizationPolicySourcePath) { 'not installed' } else { 'installed' })"
 Write-Host "Media configuration   : $(if ($null -eq $mediaConfigurationSourcePath) { 'not installed' } else { 'installed' })"
+Write-Host "WebView2 custody      : $webView2DataDirectory"

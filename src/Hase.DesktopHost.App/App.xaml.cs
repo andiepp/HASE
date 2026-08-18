@@ -57,11 +57,15 @@ public partial class App : PrismApplication
 
     protected override Window CreateShell()
     {
+        string mediaWebView2UserDataDirectory =
+            RuntimeHostMediaWebView2Custody.GetDefaultUserDataDirectory();
+
         if (mediaBindingRequest is not null)
         {
             return new RuntimeHostMediaBindingWindow(
                 mediaBindingRequest,
-                Path.Combine(AppContext.BaseDirectory, "Media", "Assets"));
+                Path.Combine(AppContext.BaseDirectory, "Media", "Assets"),
+                mediaWebView2UserDataDirectory);
         }
 
         mainWindowViewModel =
@@ -75,7 +79,8 @@ public partial class App : PrismApplication
         {
             productionBackend.ConfigureMediaBoundary(
                 new WebView2RuntimeHostMediaCaptureBoundary(
-                    window.CreateMediaCaptureWebView(),
+                    window.CreateMediaCaptureWebView(
+                        mediaWebView2UserDataDirectory),
                     Path.Combine(AppContext.BaseDirectory, "Media", "Assets")));
         }
         window.DataContext =

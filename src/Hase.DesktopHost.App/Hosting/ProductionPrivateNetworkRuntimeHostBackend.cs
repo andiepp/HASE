@@ -331,6 +331,13 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                         authorizationPolicyFilePath,
                         cancellationToken)
                     : null;
+            var session =
+                new DesktopRuntimeDiagnosticSession(
+                    configuration.MaximumDiagnosticLevel);
+
+            diagnosticSession =
+                session;
+
             if (configuration.MediaConfiguration is not null)
             {
                 IRuntimeHostMediaWebBoundary configuredBoundary =
@@ -341,14 +348,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     configuredBoundary);
                 mediaCoordinator = new RuntimeHostMediaApplicationCoordinator(
                     configuredBoundary,
-                    mediaSessionOwner);
+                    mediaSessionOwner,
+                    session.Publisher);
             }
-            var session =
-                new DesktopRuntimeDiagnosticSession(
-                    configuration.MaximumDiagnosticLevel);
-
-            diagnosticSession =
-                session;
 
             CompactEndpointDefinition compactDefinition =
                 ArduinoUnoCompactDefinitionFactory.Create();
