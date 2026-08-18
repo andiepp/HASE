@@ -73,11 +73,11 @@ public sealed class ClientWebRtcAssetContractTests
             "enableAudio.addEventListener(\"click\"",
             StringComparison.Ordinal);
         int unmute = Script.IndexOf(
-            "video.muted = false",
+            "audio.muted = false",
             click,
             StringComparison.Ordinal);
         int playback = Script.IndexOf(
-            "video.play()",
+            "audio.play()",
             unmute,
             StringComparison.Ordinal);
 
@@ -93,10 +93,103 @@ public sealed class ClientWebRtcAssetContractTests
     [Fact]
     public void PresentationSubresourcesUseCurrentAssetVersion()
     {
-        Assert.Contains("href=\"media.css?v=55f4c16\"", Markup);
-        Assert.Contains("src=\"media.js?v=55f4c16\"", Markup);
+        Assert.Contains("href=\"media.css?v=55f4c17\"", Markup);
+        Assert.Contains("src=\"media.js?v=55f4c17\"", Markup);
         Assert.DoesNotContain("href=\"media.css\"", Markup);
         Assert.DoesNotContain("src=\"media.js\"", Markup);
+    }
+
+    [Fact]
+    public void VideoPlaybackIsParserMutedAndAudioUsesDedicatedElement()
+    {
+        Assert.Contains(
+            "<video id=\"presentation\" autoplay muted playsinline>",
+            Markup);
+        Assert.Contains(
+            "<audio id=\"audio-presentation\" preload=\"none\"></audio>",
+            Markup);
+        Assert.Contains("#audio-presentation", Styles);
+        Assert.Contains("const audio = document.getElementById", Script);
+        Assert.Contains("remoteVideoStream = new MediaStream()", Script);
+        Assert.Contains("remoteAudioStream = new MediaStream()", Script);
+    }
+
+    [Fact]
+    public void AudioTrackArrivalCannotStartVideoPlayback()
+    {
+        int audioBranch = Script.IndexOf(
+            "if (event.track.kind === \"audio\")",
+            StringComparison.Ordinal);
+        int videoBranch = Script.IndexOf(
+            "if (event.track.kind !== \"video\")",
+            audioBranch,
+            StringComparison.Ordinal);
+        int videoPlayback = Script.IndexOf(
+            "void video.play()",
+            videoBranch,
+            StringComparison.Ordinal);
+        string audioHandling = Script[audioBranch..videoBranch];
+
+        Assert.True(audioBranch >= 0);
+        Assert.True(videoBranch > audioBranch);
+        Assert.True(videoPlayback > videoBranch);
+        Assert.Contains("remoteAudioStream.addTrack(event.track)",
+            audioHandling);
+        Assert.Contains("offerAudioActivation()", audioHandling);
+        Assert.Contains("return;", audioHandling);
+        Assert.DoesNotContain("video.play()", audioHandling);
+    }
+
+    [Fact]
+    public void EitherTrackArrivalOrderOffersAudioOnlyAfterVideoStarts()
+    {
+        int activationGuard = Script.IndexOf(
+            "includeAudio && presentationStarted && !audioActivated",
+            StringComparison.Ordinal);
+        int audioTrack = Script.IndexOf(
+            "remoteAudioStream.addTrack(event.track)",
+            StringComparison.Ordinal);
+        int audioOffer = Script.IndexOf(
+            "offerAudioActivation()",
+            audioTrack,
+            StringComparison.Ordinal);
+        int videoStarted = Script.IndexOf(
+            "presentationStarted = true",
+            audioOffer,
+            StringComparison.Ordinal);
+        int videoOffer = Script.IndexOf(
+            "offerAudioActivation()",
+            videoStarted,
+            StringComparison.Ordinal);
+
+        Assert.True(activationGuard >= 0);
+        Assert.True(audioTrack >= 0);
+        Assert.True(audioOffer > audioTrack);
+        Assert.True(videoStarted > audioOffer);
+        Assert.True(videoOffer > videoStarted);
+    }
+
+    [Fact]
+    public void AudioActivationWaitsForStartedVideoAndUsesAudioElement()
+    {
+        Assert.Contains(
+            "includeAudio && presentationStarted && !audioActivated",
+            Script);
+        Assert.Contains("audio.srcObject = remoteAudioStream", Script);
+        Assert.Contains("audio.muted = false", Script);
+        Assert.Contains("void audio.play()", Script);
+        Assert.DoesNotContain("video.muted = false", Script);
+    }
+
+    [Fact]
+    public void PresentationCleanupReleasesSplitStreams()
+    {
+        Assert.Contains("remoteVideoStream.getTracks()", Script);
+        Assert.Contains("remoteAudioStream.getTracks()", Script);
+        Assert.Contains("remoteVideoStream = null", Script);
+        Assert.Contains("remoteAudioStream = null", Script);
+        Assert.Contains("audio.pause()", Script);
+        Assert.Contains("audio.srcObject = null", Script);
     }
 
     [Fact]
@@ -110,7 +203,7 @@ public sealed class ClientWebRtcAssetContractTests
             StringComparison.Ordinal);
         string activation = Script[click..clear];
 
-        Assert.Contains("video.muted = true", activation);
+        Assert.Contains("audio.muted = true", activation);
         Assert.Contains("audioActivationPanel.hidden = false", activation);
         Assert.Contains(
             "send(\"audio-activation-blocked\", \"playback-blocked\")",

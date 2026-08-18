@@ -2,6 +2,7 @@
 
 (() => {
   const video = document.getElementById("presentation");
+  const audio = document.getElementById("audio-presentation");
   const audioActivationPanel = document.getElementById(
     "audio-activation-panel");
   const enableAudio = document.getElementById("enable-audio");
@@ -14,7 +15,8 @@
     rtcpMuxPolicy: "require"
   });
   let peer = null;
-  let remoteStream = null;
+  let remoteVideoStream = null;
+  let remoteAudioStream = null;
   let includeAudio = false;
   let nextOutboundSequence = 1;
   let nextInboundSequence = 1;
@@ -117,21 +119,21 @@
   };
 
   const offerAudioActivation = () => {
-    if (includeAudio && !audioActivated && remoteStream &&
-        remoteStream.getAudioTracks().length > 0) {
+    if (includeAudio && presentationStarted && !audioActivated &&
+        remoteAudioStream && remoteAudioStream.getAudioTracks().length > 0) {
       audioActivationPanel.hidden = false;
     }
   };
 
   enableAudio.addEventListener("click", () => {
-    if (!peer || !includeAudio || !remoteStream ||
-        remoteStream.getAudioTracks().length === 0) {
+    if (!peer || !includeAudio || !presentationStarted ||
+        !remoteAudioStream || remoteAudioStream.getAudioTracks().length === 0) {
       return;
     }
 
     const current = peer;
-    video.muted = false;
-    void video.play().then(() => {
+    audio.muted = false;
+    void audio.play().then(() => {
       if (peer !== current) {
         return;
       }
@@ -142,7 +144,7 @@
       if (peer !== current) {
         return;
       }
-      video.muted = true;
+      audio.muted = true;
       audioActivated = false;
       audioActivationPanel.hidden = false;
       audioActivationStatus.textContent =
@@ -163,12 +165,18 @@
       closing.onconnectionstatechange = null;
       closing.close();
     }
-    if (remoteStream) {
-      for (const track of remoteStream.getTracks()) {
+    if (remoteVideoStream) {
+      for (const track of remoteVideoStream.getTracks()) {
         track.stop();
       }
     }
-    remoteStream = null;
+    if (remoteAudioStream) {
+      for (const track of remoteAudioStream.getTracks()) {
+        track.stop();
+      }
+    }
+    remoteVideoStream = null;
+    remoteAudioStream = null;
     presentationStarted = false;
     includeAudio = false;
     resetAudioActivation();
@@ -176,6 +184,9 @@
     video.defaultMuted = true;
     video.muted = true;
     video.srcObject = null;
+    audio.pause();
+    audio.muted = true;
+    audio.srcObject = null;
     if (notify) {
       send("presentation-stopped");
     }
@@ -191,7 +202,8 @@
     localDescriptionPublished = false;
     pendingLocalCandidates = [];
     pendingRemoteCandidates = [];
-    remoteStream = new MediaStream();
+    remoteVideoStream = new MediaStream();
+    remoteAudioStream = new MediaStream();
     const current = new RTCPeerConnection(peerConfiguration);
     peer = current;
 
@@ -202,18 +214,29 @@
       publishLocalCandidate(event.candidate);
     };
     current.ontrack = (event) => {
-      if (peer !== current ||
-          (event.track.kind === "audio" && !includeAudio)) {
+      if (peer !== current) {
         return;
       }
-      remoteStream.addTrack(event.track);
-      video.srcObject = remoteStream;
-      offerAudioActivation();
+      if (event.track.kind === "audio") {
+        if (!includeAudio) {
+          return;
+        }
+        remoteAudioStream.addTrack(event.track);
+        audio.srcObject = remoteAudioStream;
+        offerAudioActivation();
+        return;
+      }
+      if (event.track.kind !== "video") {
+        return;
+      }
+      remoteVideoStream.addTrack(event.track);
+      video.srcObject = remoteVideoStream;
       if (!presentationStarted) {
         void video.play().then(() => {
           if (peer === current && !presentationStarted) {
             presentationStarted = true;
             send("presentation-started");
+            offerAudioActivation();
           }
         }).catch(() => send("presentation-faulted", "playback-blocked"));
       }

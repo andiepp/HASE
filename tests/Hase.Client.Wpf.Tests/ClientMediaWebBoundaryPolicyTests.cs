@@ -7,8 +7,8 @@ namespace Hase.Client.Wpf.Tests;
 public sealed class ClientMediaWebBoundaryPolicyTests
 {
     [Theory]
-    [InlineData("https://hase-media-client.local/index.html?v=55f4c16")]
-    [InlineData("https://hase-media-client.local/media.js?v=55f4c16")]
+    [InlineData("https://hase-media-client.local/index.html?v=55f4c17")]
+    [InlineData("https://hase-media-client.local/media.js?v=55f4c17")]
     public void FixedLocalResourcesAreAllowed(string uri)
     {
         Assert.True(new ClientMediaWebViewPolicy().IsAllowedResource(uri));
@@ -33,9 +33,9 @@ public sealed class ClientMediaWebBoundaryPolicyTests
     [Fact]
     public void ApplicationNavigationUsesCurrentAssetVersion()
     {
-        Assert.Equal("55f4c16", ClientMediaWebViewPolicy.AssetVersion);
+        Assert.Equal("55f4c17", ClientMediaWebViewPolicy.AssetVersion);
         Assert.Equal(
-            "https://hase-media-client.local/index.html?v=55f4c16",
+            "https://hase-media-client.local/index.html?v=55f4c17",
             ClientMediaWebViewPolicy.ApplicationUri.AbsoluteUri);
     }
 
