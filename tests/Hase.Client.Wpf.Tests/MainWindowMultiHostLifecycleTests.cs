@@ -73,6 +73,34 @@ public sealed class MainWindowMultiHostLifecycleTests
     }
 
     [Fact]
+    public void RuntimeHostTileCommand_DisconnectedHost_ShouldSelectAndConnect()
+    {
+        RuntimeHostProfile profile = CreateProfile(true);
+        var coordinator = new FakeCoordinator(CreateSnapshot(profile));
+        var viewModel = CreateViewModel(profile, coordinator);
+        RuntimeHostProfileItemViewModel host = Assert.Single(viewModel.RuntimeHosts);
+
+        viewModel.ToggleRuntimeHostConnectionCommand.Execute(host);
+
+        Assert.Equal(profile.ProfileId, viewModel.SelectedRuntimeHost!.ProfileId);
+        Assert.Equal(profile.ProfileId, coordinator.ConnectedProfileId);
+    }
+
+    [Fact]
+    public void RuntimeHostTileCommand_ConnectedHost_ShouldSelectAndDisconnect()
+    {
+        RuntimeHostProfile profile = CreateProfile(true);
+        var coordinator = new FakeCoordinator(CreateSnapshot(profile, RuntimeHostClientSessionState.Connected));
+        var viewModel = CreateViewModel(profile, coordinator);
+        RuntimeHostProfileItemViewModel host = Assert.Single(viewModel.RuntimeHosts);
+
+        viewModel.ToggleRuntimeHostConnectionCommand.Execute(host);
+
+        Assert.Equal(profile.ProfileId, viewModel.SelectedRuntimeHost!.ProfileId);
+        Assert.Equal(profile.ProfileId, coordinator.DisconnectedProfileId);
+    }
+
+    [Fact]
     public async Task ConnectionFailure_ShouldRestoreBusyAndExposeSafeMessage()
     {
         RuntimeHostProfile profile = CreateProfile(true);
@@ -94,9 +122,25 @@ public sealed class MainWindowMultiHostLifecycleTests
 
     private static RuntimeHostProfile CreateProfile(bool enabled) =>
         new(new RuntimeHostProfileId("first"), "First", new RemoteRuntimeHostId("host-01"), enabled);
-    private static MultiHostClientSessionSnapshot CreateSnapshot(RuntimeHostProfile profile) =>
+    private static MultiHostClientSessionSnapshot CreateSnapshot(
+        RuntimeHostProfile profile,
+        RuntimeHostClientSessionState state = RuntimeHostClientSessionState.Disconnected) =>
         new([new RuntimeHostProfileSessionSnapshot(profile,
-            new RuntimeHostClientSessionStatus(RuntimeHostClientSessionState.Disconnected), DateTimeOffset.UtcNow)]);
+            state == RuntimeHostClientSessionState.Connected
+                ? new RuntimeHostClientSessionStatus(
+                    state, profile.ExpectedRuntimeHostId, RuntimeHostClientApiVersion.Current)
+                : new RuntimeHostClientSessionStatus(state),
+            DateTimeOffset.UtcNow,
+            state == RuntimeHostClientSessionState.Connected
+                ? new RemoteObservationReducer().Initialize(
+                    RemoteObservationState.Empty,
+                    new RemoteObservationInitialSnapshot(
+                        new RemoteRuntimeHostSnapshot(
+                            profile.ExpectedRuntimeHostId,
+                            RuntimeHostClientApiVersion.Current,
+                            []),
+                        new RemoteObservationSequence(0)))
+                : null)]);
 
     private sealed class FakeCoordinator(MultiHostClientSessionSnapshot snapshot) : IMultiHostClientSessionCoordinator
     {

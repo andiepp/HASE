@@ -63,6 +63,7 @@ public sealed class MainWindowViewModel
     private RuntimeHostProfileId? selectedRuntimeHostProfileId;
     private IReadOnlyList<RuntimeHostProfileItemViewModel> runtimeHosts = [];
     private IMultiHostClientSessionCoordinator? multiHostCoordinator;
+    private RemoteEndpointAttachmentKey? selectedEndpointKey;
 
     public MainWindowViewModel()
     {
@@ -120,6 +121,10 @@ public sealed class MainWindowViewModel
             ExecuteDisconnectSelectedRuntimeHost,
             () => multiHostCoordinator is not null && !IsBusy
                 && SelectedRuntimeHost is { SessionState: RuntimeHostClientSessionState.Connecting or RuntimeHostClientSessionState.Connected or RuntimeHostClientSessionState.Reconnecting });
+        ToggleRuntimeHostConnectionCommand =
+            new DelegateCommand<RuntimeHostProfileItemViewModel>(
+                ExecuteToggleRuntimeHostConnection,
+                host => host is not null && host.IsEnabled && !IsBusy);
     }
 
     public string Title =>
@@ -185,6 +190,34 @@ public sealed class MainWindowViewModel
     public bool HasEndpoints =>
         endpoints.Count > 0;
 
+    public EndpointInventoryItemViewModel? SelectedEndpoint
+    {
+        get => selectedEndpointKey is null
+            ? null
+            : endpoints.SingleOrDefault(endpoint => endpoint.Key == selectedEndpointKey);
+        set
+        {
+            // Replacing the immutable endpoint projection makes WPF briefly
+            // write a null SelectedItem back to the view model. Preserve the
+            // logical attachment selection while that attachment still exists.
+            if (value is null
+                && selectedEndpointKey is not null
+                && endpoints.Any(endpoint => endpoint.Key == selectedEndpointKey))
+            {
+                return;
+            }
+
+            RemoteEndpointAttachmentKey? valueKey = value?.Key;
+            if (valueKey == selectedEndpointKey)
+            {
+                return;
+            }
+
+            selectedEndpointKey = valueKey;
+            RaisePropertyChanged();
+        }
+    }
+
     public IReadOnlyList<EventOccurrenceItemViewModel> EventOccurrences =>
         eventOccurrences;
 
@@ -217,6 +250,7 @@ public sealed class MainWindowViewModel
 
     public DelegateCommand ConnectSelectedRuntimeHostCommand { get; }
     public DelegateCommand DisconnectSelectedRuntimeHostCommand { get; }
+    public DelegateCommand<RuntimeHostProfileItemViewModel> ToggleRuntimeHostConnectionCommand { get; }
 
     public void ConfigureMultiHostCoordinator(IMultiHostClientSessionCoordinator coordinator)
     {
@@ -262,6 +296,8 @@ public sealed class MainWindowViewModel
         if (profileId is not null && !registry.TryGet(profileId, out _))
             throw new ArgumentException("The selected runtime-host profile is not registered.", nameof(profileId));
         selectedRuntimeHostProfileId = profileId;
+        selectedEndpointKey = null;
+        RaisePropertyChanged(nameof(SelectedEndpoint));
         Media.ResetForRuntimeHostChange();
         if (multiHostSnapshot is not null)
         {
@@ -349,6 +385,7 @@ public sealed class MainWindowViewModel
                     requestedCommandArgumentTexts,
                     requestedPropertyValueTexts),
                 nameof(Endpoints));
+            ReconcileSelectedEndpoint();
         }
         RaisePropertyChanged(nameof(EndpointCount));
         RaisePropertyChanged(nameof(HasEndpoints));
@@ -620,6 +657,7 @@ public sealed class MainWindowViewModel
                 requestedCommandArgumentTexts,
                 requestedPropertyValueTexts),
             nameof(Endpoints));
+        ReconcileSelectedEndpoint();
     }
 
     private static bool ShouldClearEventOccurrences(
@@ -934,6 +972,7 @@ public sealed class MainWindowViewModel
                 requestedCommandArgumentTexts,
                 requestedPropertyValueTexts),
             nameof(Endpoints));
+        ReconcileSelectedEndpoint();
         RaisePropertyChanged(
             nameof(EndpointCount));
         RaisePropertyChanged(
@@ -1114,6 +1153,7 @@ public sealed class MainWindowViewModel
                         requestedCommandArgumentTexts,
                         requestedPropertyValueTexts),
                     nameof(Endpoints));
+            ReconcileSelectedEndpoint();
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed value "
                     + "received.";
@@ -1220,6 +1260,7 @@ public sealed class MainWindowViewModel
                         requestedCommandArgumentTexts,
                         requestedPropertyValueTexts),
                     nameof(Endpoints));
+            ReconcileSelectedEndpoint();
                 PropertyReadMessage =
                     $"{property.DisplayName}: endpoint-confirmed write "
                     + "completed.";
@@ -1391,6 +1432,43 @@ public sealed class MainWindowViewModel
 
     private async void ExecuteConnectSelectedRuntimeHost() => await ConnectSelectedRuntimeHostAsync();
     private async void ExecuteDisconnectSelectedRuntimeHost() => await DisconnectSelectedRuntimeHostAsync();
+
+    private async void ExecuteToggleRuntimeHostConnection(
+        RuntimeHostProfileItemViewModel? host)
+    {
+        if (host is null)
+        {
+            return;
+        }
+
+        if (host.ProfileId != selectedRuntimeHostProfileId)
+        {
+            SelectRuntimeHost(host.ProfileId);
+        }
+
+        if (host.SessionState is
+            RuntimeHostClientSessionState.Connected
+                or RuntimeHostClientSessionState.Connecting
+                or RuntimeHostClientSessionState.Reconnecting)
+        {
+            await DisconnectSelectedRuntimeHostAsync();
+        }
+        else
+        {
+            await ConnectSelectedRuntimeHostAsync();
+        }
+    }
+
+    private void ReconcileSelectedEndpoint()
+    {
+        if (selectedEndpointKey is not null
+            && endpoints.All(endpoint => endpoint.Key != selectedEndpointKey))
+        {
+            selectedEndpointKey = null;
+        }
+
+        RaisePropertyChanged(nameof(SelectedEndpoint));
+    }
 
     private void PreserveRequestedBooleanValues()
     {
@@ -1590,5 +1668,6 @@ public sealed class MainWindowViewModel
         ExecuteCommand.RaiseCanExecuteChanged();
         ConnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
         DisconnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
+        ToggleRuntimeHostConnectionCommand.RaiseCanExecuteChanged();
     }
 }

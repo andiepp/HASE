@@ -453,6 +453,66 @@ public sealed class MainWindowSelectedHostProjectionTests
     }
 
     [Fact]
+    public void SelectedEndpoint_SameAttachmentRefresh_ShouldBeRetained()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        viewModel.SelectedEndpoint = Assert.Single(viewModel.Endpoints);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 2))]));
+
+        // WPF writes null SelectedItem when the endpoint ItemsSource instance
+        // is replaced. That presentation-only reset must not clear a still
+        // valid logical attachment selection.
+        viewModel.SelectedEndpoint = null;
+
+        Assert.NotNull(viewModel.SelectedEndpoint);
+        Assert.Equal(generation.ToString(), viewModel.SelectedEndpoint!.AttachmentGeneration);
+    }
+
+    [Fact]
+    public void SelectedEndpoint_GenerationChange_ShouldBeCleared()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected,
+                ModeState("host-01", Guid.Parse("29a37b52-f7c2-47c8-b32c-915f34a9bc21"), 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        viewModel.SelectedEndpoint = Assert.Single(viewModel.Endpoints);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected,
+                ModeState("host-01", Guid.Parse("39a37b52-f7c2-47c8-b32c-915f34a9bc21"), 2))]));
+
+        Assert.Null(viewModel.SelectedEndpoint);
+    }
+
+    [Fact]
+    public void ChangingRuntimeHost_ShouldClearSelectedEndpoint()
+    {
+        RuntimeHostProfile first = Profile("first", "host-01");
+        RuntimeHostProfile second = Profile("second", "host-02");
+        Guid generation = Guid.Parse("49a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        var viewModel = new MainWindowViewModel();
+        viewModel.ConfigureRuntimeHosts(new RuntimeHostProfileRegistry([first, second]));
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(first, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)),
+            Session(second, RuntimeHostClientSessionState.Disconnected)]));
+        viewModel.SelectRuntimeHost(first.ProfileId);
+        viewModel.SelectedEndpoint = Assert.Single(viewModel.Endpoints);
+
+        viewModel.SelectRuntimeHost(second.ProfileId);
+
+        Assert.Null(viewModel.SelectedEndpoint);
+    }
+
+    [Fact]
     public void ReconnectingSelection_ShouldRetainReadOnlyState()
     {
         RuntimeHostProfile profile = Profile("first", "host-01");
