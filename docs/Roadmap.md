@@ -2023,3 +2023,41 @@ Start, and restored two-camera inventory after reconnect without errors.
 Protected migration recovery evidence remains retained; closure does not
 authorize its deletion.
 Diagnostic Export and Offline Analysis remains accepted but deferred.
+
+---
+
+## Active objective â€” ADR-0057 Client Workspace and Detached Media Presentation
+
+**Status:** [Active] Implemented and accepted on LTAEP; final three-computer
+synchronization deferred
+
+ADR-0057 reorganizes the WPF Client around the operator workflow without
+changing Runtime Host, endpoint, protocol, authorization, or media-plane
+ownership.
+
+Implemented:
+
+- three-column main workspace with Runtime Hosts, selected-host endpoints, and
+  selected-endpoint Properties/Commands;
+- Runtime Host connect/disconnect tiles with green connected state and separate
+  selected-host indication;
+- attachment-identity endpoint selection retention across projection refresh;
+- Boolean requested Property-value retention across same-host, same-attachment
+  refresh;
+- detached `Video / Audio` window with existing camera selection, optional
+  audio, Start/Stop, state/status, and WebView2 presentation; and
+- LTAEP application-only publication preserving configuration and desktop
+  shortcut custody.
+
+Increment 57A is committed as
+`801f3fb834472d30331b937778fd6fe8f9dea8b1`. Increment 57B is committed as
+`71924a773a60473eb21028967b4002920996b7eb`. Final focused Client validation
+passes 268 tests with zero failures and zero skips, and the shortcut-launched
+Client is visually and functionally accepted on LTAEP.
+
+ADR-0057 does not yet establish a new fully green complete-suite count. The
+last fully green complete baseline remains ADR-0056's 6,362 tests. AEPRAKETE
+and LABC were intentionally not modified while unavailable; repository
+synchronization and final closure remain a later explicit step.
+
+Diagnostic Export and Offline Analysis remains accepted but deferred.
