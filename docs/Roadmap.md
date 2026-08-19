@@ -1985,10 +1985,10 @@ operator-approved policy decision.
 
 ---
 
-## Active objective — ADR-0056 Dynamic Runtime-Host Camera Inventory
+## Completed objective — ADR-0056 Dynamic Runtime-Host Camera Inventory
 
-**Status:** [In progress] Increment 56B source applied; automated validation
-pending from the retained 6,349-test baseline
+**Status:** [Complete] Implemented, deployed, physically validated, and closed
+at 6,362 passing tests
 
 ADR-0056 extends the closed ADR-0055 media boundary so a Windows Runtime Host
 can reconcile cameras that are plugged in or disconnected while the
@@ -1996,12 +1996,13 @@ application remains running. Device observation remains local to the Runtime
 Host. The Client receives only sanitized logical identities, current
 generations, display names, availability, and media capability ceilings.
 
-The accepted design adds startup inventory discovery, bounded device-change
+The completed design adds startup inventory discovery, bounded device-change
 reconciliation, a protected local logical-identity registry, and an
 authenticated change-driven capability stream. A disconnected active camera
 ends its session with `SourceLost`; a returning camera receives a new
-generation. The Client updates its available list but never starts, resumes,
-selects, switches, or falls back automatically.
+generation. The Client updates its available list and may preselect the sole
+remaining current idle camera, but never starts, resumes, switches an active
+session, or falls back automatically.
 
 Existing one-session, one-viewer, mTLS authorization, WebRTC media, explicit
 Start/Stop, audio opt-in, no-recording, no-public-relay, and no-device-identifier
@@ -2009,8 +2010,16 @@ disclosure contracts remain unchanged. Dynamic microphone discovery, PTZ,
 recording, snapshots, multiple viewers, public relay, and non-Windows capture
 remain outside ADR-0056.
 
-Increment 56B implements the source boundary without installed or physical
-effects. Focused and complete automated validation, installed-application
-update, migration of the existing AEPRAKETE bindings, and physical
-plug/disconnect/reconnect validation remain separate explicit stop points.
+Increment 56B implemented the source boundary. Increment 56C migrated the two
+AEPRAKETE bindings into protected format-2 custody and deployed the Runtime
+Host and Client. Increment 56C1 corrected active-loss Client reconciliation and
+is accepted at commit `58a0c4e29298b5605758b4c837061d295af7a483` with
+261 focused and 6,362 complete passing tests.
+
+Physical validation confirmed initial inventory, idle disconnect/reconnect,
+stable logical names, explicit Camera 2 video, active source-loss stop,
+automatic stale-entry removal, sole Camera 1 preselection without automatic
+Start, and restored two-camera inventory after reconnect without errors.
+Protected migration recovery evidence remains retained; closure does not
+authorize its deletion.
 Diagnostic Export and Offline Analysis remains accepted but deferred.

@@ -1,10 +1,13 @@
 # ADR-0056 — Dynamic Runtime-Host Camera Inventory
 
-- Status: Increment 56B source applied; automated validation pending
+- Status: Accepted, implemented, deployed, physically validated, and closed
 - Date: 2026-08-19
 - Starting baseline:
   `d6dbe75bacd3f30e979c8074042db169832bcb5f`
 - Starting automated baseline: 6,349 passed, 0 failed, 0 skipped
+- Closure commit:
+  `58a0c4e29298b5605758b4c837061d295af7a483`
+- Closure automated baseline: 6,362 passed, 0 failed, 0 skipped
 
 ## Context
 
@@ -125,9 +128,11 @@ Disconnecting a camera used by an active session:
 Reconnect never resumes the terminated session. The Client must select a
 current source generation and explicitly Start again.
 
-No inventory change automatically selects, starts, resumes, switches, or falls
-back to another camera. The one-viewer and one-active-media-session limits
-remain unchanged.
+No inventory change automatically starts, resumes, switches an active session,
+or falls back to another camera. After source loss, the idle Client may
+preselect the sole remaining current camera, but opening it still requires an
+explicit Start. The one-viewer and one-active-media-session limits remain
+unchanged.
 
 ### Authenticated capability updates
 
@@ -321,43 +326,78 @@ Increment 56B is applied in source against exact commit
 - dynamic media-configuration format version 2 as a transaction-neutral seam
   for the later protected installed-state migration.
 
-The source package does not create the installed identity key, migrate either
+The source package did not create the installed identity key, migrate either
 AEPRAKETE binding, initialize WebView2, enumerate or open a physical device,
-build, test, deploy, start an application, or mutate physical state. Focused
-and complete automated validation are intentionally the next stop point.
+build, test, deploy, start an application, or mutate physical state. Its
+Release validation completed with 6,359 passed, zero failed, and zero skipped.
+
+## Increment 56C and 56C1 completion evidence
+
+The approved Increment 56C AEPRAKETE transaction migrated media configuration
+format 1 to format 2 while preserving both logical camera bindings and both
+explicit audio bindings. It created a 32-byte local identity key, preserved the
+media ACL and WebView2 custody, updated the Runtime Host application, and
+retained protected recovery evidence under transaction identity
+`d31427943e84bb4fa4d9e7ab6c228ec479d122ac69866d3794954fd39909edaf`.
+No recovery cleanup is authorized by closure.
+
+Initial physical validation proved dynamic initial inventory, idle disconnect,
+reconnect with stable logical names, explicit Camera 2 video, session locking,
+and source-loss termination without automatic fallback. It also exposed one
+Client reconciliation defect: after active Camera 2 loss, the Runtime Host
+unary inventory was current but the disconnected entry remained visible until
+manual Refresh Cameras.
+
+Increment 56C1 corrected that defect by carrying semantic `SourceLost` to the
+view model, performing one authoritative read-only capability refresh after
+termination, clearing stale selection if refresh fails, and preselecting the
+sole remaining current camera without automatic Start. Commit
+`58a0c4e29298b5605758b4c837061d295af7a483` changes exactly five paths. Its
+Release build completed with 60 warnings and zero errors; the focused Client
+suite passed 261 tests and the complete 26-project suite passed 6,362 tests,
+with zero failures and zero skips. Fifty-five build and TRX evidence files are
+retained with exact SHA-256 records outside the repository.
+
+AEPRAKETE, LABC, and LTAEP were synchronized and clean at the closure commit.
+Only the LTAEP Client required a 56C1 application update. Its Release publish
+completed with 11 warnings, preserved both Runtime Host profiles, registry
+bytes and ACL, configuration, and desktop shortcut, and installed application
+SHA-256 `44E8B1B21261B35BC6D880330D1E322D502FD829ED88CA755A056DD0A2746BF0`.
+The Runtime Host application did not require a 56C1 update.
+
+Final physical validation confirmed both cameras, explicit Camera 2 video,
+active source-loss stop, automatic removal of Camera 2, idle preselection of
+the sole remaining Camera 1 without opening it, and restoration of the
+two-camera inventory after reconnect. No error or automatic media session
+occurred.
 
 ## Physical and deployment effects
 
-None. Increment 56A does not start HASE, initialize WebView2, enumerate or open
-a camera or microphone, change installed configuration, create a registry,
-change authorization or credentials, deploy software, access serial hardware,
-upload firmware, or perform a physical mutation.
+Increment 56D is documentation-only. The separately approved 56C and 56C1
+effects are recorded above; closure itself does not build, test, deploy, start
+an application, initialize WebView2, enumerate or open a device, change
+installed configuration, registry, authorization, credentials, recovery,
+serial hardware, firmware, or physical state.
 
 ## Rollback
 
-Restore `docs/ProjectStatus.md` and `docs/Roadmap.md` to their exact starting
-bytes and remove this ADR. No application, configuration, registry,
-authorization, credential, deployment, recovery, camera, microphone, network,
-serial, firmware, or physical state requires rollback.
+Increment 56D rollback restores only the three documentation files to their
+exact closure baseline bytes. It does not roll back accepted source,
+deployment, configuration, recovery, camera, microphone, network, serial,
+firmware, or physical state.
 
 ## Definition of done
 
-Increment 56A is complete when:
-
-- the exact three documentation paths are applied and reviewed;
-- documentation validation succeeds;
-- the change is committed and pushed;
-- AEPRAKETE, LABC, and LTAEP are synchronized and clean; and
-- no application, deployment, device, or physical action has occurred.
-
-ADR-0056 remains open until Increment 56D records accepted source,
-installed-state, and physical completion evidence.
+ADR-0056 is complete when the exact three Increment 56D documentation paths
+are reviewed, validated, committed, pushed, and synchronized across
+AEPRAKETE, LABC, and LTAEP without additional build, test, deployment, device,
+recovery, or physical work.
 
 ## Deferred scope
 
 Dynamic microphone discovery, remote device management, remote camera rename or
-deletion, automatic source selection, automatic Start or resume, automatic
-fallback or switching, multiple viewers, multiple simultaneous sessions,
+deletion, automatic Start or resume, automatic active-session fallback or
+switching, multiple viewers, multiple simultaneous sessions,
 recording, snapshots, PTZ, talkback, Client-originated media, STUN/TURN, public
 relay, cloud media processing, headless non-WebView2 capture, non-Windows
 capture, ESP32 media, and recovery-custody cleanup remain outside ADR-0056.

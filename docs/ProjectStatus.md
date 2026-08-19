@@ -1,34 +1,40 @@
 # Project Status
 
-## Active architectural objective — ADR-0056
+## Completed architectural objective — ADR-0056
 
-**ADR-0056 — Dynamic Runtime-Host Camera Inventory — Increment 56B source applied; automated validation pending from the retained 6,349-test baseline**
+**ADR-0056 — Dynamic Runtime-Host Camera Inventory — implemented, deployed, physically validated, and closed at 6,362 passing tests**
 
-- A Windows Runtime Host will reconcile the available camera inventory at
-  startup and after bounded local device-change notifications.
-- Newly connected cameras will become sanitized logical media sources;
-  disconnected cameras will leave the available Client list without requiring
-  an application restart or manual rebind.
-- Raw browser or Windows device identifiers remain Runtime Host-local. A
-  protected local registry preserves stable logical identities and sanitized
-  display names across ordinary restart and reconnect.
-- Disconnecting an active camera terminates only that media session with
-  `SourceLost`. Reconnection creates a new source generation and never resumes,
-  starts, switches, or falls back automatically.
-- The authenticated media control plane will expose change-driven capability
-  snapshots using the existing `media.capability.read` authorization action.
-  The Client retains explicit camera selection, Start, Stop, and audio opt-in.
-- Existing AEPRAKETE camera bindings will be migrated transactionally in a
-  later approved increment. Dynamic microphone discovery remains outside the
-  accepted scope; a newly discovered camera is video-only unless audio is
-  explicitly configured.
-- Increment 56B adds the dormant source implementation: inventory-only WebView2
-  observation, opaque identity reconciliation, presence generations,
-  source-loss termination, the authorized revisioned capability stream, and
-  Client list reconciliation. Repository application does not initialize
-  WebView2, enumerate or open a device, deploy software, or change installed
-  configuration. Focused and complete automated validation remain the next
-  stop point.
+- A Windows Runtime Host reconciles up to sixteen available cameras at startup
+  and after bounded local device-change notifications without opening a media
+  stream for inventory observation.
+- Raw device identities remain Runtime Host-local. Protected format-2 registry
+  custody preserves stable logical names and creates a new generation for each
+  reconnect presence epoch.
+- The authenticated revisioned capability watch publishes complete sanitized
+  snapshots. The existing unary request remains the bounded manual and
+  compatibility recovery path.
+- Active source loss terminates only that media session with `SourceLost`.
+  Increment 56C1 then performs one authoritative read-only Client refresh,
+  removes the stale entry, and may preselect the sole remaining current camera
+  without automatic Start, resume, switching, or fallback.
+- Commit `58a0c4e29298b5605758b4c837061d295af7a483` is the accepted source baseline.
+  Its Release build completed with zero errors; 261 focused Client tests and
+  6,362 complete tests passed with zero failures and zero skips.
+- The controlled AEPRAKETE migration preserved two logical camera bindings,
+  two audio bindings, media ACL, WebView2 custody, and protected recovery
+  evidence. Recovery transaction identity
+  `d31427943e84bb4fa4d9e7ab6c228ec479d122ac69866d3794954fd39909edaf`
+  remains retained; closure does not authorize cleanup.
+- AEPRAKETE, LABC, and LTAEP are synchronized at the accepted commit. The
+  LTAEP 56C1 Client update preserved two Runtime Host profiles, registry bytes
+  and ACL, configuration, and desktop shortcut.
+- Physical validation confirmed initial two-camera inventory, idle disconnect
+  and reconnect, stable logical names, explicit Camera 2 video, active-loss
+  stop, automatic stale-entry removal, sole Camera 1 preselection without
+  opening it, and two-camera restoration after reconnect without errors.
+- Dynamic microphone discovery, remote camera management, recording, PTZ,
+  talkback, multiple viewers/sessions, public relay, and non-Windows capture
+  remain outside ADR-0056.
 
 ---
 
