@@ -6,6 +6,7 @@ using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.ViewModels;
 using Hase.DesktopHost.App.Views;
 using Hase.DesktopHost.App.Media;
+using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Northbound;
 using Prism.DryIoc;
 using Prism.Ioc;
@@ -73,15 +74,32 @@ public partial class App : PrismApplication
 
         var window =
             Container.Resolve<MainWindow>();
-        if (productionBackend is not null
-            && Container.Resolve<DesktopRuntimeHostStartupConfiguration>()
-                .MediaConfiguration is not null)
+        DesktopRuntimeHostMediaConfiguration? mediaConfiguration =
+            Container.Resolve<DesktopRuntimeHostStartupConfiguration>()
+                .MediaConfiguration;
+        if (productionBackend is not null && mediaConfiguration is not null)
         {
-            productionBackend.ConfigureMediaBoundary(
+            var captureBoundary =
                 new WebView2RuntimeHostMediaCaptureBoundary(
                     window.CreateMediaCaptureWebView(
                         mediaWebView2UserDataDirectory),
-                    Path.Combine(AppContext.BaseDirectory, "Media", "Assets")));
+                    Path.Combine(AppContext.BaseDirectory, "Media", "Assets"));
+            if (mediaConfiguration.DynamicInventoryEnabled)
+            {
+                productionBackend.ConfigureMediaBoundaries(
+                    captureBoundary,
+                    new WebView2RuntimeHostMediaInventoryBoundary(
+                        window.CreateMediaInventoryWebView(
+                            mediaWebView2UserDataDirectory),
+                        Path.Combine(
+                            AppContext.BaseDirectory,
+                            "Media",
+                            "Assets")));
+            }
+            else
+            {
+                productionBackend.ConfigureMediaBoundary(captureBoundary);
+            }
         }
         window.DataContext =
             mainWindowViewModel;

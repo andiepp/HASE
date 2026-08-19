@@ -19,6 +19,8 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
     private bool includeAudio;
     private bool isBusy;
     private string statusText = "Media control is not available.";
+    private CancellationTokenSource? capabilityWatchCancellation;
+    private ulong capabilityRevision;
 
     public RuntimeHostMediaViewModel()
     {
@@ -113,12 +115,34 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         {
             notifications.SessionChanged += OnSessionChanged;
         }
-        StatusText = "Select Refresh Cameras to load configured sources.";
+        StatusText = mediaClient is IRuntimeHostMediaCapabilityWatchClient
+            ? "Waiting for the Runtime Host camera inventory."
+            : "Select Refresh Cameras to load configured sources.";
         RaiseStateChanged();
+    }
+
+    public void RestartCapabilityWatch()
+    {
+        capabilityWatchCancellation?.Cancel();
+        capabilityWatchCancellation?.Dispose();
+        capabilityWatchCancellation = null;
+        capabilityRevision = 0;
+        if (client is not IRuntimeHostMediaCapabilityWatchClient watchClient)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        capabilityWatchCancellation = cancellation;
+        _ = WatchCapabilitiesAsync(watchClient, cancellation);
     }
 
     public void ResetForRuntimeHostChange()
     {
+        capabilityWatchCancellation?.Cancel();
+        capabilityWatchCancellation?.Dispose();
+        capabilityWatchCancellation = null;
+        capabilityRevision = 0;
         session = null;
         Sources = [];
         SelectedSource = null;
@@ -144,20 +168,7 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         {
             IReadOnlyList<RemoteMediaSourceCapability> capabilities =
                 await activeClient.GetCapabilitiesAsync(cancellationToken);
-            Sources = capabilities
-                .Where(item => item.SupportsVideo)
-                .OrderBy(item => item.DisplayName, StringComparer.Ordinal)
-                .ThenBy(item => item.Target.MediaSourceId, StringComparer.Ordinal)
-                .Select(item => new RuntimeHostMediaSourceItemViewModel(
-                    item.Target,
-                    item.DisplayName,
-                    item.Availability,
-                    item.SupportsAudio))
-                .ToArray();
-            SelectedSource = Sources.Count == 1 ? Sources[0] : null;
-            StatusText = Sources.Count == 0
-                ? "No configured cameras are available."
-                : "Select a camera and choose Start Video.";
+            ApplyCapabilities(capabilities);
         }
         catch (RuntimeHostClientException exception)
         {
@@ -268,6 +279,67 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         _ => "The media operation failed."
     };
 
+    private async Task WatchCapabilitiesAsync(
+        IRuntimeHostMediaCapabilityWatchClient watchClient,
+        CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await foreach (RemoteMediaCapabilitySnapshot snapshot in
+                watchClient.WatchCapabilitiesAsync(
+                    capabilityRevision,
+                    cancellation.Token))
+            {
+                if (cancellation.IsCancellationRequested ||
+                    capabilityWatchCancellation != cancellation ||
+                    snapshot.Revision <= capabilityRevision)
+                {
+                    continue;
+                }
+                capabilityRevision = snapshot.Revision;
+                ApplyCapabilities(snapshot.Sources);
+            }
+        }
+        catch (OperationCanceledException)
+            when (cancellation.IsCancellationRequested)
+        {
+        }
+        catch
+        {
+            if (capabilityWatchCancellation == cancellation)
+            {
+                StatusText = "The live camera inventory is unavailable.";
+                RaiseStateChanged();
+            }
+        }
+    }
+
+    private void ApplyCapabilities(
+        IReadOnlyList<RemoteMediaSourceCapability> capabilities)
+    {
+        RemoteMediaSourceTarget? retainedTarget = SelectedSource?.Target;
+        Sources = capabilities
+            .Where(item => item.SupportsVideo)
+            .OrderBy(item => item.DisplayName, StringComparer.Ordinal)
+            .ThenBy(item => item.Target.MediaSourceId, StringComparer.Ordinal)
+            .Select(item => new RuntimeHostMediaSourceItemViewModel(
+                item.Target,
+                item.DisplayName,
+                item.Availability,
+                item.SupportsAudio))
+            .ToArray();
+        if (session is null)
+        {
+            SelectedSource = retainedTarget is null
+                ? Sources.Count == 1 ? Sources[0] : null
+                : Sources.SingleOrDefault(item => item.Target == retainedTarget);
+        }
+        StatusText = Sources.Count == 0
+            ? "No cameras are currently available."
+            : "Select a camera and choose Start Video.";
+        RaiseStateChanged();
+    }
+
     private void OnSessionChanged(
         object? sender,
         RemoteMediaSessionChangedEventArgs eventArgs)
@@ -277,6 +349,11 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         if (session is null)
         {
             IncludeAudio = false;
+            if (SelectedSource is not null &&
+                !Sources.Any(item => item.Target == SelectedSource.Target))
+            {
+                SelectedSource = null;
+            }
         }
         RaiseStateChanged();
     }

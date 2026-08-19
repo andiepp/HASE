@@ -12,6 +12,8 @@ option csharp_namespace = "Hase.Runtime.Media.Grpc.V1";
 service RuntimeHostMediaControl {
   rpc GetMediaCapabilities (GetMediaCapabilitiesRequest)
       returns (GetMediaCapabilitiesResponse);
+  rpc WatchMediaCapabilities (WatchMediaCapabilitiesRequest)
+      returns (stream GetMediaCapabilitiesResponse);
   rpc StartMediaSession (StartMediaSessionRequest)
       returns (StartMediaSessionResponse);
   rpc ExchangeMediaNegotiation (ExchangeMediaNegotiationRequest)
@@ -25,11 +27,16 @@ service RuntimeHostMediaControl {
 message GetMediaCapabilitiesRequest {
 }
 
+message WatchMediaCapabilitiesRequest {
+  uint64 after_revision = 1;
+}
+
 message GetMediaCapabilitiesResponse {
   string runtime_host_id = 1;
   MediaControlApiVersion api_version = 2;
   repeated MediaSourceCapability sources = 3;
   MediaControlLimits limits = 4;
+  uint64 capability_revision = 5;
 }
 
 message MediaControlApiVersion {

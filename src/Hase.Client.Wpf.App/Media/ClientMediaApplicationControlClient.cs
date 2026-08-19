@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using System.Runtime.CompilerServices;
 using Hase.Client.Configuration;
 using Hase.Client.Diagnostics;
 using Hase.Client.Media;
@@ -11,6 +12,7 @@ namespace Hase.Client.Wpf.AppHost.Media;
 /// </summary>
 public sealed class ClientMediaApplicationControlClient :
     IRuntimeHostMediaControlClient,
+    IRuntimeHostMediaCapabilityWatchClient,
     IRuntimeHostMediaSessionNotifications,
     IAsyncDisposable
 {
@@ -107,6 +109,30 @@ public sealed class ClientMediaApplicationControlClient :
                     }));
             throw;
         }
+    }
+
+    public async IAsyncEnumerable<RemoteMediaCapabilitySnapshot>
+        WatchCapabilitiesAsync(
+            ulong afterRevision = 0,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        IRuntimeHostMediaControlClient activeClient = GetSelectedClient();
+        if (activeClient is IRuntimeHostMediaCapabilityWatchClient watchClient)
+        {
+            await foreach (RemoteMediaCapabilitySnapshot snapshot in
+                watchClient.WatchCapabilitiesAsync(
+                    afterRevision,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                yield return snapshot;
+            }
+            yield break;
+        }
+
+        IReadOnlyList<RemoteMediaSourceCapability> sources =
+            await activeClient.GetCapabilitiesAsync(cancellationToken)
+                .ConfigureAwait(false);
+        yield return new(afterRevision + 1, sources);
     }
 
     public async Task<RemoteMediaStartResult> StartAsync(
@@ -235,7 +261,11 @@ public sealed class ClientMediaApplicationControlClient :
                             RemoteMediaSessionState.Faulted)
                     {
                         ClearSessionIfCurrent(
-                            sessionId, "The remote media session ended.");
+                            sessionId,
+                            status.Session?.TerminalReason ==
+                                RemoteMediaTerminalReason.SourceLost
+                                ? "Media stopped because the camera was disconnected."
+                                : "The remote media session ended.");
                         return;
                     }
                     session = status.Session;

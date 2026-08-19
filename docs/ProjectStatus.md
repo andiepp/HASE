@@ -2,7 +2,7 @@
 
 ## Active architectural objective — ADR-0056
 
-**ADR-0056 — Dynamic Runtime-Host Camera Inventory — accepted by Increment 56A; implementation pending at the 6,349-test baseline**
+**ADR-0056 — Dynamic Runtime-Host Camera Inventory — Increment 56B source applied; automated validation pending from the retained 6,349-test baseline**
 
 - A Windows Runtime Host will reconcile the available camera inventory at
   startup and after bounded local device-change notifications.
@@ -22,9 +22,13 @@
   later approved increment. Dynamic microphone discovery remains outside the
   accepted scope; a newly discovered camera is video-only unless audio is
   explicitly configured.
-- Increment 56A records the architecture only. It adds no application,
-  protocol, configuration, authorization, credential, deployment, recovery,
-  camera, microphone, WebView2, serial, firmware, or physical change.
+- Increment 56B adds the dormant source implementation: inventory-only WebView2
+  observation, opaque identity reconciliation, presence generations,
+  source-loss termination, the authorized revisioned capability stream, and
+  Client list reconciliation. Repository application does not initialize
+  WebView2, enumerate or open a device, deploy software, or change installed
+  configuration. Focused and complete automated validation remain the next
+  stop point.
 
 ---
 

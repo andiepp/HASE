@@ -48,6 +48,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private DesktopRuntimeHostOperator? runtimeOperator;
     private DesktopRuntimeDiagnosticSession? diagnosticSession;
     private IRuntimeHostMediaWebBoundary? mediaBoundary;
+    private IRuntimeHostMediaInventoryWebBoundary? mediaInventoryBoundary;
     private RuntimeHostMediaApplicationCoordinator? mediaCoordinator;
     private RuntimeHostMediaSessionOwner? mediaSessionOwner;
 
@@ -91,6 +92,28 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 "The Runtime Host media boundary is already configured or started.");
         }
         mediaBoundary = boundary;
+    }
+
+    public void ConfigureMediaBoundaries(
+        IRuntimeHostMediaWebBoundary captureBoundary,
+        IRuntimeHostMediaInventoryWebBoundary inventoryBoundary)
+    {
+        ArgumentNullException.ThrowIfNull(captureBoundary);
+        ArgumentNullException.ThrowIfNull(inventoryBoundary);
+        if (configuration.MediaConfiguration is not
+            { DynamicInventoryEnabled: true })
+        {
+            throw new InvalidOperationException(
+                "Dynamic media boundaries require dynamic local media configuration.");
+        }
+        if (mediaBoundary is not null || mediaInventoryBoundary is not null ||
+            deployment is not null)
+        {
+            throw new InvalidOperationException(
+                "The Runtime Host media boundaries are already configured or started.");
+        }
+        mediaBoundary = captureBoundary;
+        mediaInventoryBoundary = inventoryBoundary;
     }
 
     public IReadOnlyList<DesktopRuntimeEndpointSnapshot> Capture()
@@ -343,13 +366,39 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 IRuntimeHostMediaWebBoundary configuredBoundary =
                     mediaBoundary ?? throw new InvalidOperationException(
                         "Configured Runtime Host media requires its WPF capture boundary.");
-                mediaSessionOwner = new RuntimeHostMediaSessionOwner(
-                    configuration.MediaConfiguration.Sources,
-                    configuredBoundary);
-                mediaCoordinator = new RuntimeHostMediaApplicationCoordinator(
-                    configuredBoundary,
-                    mediaSessionOwner,
-                    session.Publisher);
+                DesktopRuntimeHostMediaConfiguration mediaConfiguration =
+                    configuration.MediaConfiguration;
+                if (mediaConfiguration.DynamicInventoryEnabled)
+                {
+                    IRuntimeHostMediaInventoryWebBoundary inventoryBoundary =
+                        mediaInventoryBoundary ?? throw new InvalidOperationException(
+                            "Dynamic media requires its inventory WebView boundary.");
+                    mediaSessionOwner = new RuntimeHostMediaSessionOwner(
+                        [],
+                        configuredBoundary,
+                        allowEmptySources: true);
+                    var reconciler = new RuntimeHostMediaInventoryReconciler(
+                        mediaConfiguration.Sources,
+                        mediaConfiguration.IdentityKey!);
+                    mediaCoordinator = new RuntimeHostMediaApplicationCoordinator(
+                        configuredBoundary,
+                        mediaSessionOwner,
+                        inventoryBoundary,
+                        reconciler,
+                        session.Publisher);
+                    await mediaCoordinator.InitializeInventoryAsync(
+                        cancellationToken);
+                }
+                else
+                {
+                    mediaSessionOwner = new RuntimeHostMediaSessionOwner(
+                        mediaConfiguration.Sources,
+                        configuredBoundary);
+                    mediaCoordinator = new RuntimeHostMediaApplicationCoordinator(
+                        configuredBoundary,
+                        mediaSessionOwner,
+                        session.Publisher);
+                }
             }
 
             CompactEndpointDefinition compactDefinition =
@@ -824,6 +873,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         diagnosticSession = null;
         mediaCoordinator = null;
         mediaSessionOwner = null;
+        mediaBoundary = null;
+        mediaInventoryBoundary = null;
 
         if (deploymentToDispose is not null)
         {

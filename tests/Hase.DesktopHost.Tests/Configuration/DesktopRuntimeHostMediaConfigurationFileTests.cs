@@ -52,6 +52,36 @@ public sealed class DesktopRuntimeHostMediaConfigurationFileTests
         Assert.False(Assert.Single(configuration.Sources).SupportsAudio);
     }
 
+    [Fact]
+    public async Task LoadAsync_DynamicConfiguration_ShouldDecodeProtectedIdentityKey()
+    {
+        string key = Convert.ToBase64String(
+            Enumerable.Range(0, 32).Select(index => (byte)index).ToArray());
+        using var document = await TemporaryDocument.CreateAsync(
+            $$"""
+            {
+              "formatVersion": 2,
+              "identityKey": "{{key}}",
+              "sources": [
+                {
+                  "mediaSourceId": "primary-camera",
+                  "displayName": "Primary camera",
+                  "videoDeviceId": "windows-video-device"
+                }
+              ]
+            }
+            """);
+
+        DesktopRuntimeHostMediaConfiguration configuration =
+            await DesktopRuntimeHostMediaConfigurationFile.LoadAsync(
+                document.FilePath);
+
+        Assert.True(configuration.DynamicInventoryEnabled);
+        Assert.Equal(32, configuration.IdentityKey!.Length);
+        Assert.Equal("primary-camera",
+            Assert.Single(configuration.Sources).Target.MediaSourceId);
+    }
+
     [Theory]
     [InlineData("{\"formatVersion\":1,\"sources\":[]}")]
     [InlineData("{\"formatVersion\":2,\"sources\":[]}")]

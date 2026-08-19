@@ -37,6 +37,45 @@ public sealed class RuntimeHostGrpcMediaControlClientTests
     }
 
     [Fact]
+    public async Task CapabilityWatchPreservesRevisionAndCompleteSnapshot()
+    {
+        var transport = new RecordingTransport
+        {
+            CapabilityWatchResponses =
+            [
+                new MediaV1.GetMediaCapabilitiesResponse
+                {
+                    CapabilityRevision = 7,
+                    Sources =
+                    {
+                        new MediaV1.MediaSourceCapability
+                        {
+                            Target = Target(),
+                            DisplayName = "USB camera",
+                            Availability = MediaV1.MediaSourceAvailability.Idle,
+                            SupportsVideo = true
+                        }
+                    }
+                }
+            ]
+        };
+        var client = new RuntimeHostGrpcMediaControlClient(transport);
+
+        var snapshots = new List<RemoteMediaCapabilitySnapshot>();
+        await foreach (RemoteMediaCapabilitySnapshot snapshot in
+            client.WatchCapabilitiesAsync(afterRevision: 6))
+        {
+            snapshots.Add(snapshot);
+        }
+
+        RemoteMediaCapabilitySnapshot actual = Assert.Single(snapshots);
+        Assert.Equal((ulong)7, actual.Revision);
+        Assert.Equal("camera-01",
+            Assert.Single(actual.Sources).Target.MediaSourceId);
+        Assert.Equal((ulong)6, transport.WatchRequest!.AfterRevision);
+    }
+
+    [Fact]
     public async Task StartPreservesExactLogicalTargetAndAudioChoice()
     {
         var transport = new RecordingTransport
@@ -176,7 +215,9 @@ public sealed class RuntimeHostGrpcMediaControlClientTests
         };
     }
 
-    private sealed class RecordingTransport : IRuntimeHostMediaGrpcTransport
+    private sealed class RecordingTransport :
+        IRuntimeHostMediaGrpcTransport,
+        IRuntimeHostMediaCapabilityGrpcTransport
     {
         public MediaV1.GetMediaCapabilitiesResponse CapabilitiesResponse
             { get; init; } = new();
@@ -188,17 +229,37 @@ public sealed class RuntimeHostGrpcMediaControlClientTests
             { get; init; } = new();
         public MediaV1.StopMediaSessionResponse StopResponse
             { get; init; } = new();
+        public IReadOnlyList<MediaV1.GetMediaCapabilitiesResponse>
+            CapabilityWatchResponses { get; init; } = [];
 
         public MediaV1.StartMediaSessionRequest? StartRequest { get; private set; }
         public MediaV1.ExchangeMediaNegotiationRequest? ExchangeRequest
             { get; private set; }
         public MediaV1.GetMediaSessionStatusRequest? StatusRequest
             { get; private set; }
+        public MediaV1.WatchMediaCapabilitiesRequest? WatchRequest
+            { get; private set; }
 
         public Task<MediaV1.GetMediaCapabilitiesResponse> GetCapabilitiesAsync(
             MediaV1.GetMediaCapabilitiesRequest request,
             CancellationToken cancellationToken) =>
             Task.FromResult(CapabilitiesResponse);
+
+        public async IAsyncEnumerable<MediaV1.GetMediaCapabilitiesResponse>
+            WatchCapabilitiesAsync(
+                MediaV1.WatchMediaCapabilitiesRequest request,
+                [System.Runtime.CompilerServices.EnumeratorCancellation]
+                CancellationToken cancellationToken)
+        {
+            WatchRequest = request;
+            foreach (MediaV1.GetMediaCapabilitiesResponse response in
+                CapabilityWatchResponses)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return response;
+                await Task.Yield();
+            }
+        }
 
         public Task<MediaV1.StartMediaSessionResponse> StartAsync(
             MediaV1.StartMediaSessionRequest request,

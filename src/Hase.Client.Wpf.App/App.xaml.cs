@@ -29,6 +29,8 @@ public partial class App
     private IClientUiDispatcher? uiDispatcher;
     private MainWindowViewModel? mainWindowViewModel;
     private ClientMediaApplicationControlClient? mediaControlClient;
+    private RuntimeHostProfileId? mediaWatchProfileId;
+    private RuntimeHostClientSessionState? mediaWatchState;
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -97,6 +99,9 @@ public partial class App
         viewModel.Media.Configure(mediaControlClient);
         mediaControlClient.SelectRuntimeHost(
             viewModel.SelectedRuntimeHost?.ProfileId);
+        mediaWatchProfileId = viewModel.SelectedRuntimeHost?.ProfileId;
+        mediaWatchState = viewModel.SelectedRuntimeHost?.SessionState;
+        viewModel.Media.RestartCapabilityWatch();
         viewModel.PropertyChanged += MainWindowViewModelPropertyChanged;
 
         return window;
@@ -195,8 +200,17 @@ public partial class App
     {
         if (eventArgs.PropertyName == nameof(MainWindowViewModel.SelectedRuntimeHost))
         {
-            mediaControlClient?.SelectRuntimeHost(
-                mainWindowViewModel?.SelectedRuntimeHost?.ProfileId);
+            RuntimeHostProfileItemViewModel? selected =
+                mainWindowViewModel?.SelectedRuntimeHost;
+            RuntimeHostProfileId? profileId = selected?.ProfileId;
+            if (profileId == mediaWatchProfileId)
+            {
+                return;
+            }
+            mediaControlClient?.SelectRuntimeHost(profileId);
+            mediaWatchProfileId = profileId;
+            mediaWatchState = selected?.SessionState;
+            mainWindowViewModel?.Media.RestartCapabilityWatch();
         }
     }
 
@@ -213,6 +227,15 @@ public partial class App
                 mediaControlClient?.NotifyRuntimeHostState(
                     selected.ProfileId,
                     selected.SessionState);
+                bool recovered = selected.ProfileId == mediaWatchProfileId &&
+                    selected.SessionState ==
+                        RuntimeHostClientSessionState.Connected &&
+                    mediaWatchState != RuntimeHostClientSessionState.Connected;
+                mediaWatchState = selected.SessionState;
+                if (recovered)
+                {
+                    mainWindowViewModel.Media.RestartCapabilityWatch();
+                }
             }
         });
     }

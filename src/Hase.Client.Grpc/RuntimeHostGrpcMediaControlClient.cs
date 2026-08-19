@@ -1,4 +1,6 @@
 using Hase.Client.Media;
+using Grpc.Core;
+using System.Runtime.CompilerServices;
 using MediaV1 = global::Hase.Runtime.Media.Grpc.V1;
 
 namespace Hase.Client.Grpc;
@@ -26,8 +28,17 @@ internal interface IRuntimeHostMediaGrpcTransport
         CancellationToken cancellationToken);
 }
 
+internal interface IRuntimeHostMediaCapabilityGrpcTransport
+{
+    IAsyncEnumerable<MediaV1.GetMediaCapabilitiesResponse>
+        WatchCapabilitiesAsync(
+            MediaV1.WatchMediaCapabilitiesRequest request,
+            CancellationToken cancellationToken);
+}
+
 internal sealed class RuntimeHostMediaGrpcTransport
-    : IRuntimeHostMediaGrpcTransport
+    : IRuntimeHostMediaGrpcTransport,
+      IRuntimeHostMediaCapabilityGrpcTransport
 {
     private readonly MediaV1.RuntimeHostMediaControl.RuntimeHostMediaControlClient
         client;
@@ -46,6 +57,55 @@ internal sealed class RuntimeHostMediaGrpcTransport
                 request,
                 cancellationToken: cancellationToken)
             .ResponseAsync.ConfigureAwait(false);
+
+    public async IAsyncEnumerable<MediaV1.GetMediaCapabilitiesResponse>
+        WatchCapabilitiesAsync(
+            MediaV1.WatchMediaCapabilitiesRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        AsyncServerStreamingCall<MediaV1.GetMediaCapabilitiesResponse>? call = null;
+        bool unaryFallback = false;
+        try
+        {
+            call = client.WatchMediaCapabilities(
+                request,
+                cancellationToken: cancellationToken);
+        }
+        catch (RpcException exception)
+            when (exception.StatusCode == StatusCode.Unimplemented)
+        {
+            unaryFallback = true;
+        }
+
+        while (!unaryFallback)
+        {
+            bool hasNext;
+            try
+            {
+                hasNext = await call!.ResponseStream.MoveNext(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (RpcException exception)
+                when (exception.StatusCode == StatusCode.Unimplemented)
+            {
+                unaryFallback = true;
+                break;
+            }
+            if (!hasNext)
+            {
+                break;
+            }
+            yield return call!.ResponseStream.Current;
+        }
+
+        call?.Dispose();
+        if (unaryFallback)
+        {
+            yield return await GetCapabilitiesAsync(
+                new MediaV1.GetMediaCapabilitiesRequest(),
+                cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     public async Task<MediaV1.StartMediaSessionResponse> StartAsync(
         MediaV1.StartMediaSessionRequest request,
@@ -86,7 +146,8 @@ internal sealed class RuntimeHostMediaGrpcTransport
 /// SDP and ICE payloads are mapped in memory and are never logged here.
 /// </summary>
 public sealed class RuntimeHostGrpcMediaControlClient
-    : IRuntimeHostMediaControlClient
+    : IRuntimeHostMediaControlClient,
+      IRuntimeHostMediaCapabilityWatchClient
 {
     private readonly IRuntimeHostMediaGrpcTransport transport;
 
@@ -111,6 +172,47 @@ public sealed class RuntimeHostGrpcMediaControlClient
                 new MediaV1.GetMediaCapabilitiesRequest(),
                 cancellationToken).ConfigureAwait(false);
         return response.Sources.Select(Map).ToArray();
+    }
+
+    public async IAsyncEnumerable<RemoteMediaCapabilitySnapshot>
+        WatchCapabilitiesAsync(
+            ulong afterRevision = 0,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (transport is not IRuntimeHostMediaCapabilityGrpcTransport stream)
+        {
+            MediaV1.GetMediaCapabilitiesResponse current =
+                await transport.GetCapabilitiesAsync(
+                    new MediaV1.GetMediaCapabilitiesRequest(),
+                    cancellationToken).ConfigureAwait(false);
+            RemoteMediaCapabilitySnapshot snapshot = MapSnapshot(current);
+            yield return snapshot.Revision == 0
+                ? new(afterRevision + 1, snapshot.Sources)
+                : snapshot;
+            yield break;
+        }
+
+        ulong lastRevision = afterRevision;
+        await foreach (MediaV1.GetMediaCapabilitiesResponse response in
+            stream.WatchCapabilitiesAsync(
+                new MediaV1.WatchMediaCapabilitiesRequest
+                {
+                    AfterRevision = afterRevision
+                },
+                cancellationToken).ConfigureAwait(false))
+        {
+            RemoteMediaCapabilitySnapshot snapshot = MapSnapshot(response);
+            if (snapshot.Revision == 0)
+            {
+                snapshot = new(lastRevision + 1, snapshot.Sources);
+            }
+            if (snapshot.Revision <= lastRevision)
+            {
+                continue;
+            }
+            lastRevision = snapshot.Revision;
+            yield return snapshot;
+        }
     }
 
     public async Task<RemoteMediaStartResult> StartAsync(
@@ -206,6 +308,12 @@ public sealed class RuntimeHostGrpcMediaControlClient
         },
         source.SupportsVideo,
         source.SupportsAudio);
+
+    private static RemoteMediaCapabilitySnapshot MapSnapshot(
+        MediaV1.GetMediaCapabilitiesResponse response) =>
+        new(
+            response.CapabilityRevision,
+            response.Sources.Select(Map).ToArray());
 
     private static RemoteMediaSourceTarget Map(MediaV1.MediaSourceTarget source)
         => new(source.MediaSourceId, source.MediaSourceGeneration);

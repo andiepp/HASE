@@ -25,6 +25,7 @@ public sealed class RuntimeHostMediaControlV1ContractTests
         Assert.Equal(
             [
                 "GetMediaCapabilities",
+                "WatchMediaCapabilities",
                 "StartMediaSession",
                 "ExchangeMediaNegotiation",
                 "GetMediaSessionStatus",
@@ -32,12 +33,17 @@ public sealed class RuntimeHostMediaControlV1ContractTests
             ],
             service.Methods.Select(method => method.Name));
         Assert.All(
-            service.Methods,
+            service.Methods.Where(method =>
+                method.Name != "WatchMediaCapabilities"),
             method =>
             {
                 Assert.False(method.IsClientStreaming);
                 Assert.False(method.IsServerStreaming);
             });
+        MethodDescriptor watch = service.Methods.Single(method =>
+            method.Name == "WatchMediaCapabilities");
+        Assert.False(watch.IsClientStreaming);
+        Assert.True(watch.IsServerStreaming);
     }
 
     [Fact]
@@ -46,6 +52,10 @@ public sealed class RuntimeHostMediaControlV1ContractTests
         AssertMethod(
             "GetMediaCapabilities",
             GetMediaCapabilitiesRequest.Descriptor,
+            GetMediaCapabilitiesResponse.Descriptor);
+        AssertStreamingMethod(
+            "WatchMediaCapabilities",
+            WatchMediaCapabilitiesRequest.Descriptor,
             GetMediaCapabilitiesResponse.Descriptor);
         AssertMethod(
             "StartMediaSession",
@@ -73,7 +83,12 @@ public sealed class RuntimeHostMediaControlV1ContractTests
             ("runtime_host_id", 1, FieldType.String, false),
             ("api_version", 2, FieldType.Message, false),
             ("sources", 3, FieldType.Message, true),
-            ("limits", 4, FieldType.Message, false));
+            ("limits", 4, FieldType.Message, false),
+            ("capability_revision", 5, FieldType.UInt64, false));
+
+        AssertFields(
+            WatchMediaCapabilitiesRequest.Descriptor,
+            ("after_revision", 1, FieldType.UInt64, false));
 
         AssertFields(
             MediaSourceCapability.Descriptor,
@@ -303,5 +318,21 @@ public sealed class RuntimeHostMediaControlV1ContractTests
             Assert.Equal(expected[index].Type, actual[index].FieldType);
             Assert.Equal(expected[index].Repeated, actual[index].IsRepeated);
         }
+    }
+
+    private static void AssertStreamingMethod(
+        string name,
+        MessageDescriptor input,
+        MessageDescriptor output)
+    {
+        ServiceDescriptor service = Assert.Single(
+            RuntimeHostMediaControlV1Reflection.Descriptor.Services);
+        MethodDescriptor method = Assert.Single(
+            service.Methods,
+            candidate => candidate.Name == name);
+        Assert.Equal(input.FullName, method.InputType.FullName);
+        Assert.Equal(output.FullName, method.OutputType.FullName);
+        Assert.False(method.IsClientStreaming);
+        Assert.True(method.IsServerStreaming);
     }
 }

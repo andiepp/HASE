@@ -50,6 +50,10 @@ public sealed record RemoteMediaSourceCapability(
     bool SupportsVideo,
     bool SupportsAudio);
 
+public sealed record RemoteMediaCapabilitySnapshot(
+    ulong Revision,
+    IReadOnlyList<RemoteMediaSourceCapability> Sources);
+
 public sealed record RemoteMediaSessionSnapshot(
     string SessionId,
     RemoteMediaSourceTarget Target,

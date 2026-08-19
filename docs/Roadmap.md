@@ -1987,8 +1987,8 @@ operator-approved policy decision.
 
 ## Active objective — ADR-0056 Dynamic Runtime-Host Camera Inventory
 
-**Status:** [Accepted] Architecture accepted by Increment 56A; implementation
-pending at the 6,349-test baseline
+**Status:** [In progress] Increment 56B source applied; automated validation
+pending from the retained 6,349-test baseline
 
 ADR-0056 extends the closed ADR-0055 media boundary so a Windows Runtime Host
 can reconcile cameras that are plugged in or disconnected while the
@@ -2009,8 +2009,8 @@ disclosure contracts remain unchanged. Dynamic microphone discovery, PTZ,
 recording, snapshots, multiple viewers, public relay, and non-Windows capture
 remain outside ADR-0056.
 
-Increment 56A is documentation-only. Implementation, automated validation,
-installed-application update, migration of the existing AEPRAKETE bindings,
-and physical plug/disconnect/reconnect validation remain separate explicit
-increments. Diagnostic Export and Offline Analysis remains accepted but
-deferred.
+Increment 56B implements the source boundary without installed or physical
+effects. Focused and complete automated validation, installed-application
+update, migration of the existing AEPRAKETE bindings, and physical
+plug/disconnect/reconnect validation remain separate explicit stop points.
+Diagnostic Export and Offline Analysis remains accepted but deferred.

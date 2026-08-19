@@ -7,7 +7,8 @@ namespace Hase.DesktopHost.Configuration;
 
 public static class DesktopRuntimeHostMediaConfigurationFile
 {
-    private const int CurrentFormatVersion = 1;
+    private const int StaticFormatVersion = 1;
+    private const int DynamicFormatVersion = 2;
     private const int MaximumDocumentByteCount = 64 * 1024;
     private const int MaximumSources = 16;
 
@@ -69,27 +70,45 @@ public static class DesktopRuntimeHostMediaConfigurationFile
 
             MediaDocument? parsed = JsonSerializer.Deserialize<MediaDocument>(
                 document, SerializerOptions);
-            if (parsed is null || parsed.FormatVersion != CurrentFormatVersion)
+            if (parsed is null || parsed.FormatVersion is not (
+                    StaticFormatVersion or DynamicFormatVersion))
             {
                 throw new InvalidDataException(
                     "The Runtime Host media-configuration format is not supported.");
             }
-            if (parsed.Sources is null || parsed.Sources.Count is < 1 or > MaximumSources)
+            int minimumSources = parsed.FormatVersion == StaticFormatVersion ? 1 : 0;
+            if (parsed.Sources is null ||
+                parsed.Sources.Count < minimumSources ||
+                parsed.Sources.Count > MaximumSources)
             {
                 throw new InvalidDataException(
                     "The Runtime Host media configuration requires between one and sixteen sources.");
             }
 
-            RuntimeHostMediaSourceConfiguration[] sources =
-                parsed.Sources.Select(CreateSource).ToArray();
+            bool dynamic = parsed.FormatVersion == DynamicFormatVersion;
+            RuntimeHostMediaSourceConfiguration[] sources = parsed.Sources
+                .Select(source => CreateSource(source, dynamic))
+                .ToArray();
             if (sources.Select(item => item.Target.MediaSourceId)
                 .Distinct(StringComparer.Ordinal).Count() != sources.Length)
             {
                 throw new InvalidDataException(
                     "The Runtime Host media configuration contains a duplicate logical source identity.");
             }
+            if (sources.Select(item => item.VideoDeviceId)
+                .Distinct(StringComparer.Ordinal).Count() != sources.Length)
+            {
+                throw new InvalidDataException(
+                    "The Runtime Host media configuration contains a duplicate camera binding.");
+            }
 
-            return new DesktopRuntimeHostMediaConfiguration(sources);
+            byte[]? identityKey = dynamic
+                ? DecodeIdentityKey(parsed.IdentityKey)
+                : parsed.IdentityKey is null
+                    ? null
+                    : throw new InvalidDataException(
+                        "Static media configuration cannot contain an identity key.");
+            return new DesktopRuntimeHostMediaConfiguration(sources, identityKey);
         }
         catch (JsonException exception)
         {
@@ -104,7 +123,8 @@ public static class DesktopRuntimeHostMediaConfigurationFile
     }
 
     private static RuntimeHostMediaSourceConfiguration CreateSource(
-        MediaSourceDocument source)
+        MediaSourceDocument source,
+        bool dynamic)
     {
         if (source is null)
         {
@@ -118,11 +138,37 @@ public static class DesktopRuntimeHostMediaConfigurationFile
         return new RuntimeHostMediaSourceConfiguration(
             new RuntimeHostMediaSourceTarget(
                 Require(source.MediaSourceId, "logical source identity"),
-                Require(source.MediaSourceGeneration, "source generation")),
+                dynamic
+                    ? "DYNAMIC"
+                    : Require(source.MediaSourceGeneration, "source generation")),
             Require(source.VideoDeviceId, "video device identity"),
             audioDeviceId,
             RuntimeHostMediaSourceAvailability.Idle,
             Require(source.DisplayName, "source display name"));
+    }
+
+    private static byte[] DecodeIdentityKey(string? encoded)
+    {
+        if (string.IsNullOrWhiteSpace(encoded))
+        {
+            throw new InvalidDataException(
+                "Dynamic media configuration requires an identity key.");
+        }
+        try
+        {
+            byte[] value = Convert.FromBase64String(encoded);
+            return value.Length ==
+                RuntimeHostMediaInventoryReconciler.IdentityKeyByteCount
+                ? value
+                : throw new InvalidDataException(
+                    "The dynamic media identity key has an invalid length.");
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidDataException(
+                "The dynamic media identity key is not valid Base64.",
+                exception);
+        }
     }
 
     private static string Require(string? value, string role)
@@ -138,6 +184,9 @@ public static class DesktopRuntimeHostMediaConfigurationFile
     {
         [JsonPropertyName("formatVersion")]
         public int FormatVersion { get; set; }
+
+        [JsonPropertyName("identityKey")]
+        public string? IdentityKey { get; set; }
 
         [JsonPropertyName("sources")]
         public List<MediaSourceDocument>? Sources { get; set; }

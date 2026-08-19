@@ -1,6 +1,6 @@
 # ADR-0056 — Dynamic Runtime-Host Camera Inventory
 
-- Status: Accepted by Increment 56A; implementation pending
+- Status: Increment 56B source applied; automated validation pending
 - Date: 2026-08-19
 - Starting baseline:
   `d6dbe75bacd3f30e979c8074042db169832bcb5f`
@@ -300,6 +300,31 @@ Validation requires:
 
 The retained automated baseline is 6,349 passed, zero failed, and zero skipped.
 Increment 56A does not claim a new test execution.
+
+## Increment 56B implementation status
+
+Increment 56B is applied in source against exact commit
+`6831cf1bd9a4c9a251930c31203fef601cfe1c7f`. It adds:
+
+- an inventory-only WebView2 page that debounces `devicechange`, enumerates at
+  most sixteen video inputs, never calls `getUserMedia`, and does not publish a
+  failed observation as an empty inventory;
+- keyed opaque logical identities for newly observed cameras, retained aliases
+  for configured cameras, and a new generation for every reconnect presence
+  epoch;
+- dynamic source replacement in the single-session owner, including
+  `SourceLost` termination when the active generation disappears;
+- an additive authenticated server-streaming capability watch with complete
+  revisioned snapshots and the existing unary compatibility operation;
+- Client-side watch forwarding, exact-generation selection retention, and
+  automatic list reconciliation without automatic Start or fallback; and
+- dynamic media-configuration format version 2 as a transaction-neutral seam
+  for the later protected installed-state migration.
+
+The source package does not create the installed identity key, migrate either
+AEPRAKETE binding, initialize WebView2, enumerate or open a physical device,
+build, test, deploy, start an application, or mutate physical state. Focused
+and complete automated validation are intentionally the next stop point.
 
 ## Physical and deployment effects
 

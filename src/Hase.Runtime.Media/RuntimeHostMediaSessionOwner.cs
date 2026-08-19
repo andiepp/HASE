@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 
 namespace Hase.Runtime.Media;
 
@@ -25,14 +27,16 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
     public static readonly TimeSpan SessionLeaseDuration =
         TimeSpan.FromSeconds(30);
 
-    private readonly IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources;
-    private readonly IReadOnlyDictionary<string, RuntimeHostMediaSourceConfiguration>
+    private IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources;
+    private IReadOnlyDictionary<string, RuntimeHostMediaSourceConfiguration>
         sourcesById;
     private readonly IRuntimeHostMediaCaptureBoundary boundary;
     private readonly TimeProvider timeProvider;
     private readonly SemaphoreSlim gate = new(1, 1);
+    private readonly object capabilitySync = new();
     private Session? activeSession;
     private bool disposed;
+    private ulong capabilityRevision = 1;
 
     public RuntimeHostMediaSessionOwner(
         RuntimeHostMediaSourceConfiguration source,
@@ -46,8 +50,21 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources,
         IRuntimeHostMediaCaptureBoundary boundary,
         TimeProvider? timeProvider = null)
+        : this(
+            sources,
+            boundary,
+            allowEmptySources: false,
+            timeProvider: timeProvider)
     {
-        this.sources = ValidateSources(sources);
+    }
+
+    public RuntimeHostMediaSessionOwner(
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> sources,
+        IRuntimeHostMediaCaptureBoundary boundary,
+        bool allowEmptySources,
+        TimeProvider? timeProvider = null)
+    {
+        this.sources = ValidateSources(sources, allowEmptySources);
         sourcesById = this.sources.ToDictionary(
             item => item.Target.MediaSourceId,
             StringComparer.Ordinal);
@@ -56,10 +73,130 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public IReadOnlyList<RuntimeHostMediaSourceConfiguration> Sources => sources;
+    public IReadOnlyList<RuntimeHostMediaSourceConfiguration> Sources
+    {
+        get
+        {
+            lock (capabilitySync)
+            {
+                return sources;
+            }
+        }
+    }
+
+    public ulong CapabilityRevision
+    {
+        get
+        {
+            lock (capabilitySync)
+            {
+                return capabilityRevision;
+            }
+        }
+    }
+
+    public event Action<RuntimeHostMediaCapabilitySnapshot>?
+        CapabilitySnapshotChanged;
 
     // Retained for callers built against the original single-source boundary.
-    public RuntimeHostMediaSourceConfiguration Source => sources[0];
+    public RuntimeHostMediaSourceConfiguration Source
+    {
+        get
+        {
+            lock (capabilitySync)
+            {
+                return sources[0];
+            }
+        }
+    }
+
+    public RuntimeHostMediaCapabilitySnapshot CaptureCapabilities()
+    {
+        lock (capabilitySync)
+        {
+            return new(capabilityRevision, sources);
+        }
+    }
+
+    public async IAsyncEnumerable<RuntimeHostMediaCapabilitySnapshot>
+        WatchCapabilitiesAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var updates = Channel.CreateBounded<RuntimeHostMediaCapabilitySnapshot>(
+            new BoundedChannelOptions(1)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.DropOldest
+            });
+        void OnChanged(RuntimeHostMediaCapabilitySnapshot snapshot) =>
+            updates.Writer.TryWrite(snapshot);
+
+        CapabilitySnapshotChanged += OnChanged;
+        try
+        {
+            yield return CaptureCapabilities();
+            await foreach (RuntimeHostMediaCapabilitySnapshot snapshot in
+                updates.Reader.ReadAllAsync(cancellationToken)
+                    .ConfigureAwait(false))
+            {
+                yield return snapshot;
+            }
+        }
+        finally
+        {
+            CapabilitySnapshotChanged -= OnChanged;
+            updates.Writer.TryComplete();
+        }
+    }
+
+    public async ValueTask<RuntimeHostMediaCapabilitySnapshot> ReplaceSourcesAsync(
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> replacement,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<RuntimeHostMediaSourceConfiguration> validated =
+            ValidateSources(replacement, allowEmpty: true);
+        RuntimeHostMediaCapabilitySnapshot snapshot;
+        await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ThrowIfDisposed();
+            if (sources.SequenceEqual(validated))
+            {
+                return CaptureCapabilities();
+            }
+            var replacementById = validated.ToDictionary(
+                item => item.Target.MediaSourceId,
+                StringComparer.Ordinal);
+            if (activeSession is { IsTerminal: false } active &&
+                (!replacementById.TryGetValue(
+                    active.Source.Target.MediaSourceId,
+                    out var current) ||
+                 current.Target != active.Source.Target))
+            {
+                await TerminateLockedAsync(
+                    active,
+                    RuntimeHostMediaSessionState.Faulted,
+                    RuntimeHostMediaTerminalReason.SourceLost)
+                    .ConfigureAwait(false);
+            }
+
+            lock (capabilitySync)
+            {
+                sources = validated;
+                sourcesById = replacementById;
+                capabilityRevision++;
+                snapshot = new(capabilityRevision, sources);
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        CapabilitySnapshotChanged?.Invoke(snapshot);
+        return snapshot;
+    }
 
     public async ValueTask<RuntimeHostMediaOperationResult> StartAsync(
         RuntimeHostMediaStartRequest request,
@@ -859,10 +996,12 @@ public sealed class RuntimeHostMediaSessionOwner : IAsyncDisposable
     }
 
     private static IReadOnlyList<RuntimeHostMediaSourceConfiguration>
-        ValidateSources(IReadOnlyList<RuntimeHostMediaSourceConfiguration> values)
+        ValidateSources(
+            IReadOnlyList<RuntimeHostMediaSourceConfiguration> values,
+            bool allowEmpty = false)
     {
         ArgumentNullException.ThrowIfNull(values);
-        if (values.Count == 0)
+        if (values.Count == 0 && !allowEmpty)
         {
             throw new ArgumentException(
                 "At least one configured media source is required.",

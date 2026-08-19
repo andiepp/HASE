@@ -9,6 +9,7 @@ namespace Hase.DesktopHost.App.Views;
 public partial class MainWindow : Window
 {
     private WebView2? mediaCaptureWebView;
+    private WebView2? mediaInventoryWebView;
 
     public MainWindow(
         IDesktopDiagnosticsWindowService
@@ -54,6 +55,30 @@ public partial class MainWindow : Window
         };
         ResolveContentGrid().Children.Add(mediaCaptureWebView);
         return mediaCaptureWebView;
+    }
+
+    public WebView2 CreateMediaInventoryWebView(string userDataDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userDataDirectory);
+        if (mediaInventoryWebView is not null)
+        {
+            throw new InvalidOperationException(
+                "The Runtime Host media inventory surface already exists.");
+        }
+
+        mediaInventoryWebView = new WebView2
+        {
+            Width = 1,
+            Height = 1,
+            IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            CreationProperties =
+                RuntimeHostMediaWebView2Custody.CreateCreationProperties(
+                    userDataDirectory)
+        };
+        ResolveContentGrid().Children.Add(mediaInventoryWebView);
+        return mediaInventoryWebView;
     }
 
     private void RemoveEmbeddedDiagnosticsPanel()

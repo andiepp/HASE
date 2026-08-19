@@ -67,18 +67,33 @@ public sealed class RuntimeHostMediaControlService
             RuntimeHostMediaAuthorizationRequirements.ForCapabilities);
         _ = principal;
 
-        var response = new MediaV1.GetMediaCapabilitiesResponse
+        return Task.FromResult(MapCapabilities(owner.CaptureCapabilities()));
+    }
+
+    public override async Task WatchMediaCapabilities(
+        MediaV1.WatchMediaCapabilitiesRequest request,
+        IServerStreamWriter<MediaV1.GetMediaCapabilitiesResponse> responseStream,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(responseStream);
+        _ = Authorize(
+            context,
+            RuntimeHostMediaAuthorizationRequirements.ForCapabilities);
+        await foreach (RuntimeHostMediaCapabilitySnapshot snapshot in
+            owner.WatchCapabilitiesAsync(GetCancellationToken(context))
+                .ConfigureAwait(false))
         {
-            RuntimeHostId = runtimeHostId,
-            ApiVersion = new MediaV1.MediaControlApiVersion
+            if (snapshot.Revision <= request.AfterRevision)
             {
-                Major = 1,
-                Minor = 0
-            },
-            Limits = limitsMapper.Map()
-        };
-        response.Sources.AddRange(capabilityMapper.Map(owner.Sources));
-        return Task.FromResult(response);
+                continue;
+            }
+            _ = Authorize(
+                context,
+                RuntimeHostMediaAuthorizationRequirements.ForCapabilities);
+            await responseStream.WriteAsync(MapCapabilities(snapshot))
+                .ConfigureAwait(false);
+        }
     }
 
     public override async Task<MediaV1.StartMediaSessionResponse>
@@ -233,5 +248,23 @@ public sealed class RuntimeHostMediaControlService
                 StatusCode.InvalidArgument,
                 "The media-control request is invalid."));
         }
+    }
+
+    private MediaV1.GetMediaCapabilitiesResponse MapCapabilities(
+        RuntimeHostMediaCapabilitySnapshot snapshot)
+    {
+        var response = new MediaV1.GetMediaCapabilitiesResponse
+        {
+            RuntimeHostId = runtimeHostId,
+            ApiVersion = new MediaV1.MediaControlApiVersion
+            {
+                Major = 1,
+                Minor = 1
+            },
+            Limits = limitsMapper.Map(),
+            CapabilityRevision = snapshot.Revision
+        };
+        response.Sources.AddRange(capabilityMapper.Map(snapshot.Sources));
+        return response;
     }
 }

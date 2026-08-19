@@ -83,6 +83,12 @@ public sealed record RuntimeHostMediaSourceConfiguration(
     public bool SupportsAudio => !string.IsNullOrWhiteSpace(AudioDeviceId);
 }
 
+public sealed record RuntimeHostMediaDeviceObservation(string VideoDeviceId);
+
+public sealed record RuntimeHostMediaCapabilitySnapshot(
+    ulong Revision,
+    IReadOnlyList<RuntimeHostMediaSourceConfiguration> Sources);
+
 public sealed record RuntimeHostMediaStartRequest(
     string PrincipalId,
     RuntimeHostMediaSourceTarget Target,
