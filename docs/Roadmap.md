@@ -1982,3 +1982,35 @@ AEPRAKETE, LABC, and LTAEP are clean and synchronized, and both applications
 are stopped. Any future credential-lifecycle extension requires a new approved
 architectural objective; retained non-secret evidence expiry remains a separate
 operator-approved policy decision.
+
+---
+
+## Active objective — ADR-0056 Dynamic Runtime-Host Camera Inventory
+
+**Status:** [Accepted] Architecture accepted by Increment 56A; implementation
+pending at the 6,349-test baseline
+
+ADR-0056 extends the closed ADR-0055 media boundary so a Windows Runtime Host
+can reconcile cameras that are plugged in or disconnected while the
+application remains running. Device observation remains local to the Runtime
+Host. The Client receives only sanitized logical identities, current
+generations, display names, availability, and media capability ceilings.
+
+The accepted design adds startup inventory discovery, bounded device-change
+reconciliation, a protected local logical-identity registry, and an
+authenticated change-driven capability stream. A disconnected active camera
+ends its session with `SourceLost`; a returning camera receives a new
+generation. The Client updates its available list but never starts, resumes,
+selects, switches, or falls back automatically.
+
+Existing one-session, one-viewer, mTLS authorization, WebRTC media, explicit
+Start/Stop, audio opt-in, no-recording, no-public-relay, and no-device-identifier
+disclosure contracts remain unchanged. Dynamic microphone discovery, PTZ,
+recording, snapshots, multiple viewers, public relay, and non-Windows capture
+remain outside ADR-0056.
+
+Increment 56A is documentation-only. Implementation, automated validation,
+installed-application update, migration of the existing AEPRAKETE bindings,
+and physical plug/disconnect/reconnect validation remain separate explicit
+increments. Diagnostic Export and Offline Analysis remains accepted but
+deferred.

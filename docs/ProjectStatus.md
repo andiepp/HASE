@@ -1,5 +1,33 @@
 # Project Status
 
+## Active architectural objective — ADR-0056
+
+**ADR-0056 — Dynamic Runtime-Host Camera Inventory — accepted by Increment 56A; implementation pending at the 6,349-test baseline**
+
+- A Windows Runtime Host will reconcile the available camera inventory at
+  startup and after bounded local device-change notifications.
+- Newly connected cameras will become sanitized logical media sources;
+  disconnected cameras will leave the available Client list without requiring
+  an application restart or manual rebind.
+- Raw browser or Windows device identifiers remain Runtime Host-local. A
+  protected local registry preserves stable logical identities and sanitized
+  display names across ordinary restart and reconnect.
+- Disconnecting an active camera terminates only that media session with
+  `SourceLost`. Reconnection creates a new source generation and never resumes,
+  starts, switches, or falls back automatically.
+- The authenticated media control plane will expose change-driven capability
+  snapshots using the existing `media.capability.read` authorization action.
+  The Client retains explicit camera selection, Start, Stop, and audio opt-in.
+- Existing AEPRAKETE camera bindings will be migrated transactionally in a
+  later approved increment. Dynamic microphone discovery remains outside the
+  accepted scope; a newly discovered camera is video-only unless audio is
+  explicitly configured.
+- Increment 56A records the architecture only. It adds no application,
+  protocol, configuration, authorization, credential, deployment, recovery,
+  camera, microphone, WebView2, serial, firmware, or physical change.
+
+---
+
 ## Completed architectural objective — ADR-0055
 
 **ADR-0055 — Runtime-Hosted Live Video and Audio — implemented, physically validated, and closed at 6,349 passing tests**
