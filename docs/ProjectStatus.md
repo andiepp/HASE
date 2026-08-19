@@ -1,45 +1,36 @@
 # Project Status
 
-## Active architectural objective â€” ADR-0057
+## Completed architectural objective — ADR-0057
 
-**ADR-0057 â€” Client Workspace and Detached Media Presentation â€” implemented and
-validated on LTAEP; three-computer synchronization deferred**
+**ADR-0057 — Client Workspace and Detached Media Presentation — implemented,
+validated, synchronized, and closed at 6,369 passing tests**
 
-- The HASE Client main window now uses three columns: Runtime Hosts on the left,
-  endpoints of the selected host in the middle, and Properties/Commands of the
-  selected endpoint on the right.
-- Runtime Host tiles act as connect/disconnect controls. Connected state is
-  green while selected-host state uses an independent emphasized border.
-- Endpoint selection is retained by attachment identity across immutable
-  projection refreshes and clears only when host/attachment context actually
-  changes.
-- User-entered Boolean requested Property values are retained across same-host,
-  same-attachment refreshes until Write or context loss; the Arduino Uno LED
-  checkbox/write path was manually validated.
-- Live media is removed from the main workspace. A `Video / Audio` button opens
-  a separate WPF window containing camera refresh/selection, optional audio,
-  Start/Stop, state/status, and the existing WebView2 presentation surface.
-- Increment 57A is commit
-  `801f3fb834472d30331b937778fd6fe8f9dea8b1`; Increment 57B is commit
-  `71924a773a60473eb21028967b4002920996b7eb`.
-- Final focused LTAEP Client validation passes 268 tests with zero failures and
-  zero skips. The shortcut-launched installed Client was visually and
-  functionally accepted after application-only publication with configuration
-  and shortcut custody preserved.
-- ADR-0057 does not yet claim a new all-project green baseline. A 57A complete
-  run reached 6,367 tests with three out-of-scope failures; the Northbound
-  failure passed on isolated rerun and two unchanged DesktopHost tests were
-  classified as LF-only parser assertions against a CRLF Windows working copy.
-  The last fully green complete baseline remains ADR-0056's 6,362 tests.
-- LTAEP is clean and synchronized with `origin/main` at the accepted 57B
-  implementation commit. AEPRAKETE and LABC were intentionally not modified
-  and synchronization is deferred until those machines are available.
+- The Client uses the accepted three-column Runtime Host / Endpoint /
+  Properties-and-Commands workspace.
+- Connected Runtime Host tiles are green and selection remains independently
+  visible; tiles perform connect/disconnect.
+- Endpoint selection and user-entered Boolean requested Property values survive
+  same-host, same-attachment projection refreshes.
+- `Video / Audio` opens the accepted detached media window with camera
+  selection, optional audio, Start/Stop, state/status, and WebView2
+  presentation.
+- 57A is `801f3fb834472d30331b937778fd6fe8f9dea8b1`; 57B is
+  `71924a773a60473eb21028967b4002920996b7eb`; the 57C checkpoint is
+  `496b3a316c9ab92fb80f37235efa800c0675893b`.
+- LTAEP focused Client validation passes 268/268 and the shortcut-launched
+  installed Client, detached media UI, and Arduino Uno Boolean LED write were
+  accepted.
+- AEPRAKETE, LABC, and LTAEP were clean and synchronized at the 57C checkpoint.
+- Final complete Release validation on AEPRAKETE passes 6,369/6,369 with zero
+  failures and zero skips. The test duration was 22.1 seconds and the build
+  completed successfully in 24.4 seconds.
+- Closure validation performed no deployment or physical mutation.
 
-ADR-0057 is implemented and accepted on LTAEP but remains open until the
-documentation checkpoint, complete-regression status, and eventual
-three-computer synchronization are reconciled.
+ADR-0057 is closed. Diagnostic Export and Offline Analysis remains accepted but
+deferred.
 
 ---
+
 ## Completed architectural objective — ADR-0056
 
 **ADR-0056 — Dynamic Runtime-Host Camera Inventory — implemented, deployed, physically validated, and closed at 6,362 passing tests**

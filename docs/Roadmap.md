@@ -2026,38 +2026,30 @@ Diagnostic Export and Offline Analysis remains accepted but deferred.
 
 ---
 
-## Active objective â€” ADR-0057 Client Workspace and Detached Media Presentation
+## Completed objective — ADR-0057 Client Workspace and Detached Media Presentation
 
-**Status:** [Active] Implemented and accepted on LTAEP; final three-computer
-synchronization deferred
+**Status:** [Completed] Implemented, validated, synchronized, and closed at
+6,369 passing complete Release tests
 
-ADR-0057 reorganizes the WPF Client around the operator workflow without
-changing Runtime Host, endpoint, protocol, authorization, or media-plane
-ownership.
+Completed:
 
-Implemented:
-
-- three-column main workspace with Runtime Hosts, selected-host endpoints, and
-  selected-endpoint Properties/Commands;
-- Runtime Host connect/disconnect tiles with green connected state and separate
-  selected-host indication;
-- attachment-identity endpoint selection retention across projection refresh;
-- Boolean requested Property-value retention across same-host, same-attachment
+- three-column Runtime Host / Endpoint / Properties-and-Commands Client
+  workspace;
+- Runtime Host connect/disconnect tiles with green connected state;
+- stable endpoint selection across projection refresh;
+- stable Boolean requested Property edits across same-host, same-attachment
   refresh;
-- detached `Video / Audio` window with existing camera selection, optional
-  audio, Start/Stop, state/status, and WebView2 presentation; and
-- LTAEP application-only publication preserving configuration and desktop
-  shortcut custody.
+- detached `Video / Audio` window using the existing media control and WebView2
+  presentation boundaries;
+- LTAEP application-only publication with configuration and shortcut custody
+  preserved;
+- 268/268 focused Client tests and accepted shortcut-launched Client behavior;
+- AEPRAKETE, LABC, and LTAEP repository synchronization; and
+- final AEPRAKETE complete Release validation of 6,369/6,369 tests.
 
-Increment 57A is committed as
-`801f3fb834472d30331b937778fd6fe8f9dea8b1`. Increment 57B is committed as
-`71924a773a60473eb21028967b4002920996b7eb`. Final focused Client validation
-passes 268 tests with zero failures and zero skips, and the shortcut-launched
-Client is visually and functionally accepted on LTAEP.
-
-ADR-0057 does not yet establish a new fully green complete-suite count. The
-last fully green complete baseline remains ADR-0056's 6,362 tests. AEPRAKETE
-and LABC were intentionally not modified while unavailable; repository
-synchronization and final closure remain a later explicit step.
+Implementation commits are
+`801f3fb834472d30331b937778fd6fe8f9dea8b1` and
+`71924a773a60473eb21028967b4002920996b7eb`; the documentation/synchronization
+checkpoint is `496b3a316c9ab92fb80f37235efa800c0675893b`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
