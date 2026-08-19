@@ -23,9 +23,15 @@
         </Grid.RowDefinitions>
 
         <DockPanel>
-            <Button DockPanel.Dock="Right" Padding="16,8"
-                    Command="{Binding OpenDiagnosticsCommand}"
-                    Content="Open Diagnostics" />
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button MinWidth="120" Padding="16,8"
+                        Command="{Binding OpenMediaCommand}"
+                        Content="Video / Audio"
+                        ToolTip="Open Runtime Host video and audio controls" />
+                <Button MinWidth="130" Margin="10,0,0,0" Padding="16,8"
+                        Command="{Binding OpenDiagnosticsCommand}"
+                        Content="Open Diagnostics" />
+            </StackPanel>
             <TextBlock VerticalAlignment="Center" FontSize="28" FontWeight="SemiBold"
                        Text="HASE Laptop Client" />
         </DockPanel>
@@ -400,7 +406,5 @@
             <TextBlock Margin="0,4,0,0" Foreground="#FF315A7D" Text="{Binding PropertyReadMessage}" TextWrapping="Wrap" />
         </StackPanel>
 
-        <!-- Retained dormant media presentation seam for Increment 57B. -->
-        <ContentControl x:Name="MediaPresentationHost" Visibility="Collapsed" />
     </Grid>
 </Window>

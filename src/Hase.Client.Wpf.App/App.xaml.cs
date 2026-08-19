@@ -8,7 +8,6 @@ using Hase.Client.Wpf.Views;
 using Hase.Client.Configuration;
 using Hase.Client.Grpc.Configuration;
 using Hase.Client.Wpf.AppHost.Media;
-using Microsoft.Web.WebView2.Wpf;
 using System.ComponentModel;
 using System.Windows.Threading;
 using Prism.DryIoc;
@@ -24,6 +23,7 @@ public partial class App
 
     private RuntimeHostClientSessionController? sessionController;
     private IClientDiagnosticsWindowController? diagnosticsWindowController;
+    private ClientMediaWindowController? mediaWindowController;
     private HaseClientSingleInstanceLease? singleInstanceLease;
     private IMultiHostClientSessionCoordinator? multiHostCoordinator;
     private IClientUiDispatcher? uiDispatcher;
@@ -66,11 +66,13 @@ public partial class App
 
         diagnosticsWindowController =
             Container.Resolve<IClientDiagnosticsWindowController>();
+        mediaWindowController = new ClientMediaWindowController(viewModel.Media);
 
         viewModel.Configure(
             sessionController,
             Container.Resolve<IClientConfigurationFilePicker>(),
-            diagnosticsWindowController);
+            diagnosticsWindowController,
+            mediaWindowController);
 
         PrivateNetworkRuntimeHostProfileRegistry registry =
             Container.Resolve<PrivateNetworkRuntimeHostProfileRegistry>();
@@ -84,16 +86,11 @@ public partial class App
         multiHostCoordinator.EventOccurred += MultiHostEventOccurred;
 
         MainWindow window = Container.Resolve<MainWindow>();
-        var mediaWebView = new WebView2();
-        window.MediaPresentationSurface.Content = mediaWebView;
-        var mediaBoundary = new WebView2ClientMediaPresentationBoundary(
-            mediaWebView,
-            Path.Combine(AppContext.BaseDirectory, "Media", "Assets"));
         mediaControlClient = new ClientMediaApplicationControlClient(
             profileId =>
                 ((MultiHostClientSessionCoordinator)multiHostCoordinator)
                     .GetMediaControlClient(profileId),
-            mediaBoundary,
+            mediaWindowController.PresentationBoundary,
             new DispatcherSynchronizationContext(Dispatcher),
             Container.Resolve<ClientDiagnosticPublisher>());
         viewModel.Media.Configure(mediaControlClient);
@@ -168,6 +165,7 @@ public partial class App
             diagnosticsWindowController ??=
                 Container.Resolve<IClientDiagnosticsWindowController>();
             diagnosticsWindowController.Close();
+            mediaWindowController?.Close();
             if (multiHostCoordinator is not null)
             {
                 multiHostCoordinator.SnapshotChanged -= MultiHostSnapshotChanged;

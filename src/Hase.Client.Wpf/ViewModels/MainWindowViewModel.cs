@@ -25,6 +25,7 @@ public sealed class MainWindowViewModel
     private IRuntimeHostClientSessionController? sessionController;
     private IClientConfigurationFilePicker? configurationFilePicker;
     private IClientDiagnosticsWindowController? diagnosticsWindowController;
+    private IClientMediaWindowController? mediaWindowController;
     private bool isBusy;
     private string? failureMessage;
     private RuntimeHostClientFailureCategory? lastFailureCategory;
@@ -113,6 +114,17 @@ public sealed class MainWindowViewModel
             new DelegateCommand(
                 () => diagnosticsWindowController!.Open(),
                 () => diagnosticsWindowController is not null);
+        OpenMediaCommand =
+            new DelegateCommand(
+                () => mediaWindowController!.Open(),
+                () => mediaWindowController is not null && Media.HasSources);
+        Media.PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(RuntimeHostMediaViewModel.HasSources))
+            {
+                OpenMediaCommand.RaiseCanExecuteChanged();
+            }
+        };
         ConnectSelectedRuntimeHostCommand = new DelegateCommand(
             ExecuteConnectSelectedRuntimeHost,
             () => multiHostCoordinator is not null && !IsBusy
@@ -324,6 +336,9 @@ public sealed class MainWindowViewModel
         Dictionary<RemoteCommandTarget, string>
             retainedShortCircuitConfirmations =
                 CaptureConfirmedShortCircuitConfirmations();
+        Dictionary<RemotePropertyTarget, bool>
+            retainedRequestedBooleanValues =
+                CaptureRequestedBooleanValues();
         Dictionary<RemotePropertyTarget, string>
             retainedRequestedPropertyValueTexts =
                 CaptureRequestedPropertyValueTexts();
@@ -359,6 +374,14 @@ public sealed class MainWindowViewModel
             RestoreConfirmedShortCircuitConfirmations(
                 selectedState,
                 retainedShortCircuitConfirmations);
+            foreach (KeyValuePair<
+                RemotePropertyTarget,
+                bool> item
+                in retainedRequestedBooleanValues)
+            {
+                requestedBooleanValues[item.Key] =
+                    item.Value;
+            }
             foreach (KeyValuePair<
                 RemotePropertyTarget,
                 string> item
@@ -794,11 +817,13 @@ public sealed class MainWindowViewModel
     }
 
     public DelegateCommand OpenDiagnosticsCommand { get; }
+    public DelegateCommand OpenMediaCommand { get; }
 
     public void Configure(
         IRuntimeHostClientSessionController controller,
         IClientConfigurationFilePicker filePicker,
-        IClientDiagnosticsWindowController? diagnosticsController = null)
+        IClientDiagnosticsWindowController? diagnosticsController = null,
+        IClientMediaWindowController? mediaController = null)
     {
         ArgumentNullException.ThrowIfNull(
             controller);
@@ -816,7 +841,9 @@ public sealed class MainWindowViewModel
         configurationFilePicker =
             filePicker;
         diagnosticsWindowController = diagnosticsController;
+        mediaWindowController = mediaController;
         OpenDiagnosticsCommand.RaiseCanExecuteChanged();
+        OpenMediaCommand.RaiseCanExecuteChanged();
         RaiseCommandStateChanged();
     }
 
@@ -1474,21 +1501,32 @@ public sealed class MainWindowViewModel
     {
         requestedBooleanValues.Clear();
 
-        foreach (PropertyInventoryItemViewModel property
-            in endpoints
-                .SelectMany(
-                    endpoint =>
-                        endpoint.Instruments)
-                .SelectMany(
-                    instrument =>
-                        instrument.Properties)
-                .Where(
-                    property =>
-                        property.SupportsBooleanWrite))
+        foreach (KeyValuePair<RemotePropertyTarget, bool> item
+            in CaptureRequestedBooleanValues())
         {
-            requestedBooleanValues[property.Target] =
-                property.RequestedBooleanValue;
+            requestedBooleanValues[item.Key] =
+                item.Value;
         }
+    }
+
+    private Dictionary<RemotePropertyTarget, bool>
+        CaptureRequestedBooleanValues()
+    {
+        return endpoints
+            .SelectMany(
+                endpoint =>
+                    endpoint.Instruments)
+            .SelectMany(
+                instrument =>
+                    instrument.Properties)
+            .Where(
+                property =>
+                    property.SupportsBooleanWrite)
+            .ToDictionary(
+                property =>
+                    property.Target,
+                property =>
+                    property.RequestedBooleanValue);
     }
 
     private void PreserveRequestedPropertyValueTexts()

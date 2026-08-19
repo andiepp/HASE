@@ -466,13 +466,38 @@ public sealed class MainWindowSelectedHostProjectionTests
         viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
             Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 2))]));
 
-        // WPF writes null SelectedItem when the endpoint ItemsSource instance
-        // is replaced. That presentation-only reset must not clear a still
-        // valid logical attachment selection.
-        viewModel.SelectedEndpoint = null;
-
         Assert.NotNull(viewModel.SelectedEndpoint);
         Assert.Equal(generation.ToString(), viewModel.SelectedEndpoint!.AttachmentGeneration);
+    }
+
+    [Fact]
+    public void BooleanRequestedValue_SameAttachmentHostSnapshotRefresh_ShouldBeRetained()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("21a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected,
+                BooleanPropertyState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+
+        PropertyInventoryItemViewModel property = viewModel.Endpoints
+            .SelectMany(endpoint => endpoint.Instruments)
+            .SelectMany(instrument => instrument.Properties)
+            .Single(candidate => candidate.HasBooleanEditor);
+        bool requested = !property.RequestedBooleanValue;
+        property.RequestedBooleanValue = requested;
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected,
+                BooleanPropertyState("host-01", generation, 2))]));
+
+        PropertyInventoryItemViewModel refreshed = viewModel.Endpoints
+            .SelectMany(endpoint => endpoint.Instruments)
+            .SelectMany(instrument => instrument.Properties)
+            .Single(candidate => candidate.Target == property.Target);
+
+        Assert.Equal(requested, refreshed.RequestedBooleanValue);
     }
 
     [Fact]
@@ -659,6 +684,41 @@ public sealed class MainWindowSelectedHostProjectionTests
                         RemoteValue.FromNumeric(value),
                         DateTimeOffset.UnixEpoch,
                         RemotePropertyQuality.Good))));
+    }
+
+    private static RemoteObservationState BooleanPropertyState(
+        string host,
+        Guid generation,
+        ulong sequence)
+    {
+        var property = new PropertyDescriptor(
+            new PropertyId("led-enabled"),
+            DescriptorPath.Parse("Controller.LedEnabled"),
+            "LED Enabled",
+            new BooleanDataDescriptor())
+        {
+            AccessMode = PropertyAccessMode.ReadWrite
+        };
+        var instrument = new InstrumentDescriptor(
+            new InstrumentId("controller-01"),
+            "Controller",
+            new InstrumentKind("Controller"))
+        {
+            Interface = new InstrumentInterface(properties: [property])
+        };
+        var attachment = new RemoteEndpointAttachmentSnapshot(
+            new RemoteEndpointAttachmentGeneration(generation),
+            new EndpointDescriptor(new EndpointId("endpoint-03"), [instrument]),
+            new RemoteEndpointConnectionStatus(RemoteEndpointConnectionState.Ready));
+
+        return new RemoteObservationReducer().Initialize(
+            RemoteObservationState.Empty,
+            new RemoteObservationInitialSnapshot(
+                new RemoteRuntimeHostSnapshot(
+                    new RemoteRuntimeHostId(host),
+                    RuntimeHostClientApiVersion.Current,
+                    [attachment]),
+                new RemoteObservationSequence(sequence)));
     }
 
     private static RemoteObservationState ModeState(
