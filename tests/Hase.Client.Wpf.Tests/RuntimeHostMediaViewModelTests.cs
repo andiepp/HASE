@@ -134,6 +134,66 @@ public sealed class RuntimeHostMediaViewModelTests
     }
 
     [Fact]
+    public async Task SourceLossRefreshesInventoryAndSelectsSoleRemainingCamera()
+    {
+        var first = Source("first", "First camera", false);
+        var removed = Source("removed", "Removed camera", true);
+        var client = new FakeClient
+        {
+            Capabilities = [first, removed]
+        };
+        var viewModel = Create(client);
+        await viewModel.RefreshAsync();
+        viewModel.SelectedSource = Assert.Single(
+            viewModel.Sources,
+            source => source.Target == removed.Target);
+        await viewModel.StartAsync();
+        client.Capabilities = [first];
+
+        client.PublishSessionChanged(
+            null,
+            "Media stopped because the camera was disconnected.",
+            RemoteMediaTerminalReason.SourceLost);
+
+        RuntimeHostMediaSourceItemViewModel remaining =
+            Assert.Single(viewModel.Sources);
+        Assert.Equal(first.Target, remaining.Target);
+        Assert.Equal(first.Target, viewModel.SelectedSource!.Target);
+        Assert.True(viewModel.StartCommand.CanExecute());
+        Assert.Single(client.StartRequests);
+        Assert.Equal(
+            "Media stopped because the camera was disconnected.",
+            viewModel.StatusText);
+    }
+
+    [Fact]
+    public async Task SourceLossRefreshFailureClearsStaleSelectionWithoutRestart()
+    {
+        var removed = Source("removed", "Removed camera", true);
+        var client = new FakeClient
+        {
+            Capabilities = [removed]
+        };
+        var viewModel = Create(client);
+        await viewModel.RefreshAsync();
+        await viewModel.StartAsync();
+        client.CapabilitiesFailure = new InvalidOperationException("failed");
+
+        client.PublishSessionChanged(
+            null,
+            "Media stopped because the camera was disconnected.",
+            RemoteMediaTerminalReason.SourceLost);
+
+        Assert.Null(viewModel.SelectedSource);
+        Assert.False(viewModel.StartCommand.CanExecute());
+        Assert.Single(client.StartRequests);
+        Assert.Equal(
+            "Media stopped because the camera was disconnected. "
+            + "Refresh Cameras to recover the current inventory.",
+            viewModel.StatusText);
+    }
+
+    [Fact]
     public async Task RefreshShowsOnlyNormalizedFailureCategoryAndSafeMessage()
     {
         var client = new FakeClient
@@ -175,10 +235,14 @@ public sealed class RuntimeHostMediaViewModelTests
             SupportsVideo: true,
             SupportsAudio: supportsAudio);
 
-    private sealed class FakeClient : IRuntimeHostMediaControlClient
+    private sealed class FakeClient :
+        IRuntimeHostMediaControlClient,
+        IRuntimeHostMediaSessionNotifications
     {
-        public IReadOnlyList<RemoteMediaSourceCapability> Capabilities { get; init; } = [];
-        public Exception? CapabilitiesFailure { get; init; }
+        public event EventHandler<RemoteMediaSessionChangedEventArgs>?
+            SessionChanged;
+        public IReadOnlyList<RemoteMediaSourceCapability> Capabilities { get; set; } = [];
+        public Exception? CapabilitiesFailure { get; set; }
         public string? StartFailureCode { get; init; }
         public List<(RemoteMediaSourceTarget Target, bool IncludeAudio)> StartRequests { get; } = [];
         public List<string> StopSessionIds { get; } = [];
@@ -230,5 +294,16 @@ public sealed class RuntimeHostMediaViewModelTests
             StopSessionIds.Add(sessionId);
             return Task.FromResult(new RemoteMediaStopResult(true, null, null));
         }
+
+        public void PublishSessionChanged(
+            RemoteMediaSessionSnapshot? session,
+            string statusText,
+            RemoteMediaTerminalReason terminalReason) =>
+            SessionChanged?.Invoke(
+                this,
+                new RemoteMediaSessionChangedEventArgs(
+                    session,
+                    statusText,
+                    terminalReason));
     }
 }

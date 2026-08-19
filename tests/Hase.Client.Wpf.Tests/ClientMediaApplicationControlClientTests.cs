@@ -185,6 +185,50 @@ public sealed class ClientMediaApplicationControlClientTests
     }
 
     [Fact]
+    public async Task SourceLossNotificationCarriesSemanticTerminalReason()
+    {
+        var remote = new FakeRemoteClient
+        {
+            StatusResult = new(
+                true,
+                new(
+                    "session",
+                    new("camera", "generation"),
+                    false,
+                    RemoteMediaSessionState.Faulted,
+                    RemoteMediaTerminalReason.SourceLost),
+                null)
+        };
+        var boundary = new FakeBoundary();
+        await using var client = Create(remote, boundary);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("host"));
+        var sourceLoss = new TaskCompletionSource<
+            RemoteMediaSessionChangedEventArgs>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+        client.SessionChanged += (_, args) =>
+        {
+            if (args.Session is null &&
+                args.TerminalReason == RemoteMediaTerminalReason.SourceLost)
+            {
+                sourceLoss.TrySetResult(args);
+            }
+        };
+
+        await client.StartAsync(new("camera", "generation"), false);
+        boundary.Publish(new(ClientMediaWebMessageKind.PeerConnected, null));
+        RemoteMediaSessionChangedEventArgs observed =
+            await sourceLoss.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(
+            "Media stopped because the camera was disconnected.",
+            observed.StatusText);
+        Assert.Equal(RemoteMediaTerminalReason.SourceLost,
+            observed.TerminalReason);
+        Assert.Equal(1, remote.StartCount);
+        Assert.Equal(0, remote.StopCount);
+    }
+
+    [Fact]
     public async Task NegotiationFailureStopsRemoteOnceAndPublishesCategory()
     {
         var remote = new FakeRemoteClient
@@ -363,6 +407,7 @@ public sealed class ClientMediaApplicationControlClientTests
     {
         public Exception? CapabilitiesFailure { get; init; }
         public RemoteMediaExchangeResult? ExchangeResult { get; init; }
+        public RemoteMediaStatusResult? StatusResult { get; init; }
         public Exception? StopFailure { get; init; }
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
@@ -400,7 +445,7 @@ public sealed class ClientMediaApplicationControlClientTests
 
         public Task<RemoteMediaStatusResult> GetStatusAsync(
             string sessionId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new RemoteMediaStatusResult(true,
+            Task.FromResult(StatusResult ?? new RemoteMediaStatusResult(true,
                 new(sessionId, new("camera", "generation"), false,
                     RemoteMediaSessionState.Streaming), null));
 

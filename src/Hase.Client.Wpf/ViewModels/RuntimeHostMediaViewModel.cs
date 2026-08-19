@@ -330,9 +330,12 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
             .ToArray();
         if (session is null)
         {
-            SelectedSource = retainedTarget is null
-                ? Sources.Count == 1 ? Sources[0] : null
-                : Sources.SingleOrDefault(item => item.Target == retainedTarget);
+            RuntimeHostMediaSourceItemViewModel? retained = retainedTarget is null
+                ? null
+                : Sources.SingleOrDefault(
+                    item => item.Target == retainedTarget);
+            SelectedSource = retained ??
+                (Sources.Count == 1 ? Sources[0] : null);
         }
         StatusText = Sources.Count == 0
             ? "No cameras are currently available."
@@ -349,13 +352,54 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
         if (session is null)
         {
             IncludeAudio = false;
-            if (SelectedSource is not null &&
+            if (eventArgs.TerminalReason == RemoteMediaTerminalReason.SourceLost)
+            {
+                SelectedSource = null;
+            }
+            else if (SelectedSource is not null &&
                 !Sources.Any(item => item.Target == SelectedSource.Target))
             {
                 SelectedSource = null;
             }
         }
         RaiseStateChanged();
+        if (eventArgs.TerminalReason == RemoteMediaTerminalReason.SourceLost)
+        {
+            _ = RefreshAfterSourceLossAsync(eventArgs.StatusText);
+        }
+    }
+
+    private async Task RefreshAfterSourceLossAsync(string terminalStatus)
+    {
+        IRuntimeHostMediaControlClient? activeClient = client;
+        if (activeClient is null || session is not null)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            IReadOnlyList<RemoteMediaSourceCapability> capabilities =
+                await activeClient.GetCapabilitiesAsync();
+            if (client == activeClient && session is null)
+            {
+                ApplyCapabilities(capabilities);
+                StatusText = terminalStatus;
+            }
+        }
+        catch
+        {
+            if (client == activeClient && session is null)
+            {
+                StatusText = terminalStatus
+                    + " Refresh Cameras to recover the current inventory.";
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private async void ExecuteRefresh() => await RefreshAsync();

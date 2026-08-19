@@ -265,7 +265,9 @@ public sealed class ClientMediaApplicationControlClient :
                             status.Session?.TerminalReason ==
                                 RemoteMediaTerminalReason.SourceLost
                                 ? "Media stopped because the camera was disconnected."
-                                : "The remote media session ended.");
+                                : "The remote media session ended.",
+                            status.Session?.TerminalReason ??
+                                RemoteMediaTerminalReason.None);
                         return;
                     }
                     session = status.Session;
@@ -368,7 +370,10 @@ public sealed class ClientMediaApplicationControlClient :
         selectedClient ?? throw new InvalidOperationException(
             "A connected Runtime Host must be selected for media control.");
 
-    private void CancelLocalSession(string statusText)
+    private void CancelLocalSession(
+        string statusText,
+        RemoteMediaTerminalReason terminalReason =
+            RemoteMediaTerminalReason.None)
     {
         sessionCancellation?.Cancel();
         sessionCancellation?.Dispose();
@@ -380,16 +385,24 @@ public sealed class ClientMediaApplicationControlClient :
         {
         }
         boundary.ClearPresentation();
-        Publish(null, statusText);
+        Publish(null, statusText, terminalReason);
     }
 
-    private void ClearSession(string statusText) => CancelLocalSession(statusText);
+    private void ClearSession(
+        string statusText,
+        RemoteMediaTerminalReason terminalReason =
+            RemoteMediaTerminalReason.None) =>
+        CancelLocalSession(statusText, terminalReason);
 
-    private void ClearSessionIfCurrent(string sessionId, string statusText)
+    private void ClearSessionIfCurrent(
+        string sessionId,
+        string statusText,
+        RemoteMediaTerminalReason terminalReason =
+            RemoteMediaTerminalReason.None)
     {
         if (session?.SessionId == sessionId)
         {
-            ClearSession(statusText);
+            ClearSession(statusText, terminalReason);
         }
     }
 
@@ -495,9 +508,16 @@ public sealed class ClientMediaApplicationControlClient :
         return value;
     }
 
-    private void Publish(RemoteMediaSessionSnapshot? value, string statusText)
+    private void Publish(
+        RemoteMediaSessionSnapshot? value,
+        string statusText,
+        RemoteMediaTerminalReason terminalReason =
+            RemoteMediaTerminalReason.None)
     {
         uiContext.Post(_ => SessionChanged?.Invoke(this,
-            new RemoteMediaSessionChangedEventArgs(value, statusText)), null);
+            new RemoteMediaSessionChangedEventArgs(
+                value,
+                statusText,
+                terminalReason)), null);
     }
 }
