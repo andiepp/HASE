@@ -2053,3 +2053,39 @@ Implementation commits are
 checkpoint is `496b3a316c9ab92fb80f37235efa800c0675893b`.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.
+
+---
+
+## Current objective — ADR-0058 Operator-Initiated Runtime Endpoint Refresh
+
+**Status:** [Accepted] Increment 58A documentation applied; implementation,
+validation, deployment, and physical proof remain pending
+
+ADR-0058 adds an explicit `Refresh` action adjacent to `Open Diagnostics` in
+the Windows Runtime Host. The action searches only for configured physical
+endpoints that are not currently published, authoritatively verifies their
+identity, and attaches an exact configured endpoint without restarting the
+Runtime Host.
+
+The operator action is distinct from the existing one-second inventory
+presentation refresh. It is serialized, disabled while active,
+shutdown-cancellable, and failure-isolating. Completion immediately reprojects
+the authoritative endpoint inventory and diagnostics.
+
+Existing published endpoints remain untouched in every connection state and
+continue to own their established disconnect/reconnect supervision. Refresh
+does not replace an attachment, change an existing generation, replay an
+operation or Event, or start or alter media.
+
+The first implementation covers configured native-network, Compact Serial, and
+KEL-103 serial endpoints. In-process simulation, arbitrary unconfigured
+candidates, continuous hot-plug monitoring, runtime composition editing,
+automatic attachment, and automatic endpoint replacement remain excluded.
+
+ADR-0058 begins at exact commit
+`f7615ae79e72efc48935eed63e02ff650d2d0a87` with 6,369 complete Release tests.
+Increment 58B will implement the backend and WPF boundaries plus focused tests;
+repository validation, commit/push, synchronization, deployment, physical
+operation, independent validation, and closure remain separate stop points.
+
+Diagnostic Export and Offline Analysis remains accepted but deferred.

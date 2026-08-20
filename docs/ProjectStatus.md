@@ -1,5 +1,39 @@
 # Project Status
 
+## Current architectural objective — ADR-0058
+
+**ADR-0058 — Operator-Initiated Runtime Endpoint Refresh — accepted; Increment
+58A documentation applied**
+
+- The Runtime Host will add a `Refresh` button immediately adjacent to
+  `Open Diagnostics`.
+- The operator action is separate from the existing one-second presentation
+  refresh. It will search only for configured physical endpoints that are not
+  currently published, authoritatively verify each candidate, and attach only
+  an exact configured identity.
+- Existing published `Ready`, `Recovering`, `Disconnected`, and `Faulted`
+  attachments remain under their current recovery supervisors and are never
+  detached, replaced, or assigned a new generation by Refresh.
+- The first implementation covers configured native-network, Compact Serial,
+  and KEL-103 serial endpoints. The in-process simulation and arbitrary
+  unconfigured endpoints are excluded.
+- Refresh will be serialized, disabled while active, cancellation-aware during
+  shutdown, failure-isolating, and followed by immediate inventory and
+  diagnostics projection refresh.
+- ADR-0058 starts from exact commit
+  `f7615ae79e72efc48935eed63e02ff650d2d0a87`, subject
+  `Close ADR-0057 client workspace redesign`, with 6,369 complete Release tests
+  retained as the starting baseline.
+- Increment 58A is documentation-only. It performs no build, test, deployment,
+  application start, device enumeration, endpoint attachment, configuration or
+  credential change, firmware action, or physical mutation.
+
+The next separately approved increment is 58B, implementing the endpoint
+refresh boundary, Runtime Host UI command, diagnostics, and focused automated
+coverage. Diagnostic Export and Offline Analysis remains accepted but deferred.
+
+---
+
 ## Completed architectural objective — ADR-0057
 
 **ADR-0057 — Client Workspace and Detached Media Presentation — implemented,
@@ -1897,9 +1931,10 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Select the next architectural objective through explicit approval while
-   preserving the closed ADR-0046 safety, ADR-0047 through ADR-0049 diagnostic
-   guarantees, and ADR-0050/ADR-0051 Python automation boundaries.
+1. Implement ADR-0058 only through separately approved increments, beginning
+   with the configured-but-unpublished endpoint refresh boundary in 58B, while
+   preserving existing attachment recovery, identity, generation, diagnostics,
+   and northbound operation guarantees.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.
