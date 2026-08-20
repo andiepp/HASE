@@ -2056,10 +2056,10 @@ Diagnostic Export and Offline Analysis remains accepted but deferred.
 
 ---
 
-## Current objective — ADR-0058 Operator-Initiated Runtime Endpoint Refresh
+## Completed objective — ADR-0058 Operator-Initiated Runtime Endpoint Refresh
 
-**Status:** [Accepted] Increment 58A documentation applied; implementation,
-validation, deployment, and physical proof remain pending
+**Status:** [Completed] Implemented, validated, synchronized, deployed,
+physically verified, and closed at 6,379 passing complete Release tests
 
 ADR-0058 adds an explicit `Refresh` action adjacent to `Open Diagnostics` in
 the Windows Runtime Host. The action searches only for configured physical
@@ -2077,15 +2077,27 @@ continue to own their established disconnect/reconnect supervision. Refresh
 does not replace an attachment, change an existing generation, replay an
 operation or Event, or start or alter media.
 
-The first implementation covers configured native-network, Compact Serial, and
-KEL-103 serial endpoints. In-process simulation, arbitrary unconfigured
+The completed implementation covers configured native-network, Compact Serial,
+and KEL-103 serial endpoints. In-process simulation, arbitrary unconfigured
 candidates, continuous hot-plug monitoring, runtime composition editing,
 automatic attachment, and automatic endpoint replacement remain excluded.
 
 ADR-0058 begins at exact commit
 `f7615ae79e72efc48935eed63e02ff650d2d0a87` with 6,369 complete Release tests.
-Increment 58B will implement the backend and WPF boundaries plus focused tests;
-repository validation, commit/push, synchronization, deployment, physical
-operation, independent validation, and closure remain separate stop points.
+Increment 58A is commit `039f28aad45dde425e8b887bc41e5c6d41d458dc`.
+The exact 13-path Increment 58B implementation is commit
+`fa491eeb821bcf0252ff71542d89605377187ed8`; focused validation and the complete
+Release suite succeeded on AEPRAKETE with 6,379 passed, zero failed, and zero
+skipped. AEPRAKETE, LABC, and LTAEP are clean and synchronized at that commit.
+
+The AEPRAKETE application-only deployment preserved configuration, identity,
+authorization, shortcut, and WebView2 custody. Controlled physical validation
+proved startup containment with `arduino-uno-01` unavailable, successful exact
+attachment after connecting it and pressing Refresh, three `Ready` endpoints,
+unchanged pre-existing generations, and duplicate prevention on a repeated
+Refresh. The operator accepted the complete scenario as working perfectly.
+
+The verified pre-deployment application rollback and SHA-256 manifest remain in
+local AEPRAKETE custody. ADR-0058 closure does not authorize their deletion.
 
 Diagnostic Export and Offline Analysis remains accepted but deferred.

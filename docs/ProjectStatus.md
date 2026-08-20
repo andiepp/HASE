@@ -1,36 +1,53 @@
 # Project Status
 
-## Current architectural objective — ADR-0058
+## Completed architectural objective — ADR-0058
 
-**ADR-0058 — Operator-Initiated Runtime Endpoint Refresh — accepted; Increment
-58A documentation applied**
+**ADR-0058 — Operator-Initiated Runtime Endpoint Refresh — implemented,
+validated, synchronized, deployed, physically verified, and closed at 6,379
+passing tests**
 
-- The Runtime Host will add a `Refresh` button immediately adjacent to
-  `Open Diagnostics`.
-- The operator action is separate from the existing one-second presentation
-  refresh. It will search only for configured physical endpoints that are not
-  currently published, authoritatively verify each candidate, and attach only
-  an exact configured identity.
-- Existing published `Ready`, `Recovering`, `Disconnected`, and `Faulted`
-  attachments remain under their current recovery supervisors and are never
-  detached, replaced, or assigned a new generation by Refresh.
-- The first implementation covers configured native-network, Compact Serial,
-  and KEL-103 serial endpoints. The in-process simulation and arbitrary
-  unconfigured endpoints are excluded.
-- Refresh will be serialized, disabled while active, cancellation-aware during
-  shutdown, failure-isolating, and followed by immediate inventory and
-  diagnostics projection refresh.
-- ADR-0058 starts from exact commit
-  `f7615ae79e72efc48935eed63e02ff650d2d0a87`, subject
-  `Close ADR-0057 client workspace redesign`, with 6,369 complete Release tests
-  retained as the starting baseline.
-- Increment 58A is documentation-only. It performs no build, test, deployment,
-  application start, device enumeration, endpoint attachment, configuration or
-  credential change, firmware action, or physical mutation.
+- The Windows Runtime Host provides a `Refresh` button immediately adjacent to
+  `Open Diagnostics`. It is enabled only while the Runtime Host is running and
+  no refresh is active.
+- Refresh searches only for configured physical endpoints that are not already
+  published. Native-network, Compact Serial, and KEL-103 serial endpoints reuse
+  their established startup attachment and authoritative identity-verification
+  paths.
+- Existing published attachments remain untouched in every connection state.
+  Refresh does not replace them, change their generations, replay operations or
+  Events, or alter media.
+- Refresh operations are serialized, shutdown-cancellable, failure-isolating,
+  and observable through sanitized lifecycle and per-endpoint diagnostics.
+  Completion immediately reprojects the authoritative inventory and diagnostic
+  views.
+- Increment 58A accepted the architecture at commit
+  `039f28aad45dde425e8b887bc41e5c6d41d458dc`. Increment 58B implemented the
+  exact 13-path source and test scope at commit
+  `fa491eeb821bcf0252ff71542d89605377187ed8`, subject
+  `Add operator-initiated runtime endpoint refresh`.
+- Focused validation and the complete Release suite succeeded on AEPRAKETE.
+  The complete result is 6,379 passed, zero failed, and zero skipped; the
+  successful complete build reported 60 warnings. AEPRAKETE, LABC, and LTAEP
+  are clean and synchronized at the implementation commit.
+- The AEPRAKETE Runtime Host application-only deployment succeeded with six
+  warnings while preserving configuration, identity, authorization, shortcut,
+  and WebView2 custody. The installed executable SHA-256 is
+  `00B35BEABFD5C903A4CB5435614786F6717CDBAC80D5605B98274E13324FF74A`.
+- Controlled physical validation started with configured Compact Serial
+  endpoint `arduino-uno-01` unavailable. The Runtime Host remained running with
+  the ESP32 and KEL-103 published, then attached the Arduino exactly once after
+  it was connected and the operator pressed Refresh. The Arduino reached
+  `Ready`; repeating Refresh created no duplicate and changed no existing
+  attachment generation. The complete operator checklist and sanitized
+  diagnostics were accepted as working perfectly.
+- A byte-verified 615-file rollback copy remains at
+  `H:\HASE-Packages\HASE-ADR-0058-58C2-Rollback-AEPRAKETE`. Its manifest
+  SHA-256 is
+  `DF1289581DB888BFD4E71DD2B209B4C959A486CE9F0CCD664A8F07A909AE3CB2`.
+  Closure does not authorize its deletion.
 
-The next separately approved increment is 58B, implementing the endpoint
-refresh boundary, Runtime Host UI command, diagnostics, and focused automated
-coverage. Diagnostic Export and Offline Analysis remains accepted but deferred.
+ADR-0058 is closed. Diagnostic Export and Offline Analysis remains accepted but
+deferred.
 
 ---
 
@@ -1931,10 +1948,9 @@ The current implementation intentionally excludes:
 
 # Immediate Next Steps
 
-1. Implement ADR-0058 only through separately approved increments, beginning
-   with the configured-but-unpublished endpoint refresh boundary in 58B, while
-   preserving existing attachment recovery, identity, generation, diagnostics,
-   and northbound operation guarantees.
+1. Preserve the closed ADR-0058 operator-initiated endpoint-refresh baseline.
+   Select any next architectural objective through a separately approved ADR;
+   Diagnostic Export and Offline Analysis remains accepted but deferred.
 2. Keep the ADR-0032 non-loopback profile classified as controlled validation;
    do not promote it to production until audit, governance, revocation,
    rotation, authorization deployment, and operational hardening are complete.

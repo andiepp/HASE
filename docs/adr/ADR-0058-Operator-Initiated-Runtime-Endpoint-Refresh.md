@@ -1,6 +1,6 @@
 # ADR-0058 — Operator-Initiated Runtime Endpoint Refresh
 
-- Status: Accepted; Increment 58A documentation applied
+- Status: Closed; Increment 58D documentation closure
 - Date: 2026-08-20
 - Starting baseline: `f7615ae79e72efc48935eed63e02ff650d2d0a87`
 - Starting subject: `Close ADR-0057 client workspace redesign`
@@ -196,6 +196,15 @@ complete `HASE.slnx` Release suite. Repository application, validation, commit,
 push, three-computer synchronization, deployment, and physical validation
 remain separate stop points.
 
+Completed result: Increment 58B changed exactly 13 source and test paths. The
+implementation is commit `fa491eeb821bcf0252ff71542d89605377187ed8`, subject
+`Add operator-initiated runtime endpoint refresh`, with parent documentation
+commit `039f28aad45dde425e8b887bc41e5c6d41d458dc`. Focused validation and the
+complete Release suite succeeded on AEPRAKETE. The complete result is 6,379
+passed, zero failed, and zero skipped; the successful complete build reported
+60 warnings. AEPRAKETE, LABC, and LTAEP are clean and synchronized at the
+implementation commit.
+
 ### Increment 58C — Controlled deployment and physical validation
 
 Goal: prove the accepted behavior on AEPRAKETE after separately approved source
@@ -213,12 +222,40 @@ diagnostic. The exact physical family or families used for validation will be
 selected from the configured AEPRAKETE inventory during a read-only preflight;
 58A does not authorize that preflight or any physical action.
 
+Completed result: the read-only preflight selected configured Compact Serial
+endpoint `arduino-uno-01` from a three-endpoint composition containing one
+native-network, one Compact Serial, and one KEL-103 serial endpoint. The
+application-only AEPRAKETE deployment completed from the exact implementation
+commit with six warnings and preserved configuration, identity, authorization,
+shortcut, and WebView2 custody. The installed executable SHA-256 is
+`00B35BEABFD5C903A4CB5435614786F6717CDBAC80D5605B98274E13324FF74A`.
+
+Physical validation started the Runtime Host with the Arduino unavailable. The
+ESP32 and KEL-103 remained published and `Ready`, and the unavailable Arduino
+was isolated diagnostically. Connecting the Arduino after startup and pressing
+Refresh attached it exactly once and brought it to `Ready` without restarting
+the Runtime Host. A second Refresh produced no duplicate and changed none of
+the three attachment generations. The operator accepted the complete endpoint,
+generation, diagnostic, and shutdown checklist as working perfectly.
+
+A byte-verified 615-file, 181,121,200-byte pre-deployment application copy
+remains in local rollback custody at
+`H:\HASE-Packages\HASE-ADR-0058-58C2-Rollback-AEPRAKETE`. Its manifest
+SHA-256 is
+`DF1289581DB888BFD4E71DD2B209B4C959A486CE9F0CCD664A8F07A909AE3CB2`.
+Closure does not authorize cleanup.
+
 ### Closure
 
-After implementation and physical acceptance, a documentation-only closure
-increment will reconcile this ADR, Project Status, and Roadmap with exact
-commits, automated totals, synchronization state, deployment result, and
-operator-reported physical evidence.
+Increment 58D reconciles this ADR, Project Status, and Roadmap with the exact
+implementation commit, 6,379-test automated baseline, clean three-computer
+synchronization, controlled deployment, retained rollback evidence, and
+operator-accepted physical result. It is documentation-only and performs no
+build, test, deployment, application start, device access, endpoint attachment,
+configuration change, firmware action, media operation, cleanup, or physical
+mutation.
+
+ADR-0058 is closed.
 
 ## Deferred scope
 
@@ -232,4 +269,3 @@ operator-reported physical evidence.
 - IPv6 discovery or cross-subnet mDNS relaying;
 - generic automatic SCPI/VISA/USBTMC/GPIB discovery; and
 - remote endpoint lifecycle administration from the Client.
-
