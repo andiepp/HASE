@@ -376,9 +376,11 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
     private static MainWindowViewModel CreateMainWindowViewModel(
         IDesktopRuntimeHostOperator runtimeOperator)
     {
+        var backend =
+            new StubBackend();
         var runtimeHost =
             new DesktopRuntimeHost(
-                new StubBackend());
+                backend);
         var runtimeViewModel =
             new DesktopRuntimeHostViewModel(
                 runtimeHost,
@@ -402,7 +404,8 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
             runtimeViewModel,
             inventoryViewModel,
             endpointDetailsViewModel,
-            runtimeOperator);
+            runtimeOperator,
+            backend);
     }
 
     private sealed class RecordingOperator
@@ -470,7 +473,8 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
     }
 
     private sealed class StubBackend
-        : IDesktopRuntimeHostBackend
+        : IDesktopRuntimeHostBackend,
+          IDesktopRuntimeHostEndpointRefresher
     {
         public Task StartAsync(
             CancellationToken cancellationToken) =>
@@ -478,6 +482,10 @@ public sealed class DesktopRuntimeBooleanPropertyWriteTests
 
         public Task StopAsync(
             CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task RefreshEndpointsAsync(
+            CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
 

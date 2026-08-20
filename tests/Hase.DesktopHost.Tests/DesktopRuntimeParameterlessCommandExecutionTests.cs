@@ -736,9 +736,11 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
         IDesktopRuntimeHostOperator runtimeOperator,
         IDesktopRuntimeHostInventorySource? inventorySource = null)
     {
+        var backend =
+            new StubBackend();
         var runtimeHost =
             new DesktopRuntimeHost(
-                new StubBackend());
+                backend);
         var runtimeViewModel =
             new DesktopRuntimeHostViewModel(
                 runtimeHost,
@@ -761,10 +763,11 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
 
         var viewModel =
             new MainWindowViewModel(
-            runtimeViewModel,
-            inventoryViewModel,
-            endpointDetailsViewModel,
-            runtimeOperator);
+                runtimeViewModel,
+                inventoryViewModel,
+                endpointDetailsViewModel,
+                runtimeOperator,
+                backend);
 
         viewModel.RefreshInventory();
         viewModel.RefreshInventory();
@@ -870,7 +873,8 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
     }
 
     private sealed class StubBackend
-        : IDesktopRuntimeHostBackend
+        : IDesktopRuntimeHostBackend,
+          IDesktopRuntimeHostEndpointRefresher
     {
         public Task StartAsync(
             CancellationToken cancellationToken) =>
@@ -878,6 +882,10 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
 
         public Task StopAsync(
             CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task RefreshEndpointsAsync(
+            CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
 

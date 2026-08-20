@@ -134,7 +134,7 @@ internal sealed class DesktopRuntimeHostEndpointUnavailableException
 {
     public DesktopRuntimeHostEndpointUnavailableException(
         string failureCategory)
-        : base("The configured endpoint is unavailable during startup.")
+        : base("The configured endpoint is unavailable.")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(failureCategory);
         FailureCategory = failureCategory;

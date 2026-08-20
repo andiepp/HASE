@@ -142,6 +142,9 @@ public partial class App : PrismApplication
             IDesktopRuntimeHostBackend>(
                 productionBackend);
         containerRegistry.RegisterInstance<
+            IDesktopRuntimeHostEndpointRefresher>(
+                productionBackend);
+        containerRegistry.RegisterInstance<
             IDesktopRuntimeHostInventorySource>(
                 productionBackend);
         containerRegistry.RegisterInstance<

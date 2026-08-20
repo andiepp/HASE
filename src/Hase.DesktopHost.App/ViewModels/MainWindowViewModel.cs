@@ -9,10 +9,15 @@ public sealed class MainWindowViewModel : IDisposable
 {
     private readonly DesktopRuntimeHostViewModel runtimeHostViewModel;
     private readonly IDesktopRuntimeHostOperator runtimeHostOperator;
+    private readonly IDesktopRuntimeHostEndpointRefresher endpointRefresher;
     private readonly IDesktopRuntimeHostEventSource? eventSource;
     private readonly Dispatcher dispatcher;
+    private readonly object endpointRefreshSyncRoot = new();
     private CancellationTokenSource? eventObservationCancellation;
     private Task? eventObservationTask;
+    private CancellationTokenSource? endpointRefreshCancellation;
+    private Task? endpointRefreshTask;
+    private bool endpointRefreshActive;
     private bool disposed;
 
     public MainWindowViewModel(
@@ -20,6 +25,7 @@ public sealed class MainWindowViewModel : IDisposable
         RuntimeInventoryViewModel inventoryViewModel,
         EndpointDetailsViewModel endpointDetailsViewModel,
         IDesktopRuntimeHostOperator runtimeHostOperator,
+        IDesktopRuntimeHostEndpointRefresher endpointRefresher,
         IDesktopRuntimeHostEventSource? eventSource = null,
         RuntimeDiagnosticsViewModel? diagnosticsViewModel = null)
     {
@@ -39,6 +45,10 @@ public sealed class MainWindowViewModel : IDisposable
             runtimeHostOperator
             ?? throw new ArgumentNullException(
                 nameof(runtimeHostOperator));
+        this.endpointRefresher =
+            endpointRefresher
+            ?? throw new ArgumentNullException(
+                nameof(endpointRefresher));
         Activity =
             new OperatorActivityViewModel();
         EndpointEvents =
@@ -67,6 +77,10 @@ public sealed class MainWindowViewModel : IDisposable
                     == true
                     && RuntimeHost.Status
                         == DesktopRuntimeHostStatus.Running);
+        RefreshEndpointsCommand =
+            new DelegateCommand(
+                ExecuteRefreshEndpoints,
+                CanRefreshEndpoints);
     }
 
     public string ApplicationTitle =>
@@ -116,14 +130,29 @@ public sealed class MainWindowViewModel : IDisposable
         get;
     }
 
+    public DelegateCommand RefreshEndpointsCommand
+    {
+        get;
+    }
+
+    public bool IsEndpointRefreshActive
+    {
+        get
+        {
+            lock (endpointRefreshSyncRoot)
+            {
+                return endpointRefreshActive;
+            }
+        }
+    }
+
     public async Task StartAsync(
         CancellationToken cancellationToken = default)
     {
         await runtimeHostViewModel.StartAsync(
             cancellationToken);
 
-        Inventory.Refresh();
-        Diagnostics.Refresh();
+        RefreshInventory();
 
         if (eventSource is not null)
         {
@@ -140,6 +169,9 @@ public sealed class MainWindowViewModel : IDisposable
     {
         try
         {
+            await CancelEndpointRefreshAsync()
+                .ConfigureAwait(false);
+
             if (eventObservationCancellation is not null)
             {
                 await eventObservationCancellation.CancelAsync()
@@ -166,12 +198,65 @@ public sealed class MainWindowViewModel : IDisposable
         }
     }
 
+    public async Task RefreshEndpointsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        CancellationTokenSource refreshCancellation;
+        Task refreshTask;
+
+        lock (endpointRefreshSyncRoot)
+        {
+            if (disposed
+                || endpointRefreshActive
+                || RuntimeHost.Status
+                    != DesktopRuntimeHostStatus.Running)
+            {
+                return;
+            }
+
+            endpointRefreshActive = true;
+            refreshCancellation =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken);
+            refreshTask =
+                RunEndpointRefreshAsync(
+                    refreshCancellation.Token);
+            endpointRefreshCancellation = refreshCancellation;
+            endpointRefreshTask = refreshTask;
+        }
+
+        RefreshEndpointsCommand.RaiseCanExecuteChanged();
+
+        try
+        {
+            await refreshTask;
+        }
+        finally
+        {
+            lock (endpointRefreshSyncRoot)
+            {
+                if (ReferenceEquals(
+                        endpointRefreshCancellation,
+                        refreshCancellation))
+                {
+                    endpointRefreshCancellation = null;
+                    endpointRefreshTask = null;
+                    endpointRefreshActive = false;
+                }
+            }
+
+            refreshCancellation.Dispose();
+            RefreshInventory();
+        }
+    }
+
     public void RefreshInventory()
     {
         Inventory.Refresh();
         Diagnostics.Refresh();
         WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteParameterlessCommand.RaiseCanExecuteChanged();
+        RefreshEndpointsCommand.RaiseCanExecuteChanged();
     }
 
     public async Task ExecuteParameterlessCommandAsync(
@@ -337,6 +422,11 @@ public sealed class MainWindowViewModel : IDisposable
         disposed =
             true;
 
+        lock (endpointRefreshSyncRoot)
+        {
+            endpointRefreshCancellation?.Cancel();
+        }
+
         EndpointDetails.Dispose();
         runtimeHostViewModel.Dispose();
     }
@@ -347,6 +437,70 @@ public sealed class MainWindowViewModel : IDisposable
         await WritePropertyAsync(
             property,
             CancellationToken.None);
+    }
+
+    private async void ExecuteRefreshEndpoints()
+    {
+        try
+        {
+            await RefreshEndpointsAsync(
+                CancellationToken.None);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch
+        {
+            // The backend publishes sanitized per-endpoint outcomes. A
+            // lifecycle race must not terminate the WPF dispatcher.
+        }
+    }
+
+    private bool CanRefreshEndpoints()
+    {
+        lock (endpointRefreshSyncRoot)
+        {
+            return !disposed
+                && !endpointRefreshActive
+                && RuntimeHost.Status
+                    == DesktopRuntimeHostStatus.Running;
+        }
+    }
+
+    private async Task RunEndpointRefreshAsync(
+        CancellationToken cancellationToken)
+    {
+        await endpointRefresher.RefreshEndpointsAsync(
+            cancellationToken);
+    }
+
+    private async Task CancelEndpointRefreshAsync()
+    {
+        CancellationTokenSource? cancellation;
+        Task? refreshTask;
+
+        lock (endpointRefreshSyncRoot)
+        {
+            cancellation = endpointRefreshCancellation;
+            refreshTask = endpointRefreshTask;
+        }
+
+        if (cancellation is not null)
+        {
+            await cancellation.CancelAsync()
+                .ConfigureAwait(false);
+        }
+
+        if (refreshTask is not null)
+        {
+            try
+            {
+                await refreshTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
     }
 
     private async Task ObserveEventsAsync(
@@ -553,4 +707,3 @@ public sealed class MainWindowViewModel : IDisposable
                 DesktopRuntimeOperatorActivityOutcome.Failed
         };
 }
-

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using Hase.DesktopHost.App.Media;
 using Microsoft.Web.WebView2.Wpf;
 using Prism.Commands;
@@ -24,7 +25,7 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         RemoveEmbeddedDiagnosticsPanel();
-        AddOpenDiagnosticsButton();
+        AddHeaderActionButtons();
     }
 
     public DelegateCommand OpenDiagnosticsCommand
@@ -100,7 +101,7 @@ public partial class MainWindow : Window
             diagnosticsPanel);
     }
 
-    private void AddOpenDiagnosticsButton()
+    private void AddHeaderActionButtons()
     {
         Grid contentGrid =
             ResolveContentGrid();
@@ -112,27 +113,56 @@ public partial class MainWindow : Window
                     panel =>
                         Grid.GetRow(panel) == 0);
 
-        var button =
-            new Button
+        var actions =
+            new StackPanel
             {
-                Content =
-                    "Open Diagnostics",
                 Margin =
                     new Thickness(
                         0,
                         16,
                         0,
                         0),
+                Orientation =
+                    Orientation.Horizontal,
+                HorizontalAlignment =
+                    HorizontalAlignment.Left
+            };
+
+        var diagnosticsButton =
+            new Button
+            {
+                Content =
+                    "Open Diagnostics",
                 MinWidth =
                     150,
-                HorizontalAlignment =
-                    HorizontalAlignment.Left,
                 Command =
                     OpenDiagnosticsCommand
             };
 
+        var refreshButton =
+            new Button
+            {
+                Content =
+                    "Refresh",
+                Margin =
+                    new Thickness(
+                        12,
+                        0,
+                        0,
+                        0),
+                MinWidth =
+                    110
+            };
+        refreshButton.SetBinding(
+            Button.CommandProperty,
+            new Binding("RefreshEndpointsCommand"));
+
+        actions.Children.Add(
+            diagnosticsButton);
+        actions.Children.Add(
+            refreshButton);
         header.Children.Add(
-            button);
+            actions);
     }
 
     private Grid ResolveContentGrid()

@@ -28,6 +28,7 @@ namespace Hase.DesktopHost.App.Hosting;
 
 public sealed class ProductionPrivateNetworkRuntimeHostBackend
     : IDesktopRuntimeHostBackend,
+      IDesktopRuntimeHostEndpointRefresher,
       IDesktopRuntimeHostInventorySource,
       IDesktopRuntimeHostOperator,
       IDesktopRuntimeHostEventSource,
@@ -51,6 +52,10 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private IRuntimeHostMediaInventoryWebBoundary? mediaInventoryBoundary;
     private RuntimeHostMediaApplicationCoordinator? mediaCoordinator;
     private RuntimeHostMediaSessionOwner? mediaSessionOwner;
+    private DesktopRuntimeHostEndpointRefreshCoordinator?
+        endpointRefreshCoordinator;
+    private IReadOnlyList<DesktopRuntimeHostEndpointRefreshTarget>
+        endpointRefreshTargets = [];
 
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration)
@@ -462,14 +467,19 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             diagnostics: session.Publisher);
             }
 
+            RuntimeEndpointAttachmentHost currentAttachmentHost =
+                attachmentHost
+                ?? throw new InvalidOperationException(
+                    "The production attachment host was not created.");
+
             composition =
                 await RuntimeHostNorthboundSnapshotComposition
                     .CreateFileBackedAsync(
-                        attachmentHost.AttachmentInventory,
+                        currentAttachmentHost.AttachmentInventory,
                         productionPlan.IdentityFilePath,
                         productionPlan.ConfiguredRuntimeHostId,
                         diagnostics:
-                            attachmentHost
+                            currentAttachmentHost
                                 .RuntimeContext
                                 .Diagnostics);
 
@@ -492,58 +502,22 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             var endpointStartup =
                 new DesktopRuntimeHostEndpointStartupCoordinator(
                     session.Publisher);
+            IReadOnlyList<DesktopRuntimeHostEndpointRefreshTarget>
+                configuredEndpointTargets =
+                    CreateConfiguredEndpointTargets(
+                        currentAttachmentHost,
+                        endpointComposition,
+                        definitionRepository,
+                        kel103Plans);
             int successfullyAttachedEndpointCount = 0;
 
-            foreach (
-                DesktopRuntimeHostNativeNetworkEndpointProfile nativeEndpoint
-                in endpointComposition.NativeNetworkEndpoints)
+            foreach (DesktopRuntimeHostEndpointRefreshTarget target
+                in configuredEndpointTargets)
             {
                 if (await endpointStartup.TryAttachAsync(
-                        nativeEndpoint.ExpectedEndpointId,
-                        "NativeNetwork",
-                        token => AttachNativeEndpointAsync(
-                            attachmentHost,
-                            nativeEndpoint,
-                            token),
-                        cancellationToken))
-                {
-                    successfullyAttachedEndpointCount++;
-                }
-            }
-
-            foreach (
-                DesktopRuntimeHostCompactSerialEndpointProfile compactEndpoint
-                in endpointComposition.CompactSerialEndpoints)
-            {
-                if (await endpointStartup.TryAttachAsync(
-                        compactEndpoint.ExpectedEndpointId,
-                        "CompactSerial",
-                        token => AttachCompactEndpointAsync(
-                            attachmentHost,
-                            definitionRepository,
-                            compactEndpoint,
-                            token),
-                        cancellationToken))
-                {
-                    successfullyAttachedEndpointCount++;
-                }
-            }
-
-            for (int index = 0; index < kel103Plans.Count; index++)
-            {
-                DesktopRuntimeHostKel103SerialEndpointProfile kel103Endpoint =
-                    endpointComposition.Kel103SerialEndpoints[index];
-                DesktopRuntimeHostKel103EndpointPlan kel103Plan =
-                    kel103Plans[index];
-
-                if (await endpointStartup.TryAttachAsync(
-                        kel103Endpoint.ExpectedEndpointId,
-                        "Kel103Serial",
-                        token => AttachKel103EndpointAsync(
-                            attachmentHost,
-                            kel103Endpoint,
-                            kel103Plan,
-                            token),
+                        target.EndpointId,
+                        target.EndpointKind,
+                        target.AttachAsync,
                         cancellationToken))
                 {
                     successfullyAttachedEndpointCount++;
@@ -553,7 +527,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             if (configuration.IncludeByteBufferSimulation)
             {
                 await AttachByteBufferSimulationAsync(
-                    attachmentHost,
+                    currentAttachmentHost,
                     cancellationToken);
                 successfullyAttachedEndpointCount++;
             }
@@ -581,6 +555,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     mediaSessionOwner: mediaSessionOwner);
 
             await deployment.Application.StartAsync(cancellationToken);
+
+            endpointRefreshCoordinator =
+                new DesktopRuntimeHostEndpointRefreshCoordinator(
+                    endpointId =>
+                        currentAttachmentHost
+                            .AttachmentInventory
+                            .Find(new EndpointId(endpointId))
+                        is not null,
+                    session.Publisher);
+            endpointRefreshTargets = configuredEndpointTargets;
         }
         catch
         {
@@ -597,6 +581,19 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         }
 
         await DisposeStartedResourcesAsync();
+    }
+
+    public Task RefreshEndpointsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        DesktopRuntimeHostEndpointRefreshCoordinator coordinator =
+            endpointRefreshCoordinator
+            ?? throw new InvalidOperationException(
+                "The desktop runtime host is not running.");
+
+        return coordinator.RefreshAsync(
+            endpointRefreshTargets,
+            cancellationToken);
     }
 
     public Task<RuntimeHostPropertyOperationResult> WritePropertyAsync(
@@ -697,6 +694,77 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     public void ClearDiagnostics()
     {
         diagnosticSession?.ClearDiagnostics();
+    }
+
+    private static IReadOnlyList<DesktopRuntimeHostEndpointRefreshTarget>
+        CreateConfiguredEndpointTargets(
+            RuntimeEndpointAttachmentHost host,
+            DesktopRuntimeHostEndpointCompositionProfile endpointComposition,
+            ICompactEndpointDefinitionRepository definitionRepository,
+            IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> kel103Plans)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(endpointComposition);
+        ArgumentNullException.ThrowIfNull(definitionRepository);
+        ArgumentNullException.ThrowIfNull(kel103Plans);
+
+        if (kel103Plans.Count
+            != endpointComposition.Kel103SerialEndpoints.Count)
+        {
+            throw new InvalidDataException(
+                "The KEL-103 endpoint plans do not match the configured "
+                + "endpoint count.");
+        }
+
+        var targets =
+            new List<DesktopRuntimeHostEndpointRefreshTarget>();
+
+        foreach (DesktopRuntimeHostNativeNetworkEndpointProfile endpoint
+            in endpointComposition.NativeNetworkEndpoints)
+        {
+            targets.Add(
+                new DesktopRuntimeHostEndpointRefreshTarget(
+                    endpoint.ExpectedEndpointId,
+                    "NativeNetwork",
+                    token => AttachNativeEndpointAsync(
+                        host,
+                        endpoint,
+                        token)));
+        }
+
+        foreach (DesktopRuntimeHostCompactSerialEndpointProfile endpoint
+            in endpointComposition.CompactSerialEndpoints)
+        {
+            targets.Add(
+                new DesktopRuntimeHostEndpointRefreshTarget(
+                    endpoint.ExpectedEndpointId,
+                    "CompactSerial",
+                    token => AttachCompactEndpointAsync(
+                        host,
+                        definitionRepository,
+                        endpoint,
+                        token)));
+        }
+
+        for (int index = 0; index < kel103Plans.Count; index++)
+        {
+            DesktopRuntimeHostKel103SerialEndpointProfile endpoint =
+                endpointComposition.Kel103SerialEndpoints[index];
+            DesktopRuntimeHostKel103EndpointPlan plan =
+                kel103Plans[index];
+
+            targets.Add(
+                new DesktopRuntimeHostEndpointRefreshTarget(
+                    endpoint.ExpectedEndpointId,
+                    "Kel103Serial",
+                    token => AttachKel103EndpointAsync(
+                        host,
+                        endpoint,
+                        plan,
+                        token)));
+        }
+
+        return targets;
     }
 
     private static async Task AttachNativeEndpointAsync(
@@ -866,6 +934,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         RuntimeHostMediaApplicationCoordinator? mediaCoordinatorToDispose =
             mediaCoordinator;
 
+        endpointRefreshCoordinator = null;
+        endpointRefreshTargets = [];
         deployment = null;
         composition = null;
         attachmentHost = null;

@@ -7,9 +7,11 @@ public sealed class MainWindowInventoryProjectionTests
     [Fact]
     public void RefreshInventory_ShouldDelegateToInventoryAndDetailsViewModels()
     {
+        var backend =
+            new StubBackend();
         var runtimeHost =
             new DesktopRuntimeHost(
-                new StubBackend());
+                backend);
         var runtimeViewModel =
             new DesktopRuntimeHostViewModel(
                 runtimeHost,
@@ -39,7 +41,8 @@ public sealed class MainWindowInventoryProjectionTests
                 runtimeViewModel,
                 inventoryViewModel,
                 endpointDetailsViewModel,
-                new StubOperator());
+                new StubOperator(),
+                backend);
 
         viewModel.RefreshInventory();
 
@@ -68,7 +71,8 @@ public sealed class MainWindowInventoryProjectionTests
     }
 
     private sealed class StubBackend
-        : IDesktopRuntimeHostBackend
+        : IDesktopRuntimeHostBackend,
+          IDesktopRuntimeHostEndpointRefresher
     {
         public Task StartAsync(
             CancellationToken cancellationToken) =>
@@ -76,6 +80,10 @@ public sealed class MainWindowInventoryProjectionTests
 
         public Task StopAsync(
             CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task RefreshEndpointsAsync(
+            CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }
 

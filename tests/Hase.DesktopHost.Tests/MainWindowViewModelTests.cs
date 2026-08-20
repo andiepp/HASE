@@ -35,6 +35,7 @@ public sealed class MainWindowViewModelTests
                 inventoryViewModel,
                 endpointDetailsViewModel,
                 new StubOperator(),
+                backend,
                 diagnosticsViewModel:
                     diagnosticsViewModel);
 
@@ -72,7 +73,8 @@ public sealed class MainWindowViewModelTests
     }
 
     private sealed class RecordingBackend
-        : IDesktopRuntimeHostBackend
+        : IDesktopRuntimeHostBackend,
+          IDesktopRuntimeHostEndpointRefresher
     {
         public int StartCount
         {
@@ -99,6 +101,13 @@ public sealed class MainWindowViewModelTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             StopCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task RefreshEndpointsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             return Task.CompletedTask;
         }
     }
@@ -140,4 +149,3 @@ public sealed class MainWindowViewModelTests
             throw new NotSupportedException();
     }
 }
-
