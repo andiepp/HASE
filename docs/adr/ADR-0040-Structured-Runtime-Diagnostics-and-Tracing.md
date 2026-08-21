@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted; Increments 40A, 40B, 40C, 40D, and 40E implemented.
+Accepted and completed; Increments 40A through 40G implemented and physically
+validated.
 
 ## Context
 
@@ -123,7 +124,7 @@ human correlation but do not establish distributed causal order.
 4. 40D — native and compact protocol exchange tracing. **Completed.**
 5. 40E — bounded opt-in native and compact byte tracing. **Completed.**
 6. 40F — Desktop Runtime Host presentation. **Completed.**
-7. 40G — physical validation, documentation, and closure.
+7. 40G — physical validation, documentation, and closure. **Completed.**
 
 ## Implemented lifecycle diagnostics
 
@@ -330,8 +331,40 @@ Implementation detail is recorded by:
 - [40F3 — Desktop Diagnostics Panel](../ADR-0040-Increment-40F3-Desktop-Diagnostics-Panel.md); and
 - [40F4 — Local Session Controls and Presentation Closure](../ADR-0040-Increment-40F4-Local-Session-Controls-and-Presentation-Closure.md).
 
+## Physical validation and closure
+
+Increment 40G validates the completed diagnostic path with the physical ESP32
+Native Protocol Version 1 endpoint and Arduino Uno Compact Serial Protocol
+Version 1 endpoint through the Desktop Runtime Host and WPF client.
+
+The host was started with local `Bytes` capture before endpoint generations
+were created. Operational, Protocol, and Bytes display filters were then
+validated as cumulative presentation choices. Changing the display filter did
+not change the immutable `Bytes` capture level or discard retained records.
+
+Physical Property reads and writes, Command execution, and Event occurrences
+produced the expected operational, protocol-exchange, and transport-byte
+records for both endpoint families. The Bytes presentation retained its
+explicit application-payload warning. The local Clear action emptied the
+current collector without changing capture level or disrupting runtime
+communication.
+
+Arduino USB disconnect and reconnect and ESP32 connection loss and recovery
+produced the expected lifecycle and recovery diagnostics. Both endpoints
+returned to `Ready`, and Property, Command, and Event activity remained
+operational after recovery. The Desktop Runtime Host and WPF client remained
+stable through the final post-recovery checks.
+
+The implementation and physical validation close ADR-0040 with 3,913 passing
+automated tests. No production source change was required by Increment 40G.
+
+Implementation detail is recorded by
+[40G — Physical Validation and Closure](ADR-0040-Increment-40G-Physical-Validation-and-Closure.md).
+
 ## Deferred
 
+- live capture-level changes during an active runtime session;
+- pause and resume presentation controls;
 - persistent diagnostic storage;
 - file export;
 - northbound diagnostic streaming or remote retrieval;
