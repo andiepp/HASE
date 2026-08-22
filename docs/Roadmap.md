@@ -2119,4 +2119,54 @@ installed LTAEP client with `Update-HaseClient.ps1`, preserving Runtime Host
 registry and desktop shortcut custody, and was physically verified by the
 operator.
 
+## Active objective — ADR-0060 Publication Onboarding and Guided Setup
+
+**Status:** [Active] Accepted at Increment 60A
+
+ADR-0060 publishes HASE for external users. The audience is engineers
+comfortable with PowerShell and with flashing microcontroller firmware.
+Distribution is clone-and-build from GitHub only. HASE is licensed under the
+MIT License.
+
+Onboarding is a ladder of runnable examples with strictly increasing
+difficulty, each written as a complete executable handoff:
+
+```text
+Example 0  Simulation only: one PC, loopback, no hardware, no
+           certificates
+Example 1  Arduino Uno on the same PC over USB serial
+Example 2  ESP32 in the local network
+Example 3  Client on a second PC through guided mutual-TLS provisioning
+Example 4  A second Runtime Host and the multi-host Client
+```
+
+An explicitly labeled certificate-free development profile binds the
+northbound gRPC boundary to loopback only and refuses every non-loopback
+address. Certificates enter the ladder only at Example 3, first through a
+generalized provisioning document and then through a command-line setup
+wizard built from the existing validated ADR-0032/0043 provisioning logic.
+The secured profiles, the internal three-computer process, and every runtime,
+protocol, transport, and northbound contract remain unchanged.
+
+Planned increments:
+
+1. 60A — Decision acceptance — complete.
+2. 60B — License and repository front door.
+3. 60C — Certificate-free loopback development profile.
+4. 60D — Getting Started and Example 0.
+5. 60E — Example 1, Arduino Uno on one PC.
+6. 60F — Example 2, ESP32 in the local network.
+7. 60G — Generalized provisioning documentation.
+8. 60H — Guided setup wizard.
+9. 60I — Example 3, Client on a second PC.
+10. 60J — Example 4, second Runtime Host.
+11. 60K — Closure.
+
+Prebuilt releases, versioning, package-registry publication, a graphical
+configuration tool, non-Windows hosts, contribution governance, and
+continuous integration remain deferred scope.
+
+ADR-0060 begins at exact commit
+`11f9129ce81abaaad2265cbbd166504bae4b33fe` with 6,391 complete Release tests.
+
 Diagnostic Export and Offline Analysis remains accepted but deferred.

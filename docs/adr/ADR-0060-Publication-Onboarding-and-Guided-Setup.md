@@ -1,0 +1,267 @@
+# ADR-0060 — Publication Onboarding and Guided Setup
+
+- Status: Accepted; Increment 60A decision acceptance
+- Date: 2026-08-22
+- Starting baseline: `11f9129ce81abaaad2265cbbd166504bae4b33fe`
+- Starting subject: `ADR-0059 closing`
+- Starting complete Release baseline: 6,391 passed, 0 failed, 0 skipped
+
+## Context
+
+The public GitHub repository `andiepp/HASE` is the authoritative source, but
+everything in it is written for the project's own three-computer laboratory.
+The documentation set consists of ADRs, physical characterizations, an API
+reference, and two tutorials that assume an already-running system. The
+deployment tooling under `tools/Deployment` is bound to the AEPRAKETE, LABC,
+and LTAEP roles by name. The repository has no top-level Getting Started path,
+no LICENSE file, and no route from `git clone` to a running system for anyone
+other than the project operator.
+
+A repository without a license grants no usage rights at all. Publication
+therefore requires an explicit license before any onboarding documentation is
+useful to an external reader.
+
+The dominant obstacle for a new user is the security boundary. Every validated
+multi-computer configuration requires mutual TLS with enrolled client
+certificates, certificate pinning, and per-machine provisioning that ADR-0032,
+ADR-0043, and ADR-0053 perform through bespoke operator scripts. A new user
+cannot and should not perform that work on first contact.
+
+Two existing assets remove that obstacle from the first-run experience:
+
+- Phase 7.7 validated the northbound gRPC boundary on loopback-only binding
+  before the ADR-0031 security boundary existed, so the architectural seam for
+  a single-PC, certificate-free mode already exists; and
+- the simulation layer and the opt-in in-process simulation endpoint allow a
+  complete live Property, Command, and Event experience with no hardware.
+
+Decisions taken with the operator on 2026-08-22:
+
+- the audience is engineers comfortable with PowerShell and with flashing
+  microcontroller firmware;
+- distribution is clone-and-build from GitHub only; prebuilt releases,
+  versioning, and package-registry publication are out of scope;
+- HASE shall be freely available under a permissive open-source license;
+- an explicitly labeled certificate-free mode for single-PC loopback use is
+  acceptable; and
+- the first example uses simulation only, before any hardware.
+
+## Decision
+
+ADR-0060 publishes HASE for external users through a documentation ladder of
+runnable examples, a permissive license, an explicitly labeled certificate-free
+single-PC development profile, and — for the multi-computer step — guided
+provisioning that removes manual certificate work.
+
+### License
+
+HASE is licensed under the MIT License. MIT is the norm of the .NET ecosystem,
+imposes the least friction on adoption, and matches the goal that HASE be
+freely available. The copyright holder is the project operator. Third-party
+component licenses are not changed by this decision.
+
+### Distribution and prerequisites
+
+The supported acquisition path is `git clone` from GitHub followed by
+`dotnet build HASE.slnx -c Release`. Visual Studio is not required; any editor
+is sufficient. Prerequisites are stated per example, not as one global list:
+
+- Windows 10/11 and the .NET 10 SDK for every example;
+- the WebView2 runtime only where the media window is used;
+- the Arduino toolchain only for the Arduino Uno example;
+- the ESP32 toolchain only for the ESP32 example; and
+- Python only for the optional Python client.
+
+### Example ladder
+
+Onboarding documentation is a ladder of examples with strictly increasing
+difficulty. Each example states its parts list, prerequisites, complete
+copy-and-paste PowerShell blocks, expected output, and troubleshooting, in the
+same complete-executable-handoff style used inside the project.
+
+```text
+Example 0  Simulation only: one PC, Runtime Host and Client on
+           loopback, simulated endpoint, no hardware, no certificates
+Example 1  Arduino Uno on the same PC over USB serial; still loopback,
+           still no certificates
+Example 2  ESP32 in the local network via mDNS discovery and framed
+           TCP; Runtime Host and Client still on one PC
+Example 3  Client on a second PC: mutual TLS, enrollment, and pinning
+           through guided provisioning
+Example 4  A second Runtime Host and the multi-host Client
+```
+
+Certificates enter the ladder only at Example 3.
+
+### Certificate-free loopback development profile
+
+The Runtime Host and Client gain an explicitly labeled development profile that
+binds the northbound gRPC boundary to loopback only, without TLS and without
+client-certificate authentication.
+
+Constraints:
+
+- the profile must refuse any non-loopback binding address;
+- the profile must be visibly labeled as a development profile in
+  configuration and in diagnostics;
+- the secured profiles and their validation remain unchanged; and
+- documentation must state plainly that every non-loopback deployment
+  requires the existing mutual-TLS boundary.
+
+Network reachability continues to grant no HASE authority; the development
+profile is not reachable from the network at all.
+
+### Guided provisioning for the multi-computer step
+
+Example 3 must not require the user to understand certificate authorities,
+enrollment files, or pinning. The work proceeds in two stages:
+
+1. a generalized provisioning document with complete copy-and-paste blocks,
+   extracted from the ADR-0032/0043 recipes and stripped of machine-specific
+   names; then
+2. a guided command-line setup wizard that asks which computer it is running
+   on, which role it takes, and how the Runtime Host is addressed, and then
+   generates the certificate authority, server and client certificates,
+   enrollment, trust, and profile files itself, emitting one transfer package
+   for the other computer.
+
+The wizard packages existing validated provisioning logic; it introduces no
+new cryptography. The ADR-0053 credential-lifecycle machinery (rotation,
+revocation, recovery) stays out of the onboarding path entirely.
+
+### Repository front door
+
+The root `README.md` is rewritten for an external first-time reader: what HASE
+is, what it runs on, the example ladder, and where the internal engineering
+documentation lives. Internal process documents (`AGENTS.md`, ADRs,
+characterizations) remain unchanged and are linked, not rewritten.
+
+Where onboarding needs install or publish tooling, neutral parameterized
+scripts are added alongside the existing machine-specific ones; the existing
+scripts and the validated internal topology remain untouched.
+
+## Consequences
+
+### Positive
+
+- An external engineer has a lawful, documented path from `git clone` to a
+  live system in minutes, with no hardware and no certificates.
+- Difficulty rises one concept at a time; the security boundary appears only
+  when a second computer appears.
+- The certificate-free mode is architecturally confined to loopback, so the
+  published security model remains honest.
+- Guided provisioning reuses validated tooling instead of new mechanisms.
+
+### Negative
+
+- Onboarding documentation must be kept current as the framework evolves;
+  each future ADR that changes user-visible behavior inherits a documentation
+  obligation.
+- The development profile is a deliberate, documented exception to the
+  security boundary and must be re-verified whenever hosting composition
+  changes.
+- Clone-and-build-only distribution requires every user to install the .NET
+  SDK and build the solution.
+
+### Neutral
+
+- The internal three-computer process, GitHub-as-authority, and the
+  synchronization discipline are unchanged.
+- Runtime, protocol, transport, and northbound contracts are unchanged;
+  ADR-0060 adds hosting composition, documentation, and tooling only.
+- Prebuilt releases, versioning, and package publication remain possible
+  later decisions.
+
+## Increment plan
+
+Each increment is separately approved and separately closed. Later increments
+are refined when they are reached; scope stated here is the expected shape.
+
+### Increment 60A — Decision acceptance
+
+Goal: record the approved objective, constraints, and increment ladder.
+
+Exact repository scope:
+
+- `docs/adr/ADR-0060-Publication-Onboarding-and-Guided-Setup.md`;
+- `docs/ProjectStatus.md`; and
+- `docs/Roadmap.md`.
+
+Automated validation is limited to documentation consistency, exact Git scope,
+`git diff --check`, and final diff inspection. No .NET build or test is
+required because 60A changes no executable or project file.
+
+Physical and deployment effects: none.
+
+Rollback boundary: revert the three documentation edits before commit.
+
+Definition of done: the three documents consistently mark ADR-0060 accepted
+and define 60B as the next separately approved increment.
+
+### Increment 60B — License and repository front door
+
+Goal: add the MIT `LICENSE` file and rewrite the root `README.md` for an
+external first-time reader. Documentation-only; no build or test required.
+
+### Increment 60C — Certificate-free loopback development profile
+
+Goal: implement and automatically validate the labeled loopback-only,
+non-TLS development hosting profile for the Runtime Host and Client,
+including refusal of every non-loopback binding. Focused suites first, then
+the complete Release suite.
+
+### Increment 60D — Getting Started and Example 0
+
+Goal: the prerequisites and build document plus Example 0 (simulation only,
+loopback, no certificates), proven by a walkthrough from a fresh clone on one
+of the project computers.
+
+### Increment 60E — Example 1, Arduino Uno on one PC
+
+Goal: firmware flashing, USB serial discovery, and compact endpoint
+attachment on a single PC, still on the development profile.
+
+### Increment 60F — Example 2, ESP32 in the local network
+
+Goal: ESP32 firmware, mDNS discovery, and native framed-TCP attachment, with
+Runtime Host and Client still on one PC.
+
+### Increment 60G — Generalized provisioning documentation
+
+Goal: the neutral multi-computer provisioning document and any neutral
+install/publish scripts Example 3 requires.
+
+### Increment 60H — Guided setup wizard
+
+Goal: the command-line wizard that generates certificate authority,
+certificates, enrollment, trust, and profile files and one transfer package,
+built from the existing validated provisioning logic, with focused automated
+tests for parsing, success, rejection, failure, and recovery paths.
+
+### Increment 60I — Example 3, Client on a second PC
+
+Goal: the second-PC example using the wizard, physically validated on the
+project computers acting as stand-ins for a new user's machines.
+
+### Increment 60J — Example 4, second Runtime Host
+
+Goal: the multi-host example, largely reusing Example 3 provisioning.
+
+### Increment 60K — Closure
+
+Goal: reconcile this ADR, Project Status, and Roadmap with the final
+baselines. Documentation-only.
+
+## Deferred scope
+
+- prebuilt GitHub releases, version numbering, and update channels;
+- NuGet, PyPI, or other package-registry publication;
+- a graphical configuration tool inside the Runtime Host;
+- runtime editing or persistence of endpoint composition;
+- non-Windows Runtime Host or Client;
+- Linux USB serial discovery;
+- contribution governance, CONTRIBUTING guidelines, issue templates, and
+  continuous integration;
+- community support channels; and
+- credential lifecycle (rotation, revocation, recovery) in the onboarding
+  path.

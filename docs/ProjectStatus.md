@@ -1,5 +1,35 @@
 # Project Status
 
+## Active architectural objective — ADR-0060
+
+**ADR-0060 — Publication Onboarding and Guided Setup — accepted at Increment
+60A from starting baseline `11f9129ce81abaaad2265cbbd166504bae4b33fe` with
+6,391 passing tests**
+
+- ADR-0060 publishes HASE for external users through a ladder of runnable
+  examples, the MIT License, an explicitly labeled certificate-free single-PC
+  loopback development profile, and guided provisioning for the
+  multi-computer step.
+- The audience is engineers comfortable with PowerShell and with flashing
+  microcontroller firmware. Distribution is clone-and-build from GitHub only;
+  releases, versioning, and package registries remain deferred.
+- The example ladder is: Example 0 simulation-only on loopback with no
+  hardware and no certificates; Example 1 Arduino Uno on one PC; Example 2
+  ESP32 in the local network; Example 3 Client on a second PC through guided
+  mutual-TLS provisioning; Example 4 a second Runtime Host. Certificates
+  enter only at Example 3.
+- The development profile binds the northbound gRPC boundary to loopback
+  only, refuses every non-loopback address, is visibly labeled, and leaves
+  the secured profiles and their validation unchanged.
+- Guided provisioning proceeds from a generalized provisioning document to a
+  command-line setup wizard that packages the existing validated ADR-0032 and
+  ADR-0043 provisioning logic; credential lifecycle stays out of the
+  onboarding path.
+- Increment 60A is documentation-only. The next separately approved increment
+  is 60B — License and repository front door.
+
+---
+
 ## Completed architectural objective — ADR-0059
 
 **ADR-0059 — Client Connection Controls and Pinned Media Sessions —
