@@ -32,3 +32,6 @@ __pycache__/
 
 ## Local secrets
 HaseEndpoint/HaseSecrets.h
+
+## Local sketchbook copy of the shared HASE ESP32 library (Example 2)
+HaseEndpoint/Libraries/HaseEsp32Endpoint/

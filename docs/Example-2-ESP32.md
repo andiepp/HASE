@@ -35,31 +35,31 @@ mutual TLS begins.
   support: *Tools → Board → Boards Manager*, search `esp32`, install
   **esp32 by Espressif Systems** (the repository validates core 3.3.10).
 
-## Install the libraries
+## Set up the libraries
 
-The HASE endpoint library and the exact validated Adafruit sensor libraries
-are part of the repository — nothing is downloaded from the Library
-Manager. Close the Arduino IDE and run this block from the repository root:
+Every library this example needs is part of the repository at its exact
+validated version — nothing is downloaded from the Library Manager, and
+nothing is installed on your system drive. The four Adafruit sensor
+libraries (BME280 2.3.0, BMP280 3.0.0, BusIO 1.17.4, Unified Sensor
+1.1.15) are already vendored beside the sketch in `HaseEndpoint\Libraries`.
+Copy the shared HASE endpoint library beside them — the copy stays local
+and is ignored by Git:
 
 ```powershell
 $ErrorActionPreference = "Stop"
-Set-StrictMode -Version Latest
-
-$sketchbookLibraries = Join-Path ([Environment]::GetFolderPath("MyDocuments")) "Arduino\libraries"
-New-Item -ItemType Directory -Force $sketchbookLibraries | Out-Null
-
-Copy-Item -Recurse -Force ".\libraries\HaseEsp32Endpoint" $sketchbookLibraries
-Copy-Item -Recurse -Force ".\HaseEndpoint\Libraries\Adafruit_BME280_Library" $sketchbookLibraries
-Copy-Item -Recurse -Force ".\HaseEndpoint\Libraries\Adafruit_BMP280_Library" $sketchbookLibraries
-Copy-Item -Recurse -Force ".\HaseEndpoint\Libraries\Adafruit_BusIO" $sketchbookLibraries
-Copy-Item -Recurse -Force ".\HaseEndpoint\Libraries\Adafruit_Unified_Sensor" $sketchbookLibraries
-
-Get-ChildItem $sketchbookLibraries -Directory | Select-Object Name
+Copy-Item -Recurse -Force ".\libraries\HaseEsp32Endpoint" ".\HaseEndpoint\Libraries\"
 ```
 
-If your sketchbook already contains other versions of the Adafruit
-libraries, this replaces them with the repository-validated versions
-(BME280 2.3.0, BMP280 3.0.0, BusIO 1.17.4, Unified Sensor 1.1.15).
+Then point the Arduino IDE at the sketch folder as its sketchbook:
+*File → Preferences → Sketchbook location* →
+`<your clone>\HaseEndpoint`, and restart the IDE. All five libraries now
+resolve from `HaseEndpoint\Libraries`, isolated from any other Arduino
+projects and from Library Manager updates.
+
+The sketchbook location is a global IDE setting. If you use the Arduino
+IDE for other projects, note your previous sketchbook path so you can
+switch back later; opening a sketch by file path works regardless of the
+sketchbook setting.
 
 ## Wire the hardware
 
@@ -222,8 +222,9 @@ attaches it again.
 - **The endpoint never becomes `Ready`** — confirm the serial monitor shows
   the full startup sequence; confirm the PC and the ESP32 are on the same
   network; some guest networks isolate clients from each other.
-- **Compile errors about missing libraries** — re-run the library-copy
-  block with the Arduino IDE closed, then restart the IDE.
+- **`HaseEsp32Endpoint.h: No such file or directory`** — the sketchbook
+  location is not set to `<your clone>\HaseEndpoint`, or the library-copy
+  command was not run. Verify both, then restart the IDE.
 - **Upload fails with `Connecting...`** — hold the board's `BOOT` button
   until the upload starts.
 
