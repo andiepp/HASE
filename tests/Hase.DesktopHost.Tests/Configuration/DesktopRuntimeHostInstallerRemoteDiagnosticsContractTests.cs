@@ -148,11 +148,14 @@ public sealed class DesktopRuntimeHostInstallerRemoteDiagnosticsContractTests
                 "..",
                 "..",
                 ".."));
+        // A fresh clone may check the script out with CRLF endings; the
+        // content contract must not depend on the checkout line layout.
         return File.ReadAllText(
-            Path.Combine(
-                repositoryRoot,
-                "tools",
-                "Deployment",
-                "Install-HaseDesktopRuntimeHost.ps1"));
+                Path.Combine(
+                    repositoryRoot,
+                    "tools",
+                    "Deployment",
+                    "Install-HaseDesktopRuntimeHost.ps1"))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 }

@@ -128,7 +128,10 @@ public sealed class DesktopRuntimeHostRemoteDiagnosticsMigrationContractTests
                 "..",
                 "..",
                 ".."));
+        // A fresh clone may check the script out with CRLF endings; the
+        // content contract must not depend on the checkout line layout.
         return File.ReadAllText(
-            Path.Combine(repositoryRoot, "tools", "Deployment", scriptName));
+                Path.Combine(repositoryRoot, "tools", "Deployment", scriptName))
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 }
