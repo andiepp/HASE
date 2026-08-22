@@ -268,6 +268,31 @@ affect the Client's authoritative identity verification.
 Goal: firmware flashing, USB serial discovery, and compact endpoint
 attachment on a single PC, still on the development profile.
 
+Completed result: Increment 60E1, commit
+`d8cefc6ea505d50870293e06c84109a653ae51e2`, publishes
+`docs/Example-1-Arduino-Uno.md` — parts list, Arduino IDE flashing (the
+existing How-To is a source-authoring guide and excludes flashing), optional
+D7 push-button wiring, the endpoint-composition and development-profile
+configuration block, Refresh-based late attachment, and the interaction and
+recovery steps. Every stated value was verified against the tracked
+firmware and the composition-file loader.
+
+The operator performed the 60E2 walkthrough in the new-user role against
+the fresh clone: flashed the firmware, attached the physical
+`arduino-uno-01` endpoint alongside the simulation endpoint, and validated
+the LED Property and Command with authoritative readback, the analog
+voltage Property, the push-button Event, and the documented recovery
+behavior. One upload attempt failed with a bootloader synchronization error
+and was classified by the operator as an externally held `RESET` pin from a
+wiring test; no repository defect was involved.
+
+Corrective increment 60E2A, commit
+`1a0c074c4cd7acca1ad228dbc921fe73e660af8b`, folds the two walkthrough
+findings into the document: the analog source is now fully specified (a
+10 kOhm potentiometer between `5V` and `GND` with the wiper on `A0`), and
+the troubleshooting section covers uploads failing while `RESET` or the
+serial pins are wired. The operator accepted Example 1 as working.
+
 ### Increment 60F — Example 2, ESP32 in the local network
 
 Goal: ESP32 firmware, mDNS discovery, and native framed-TCP attachment, with

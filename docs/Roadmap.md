@@ -2158,7 +2158,10 @@ Planned increments:
    increments 60D2A (line-ending-neutral contract tests) and 60D2B
    (byte-order-mark-tolerant identity reading), proven by an operator
    fresh-clone walkthrough and closed at 6,455 complete Release tests.
-5. 60E — Example 1, Arduino Uno on one PC.
+5. 60E — Example 1, Arduino Uno on one PC — complete, including the
+   corrective increment 60E2A (analog-source wiring and upload
+   troubleshooting), proven by an operator walkthrough with the physical
+   Arduino Uno.
 6. 60F — Example 2, ESP32 in the local network.
 7. 60G — Generalized provisioning documentation.
 8. 60H — Guided setup wizard.

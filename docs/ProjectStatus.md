@@ -39,8 +39,14 @@
   execution, Event observation, and close-and-reopen cycles of both
   applications. The Runtime Host window's static `Identity` display remains
   a deferred cosmetic item.
-- The next separately approved increment is 60E — Example 1, Arduino Uno on
-  one PC.
+- Increment 60E is complete. The published Example 1 takes a user from a
+  working Example 0 to an operating physical Arduino Uno endpoint: firmware
+  flashing, compact serial attachment, LED Property and Command, analog
+  voltage, and push-button Events. The operator validated it in the
+  new-user role; corrective increment 60E2A added the analog-source wiring
+  and upload troubleshooting the walkthrough surfaced.
+- The next separately approved increment is 60F — Example 2, ESP32 in the
+  local network.
 
 ---
 
