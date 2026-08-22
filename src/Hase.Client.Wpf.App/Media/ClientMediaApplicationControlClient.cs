@@ -233,12 +233,17 @@ public sealed class ClientMediaApplicationControlClient :
         RemoteMediaSessionSnapshot? active = session;
         IRuntimeHostMediaControlClient? client = selectedClient;
         CancelLocalSession("Media session ended during Client shutdown.");
+        // Dispose the boundary before the remote stop. DisposeAsync is
+        // called from OnExit, which blocks the UI thread on this task; the
+        // remote stop resumes on the thread pool, from where the boundary
+        // disposal would have to marshal back to the blocked UI thread and
+        // deadlock the shutdown. On the UI thread it runs synchronously.
+        await boundary.DisposeAsync().ConfigureAwait(false);
         if (active is not null && client is not null)
         {
             _ = await TryStopRemoteAsync(client, active.SessionId)
                 .ConfigureAwait(false);
         }
-        await boundary.DisposeAsync().ConfigureAwait(false);
         gate.Dispose();
     }
 
