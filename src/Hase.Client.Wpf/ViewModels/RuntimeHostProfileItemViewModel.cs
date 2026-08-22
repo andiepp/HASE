@@ -12,4 +12,16 @@ public sealed record RuntimeHostProfileItemViewModel(
     RuntimeHostClientFailureCategory? FailureCategory,
     string? FailureMessage,
     DateTimeOffset ChangedAtUtc,
-    bool IsSelected);
+    bool IsSelected)
+{
+    /// <summary>
+    /// Gets the label of the connection toggle for the current session state.
+    /// The value matches the action the toggle performs.
+    /// </summary>
+    public string ConnectionActionLabel =>
+        SessionState is RuntimeHostClientSessionState.Connecting
+            or RuntimeHostClientSessionState.Connected
+            or RuntimeHostClientSessionState.Reconnecting
+            ? "Disconnect"
+            : "Connect";
+}

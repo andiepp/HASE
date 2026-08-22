@@ -49,14 +49,27 @@
                 <DockPanel LastChildFill="True">
                     <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10" FontSize="18" FontWeight="SemiBold" Text="Runtime Hosts" />
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding RuntimeHosts}">
-                            <ItemsControl.ItemTemplate>
+                        <ListBox ItemsSource="{Binding RuntimeHosts}" SelectedItem="{Binding SelectedRuntimeHost, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Margin" Value="0,0,0,8" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter />
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Margin="0,0,0,8" Padding="10" HorizontalContentAlignment="Stretch"
-                                            Command="{Binding DataContext.ToggleRuntimeHostConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
+                                    <Border Padding="10">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
                                                 <Setter Property="Background" Value="#FFF3F3F3" />
                                                 <Setter Property="BorderBrush" Value="#FFB8B8B8" />
                                                 <Setter Property="BorderThickness" Value="1" />
@@ -71,18 +84,29 @@
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
-                                        </Button.Style>
-                                        <StackPanel>
-                                            <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" />
-                                            <TextBlock Margin="0,3,0,0" Text="{Binding SessionState}" />
-                                            <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#FF666666"
-                                                       Text="{Binding ExpectedRuntimeHostId, StringFormat='Expected: {0}'}" />
-                                            <TextBlock Margin="0,3,0,0" Foreground="#FFB00020" TextWrapping="Wrap" Text="{Binding FailureMessage}" />
-                                        </StackPanel>
-                                    </Button>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,3,0,0" Text="{Binding SessionState}" />
+                                                <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="#FF666666"
+                                                           Text="{Binding ExpectedRuntimeHostId, StringFormat='Expected: {0}'}" />
+                                                <TextBlock Margin="0,3,0,0" Foreground="#FFB00020" TextWrapping="Wrap" Text="{Binding FailureMessage}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Margin="8,0,0,0" Padding="10,3" MinWidth="82"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                    Command="{Binding DataContext.ToggleRuntimeHostConnectionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Content="{Binding ConnectionActionLabel}" />
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </ScrollViewer>
                 </DockPanel>
             </Border>
