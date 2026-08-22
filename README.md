@@ -184,8 +184,10 @@ client certificates.
 Example 0 is published: [Getting Started](docs/Getting-Started.md) takes a
 fresh clone to a running simulated system on one PC. Example 1 is
 published: [Arduino Uno on one PC](docs/Example-1-Arduino-Uno.md) adds a
-physical USB instrument. Examples 2 through 4 are in preparation under
-ADR-0060; each entry gains its link here as it is published.
+physical USB instrument. Example 2 is published:
+[ESP32 in the local network](docs/Example-2-ESP32.md) adds a Wi-Fi
+instrument. Examples 3 and 4 are in preparation under ADR-0060; each entry
+gains its link here as it is published.
 
 ### Advanced guides
 
@@ -225,6 +227,7 @@ or environment-specific client configuration files.
 
 - [Getting Started](docs/Getting-Started.md)
 - [Example 1 — Arduino Uno on one PC](docs/Example-1-Arduino-Uno.md)
+- [Example 2 — ESP32 in the local network](docs/Example-2-ESP32.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)

@@ -185,7 +185,8 @@ Close the Client, then the Runtime Host, as in Example 0.
 
 ## Where to go next
 
-Example 2 (ESP32 in the local network) is in preparation. The
+[Example 2 — ESP32 in the local network](Example-2-ESP32.md) continues the
+ladder with a Wi-Fi instrument. The
 [Arduino Uno Compact Endpoint How-To](Arduino-Uno-Compact-Endpoint-How-To.md)
 explains how to author your own compact endpoints — more Properties,
 Commands, Events, and multiple boards.
