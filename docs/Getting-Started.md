@@ -208,8 +208,11 @@ Example 3  Client on a second PC through guided mutual-TLS provisioning
 Example 4  A second Runtime Host and the multi-host Client
 ```
 
-Examples 1 through 4 are in preparation; each gains its link in the
-repository README as it is published. The
+Example 1 is published:
+[Arduino Uno on one PC](Example-1-Arduino-Uno.md) continues directly from
+this guide with a physical USB instrument. Examples 2 through 4 are in
+preparation; each gains its link in the repository README as it is
+published. The
 [Laptop Client UI Tutorial](Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 and the [Northbound API Reference](API%20reference/HASE-Northbound-API-Reference.md)
 describe the Client and the API in depth.
