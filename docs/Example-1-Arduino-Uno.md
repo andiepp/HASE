@@ -12,6 +12,8 @@ one PC, still on the certificate-free loopback development profile.
 - One Arduino Uno with its USB cable.
 - Optional, for the Event step: one push button and two jumper wires (a
   breadboard helps).
+- Optional, for the analog step: one 10 kOhm potentiometer and three jumper
+  wires.
 
 Note on compatible boards: the endpoint configuration below matches the USB
 identity of the official Arduino Uno (vendor `0x2341`, product `0x0043`).
@@ -51,6 +53,14 @@ The Event step uses a push button between pin `D7` and `GND`. The input is
 active-low with the internal pull-up and a 50 ms debounce — no resistor is
 needed. Skip this if you only want Properties and Commands; everything else
 works without it.
+
+## Wire the analog voltage source (optional)
+
+The analog step reads pin `A0`, which accepts 0 to 5 V. A 10 kOhm
+potentiometer makes an adjustable source: connect its two outer pins to
+`5V` and `GND`, and its middle pin (the wiper) to `A0`. Turning the knob
+then sweeps `A0` smoothly between 0 and 5 V. Without a connected source the
+pin floats and reads an arbitrary drifting value.
 
 ## Add the endpoint to the development Runtime Host
 
@@ -135,8 +145,10 @@ Start the Client exactly as in Example 0 and press `Connect`. Selecting the
    readback. Write `Led/State` directly for an endpoint-confirmed Property
    write.
 3. **Read the analog voltage** — `Analog Input Voltage` reports pin `A0` in
-   volts. An unconnected pin floats and shows an arbitrary drifting value;
-   jumper `A0` to `GND` for 0 V or to `5V` for about 5 V.
+   volts. With the potentiometer wired as described above, turn the knob
+   and watch the value follow between 0 and 5 V. Without it, jumper `A0` to
+   `GND` for 0 V or to `5V` for about 5 V; an unconnected pin floats and
+   shows an arbitrary drifting value.
 4. **Press the button** — with the optional wiring in place, each press
    produces one `Controller/ButtonPressed` occurrence in the Event feed,
    attributed to `arduino-uno-01`. Events are delivered live and are not
@@ -160,6 +172,11 @@ Close the Client, then the Runtime Host, as in Example 0.
 - **Upload fails in the Arduino IDE** — verify the selected board and port;
   close the HASE Runtime Host, which otherwise holds the port after a
   successful attachment.
+- **Upload fails with `not in sync` although board and port are correct** —
+  make sure nothing is wired to the `RESET` pin or to pins `0` and `1`
+  (`RX`/`TX`) during the upload. A held `RESET` prevents the bootloader
+  from running, and anything on the serial pins disturbs the upload
+  handshake.
 - **The endpoint appears, then faults after re-flashing** — flashing resets
   the board while the host is attached. The host recovers on its own; or
   press `Refresh` after the upload completes.
