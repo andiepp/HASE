@@ -46,17 +46,19 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
 
     public void Close()
     {
+        closing = true;
         MediaWindow? active = window;
         window = null;
-        if (active is null)
+        if (active is not null)
         {
-            return;
+            active.Closing -= WindowClosing;
+            active.MediaPresentationSurface.Content = null;
+            active.Close();
         }
 
-        closing = true;
-        active.Closing -= WindowClosing;
-        active.MediaPresentationSurface.Content = null;
-        active.Close();
+        // Nothing else owns the browser host. Leaving it alive keeps the
+        // client process running after every window has closed.
+        mediaWebView.Dispose();
     }
 
     private MediaWindow CreateWindow()
@@ -68,6 +70,7 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
         };
         created.MediaPresentationSurface.Content = mediaWebView;
         created.Closing += WindowClosing;
+        created.Closed += WindowClosed;
         if (owner is not null)
         {
             // An owner close disposes owned windows. Release the retained
@@ -76,6 +79,18 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
         }
 
         return created;
+    }
+
+    private void WindowClosed(object? sender, EventArgs eventArgs)
+    {
+        // A real close unparents the WebView2 immediately, while the
+        // application is still running normally.
+        if (sender is MediaWindow closed)
+        {
+            closed.MediaPresentationSurface.Content = null;
+        }
+
+        window = null;
     }
 
     private void OwnerClosing(object? sender, CancelEventArgs eventArgs) =>
