@@ -174,9 +174,26 @@ If you skipped Example 1, add the `endpointCompositionFilePath` line to
 
 ## Start and verify
 
-Start the Runtime Host and Client exactly as in Example 0. Expected result:
-`doit-esp32-devkitc-v4-01` is published and `Ready` next to the simulation
-endpoint (and the Arduino, if configured and connected). A configured
+Start the Runtime Host from the repository root:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\src\Hase.DesktopHost.App\bin\Release\net10.0-windows\Hase.DesktopHost.App.exe" `
+    --development (Join-Path $env:LocalAppData "HASE\Development\desktop-runtime-development.json")
+```
+
+Then start the Client in a second PowerShell window, also from the
+repository root:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\src\Hase.Client.Wpf.App\bin\Release\net10.0-windows\Hase.Client.Wpf.App.exe" `
+    (Join-Path $env:LocalAppData "HASE\Development\client-runtime-hosts.json")
+```
+
+Press `Connect` on the `Development (loopback, no TLS)` entry. Expected
+result: `doit-esp32-devkitc-v4-01` is published and `Ready` next to the
+simulation endpoint (and the Arduino, if configured and connected). A configured
 endpoint that is unreachable at startup is tolerated and reported as a
 warning; fix its connectivity and press `Refresh` to attach it without a
 restart.
