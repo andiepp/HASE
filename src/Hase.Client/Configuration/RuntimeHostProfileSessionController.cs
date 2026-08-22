@@ -39,7 +39,19 @@ public sealed class RuntimeHostProfileSessionController :
         {
             ObjectDisposedException.ThrowIf(disposed, this);
             if (session is not null)
-                throw new InvalidOperationException("A runtime-host profile session is already active.");
+            {
+                if (Snapshot.Status.State != RuntimeHostClientSessionState.Faulted)
+                    throw new InvalidOperationException("A runtime-host profile session is already active.");
+
+                // A faulted session is dead but was never released; nothing
+                // clears it except a disconnect. Release it here so a connect
+                // on a faulted profile recovers instead of failing forever.
+                IRuntimeHostClientSession faulted = session;
+                CancellationTokenSource faultedCancellation = cancellation!;
+                Task? faultedTask = sessionTask;
+                session = null; cancellation = null; sessionTask = null;
+                await ReleaseSessionAsync(faulted, faultedCancellation, faultedTask).ConfigureAwait(false);
+            }
 
             Publish(CreateSnapshot(new(RuntimeHostClientSessionState.Connecting)));
             IRuntimeHostClientSession created = await factory.CreateAsync(profile.ProfileId, cancellationToken).ConfigureAwait(false);
@@ -87,7 +99,22 @@ public sealed class RuntimeHostProfileSessionController :
         }
         finally { gate.Release(); }
         if (active is null) return;
-        activeCancellation!.Cancel();
+        try
+        {
+            await ReleaseSessionAsync(active, activeCancellation!, activeTask).ConfigureAwait(false);
+        }
+        finally
+        {
+            Publish(CreateSnapshot(new(RuntimeHostClientSessionState.Disconnected)));
+        }
+    }
+
+    private async Task ReleaseSessionAsync(
+        IRuntimeHostClientSession active,
+        CancellationTokenSource activeCancellation,
+        Task? activeTask)
+    {
+        activeCancellation.Cancel();
         try { if (activeTask is not null) await activeTask.ConfigureAwait(false); }
         finally
         {
@@ -101,7 +128,6 @@ public sealed class RuntimeHostProfileSessionController :
             }
             await active.DisposeAsync().ConfigureAwait(false);
             activeCancellation.Dispose();
-            Publish(CreateSnapshot(new(RuntimeHostClientSessionState.Disconnected)));
         }
     }
 

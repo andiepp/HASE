@@ -180,6 +180,41 @@ public sealed class RuntimeHostProfileSessionControllerTests
             StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task ConnectAsync_AfterSessionFault_ShouldRecoverWithFreshSession()
+    {
+        var faultedSession = new FakeSession();
+        var freshSession = new FakeSession();
+        var factory = new FakeFactory(faultedSession, freshSession);
+        await using var controller = new RuntimeHostProfileSessionController(CreateProfile("first", "host-01"), factory);
+        await controller.ConnectAsync();
+        faultedSession.Publish(CreateState("host-01"));
+        await WaitUntilAsync(() => controller.Snapshot.Status.State == RuntimeHostClientSessionState.Connected);
+
+        faultedSession.Fail(new IOException("The runtime host disappeared."));
+        await WaitUntilAsync(() => controller.Snapshot.Status.State == RuntimeHostClientSessionState.Faulted);
+
+        await controller.ConnectAsync();
+        freshSession.Publish(CreateState("host-01"));
+        await WaitUntilAsync(() => controller.Snapshot.Status.State == RuntimeHostClientSessionState.Connected);
+
+        Assert.Equal(1, faultedSession.DisposeCount);
+        Assert.Null(controller.Snapshot.Failure);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_WhileSessionLive_ShouldStillRejectDuplicateConnection()
+    {
+        var session = new FakeSession();
+        await using var controller = new RuntimeHostProfileSessionController(CreateProfile("first", "host-01"), new FakeFactory(session));
+        await controller.ConnectAsync();
+        session.Publish(CreateState("host-01"));
+        await WaitUntilAsync(() => controller.Snapshot.Status.State == RuntimeHostClientSessionState.Connected);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => controller.ConnectAsync());
+        Assert.Equal(0, session.DisposeCount);
+    }
+
     private static RuntimeHostProfile CreateProfile(string id, string host) =>
         new(new RuntimeHostProfileId(id), id, new RemoteRuntimeHostId(host));
 
@@ -196,11 +231,17 @@ public sealed class RuntimeHostProfileSessionControllerTests
         Assert.True(predicate());
     }
 
-    private sealed class FakeFactory(FakeSession session) : IRuntimeHostProfileClientSessionFactory
+    private sealed class FakeFactory(params FakeSession[] sessions) : IRuntimeHostProfileClientSessionFactory
     {
+        private int created;
         public RuntimeHostProfileId? RequestedProfileId { get; private set; }
         public Task<IRuntimeHostClientSession> CreateAsync(RuntimeHostProfileId profileId, CancellationToken cancellationToken = default)
-        { RequestedProfileId = profileId; return Task.FromResult<IRuntimeHostClientSession>(session); }
+        {
+            RequestedProfileId = profileId;
+            FakeSession session = sessions[Math.Min(created, sessions.Length - 1)];
+            created++;
+            return Task.FromResult<IRuntimeHostClientSession>(session);
+        }
     }
 
     private sealed class FakeSession
@@ -228,6 +269,9 @@ public sealed class RuntimeHostProfileSessionControllerTests
             DiagnosticObserved?.Invoke(
                 this,
                 new RemoteRuntimeDiagnosticObservedEventArgs(observation));
+
+        public void Fail(Exception exception) =>
+            states.Writer.TryComplete(exception);
 
         public void FailDiagnostics(
             RemoteRuntimeDiagnosticStreamFailureKind kind,
