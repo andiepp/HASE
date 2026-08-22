@@ -181,8 +181,10 @@ Certificates enter the ladder only at Example 3. Examples 0 through 2 run on
 an explicitly labeled loopback-only development profile without TLS or
 client certificates.
 
-The examples are in preparation under ADR-0060; each entry gains its link
-here as it is published.
+Example 0 is published: [Getting Started](docs/Getting-Started.md) takes a
+fresh clone to a running simulated system on one PC. Examples 1 through 4
+are in preparation under ADR-0060; each entry gains its link here as it is
+published.
 
 ### Advanced guides
 
@@ -220,6 +222,7 @@ or environment-specific client configuration files.
 
 ## Documentation
 
+- [Getting Started](docs/Getting-Started.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
