@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using Hase.Client.Wpf.AppHost.Media;
@@ -14,6 +15,7 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
     private readonly WebView2 mediaWebView = new();
     private readonly WebView2ClientMediaPresentationBoundary presentationBoundary;
     private MediaWindow? window;
+    private bool closing;
 
     public ClientMediaWindowController(RuntimeHostMediaViewModel viewModel)
     {
@@ -28,29 +30,18 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
 
     public void Open()
     {
-        if (window is not null)
+        // The WebView2 keeps its browser host only while it stays parented in
+        // one window. Retain the window across an operator close and reuse it,
+        // so the presentation boundary never outlives the browser it describes.
+        closing = false;
+        MediaWindow active = window ??= CreateWindow();
+        if (active.WindowState == WindowState.Minimized)
         {
-            if (window.WindowState == WindowState.Minimized)
-            {
-                window.WindowState = WindowState.Normal;
-            }
-
-            window.Activate();
-            return;
+            active.WindowState = WindowState.Normal;
         }
 
-        MediaWindow created = new(viewModel)
-        {
-            Owner = Application.Current?.MainWindow
-        };
-        created.MediaPresentationSurface.Content = mediaWebView;
-        created.Closed += (_, _) =>
-        {
-            created.MediaPresentationSurface.Content = null;
-            window = null;
-        };
-        window = created;
-        created.Show();
+        active.Show();
+        active.Activate();
     }
 
     public void Close()
@@ -62,7 +53,53 @@ public sealed class ClientMediaWindowController : IClientMediaWindowController
             return;
         }
 
+        closing = true;
+        active.Closing -= WindowClosing;
         active.MediaPresentationSurface.Content = null;
         active.Close();
+    }
+
+    private MediaWindow CreateWindow()
+    {
+        Window? owner = Application.Current?.MainWindow;
+        MediaWindow created = new(viewModel)
+        {
+            Owner = owner
+        };
+        created.MediaPresentationSurface.Content = mediaWebView;
+        created.Closing += WindowClosing;
+        if (owner is not null)
+        {
+            // An owner close disposes owned windows. Release the retained
+            // window first so shutdown is never blocked by the hide.
+            owner.Closing += OwnerClosing;
+        }
+
+        return created;
+    }
+
+    private void OwnerClosing(object? sender, CancelEventArgs eventArgs) =>
+        closing = true;
+
+    private void WindowClosing(object? sender, CancelEventArgs eventArgs)
+    {
+        if (closing)
+        {
+            return;
+        }
+
+        eventArgs.Cancel = true;
+        StopActiveSession();
+        ((Window)sender!).Hide();
+    }
+
+    private void StopActiveSession()
+    {
+        // Hiding the window must not leave the runtime host streaming an
+        // invisible camera.
+        if (viewModel.StopCommand.CanExecute())
+        {
+            viewModel.StopCommand.Execute();
+        }
     }
 }
