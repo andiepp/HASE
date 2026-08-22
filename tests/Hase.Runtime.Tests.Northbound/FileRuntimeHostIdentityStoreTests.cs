@@ -73,6 +73,44 @@ public sealed class FileRuntimeHostIdentityStoreTests
     }
 
     [Fact]
+    public async Task ReadAsync_ByteOrderMarkedExternallyAuthoredTarget_ReturnsPersistedIdentity()
+    {
+        using var directory =
+            new TemporaryDirectory();
+
+        string filePath =
+            Path.Combine(
+                directory.Path,
+                "runtime-host-identity.json");
+
+        var expectedRuntimeHostId =
+            new RuntimeHostId(
+                "hase-development-host-01");
+
+        await File.WriteAllTextAsync(
+            filePath,
+            """
+            {
+              "formatVersion": 1,
+              "runtimeHostId": "hase-development-host-01"
+            }
+            """,
+            new System.Text.UTF8Encoding(
+                encoderShouldEmitUTF8Identifier: true));
+
+        IRuntimeHostIdentityStore store =
+            new FileRuntimeHostIdentityStore(
+                filePath);
+
+        RuntimeHostId? actualRuntimeHostId =
+            await store.ReadAsync();
+
+        Assert.Equal(
+            expectedRuntimeHostId,
+            actualRuntimeHostId);
+    }
+
+    [Fact]
     public async Task CreateIfMissingAsync_RepeatedStores_PreserveFirstIdentity()
     {
         using var directory =

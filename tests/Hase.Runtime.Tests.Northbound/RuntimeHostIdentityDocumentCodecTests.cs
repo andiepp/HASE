@@ -62,6 +62,37 @@ public sealed class RuntimeHostIdentityDocumentCodecTests
     }
 
     [Fact]
+    public void Parse_ByteOrderMarkedDocument_ParsesIdentity()
+    {
+        var runtimeHostId =
+            new RuntimeHostId(
+                "runtime-host-byte-order-marked");
+
+        byte[] document =
+            RuntimeHostIdentityDocumentCodec.Serialize(
+                runtimeHostId);
+
+        byte[] byteOrderMarkedDocument =
+            new byte[]
+                {
+                    0xEF,
+                    0xBB,
+                    0xBF
+                }
+                .Concat(
+                    document)
+                .ToArray();
+
+        RuntimeHostId parsedRuntimeHostId =
+            RuntimeHostIdentityDocumentCodec.Parse(
+                byteOrderMarkedDocument);
+
+        Assert.Equal(
+            runtimeHostId,
+            parsedRuntimeHostId);
+    }
+
+    [Fact]
     public void Parse_SerializedDocument_RoundTripsIdentity()
     {
         var runtimeHostId =

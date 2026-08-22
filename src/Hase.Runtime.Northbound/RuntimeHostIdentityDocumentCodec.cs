@@ -83,6 +83,17 @@ internal static class RuntimeHostIdentityDocumentCodec
                 "The runtime-host identity document exceeds the supported size.");
         }
 
+        // An externally authored document may begin with a UTF-8 byte-order
+        // mark. Reading tolerates it; Serialize stays byte-order-mark-free.
+        if (document.Length >= 3
+            && document.Span[0] == 0xEF
+            && document.Span[1] == 0xBB
+            && document.Span[2] == 0xBF)
+        {
+            document =
+                document[3..];
+        }
+
         try
         {
             _ = StrictUtf8Encoding.GetString(
