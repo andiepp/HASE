@@ -117,6 +117,7 @@ public sealed class DesktopRuntimeHostProductionConfigurationPlanTests
 
         Assert.Equal(legacyIdentityPath, plan.IdentityFilePath);
         Assert.Equal(legacyRuntimeHostId, plan.ConfiguredRuntimeHostId);
+        Assert.NotNull(plan.EndpointComposition);
         DesktopRuntimeHostNativeNetworkEndpointProfile native =
             Assert.Single(plan.EndpointComposition.NativeNetworkEndpoints);
         Assert.Equal("legacy-esp32.local", native.Host);

@@ -8,27 +8,84 @@ namespace Hase.DesktopHost.App.Hosting;
 public sealed record DesktopRuntimeHostStartupConfiguration(
     string DeploymentConfigurationFilePath,
     string? Esp32Host,
-    RuntimeHostPrivateNetworkDeploymentOptions DeploymentOptions,
+    RuntimeHostPrivateNetworkDeploymentOptions? DeploymentOptions,
     bool IncludeByteBufferSimulation = false,
     RuntimeDiagnosticLevel MaximumDiagnosticLevel = RuntimeDiagnosticLevel.Operational,
     bool RemoteDiagnosticsEnabled = false,
     RuntimeDiagnosticLevel RemoteDiagnosticsMaximumLevel =
         RuntimeDiagnosticLevel.Operational)
 {
+    private const string DevelopmentSwitch = "--development";
+
     public DesktopRuntimeHostInstallationProfile? InstallationProfile { get; init; }
     public DesktopRuntimeHostEndpointCompositionProfile? EndpointCompositionProfile { get; init; }
     public DesktopRuntimeHostMediaConfiguration? MediaConfiguration { get; init; }
+    public DesktopRuntimeHostDevelopmentProfile? DevelopmentProfile { get; init; }
 
     public string PrivateNetworkBindingDisplay =>
-        $"https://{DeploymentOptions.Binding.Address}:{DeploymentOptions.Binding.Port}";
+        DevelopmentProfile is not null
+            ? "None - development loopback profile active"
+            : $"https://{RequiredDeploymentOptions.Binding.Address}:{RequiredDeploymentOptions.Binding.Port}";
+
+    public RuntimeHostPrivateNetworkDeploymentOptions RequiredDeploymentOptions =>
+        DeploymentOptions
+        ?? throw new InvalidOperationException(
+            "The development loopback profile has no private-network "
+            + "deployment options.");
 
     public static DesktopRuntimeHostStartupConfiguration Parse(IReadOnlyList<string> commandLineArguments)
     {
         ArgumentNullException.ThrowIfNull(commandLineArguments);
 
+        if (commandLineArguments.Count == 3
+            && commandLineArguments[1] == DevelopmentSwitch)
+        {
+            return ParseDevelopmentProfile(commandLineArguments[2]);
+        }
+
         return commandLineArguments.Count == 2
             ? ParseApplicationProfile(commandLineArguments[1])
             : ParseLegacyArguments(commandLineArguments);
+    }
+
+    private static DesktopRuntimeHostStartupConfiguration ParseDevelopmentProfile(
+        string developmentProfilePath)
+    {
+        if (string.IsNullOrWhiteSpace(developmentProfilePath)
+            || !Path.IsPathFullyQualified(developmentProfilePath))
+        {
+            throw new ArgumentException(
+                "The Desktop Runtime Host development-profile path must be fully qualified.",
+                nameof(developmentProfilePath));
+        }
+
+        DesktopRuntimeHostDevelopmentProfile development =
+            DesktopRuntimeHostDevelopmentProfileFile.LoadAsync(Path.GetFullPath(developmentProfilePath))
+                .GetAwaiter()
+                .GetResult();
+        DesktopRuntimeHostEndpointCompositionProfile? endpoints =
+            development.EndpointCompositionFilePath is string endpointCompositionFilePath
+                ? DesktopRuntimeHostEndpointCompositionProfileFile.LoadAsync(endpointCompositionFilePath)
+                    .GetAwaiter()
+                    .GetResult()
+                : null;
+
+        if (endpoints is not null && endpoints.NativeNetworkEndpoints.Count > 1)
+        {
+            throw new InvalidDataException(
+                "The current production backend supports at most one native network endpoint.");
+        }
+
+        return new DesktopRuntimeHostStartupConfiguration(
+            Path.GetFullPath(developmentProfilePath),
+            endpoints?.NativeNetworkEndpoints.SingleOrDefault()?.Host,
+            DeploymentOptions: null,
+            development.IncludeByteBufferSimulation,
+            development.MaximumDiagnosticLevel)
+        {
+            DevelopmentProfile = development,
+            EndpointCompositionProfile = endpoints
+        };
     }
 
     private static DesktopRuntimeHostStartupConfiguration ParseApplicationProfile(string applicationProfilePath)

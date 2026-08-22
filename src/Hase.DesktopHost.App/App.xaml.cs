@@ -160,20 +160,36 @@ public partial class App : PrismApplication
             IDesktopRuntimeHost,
             DesktopRuntimeHost>();
         containerRegistry.RegisterInstance(
-            new DesktopRuntimeHostShellInformation(
-                Composition:
-                    "Production private-network runtime host",
-                HostIdentity:
-                    ProductionPrivateNetworkRuntimeHostBackend
-                        .RuntimeHostId
-                        .Value,
-                ApiVersion:
-                    RuntimeHostApiVersion.Current.ToString(),
-                LoopbackBinding:
-                    "Deferred - private-network binding is active "
-                    + "in this increment",
-                PrivateNetworkBinding:
-                    startupConfiguration.PrivateNetworkBindingDisplay));
+            startupConfiguration.DevelopmentProfile is not null
+                ? new DesktopRuntimeHostShellInformation(
+                    Composition:
+                        "DEVELOPMENT loopback runtime host - "
+                        + "no TLS, no client certificates",
+                    HostIdentity:
+                        ProductionPrivateNetworkRuntimeHostBackend
+                            .RuntimeHostId
+                            .Value,
+                    ApiVersion:
+                        RuntimeHostApiVersion.Current.ToString(),
+                    LoopbackBinding:
+                        startupConfiguration.DevelopmentProfile.BindingDisplay
+                        + " (DEVELOPMENT - loopback only, no TLS)",
+                    PrivateNetworkBinding:
+                        startupConfiguration.PrivateNetworkBindingDisplay)
+                : new DesktopRuntimeHostShellInformation(
+                    Composition:
+                        "Production private-network runtime host",
+                    HostIdentity:
+                        ProductionPrivateNetworkRuntimeHostBackend
+                            .RuntimeHostId
+                            .Value,
+                    ApiVersion:
+                        RuntimeHostApiVersion.Current.ToString(),
+                    LoopbackBinding:
+                        "Deferred - private-network binding is active "
+                        + "in this increment",
+                    PrivateNetworkBinding:
+                        startupConfiguration.PrivateNetworkBindingDisplay));
         containerRegistry.RegisterSingleton<
             DesktopRuntimeHostViewModel>();
         containerRegistry.RegisterSingleton<

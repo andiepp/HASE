@@ -9,22 +9,22 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
     private DesktopRuntimeHostProductionConfigurationPlan(
         string identityFilePath,
         RuntimeHostId? configuredRuntimeHostId,
-        DesktopRuntimeHostEndpointCompositionProfile endpointComposition,
+        DesktopRuntimeHostEndpointCompositionProfile? endpointComposition,
         bool includeByteBufferSimulation)
     {
         IdentityFilePath = identityFilePath;
         ConfiguredRuntimeHostId = configuredRuntimeHostId;
         EndpointComposition = endpointComposition;
         ExpectedPublishedEndpointCount =
-            endpointComposition.NativeNetworkEndpoints.Count
-            + endpointComposition.CompactSerialEndpoints.Count
-            + endpointComposition.Kel103SerialEndpoints.Count
+            (endpointComposition?.NativeNetworkEndpoints.Count ?? 0)
+            + (endpointComposition?.CompactSerialEndpoints.Count ?? 0)
+            + (endpointComposition?.Kel103SerialEndpoints.Count ?? 0)
             + (includeByteBufferSimulation ? 1 : 0);
     }
 
     public string IdentityFilePath { get; }
     public RuntimeHostId? ConfiguredRuntimeHostId { get; }
-    public DesktopRuntimeHostEndpointCompositionProfile EndpointComposition { get; }
+    public DesktopRuntimeHostEndpointCompositionProfile? EndpointComposition { get; }
     public int ExpectedPublishedEndpointCount { get; }
 
     public static DesktopRuntimeHostProductionConfigurationPlan Create(
@@ -35,6 +35,15 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentException.ThrowIfNullOrWhiteSpace(legacyIdentityFilePath);
         ArgumentNullException.ThrowIfNull(legacyRuntimeHostId);
+
+        if (configuration.DevelopmentProfile is not null)
+        {
+            return new DesktopRuntimeHostProductionConfigurationPlan(
+                configuration.DevelopmentProfile.IdentityFilePath,
+                configuredRuntimeHostId: null,
+                configuration.EndpointCompositionProfile,
+                configuration.IncludeByteBufferSimulation);
+        }
 
         if (configuration.InstallationProfile is not null)
         {

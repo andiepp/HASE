@@ -40,6 +40,7 @@ public sealed class SerialOnlyDesktopRuntimeHostProductionConfigurationPlanTests
                 new RuntimeHostId("legacy-host"));
 
         Assert.Same(endpoints, plan.EndpointComposition);
+        Assert.NotNull(plan.EndpointComposition);
         Assert.Empty(plan.EndpointComposition.NativeNetworkEndpoints);
         Assert.Single(plan.EndpointComposition.CompactSerialEndpoints);
         Assert.Equal(1, plan.ExpectedPublishedEndpointCount);

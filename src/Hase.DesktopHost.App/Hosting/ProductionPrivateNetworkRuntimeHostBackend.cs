@@ -46,6 +46,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private RuntimeEndpointAttachmentHost? attachmentHost;
     private RuntimeHostNorthboundSnapshotComposition? composition;
     private RuntimeHostPrivateNetworkDeployment? deployment;
+    private RuntimeHostDevelopmentLoopbackDeployment? developmentDeployment;
     private DesktopRuntimeHostOperator? runtimeOperator;
     private DesktopRuntimeDiagnosticSession? diagnosticSession;
     private IRuntimeHostMediaWebBoundary? mediaBoundary;
@@ -329,10 +330,28 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
         if (attachmentHost is not null
             || composition is not null
-            || deployment is not null)
+            || deployment is not null
+            || developmentDeployment is not null)
         {
             throw new InvalidOperationException(
                 "The production runtime host is already started.");
+        }
+
+        if (configuration.DevelopmentProfile is not null)
+        {
+            if (configuration.MediaConfiguration is not null)
+            {
+                throw new InvalidOperationException(
+                    "The development loopback profile does not support "
+                    + "Runtime Host media.");
+            }
+
+            if (configuration.RemoteDiagnosticsEnabled)
+            {
+                throw new InvalidOperationException(
+                    "The development loopback profile does not support "
+                    + "remote diagnostics.");
+            }
         }
 
         DesktopRuntimeHostProductionConfigurationPlan productionPlan =
@@ -342,13 +361,16 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     ? GetRuntimeIdentityFilePath()
                     : configuration.InstallationProfile.IdentityFilePath,
                 RuntimeHostId);
-        DesktopRuntimeHostEndpointCompositionProfile endpointComposition =
+        DesktopRuntimeHostEndpointCompositionProfile? endpointComposition =
             productionPlan.EndpointComposition;
         IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> kel103Plans =
-            await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
-                endpointComposition.Kel103SerialEndpoints,
-                new Kel103DefinitionRepository(),
-                cancellationToken);
+            endpointComposition is null
+                ? []
+                : await DesktopRuntimeHostKel103DefinitionPreflight
+                    .ResolveAllAsync(
+                        endpointComposition.Kel103SerialEndpoints,
+                        new Kel103DefinitionRepository(),
+                        cancellationToken);
 
         try
         {
@@ -504,11 +526,13 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     session.Publisher);
             IReadOnlyList<DesktopRuntimeHostEndpointRefreshTarget>
                 configuredEndpointTargets =
-                    CreateConfiguredEndpointTargets(
-                        currentAttachmentHost,
-                        endpointComposition,
-                        definitionRepository,
-                        kel103Plans);
+                    endpointComposition is null
+                        ? []
+                        : CreateConfiguredEndpointTargets(
+                            currentAttachmentHost,
+                            endpointComposition,
+                            definitionRepository,
+                            kel103Plans);
             int successfullyAttachedEndpointCount = 0;
 
             foreach (DesktopRuntimeHostEndpointRefreshTarget target
@@ -542,19 +566,42 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     + "successful startup attachment count.");
             }
 
-            deployment =
-                await RuntimeHostPrivateNetworkDeployment.CreateAsync(
-                    configuration.DeploymentOptions,
-                    composition.SnapshotProvider,
-                    composition.PropertyService,
-                    composition.CommandService,
-                    composition.ObservationService,
-                    cancellationToken: cancellationToken,
-                    diagnosticProjectionService: projectionService,
-                    authorizationPolicy: authorizationPolicy,
-                    mediaSessionOwner: mediaSessionOwner);
+            if (configuration.DevelopmentProfile
+                is DesktopRuntimeHostDevelopmentProfile developmentProfile)
+            {
+                developmentDeployment =
+                    RuntimeHostDevelopmentLoopbackDeployment.Create(
+                        new LoopbackGrpcBinding(
+                            developmentProfile.LoopbackAddress,
+                            developmentProfile.Port),
+                        composition.SnapshotProvider,
+                        composition.PropertyService,
+                        composition.CommandService,
+                        composition.ObservationService);
 
-            await deployment.Application.StartAsync(cancellationToken);
+                await developmentDeployment.Application.StartAsync(
+                    cancellationToken);
+
+                PublishDevelopmentProfileActive(
+                    session.Publisher,
+                    developmentProfile);
+            }
+            else
+            {
+                deployment =
+                    await RuntimeHostPrivateNetworkDeployment.CreateAsync(
+                        configuration.DeploymentOptions!,
+                        composition.SnapshotProvider,
+                        composition.PropertyService,
+                        composition.CommandService,
+                        composition.ObservationService,
+                        cancellationToken: cancellationToken,
+                        diagnosticProjectionService: projectionService,
+                        authorizationPolicy: authorizationPolicy,
+                        mediaSessionOwner: mediaSessionOwner);
+
+                await deployment.Application.StartAsync(cancellationToken);
+            }
 
             endpointRefreshCoordinator =
                 new DesktopRuntimeHostEndpointRefreshCoordinator(
@@ -580,7 +627,40 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             await deployment.Application.StopAsync(cancellationToken);
         }
 
+        if (developmentDeployment is not null)
+        {
+            await developmentDeployment.Application.StopAsync(
+                cancellationToken);
+        }
+
         await DisposeStartedResourcesAsync();
+    }
+
+    private static void PublishDevelopmentProfileActive(
+        RuntimeDiagnosticPublisher diagnostics,
+        DesktopRuntimeHostDevelopmentProfile developmentProfile)
+    {
+        diagnostics.Publish(
+            RuntimeDiagnosticLevel.Operational,
+            () =>
+                new RuntimeDiagnosticEvent(
+                    RuntimeDiagnosticLevel.Operational,
+                    RuntimeDiagnosticCategory.RuntimeConnection,
+                    "DevelopmentLoopbackHostingActive",
+                    RuntimeDiagnosticSeverity.Warning,
+                    RuntimeHostId.Value,
+                    outcome: RuntimeDiagnosticOutcome.Succeeded,
+                    details:
+                        new Dictionary<string, string>(
+                            StringComparer.Ordinal)
+                        {
+                            ["Profile"] = "DevelopmentLoopback",
+                            ["Binding"] =
+                                developmentProfile.BindingDisplay,
+                            ["Security"] =
+                                "None - loopback only, no TLS, "
+                                + "no client certificates"
+                        }));
     }
 
     public Task RefreshEndpointsAsync(
@@ -927,6 +1007,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     {
         RuntimeHostPrivateNetworkDeployment? deploymentToDispose =
             deployment;
+        RuntimeHostDevelopmentLoopbackDeployment?
+            developmentDeploymentToDispose =
+                developmentDeployment;
         RuntimeHostNorthboundSnapshotComposition? compositionToDispose =
             composition;
         RuntimeEndpointAttachmentHost? attachmentHostToDispose =
@@ -937,6 +1020,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         endpointRefreshCoordinator = null;
         endpointRefreshTargets = [];
         deployment = null;
+        developmentDeployment = null;
         composition = null;
         attachmentHost = null;
         runtimeOperator = null;
@@ -949,6 +1033,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         if (deploymentToDispose is not null)
         {
             await deploymentToDispose.DisposeAsync();
+        }
+
+        if (developmentDeploymentToDispose is not null)
+        {
+            await developmentDeploymentToDispose.DisposeAsync();
         }
 
         if (mediaCoordinatorToDispose is not null)
