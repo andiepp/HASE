@@ -29,6 +29,8 @@ public sealed class ClientMediaApplicationControlClient :
         Channel.CreateBounded<RemoteMediaNegotiationMessage>(64);
     private IRuntimeHostMediaControlClient? selectedClient;
     private RuntimeHostProfileId? selectedProfileId;
+    private RuntimeHostProfileId? pendingProfileId;
+    private bool hasPendingSelection;
     private RemoteMediaSessionSnapshot? session;
     private CancellationTokenSource? sessionCancellation;
     private Task? pump;
@@ -53,11 +55,35 @@ public sealed class ClientMediaApplicationControlClient :
 
     public event EventHandler<RemoteMediaSessionChangedEventArgs>? SessionChanged;
 
+    /// <summary>
+    /// Raised on the UI context after a deferred Runtime Host selection has
+    /// been applied because the pinning media session ended.
+    /// </summary>
+    public event EventHandler? RuntimeHostBindingChanged;
+
+    /// <summary>
+    /// Gets the profile the media control is currently bound to. During an
+    /// active session this stays with the streaming Runtime Host even when
+    /// the inventory selection moves elsewhere.
+    /// </summary>
+    public RuntimeHostProfileId? BoundRuntimeHostProfileId => selectedProfileId;
+
     public void SelectRuntimeHost(RuntimeHostProfileId? profileId)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         if (profileId == selectedProfileId)
         {
+            pendingProfileId = null;
+            hasPendingSelection = false;
+            return;
+        }
+
+        if (session is not null)
+        {
+            // An active media session pins its Runtime Host. Defer the new
+            // selection; it is applied when the session ends.
+            pendingProfileId = profileId;
+            hasPendingSelection = true;
             return;
         }
 
@@ -391,6 +417,23 @@ public sealed class ClientMediaApplicationControlClient :
         }
         boundary.ClearPresentation();
         Publish(null, statusText, terminalReason);
+        uiContext.Post(_ => ApplyPendingSelection(), null);
+    }
+
+    private void ApplyPendingSelection()
+    {
+        if (!hasPendingSelection || session is not null)
+        {
+            return;
+        }
+
+        selectedProfileId = pendingProfileId;
+        selectedClient = pendingProfileId is null
+            ? null
+            : clientResolver(pendingProfileId);
+        pendingProfileId = null;
+        hasPendingSelection = false;
+        RuntimeHostBindingChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void ClearSession(

@@ -115,6 +115,30 @@ public sealed class RuntimeHostMediaViewModelTests
     }
 
     [Fact]
+    public async Task RuntimeHostChangeDuringActiveSessionPreservesSession()
+    {
+        var client = new FakeClient
+        {
+            Capabilities = [Source("usb", "USB camera", true)]
+        };
+        var viewModel = Create(client);
+        await viewModel.RefreshAsync();
+        await viewModel.StartAsync();
+
+        viewModel.ResetForRuntimeHostChange();
+
+        Assert.NotEmpty(viewModel.Sources);
+        Assert.NotNull(viewModel.SelectedSource);
+        Assert.True(viewModel.StopCommand.CanExecute());
+
+        await viewModel.StopAsync();
+        viewModel.ResetForRuntimeHostChange();
+
+        Assert.Empty(viewModel.Sources);
+        Assert.Null(viewModel.SelectedSource);
+    }
+
+    [Fact]
     public async Task StaleSelectionFailureRequiresRefreshWithoutFallback()
     {
         var client = new FakeClient

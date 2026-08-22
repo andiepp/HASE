@@ -139,6 +139,14 @@ public sealed class RuntimeHostMediaViewModel : BindableBase
 
     public void ResetForRuntimeHostChange()
     {
+        // An active media session pins its Runtime Host. Selection changes
+        // must not clear the running session; the reset is applied when the
+        // session ends and the media binding follows the selection.
+        if (session is not null)
+        {
+            return;
+        }
+
         capabilityWatchCancellation?.Cancel();
         capabilityWatchCancellation?.Dispose();
         capabilityWatchCancellation = null;

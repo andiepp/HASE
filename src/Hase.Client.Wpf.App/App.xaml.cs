@@ -99,6 +99,7 @@ public partial class App
         mediaWatchProfileId = viewModel.SelectedRuntimeHost?.ProfileId;
         mediaWatchState = viewModel.SelectedRuntimeHost?.SessionState;
         viewModel.Media.RestartCapabilityWatch();
+        mediaControlClient.RuntimeHostBindingChanged += MediaRuntimeHostBindingChanged;
         viewModel.PropertyChanged += MainWindowViewModelPropertyChanged;
 
         return window;
@@ -161,6 +162,11 @@ public partial class App
                 mainWindowViewModel.PropertyChanged -=
                     MainWindowViewModelPropertyChanged;
             }
+            if (mediaControlClient is not null)
+            {
+                mediaControlClient.RuntimeHostBindingChanged -=
+                    MediaRuntimeHostBindingChanged;
+            }
             mediaControlClient?.DisposeAsync().AsTask().GetAwaiter().GetResult();
             diagnosticsWindowController ??=
                 Container.Resolve<IClientDiagnosticsWindowController>();
@@ -201,15 +207,35 @@ public partial class App
             RuntimeHostProfileItemViewModel? selected =
                 mainWindowViewModel?.SelectedRuntimeHost;
             RuntimeHostProfileId? profileId = selected?.ProfileId;
-            if (profileId == mediaWatchProfileId)
+            if (mediaControlClient is null
+                || profileId == mediaControlClient.BoundRuntimeHostProfileId)
             {
                 return;
             }
-            mediaControlClient?.SelectRuntimeHost(profileId);
+            mediaControlClient.SelectRuntimeHost(profileId);
+            if (profileId != mediaControlClient.BoundRuntimeHostProfileId)
+            {
+                // An active media session pinned the binding; the selection
+                // is applied when the session ends. Keep watching the
+                // pinned Runtime Host until then.
+                return;
+            }
             mediaWatchProfileId = profileId;
             mediaWatchState = selected?.SessionState;
             mainWindowViewModel?.Media.RestartCapabilityWatch();
         }
+    }
+
+    private void MediaRuntimeHostBindingChanged(object? sender, EventArgs eventArgs)
+    {
+        RuntimeHostProfileItemViewModel? selected =
+            mainWindowViewModel?.SelectedRuntimeHost;
+        mediaWatchProfileId = mediaControlClient?.BoundRuntimeHostProfileId;
+        mediaWatchState = selected?.ProfileId == mediaWatchProfileId
+            ? selected?.SessionState
+            : null;
+        mainWindowViewModel?.Media.ResetForRuntimeHostChange();
+        mainWindowViewModel?.Media.RestartCapabilityWatch();
     }
 
     private void MultiHostSnapshotChanged(object? sender, EventArgs eventArgs)
@@ -218,18 +244,27 @@ public partial class App
         uiDispatcher!.Post(() =>
         {
             mainWindowViewModel!.ApplyMultiHostSnapshot(snapshot);
-            RuntimeHostProfileItemViewModel? selected =
-                mainWindowViewModel.SelectedRuntimeHost;
-            if (selected is not null)
+
+            // Notify every profile state: a pinned media session must learn
+            // that its Runtime Host disconnected even while another host is
+            // selected in the inventory.
+            foreach (RuntimeHostProfileSessionSnapshot profileSession in snapshot.Sessions)
             {
                 mediaControlClient?.NotifyRuntimeHostState(
-                    selected.ProfileId,
-                    selected.SessionState);
-                bool recovered = selected.ProfileId == mediaWatchProfileId &&
-                    selected.SessionState ==
+                    profileSession.ProfileId,
+                    profileSession.Status.State);
+            }
+
+            RuntimeHostProfileSessionSnapshot? watched = mediaWatchProfileId is null
+                ? null
+                : snapshot.Sessions.SingleOrDefault(
+                    profileSession => profileSession.ProfileId == mediaWatchProfileId);
+            if (watched is not null)
+            {
+                bool recovered = watched.Status.State ==
                         RuntimeHostClientSessionState.Connected &&
                     mediaWatchState != RuntimeHostClientSessionState.Connected;
-                mediaWatchState = selected.SessionState;
+                mediaWatchState = watched.Status.State;
                 if (recovered)
                 {
                     mainWindowViewModel.Media.RestartCapabilityWatch();

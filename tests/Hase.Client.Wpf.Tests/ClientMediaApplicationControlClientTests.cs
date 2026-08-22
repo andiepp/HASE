@@ -149,17 +149,71 @@ public sealed class ClientMediaApplicationControlClientTests
     }
 
     [Fact]
-    public async Task HostSelectionChangeClearsWithoutReplayingStart()
+    public async Task HostSelectionChangeDuringSessionPinsUntilStop()
     {
-        var remote = new FakeRemoteClient();
+        var first = new FakeRemoteClient();
+        var second = new FakeRemoteClient();
         var boundary = new FakeBoundary();
-        await using var client = Create(remote, boundary);
+        bool bindingChanged = false;
+        await using var client = Create2(first, second, boundary);
+        client.RuntimeHostBindingChanged += (_, _) => bindingChanged = true;
         client.SelectRuntimeHost(new RuntimeHostProfileId("first"));
         await client.StartAsync(new("camera", "generation"), false);
 
         client.SelectRuntimeHost(new RuntimeHostProfileId("second"));
 
-        Assert.Equal(1, remote.StartCount);
+        Assert.Equal(new RuntimeHostProfileId("first"), client.BoundRuntimeHostProfileId);
+        Assert.Equal(0, first.StopCount);
+        Assert.False(bindingChanged);
+
+        RemoteMediaStopResult stop = await client.StopAsync("session");
+        Assert.True(stop.Succeeded);
+        Assert.Equal(new RuntimeHostProfileId("second"), client.BoundRuntimeHostProfileId);
+        Assert.True(bindingChanged);
+        Assert.Equal(1, first.StartCount);
+        Assert.Equal(0, second.StartCount);
+    }
+
+    [Fact]
+    public async Task SelectionBackToPinnedHostCancelsDeferredSwitch()
+    {
+        var first = new FakeRemoteClient();
+        var second = new FakeRemoteClient();
+        var boundary = new FakeBoundary();
+        bool bindingChanged = false;
+        await using var client = Create2(first, second, boundary);
+        client.RuntimeHostBindingChanged += (_, _) => bindingChanged = true;
+        client.SelectRuntimeHost(new RuntimeHostProfileId("first"));
+        await client.StartAsync(new("camera", "generation"), false);
+
+        client.SelectRuntimeHost(new RuntimeHostProfileId("second"));
+        client.SelectRuntimeHost(new RuntimeHostProfileId("first"));
+        await client.StopAsync("session");
+
+        Assert.Equal(new RuntimeHostProfileId("first"), client.BoundRuntimeHostProfileId);
+        Assert.False(bindingChanged);
+    }
+
+    [Fact]
+    public async Task PinnedHostDisconnectStopsSessionAndAppliesDeferredSelection()
+    {
+        var first = new FakeRemoteClient();
+        var second = new FakeRemoteClient();
+        var boundary = new FakeBoundary();
+        bool bindingChanged = false;
+        await using var client = Create2(first, second, boundary);
+        client.RuntimeHostBindingChanged += (_, _) => bindingChanged = true;
+        client.SelectRuntimeHost(new RuntimeHostProfileId("first"));
+        await client.StartAsync(new("camera", "generation"), false);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("second"));
+
+        client.NotifyRuntimeHostState(
+            new RuntimeHostProfileId("first"),
+            RuntimeHostClientSessionState.Disconnected);
+
+        Assert.Equal(new RuntimeHostProfileId("second"), client.BoundRuntimeHostProfileId);
+        Assert.True(bindingChanged);
+        Assert.Equal(1, first.StopCount);
         Assert.True(boundary.ClearCount >= 1);
     }
 
@@ -371,6 +425,14 @@ public sealed class ClientMediaApplicationControlClientTests
         FakeRemoteClient remote,
         FakeBoundary boundary) =>
         new(_ => remote, boundary, new ImmediateSynchronizationContext());
+
+    private static ClientMediaApplicationControlClient Create2(
+        FakeRemoteClient first,
+        FakeRemoteClient second,
+        FakeBoundary boundary) =>
+        new(profileId => profileId.Value == "first" ? first : second,
+            boundary,
+            new ImmediateSynchronizationContext());
 
     private sealed class ImmediateSynchronizationContext : SynchronizationContext
     {
