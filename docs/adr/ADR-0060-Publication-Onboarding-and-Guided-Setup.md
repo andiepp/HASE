@@ -203,6 +203,11 @@ and define 60B as the next separately approved increment.
 Goal: add the MIT `LICENSE` file and rewrite the root `README.md` for an
 external first-time reader. Documentation-only; no build or test required.
 
+Completed result: commit `35232c63e3c392ee71c939380d1740253c2cbe24` adds the
+MIT License with copyright holder Dr. Andreas Eppinger and restructures the
+README front door around clone-and-build prerequisites and the example
+ladder.
+
 ### Increment 60C — Certificate-free loopback development profile
 
 Goal: implement and automatically validate the labeled loopback-only,
@@ -210,11 +215,53 @@ non-TLS development hosting profile for the Runtime Host and Client,
 including refusal of every non-loopback binding. Focused suites first, then
 the complete Release suite.
 
+Completed result: Increment 60C1, commit
+`416b700e21abde4395fca5a0b5848902424fd3f0`, adds the Runtime Host
+development profile (`--development` startup, strict development-loopback
+document, loopback-only composition over the existing Phase 7.7 factory,
+visible window and diagnostic labeling) at 6,423 complete Release tests.
+Increment 60C2, commit `3fb01c1b315c3624ce76ddbfc26461ce59bd2abc`, adds the
+Client development configuration, document-kind dispatch, plaintext loopback
+session resources, and labeling diagnostics at 6,453 complete Release tests.
+Non-loopback refusal is validated at the binding, profile, and document
+layers. The secured profiles and their validation are unchanged.
+
 ### Increment 60D — Getting Started and Example 0
 
 Goal: the prerequisites and build document plus Example 0 (simulation only,
 loopback, no certificates), proven by a walkthrough from a fresh clone on one
 of the project computers.
+
+Completed result: Increment 60D1, commit
+`f5364c0227ad0eddb6f606b471b859239488298d`, publishes
+`docs/Getting-Started.md` and links it from the README. The operator then
+performed the 60D2 walkthrough as a new user against a fresh clone in
+`J:\HASE`, following only the published document. The walkthrough surfaced
+two real defects, each fixed as a separately approved corrective increment:
+
+1. 60D2A, commit `6400017da8ae117c1bca8d1383d0d92472685abf` — six
+   deployment-script contract tests matched `\n`-only patterns and failed on
+   a default Windows checkout with CRLF endings; the test read helpers now
+   normalize line endings, satisfying the §5 rule that validation must not
+   depend on line layout. The fresh clone then passed the complete suite
+   with 6,453 tests, zero failed, zero skipped.
+2. 60D2B, commit `275a70ae812a9565844bb4dd103fb532bb98c33d` — the
+   runtime-host identity document parser rejected a UTF-8 byte-order mark,
+   faulting the host on the guide's hand-authored identity file; reading is
+   now byte-order-mark-tolerant like every sibling document loader, while
+   serialization stays byte-order-mark-free. The complete Release baseline
+   is 6,455 tests.
+
+After the fixes the operator completed Example 0 exactly as documented:
+configuration generation, Runtime Host start with the published `Ready`
+simulation endpoint, Client connection, Property writes, Command execution,
+Event observation, and orderly shutdown — including closing and reopening
+both applications. The operator accepted the example as working.
+
+Deferred cosmetic item: the Runtime Host window's `Identity` field shows the
+static `hase-desktop-runtime-host` constant instead of the resolved
+development identity. Recorded as deferred presentation work; it does not
+affect the Client's authoritative identity verification.
 
 ### Increment 60E — Example 1, Arduino Uno on one PC
 

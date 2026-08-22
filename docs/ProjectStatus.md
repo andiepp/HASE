@@ -25,8 +25,22 @@
   command-line setup wizard that packages the existing validated ADR-0032 and
   ADR-0043 provisioning logic; credential lifecycle stays out of the
   onboarding path.
-- Increment 60A is documentation-only. The next separately approved increment
-  is 60B — License and repository front door.
+- Increments 60A through 60D are complete. HASE is MIT-licensed, the README
+  fronts the example ladder, the certificate-free loopback development
+  profile is implemented for the Runtime Host and Client, and the published
+  Getting Started document was proven by an operator walkthrough from a
+  fresh clone in a new-user role.
+- The walkthrough surfaced and closed two corrective increments: 60D2A made
+  the deployment-script contract tests line-ending-neutral so a default
+  Windows checkout passes the complete suite, and 60D2B made runtime-host
+  identity reading byte-order-mark-tolerant so a hand-authored identity file
+  starts the development host. The complete Release baseline is 6,455 tests.
+- Example 0 was accepted by the operator, including Property writes, Command
+  execution, Event observation, and close-and-reopen cycles of both
+  applications. The Runtime Host window's static `Identity` display remains
+  a deferred cosmetic item.
+- The next separately approved increment is 60E — Example 1, Arduino Uno on
+  one PC.
 
 ---
 

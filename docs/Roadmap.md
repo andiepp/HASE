@@ -2151,9 +2151,13 @@ protocol, transport, and northbound contract remain unchanged.
 Planned increments:
 
 1. 60A — Decision acceptance — complete.
-2. 60B — License and repository front door.
-3. 60C — Certificate-free loopback development profile.
-4. 60D — Getting Started and Example 0.
+2. 60B — License and repository front door — complete.
+3. 60C — Certificate-free loopback development profile — complete as 60C1
+   (Runtime Host) and 60C2 (Client).
+4. 60D — Getting Started and Example 0 — complete, including the corrective
+   increments 60D2A (line-ending-neutral contract tests) and 60D2B
+   (byte-order-mark-tolerant identity reading), proven by an operator
+   fresh-clone walkthrough and closed at 6,455 complete Release tests.
 5. 60E — Example 1, Arduino Uno on one PC.
 6. 60F — Example 2, ESP32 in the local network.
 7. 60G — Generalized provisioning documentation.
