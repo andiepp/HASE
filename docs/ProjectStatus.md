@@ -1,5 +1,35 @@
 # Project Status
 
+## Completed architectural objective — ADR-0059
+
+**ADR-0059 — Client Connection Controls and Pinned Media Sessions —
+implemented, validated, synchronized, deployed, physically verified, and
+closed at 6,391 passing tests**
+
+- The laptop client runtime-host list is a selection list. Each entry carries
+  an explicit `Connect`/`Disconnect` button in its top-right corner; selecting
+  an entry never changes its connection state.
+- The detached media window is retained for the client lifetime. Closing it
+  stops any active media session and hides the window; reopening and
+  `Start Video` work repeatably. Application shutdown closes and disposes the
+  presentation surface explicitly and exits cleanly in every close order,
+  including with an actively streaming session.
+- A runtime host that faults after a successful connection reconnects through
+  the ordinary `Connect` action. The profile session controller releases the
+  retained faulted session before establishing the new one; the recovery is
+  covered by focused unit tests written before the fix.
+- An active media session pins the media binding to its runtime host.
+  Inventory selection changes no longer stop a running stream; the most recent
+  selection is applied when the session ends. The pinned host's disconnect
+  still stops media even while another host is selected.
+- The objective spans commits `8941f8a04588c8e50651707cf8f3cd2b365e72c7`
+  through `90cc3cd77724124d2b193c82d06f2d2bc50405cd` from starting baseline
+  `5205972bcc307b6a5c4d36ab95121bdccf5676c4`. The complete Release suite grew
+  from 6,379 to 6,391 passed, zero failed, zero skipped. Every increment was
+  deployed to the installed LTAEP client with `Update-HaseClient.ps1`,
+  preserving Runtime Host registry and desktop shortcut custody, and was
+  physically verified by the operator.
+
 ## Completed architectural objective — ADR-0058
 
 **ADR-0058 — Operator-Initiated Runtime Endpoint Refresh — implemented,

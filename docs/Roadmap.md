@@ -2100,4 +2100,23 @@ Refresh. The operator accepted the complete scenario as working perfectly.
 The verified pre-deployment application rollback and SHA-256 manifest remain in
 local AEPRAKETE custody. ADR-0058 closure does not authorize their deletion.
 
+## Completed objective — ADR-0059 Client Connection Controls and Pinned Media Sessions
+
+ADR-0059 records the completed laptop-client interaction and reliability
+corrections as one retrospective architectural objective: an explicit
+per-entry `Connect`/`Disconnect` control in the runtime-host selection list, a
+retained detached media window that survives closing and reopening, clean
+client shutdown in every close order including during an active stream,
+repeatable reconnection of a runtime host that faulted after a successful
+connection, and media sessions that pin their runtime host so a running stream
+survives inventory selection changes.
+
+ADR-0059 begins at exact commit
+`5205972bcc307b6a5c4d36ab95121bdccf5676c4` with 6,379 complete Release tests
+and closes at commit `90cc3cd77724124d2b193c82d06f2d2bc50405cd` with 6,391
+passed, zero failed, and zero skipped. Every increment was deployed to the
+installed LTAEP client with `Update-HaseClient.ps1`, preserving Runtime Host
+registry and desktop shortcut custody, and was physically verified by the
+operator.
+
 Diagnostic Export and Offline Analysis remains accepted but deferred.
