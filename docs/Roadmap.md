@@ -2162,7 +2162,10 @@ Planned increments:
    corrective increment 60E2A (analog-source wiring and upload
    troubleshooting), proven by an operator walkthrough with the physical
    Arduino Uno.
-6. 60F — Example 2, ESP32 in the local network.
+6. 60F — Example 2, ESP32 in the local network — complete, including the
+   corrective increments 60F2A (per-project sketchbook library setup) and
+   60F2B (inline launch blocks), proven by an operator walkthrough on
+   physical ESP32/BME280 hardware with mDNS attachment.
 7. 60G — Generalized provisioning documentation.
 8. 60H — Guided setup wizard.
 9. 60I — Example 3, Client on a second PC.

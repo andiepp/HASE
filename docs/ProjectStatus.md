@@ -45,8 +45,16 @@
   voltage, and push-button Events. The operator validated it in the
   new-user role; corrective increment 60E2A added the analog-source wiring
   and upload troubleshooting the walkthrough surfaced.
-- The next separately approved increment is 60F — Example 2, ESP32 in the
-  local network.
+- Increment 60F is complete. The published Example 2 takes a user from a
+  working Example 0 to an operating ESP32/BME280 Wi-Fi endpoint over native
+  Protocol Version 1: vendored per-project libraries, Wi-Fi secrets from
+  the tracked template, mDNS-based attachment, live environment Properties,
+  the status-LED Property and Command, and button Events. The operator
+  validated it in the new-user role; corrective increments 60F2A
+  (per-project sketchbook library setup) and 60F2B (inline launch blocks)
+  captured the walkthrough findings.
+- The next separately approved increment is 60G — generalized provisioning
+  documentation, the on-ramp to Example 3's mutual TLS.
 
 ---
 

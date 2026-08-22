@@ -298,6 +298,36 @@ serial pins are wired. The operator accepted Example 1 as working.
 Goal: ESP32 firmware, mDNS discovery, and native framed-TCP attachment, with
 Runtime Host and Client still on one PC.
 
+Completed result: Increment 60F1, commit
+`2fa3dfe5d3a6c027cc5ca3295da11385a9d41553`, publishes
+`docs/Example-2-ESP32.md` — LAN security note, required BME280 (a failed
+sensor initialization deliberately stops the endpoint before network
+startup), repository-vendored libraries, wiring, Wi-Fi secrets from the
+tracked template, flashing with the validated board and core versions,
+mDNS-first address determination, composition, and interaction steps with
+the definition's published display names.
+
+The operator performed the 60F2 walkthrough in the new-user role on
+physical ESP32/BME280 hardware. Two corrective increments followed:
+
+1. 60F2A, commit `150198393af437b2abaf3382e71a9d3cb3c5b509` — the library
+   setup assumed the default Documents sketchbook; the operator's
+   per-project library workflow motivated the better flow now documented:
+   one local, git-ignored copy of the shared `HaseEsp32Endpoint` library
+   beside the vendored Adafruit libraries, with the sketchbook pointed at
+   `HaseEndpoint`. The tracked single source under `libraries/` remains
+   authoritative per ADR-0054.
+2. 60F2B, commit `a04614d0a9e73617941c93696f51722616f9b58c` — the start
+   section repeats the Runtime Host and Client launch blocks
+   copy-and-paste-ready instead of referring back to Example 0.
+
+The operator validated the complete example: firmware compilation and
+upload, the documented serial startup sequence, native attachment through
+the mDNS name `doit-esp32-devkitc-v4-01.local` (the documented default
+route, confirmed working), live BME280 Properties, the status-LED Property
+and Command, the GPIO 17 Button Pressed Event, and recovery. The operator
+accepted Example 2 as working.
+
 ### Increment 60G — Generalized provisioning documentation
 
 Goal: the neutral multi-computer provisioning document and any neutral
