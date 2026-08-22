@@ -71,6 +71,18 @@ public sealed class RuntimeHostGrpcClientSession
     {
     }
 
+    /// <summary>
+    /// Creates one unconnected session for the explicitly labeled
+    /// certificate-free loopback development profile.
+    /// </summary>
+    public RuntimeHostGrpcClientSession(
+        RuntimeHostDevelopmentLoopbackClientOptions options)
+        : this(
+            CreateResourcesFactory(
+                options))
+    {
+    }
+
     internal RuntimeHostGrpcClientSession(
         Func<
             CancellationToken,
@@ -782,6 +794,20 @@ public sealed class RuntimeHostGrpcClientSession
                 RuntimeHostPrivateNetworkSessionResources.Create(
                     options));
     }
+
+    private static Func<
+        CancellationToken,
+        ValueTask<IRuntimeHostGrpcSessionResources>> CreateResourcesFactory(
+        RuntimeHostDevelopmentLoopbackClientOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(
+            options);
+
+        return _ =>
+            ValueTask.FromResult<IRuntimeHostGrpcSessionResources>(
+                RuntimeHostDevelopmentLoopbackSessionResources.Create(
+                    options));
+    }
 }
 
 internal interface IRuntimeHostGrpcSessionResources
@@ -923,6 +949,99 @@ internal sealed class RuntimeHostPrivateNetworkSessionResources
         finally
         {
             deployment.Dispose();
+        }
+    }
+}
+
+internal sealed class RuntimeHostDevelopmentLoopbackSessionResources
+    : IRuntimeHostGrpcSessionResources
+{
+    private readonly RuntimeHostDevelopmentLoopbackGrpcClient client;
+    private readonly RuntimeHostGrpcObservationStream observationStream;
+    private readonly RuntimeHostGrpcPropertyClient propertyClient;
+    private readonly RuntimeHostGrpcCommandClient commandClient;
+    private readonly RuntimeHostGrpcMediaControlClient mediaClient;
+    private bool disposed;
+
+    private RuntimeHostDevelopmentLoopbackSessionResources(
+        RuntimeHostDevelopmentLoopbackGrpcClient client,
+        RuntimeHostGrpcObservationStream observationStream,
+        RuntimeHostGrpcPropertyClient propertyClient,
+        RuntimeHostGrpcCommandClient commandClient,
+        RuntimeHostGrpcMediaControlClient mediaClient)
+    {
+        this.client =
+            client;
+        this.observationStream =
+            observationStream;
+        this.propertyClient =
+            propertyClient;
+        this.commandClient =
+            commandClient;
+        this.mediaClient =
+            mediaClient;
+    }
+
+    public IRemoteObservationStream ObservationStream =>
+        observationStream;
+
+    public IRuntimeHostGrpcPropertyClient PropertyClient =>
+        propertyClient;
+
+    public IRuntimeHostGrpcCommandClient CommandClient =>
+        commandClient;
+
+    public IRuntimeHostMediaControlClient MediaClient =>
+        mediaClient;
+
+    public IRemoteRuntimeDiagnosticStream CreateDiagnosticStream() =>
+        new RuntimeHostGrpcDiagnosticStream(client.Client);
+
+    public static RuntimeHostDevelopmentLoopbackSessionResources Create(
+        RuntimeHostDevelopmentLoopbackClientOptions options)
+    {
+        RuntimeHostDevelopmentLoopbackGrpcClient client =
+            RuntimeHostDevelopmentLoopbackGrpcClient.Create(
+                options);
+
+        try
+        {
+            return new RuntimeHostDevelopmentLoopbackSessionResources(
+                client,
+                new RuntimeHostGrpcObservationStream(
+                    client.Client),
+                new RuntimeHostGrpcPropertyClient(
+                    client.Client),
+                new RuntimeHostGrpcCommandClient(
+                    client.Client),
+                new RuntimeHostGrpcMediaControlClient(
+                    client.MediaClient));
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed =
+            true;
+
+        try
+        {
+            await observationStream.DisposeAsync()
+                .ConfigureAwait(false);
+        }
+        finally
+        {
+            client.Dispose();
         }
     }
 }

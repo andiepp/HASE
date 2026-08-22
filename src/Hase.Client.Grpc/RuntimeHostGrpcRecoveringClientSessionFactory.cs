@@ -17,14 +17,22 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
     private readonly Func<
         RuntimeHostPrivateNetworkClientOptions,
         IRuntimeHostClientSession> createSession;
+    private readonly Func<
+        string,
+        CancellationToken,
+        Task<bool>> probeDevelopmentAsync;
+    private readonly Func<
+        string,
+        CancellationToken,
+        Task<RuntimeHostDevelopmentLoopbackClientOptions>>
+        loadDevelopmentOptionsAsync;
+    private readonly Func<
+        RuntimeHostDevelopmentLoopbackClientOptions,
+        IRuntimeHostClientSession> createDevelopmentSession;
     private readonly ClientDiagnosticPublisher diagnostics;
 
     public RuntimeHostGrpcRecoveringClientSessionFactory()
         : this(
-            RuntimeHostPrivateNetworkClientOptionsFile.LoadAsync,
-            options =>
-                new RuntimeHostGrpcRecoveringClientSession(
-                    options),
             new ClientDiagnosticPublisher())
     {
     }
@@ -33,6 +41,11 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
         ClientDiagnosticPublisher diagnostics)
         : this(
             RuntimeHostPrivateNetworkClientOptionsFile.LoadAsync,
+            options =>
+                new RuntimeHostGrpcRecoveringClientSession(
+                    options),
+            RuntimeHostClientConfigurationDocument.IsDevelopmentLoopbackAsync,
+            RuntimeHostDevelopmentLoopbackClientOptionsFile.LoadAsync,
             options =>
                 new RuntimeHostGrpcRecoveringClientSession(
                     options),
@@ -64,6 +77,45 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
             RuntimeHostPrivateNetworkClientOptions,
             IRuntimeHostClientSession> createSession,
         ClientDiagnosticPublisher diagnostics)
+        : this(
+            loadOptionsAsync,
+            createSession,
+            (_, _) =>
+                Task.FromResult(
+                    false),
+            (_, _) =>
+                throw new InvalidOperationException(
+                    "The injected session factory does not support the "
+                    + "development loopback profile."),
+            _ =>
+                throw new InvalidOperationException(
+                    "The injected session factory does not support the "
+                    + "development loopback profile."),
+            diagnostics)
+    {
+    }
+
+    internal RuntimeHostGrpcRecoveringClientSessionFactory(
+        Func<
+            string,
+            CancellationToken,
+            Task<RuntimeHostPrivateNetworkClientOptions>> loadOptionsAsync,
+        Func<
+            RuntimeHostPrivateNetworkClientOptions,
+            IRuntimeHostClientSession> createSession,
+        Func<
+            string,
+            CancellationToken,
+            Task<bool>> probeDevelopmentAsync,
+        Func<
+            string,
+            CancellationToken,
+            Task<RuntimeHostDevelopmentLoopbackClientOptions>>
+            loadDevelopmentOptionsAsync,
+        Func<
+            RuntimeHostDevelopmentLoopbackClientOptions,
+            IRuntimeHostClientSession> createDevelopmentSession,
+        ClientDiagnosticPublisher diagnostics)
     {
         this.loadOptionsAsync =
             loadOptionsAsync
@@ -73,6 +125,18 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
             createSession
             ?? throw new ArgumentNullException(
                 nameof(createSession));
+        this.probeDevelopmentAsync =
+            probeDevelopmentAsync
+            ?? throw new ArgumentNullException(
+                nameof(probeDevelopmentAsync));
+        this.loadDevelopmentOptionsAsync =
+            loadDevelopmentOptionsAsync
+            ?? throw new ArgumentNullException(
+                nameof(loadDevelopmentOptionsAsync));
+        this.createDevelopmentSession =
+            createDevelopmentSession
+            ?? throw new ArgumentNullException(
+                nameof(createDevelopmentSession));
         this.diagnostics =
             diagnostics
             ?? throw new ArgumentNullException(
@@ -96,15 +160,36 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
             "ConfigurationLoadStarted",
             operationId);
 
-        RuntimeHostPrivateNetworkClientOptions options;
+        bool isDevelopmentLoopback;
+        RuntimeHostPrivateNetworkClientOptions? options = null;
+        RuntimeHostDevelopmentLoopbackClientOptions? developmentOptions = null;
         try
         {
-            options =
-                await loadOptionsAsync(
+            isDevelopmentLoopback =
+                await probeDevelopmentAsync(
                         configurationFilePath,
                         cancellationToken)
                     .ConfigureAwait(
                         false);
+
+            if (isDevelopmentLoopback)
+            {
+                developmentOptions =
+                    await loadDevelopmentOptionsAsync(
+                            configurationFilePath,
+                            cancellationToken)
+                        .ConfigureAwait(
+                            false);
+            }
+            else
+            {
+                options =
+                    await loadOptionsAsync(
+                            configurationFilePath,
+                            cancellationToken)
+                        .ConfigureAwait(
+                            false);
+            }
         }
         catch (Exception exception)
         {
@@ -127,7 +212,11 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
         {
             cancellationToken.ThrowIfCancellationRequested();
             session =
-                createSession(options)
+                (isDevelopmentLoopback
+                    ? createDevelopmentSession(
+                        developmentOptions!)
+                    : createSession(
+                        options!))
                 ?? throw new InvalidOperationException(
                     "The runtime-host client session factory returned null.");
         }
@@ -154,9 +243,37 @@ public sealed class RuntimeHostGrpcRecoveringClientSessionFactory
             duration.Elapsed,
             ClientDiagnosticOutcome.Succeeded);
 
+        if (isDevelopmentLoopback)
+        {
+            PublishDevelopmentLoopbackActive(
+                operationId);
+        }
+
         return diagnostics.IsEnabled(ClientDiagnosticLevel.Operational)
             ? new DiagnosticRuntimeHostClientSession(session, diagnostics)
             : session;
+    }
+
+    private void PublishDevelopmentLoopbackActive(
+        Guid operationId)
+    {
+        diagnostics.Publish(
+            ClientDiagnosticLevel.Operational,
+            () => new ClientDiagnosticEvent(
+                ClientDiagnosticLevel.Operational,
+                ClientDiagnosticCategory.ClientConfiguration,
+                "DevelopmentLoopbackConfigurationActive",
+                ClientDiagnosticSeverity.Warning,
+                operationId: operationId,
+                outcome: ClientDiagnosticOutcome.Succeeded,
+                metadata: new Dictionary<string, string>(
+                    StringComparer.Ordinal)
+                {
+                    ["Profile"] = "DevelopmentLoopback",
+                    ["Security"] =
+                        "None - loopback only, no TLS, "
+                        + "no client certificates"
+                }));
     }
 
     private void PublishConfiguration(

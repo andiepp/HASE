@@ -55,6 +55,23 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
     {
     }
 
+    /// <summary>
+    /// Creates one recovering session for the explicitly labeled
+    /// certificate-free loopback development profile.
+    /// </summary>
+    public RuntimeHostGrpcRecoveringClientSession(
+        RuntimeHostDevelopmentLoopbackClientOptions options,
+        RuntimeHostClientRecoveryPolicy? recoveryPolicy = null)
+        : this(
+            CreateSessionFactory(
+                options),
+            recoveryPolicy
+                ?? RuntimeHostClientRecoveryPolicy.Conservative,
+            new RuntimeHostGrpcFailureMapper(),
+            Task.Delay)
+    {
+    }
+
     internal RuntimeHostGrpcRecoveringClientSession(
         Func<IRuntimeHostGrpcRecoverableSession> sessionFactory,
         RuntimeHostClientRecoveryPolicy recoveryPolicy,
@@ -683,6 +700,18 @@ public sealed class RuntimeHostGrpcRecoveringClientSession
     private static Func<IRuntimeHostGrpcRecoverableSession>
         CreateSessionFactory(
             RuntimeHostPrivateNetworkClientOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(
+            options);
+
+        return () =>
+            new RuntimeHostGrpcClientSession(
+                options);
+    }
+
+    private static Func<IRuntimeHostGrpcRecoverableSession>
+        CreateSessionFactory(
+            RuntimeHostDevelopmentLoopbackClientOptions options)
     {
         ArgumentNullException.ThrowIfNull(
             options);
