@@ -127,23 +127,29 @@ Transient Events are delivered live and are not replayed to later subscribers.
 
 ## Getting started
 
+HASE is distributed as clone-and-build from GitHub. There are no prebuilt
+releases.
+
 ### Prerequisites
 
-- .NET 10 SDK
-- Windows for the WPF application and current Windows USB discovery path
-- Appropriate hardware, firmware, and network access for physical validation
-- Runtime-host and client certificates for authenticated remote operation
+- Windows 10/11 and the .NET 10 SDK, for every example. Visual Studio is not
+  required; the solution builds with the `dotnet` CLI and any editor is
+  sufficient.
+- The Microsoft Edge WebView2 runtime, only where the media window is used.
+- The Arduino toolchain, only for the Arduino Uno example.
+- The ESP32 toolchain, only for the ESP32 example.
+- Python, only for the optional Python client.
 
 The core architecture and transport abstractions are not intended to be
 Windows-specific. Platform-specific discovery and desktop UI support are
 separate concerns.
 
-### Build
-
-From the repository root:
+### Clone and build
 
 ```powershell
-dotnet build .\HASE.slnx
+git clone https://github.com/andiepp/HASE.git
+cd HASE
+dotnet build .\HASE.slnx -c Release
 ```
 
 ### Test
@@ -156,7 +162,34 @@ Physical hardware validations are intentionally separate from ordinary
 automated tests. They require explicit endpoint selection and do not
 automatically attach arbitrary discovered devices.
 
-### Author an ESP32 endpoint
+### Onboarding examples
+
+Onboarding is a ladder of runnable examples with strictly increasing
+difficulty. Each example states its parts list, prerequisites, complete
+copy-and-paste steps, expected output, and troubleshooting.
+
+```text
+Example 0  Simulation only: one PC, Runtime Host and Client on
+           loopback, no hardware, no certificates
+Example 1  Arduino Uno on the same PC over USB serial
+Example 2  ESP32 in the local network
+Example 3  Client on a second PC through guided mutual-TLS provisioning
+Example 4  A second Runtime Host and the multi-host Client
+```
+
+Certificates enter the ladder only at Example 3. Examples 0 through 2 run on
+an explicitly labeled loopback-only development profile without TLS or
+client certificates.
+
+The examples are in preparation under ADR-0060; each entry gains its link
+here as it is published.
+
+### Advanced guides
+
+The guides below are reference material for readers who have completed the
+example ladder or who operate an existing HASE installation.
+
+#### Author an ESP32 endpoint
 
 Use the
 [HASE ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
@@ -172,7 +205,7 @@ rollback, and Runtime Host/Client validation. Upload from an isolated workspace
 because Arduino CLI may create additional `_flashed.bin` files beside its
 inputs; never treat a successful compilation as upload authorization.
 
-### Run the laptop client
+#### Run the laptop client
 
 Start with the
 [HASE Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md).
@@ -243,3 +276,7 @@ physically validated with:
 
 See [Project Status](docs/ProjectStatus.md) for the maintained implementation
 status and [Roadmap](docs/Roadmap.md) for planned work.
+
+## License
+
+HASE is licensed under the [MIT License](LICENSE).
