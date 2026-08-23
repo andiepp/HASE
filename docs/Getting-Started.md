@@ -212,8 +212,10 @@ Example 1 is published:
 [Arduino Uno on one PC](Example-1-Arduino-Uno.md) continues directly from
 this guide with a physical USB instrument, and
 [Example 2 — ESP32 in the local network](Example-2-ESP32.md) follows with a
-Wi-Fi instrument. Examples 3 and 4 are in preparation; each gains its link
-in the repository README as it is published. The
+Wi-Fi instrument, and
+[Example 3 — Client on a second PC](Example-3-Client-on-a-Second-PC.md)
+crosses the network under mutual TLS. Example 4 is in preparation and gains
+its link in the repository README as it is published. The
 [Laptop Client UI Tutorial](Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 and the [Northbound API Reference](API%20reference/HASE-Northbound-API-Reference.md)
 describe the Client and the API in depth.

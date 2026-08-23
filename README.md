@@ -186,8 +186,10 @@ fresh clone to a running simulated system on one PC. Example 1 is
 published: [Arduino Uno on one PC](docs/Example-1-Arduino-Uno.md) adds a
 physical USB instrument. Example 2 is published:
 [ESP32 in the local network](docs/Example-2-ESP32.md) adds a Wi-Fi
-instrument. Examples 3 and 4 are in preparation under ADR-0060; each entry
-gains its link here as it is published.
+instrument. Example 3 is published:
+[Client on a second PC](docs/Example-3-Client-on-a-Second-PC.md) crosses
+the network under mutual TLS through the guided setup wizard. Example 4 is
+in preparation under ADR-0060 and gains its link here as it is published.
 
 ### Advanced guides
 
@@ -228,6 +230,7 @@ or environment-specific client configuration files.
 - [Getting Started](docs/Getting-Started.md)
 - [Example 1 — Arduino Uno on one PC](docs/Example-1-Arduino-Uno.md)
 - [Example 2 — ESP32 in the local network](docs/Example-2-ESP32.md)
+- [Example 3 — Client on a second PC](docs/Example-3-Client-on-a-Second-PC.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
