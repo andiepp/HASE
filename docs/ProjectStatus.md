@@ -1,10 +1,10 @@
 # Project Status
 
-## Active architectural objective — ADR-0061
+## Completed architectural objective — ADR-0061
 
-**ADR-0061 — Instrument and Media Examples — accepted at Increment 61A from
-starting baseline `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564` with 6,463
-passing tests**
+**ADR-0061 — Instrument and Media Examples — implemented,
+operator-validated in the new-user role, and closed at 6,464 passing tests
+from starting baseline `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564`**
 
 - ADR-0061 extends the published onboarding material with the two
   capability areas not yet represented in the examples: SCPI laboratory
@@ -28,8 +28,31 @@ passing tests**
   ADR-0046 interlocks — and the operator validated both paths on
   AEPRAKETE. Corrective increment 61C1 made the development-pair launch
   explicit after the secured examples made "as in Example 0" ambiguous.
-- The next separately approved increment is 61D — the SCPI Instrument
-  Authoring Guide.
+- Increments 61D through 61H are complete. The SCPI Instrument Authoring
+  Guide teaches the characterization-first authoring discipline from the
+  KEL-103 sources; the media enablement inspection reduced to a
+  recipe-only path (the binding-candidate output is itself a valid static
+  media configuration); and the published Example 6 streams live video
+  across the secured pair, operator-validated including the repeatable
+  stop, close, reopen, and start cycle.
+- The Example 6 walkthrough surfaced one functional incident — silent
+  instant start failures after the first stream until a Client restart —
+  classified as a one-time WebView2 browser-process loss. Corrective
+  increment 61G2 closed the diagnosability gap: presentation-begin
+  failures are now typed, guarded, and published as
+  `MediaPresentationBeginFailed` diagnostics; automatic boundary
+  re-initialization remains deferred unless the instrumented
+  `browser-unavailable` category recurs.
+- ADR-0061 is closed. The published material covers every capability
+  family HASE implements: six examples, two authoring guides, the
+  provisioning reference with media enablement, and the guided setup
+  wizard.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0061 is closed. Diagnostic Export and Offline
+Analysis remains accepted but deferred.
 
 ---
 

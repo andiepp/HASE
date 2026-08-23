@@ -2190,7 +2190,7 @@ ADR-0060 begins at exact commit
 
 ## Active objective — ADR-0061 Instrument and Media Examples
 
-**Status:** [Active] Accepted at Increment 61A
+**Status:** [Completed] Closed at Increment 61H with 6,464 passing tests
 
 ADR-0061 extends the onboarding material with the SCPI and media
 capability areas: Example 5 (using the supported KEL-103 on the
@@ -2205,11 +2205,14 @@ Planned increments:
 3. 61C — Example 5 walkthrough and closure — complete; read-only and
    controlled operation validated by the operator on the physical
    KEL-103, with corrective increment 61C1.
-4. 61D — SCPI Instrument Authoring Guide.
-5. 61E — Media enablement generalization.
-6. 61F — Example 6 document.
-7. 61G — Example 6 walkthrough and closure.
-8. 61H — Objective closure.
+4. 61D — SCPI Instrument Authoring Guide — complete.
+5. 61E — Media enablement generalization — complete as a recipe-only
+   addition to the provisioning reference.
+6. 61F — Example 6 document — complete.
+7. 61G — Example 6 walkthrough and closure — complete, including the
+   corrective increments 61G1 (host-PC step attribution) and 61G2
+   (classified media presentation begin failures), operator-accepted.
+8. 61H — Objective closure — complete; ADR-0061 is closed at 6,464 tests.
 
 ADR-0061 begins at exact commit
 `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564` with 6,463 complete Release

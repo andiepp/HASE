@@ -1,6 +1,6 @@
 # ADR-0061 — Instrument and Media Examples
 
-- Status: Accepted; Increment 61A decision acceptance
+- Status: Closed; Increment 61H objective closure
 - Date: 2026-08-23
 - Starting baseline: `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564`
 - Starting subject: `ADR-0060 closing`
@@ -172,24 +172,83 @@ the read-only and controlled paths as working.
 The guide derived from the KEL-103 sources, linked from the README and
 Example 5.
 
+Completed result: commit `caa12f6be59a4c5e87ee2be7e84c92e9bd9aacb8`
+publishes `docs/SCPI-Instrument-Authoring-Guide.md` — the boundary
+principles, the layer table mapping every project to its KEL-103
+reference files, the five authoring steps from characterization-first
+through the honest host-integration seams (no plugin mechanism
+pretended), testing expectations, and the authoring checklist. Every
+named type, file, and behavior was verified against the sources.
+
 ### Increment 61E — Media enablement generalization
 
 Read-only inspection of the binding, grant, and configuration steps a new
 user needs; then the neutral recipe, script, or wizard extension that
 inspection justifies — with focused automated tests if tooling changes.
 
+Completed result: the inspection produced the best case — recipe only,
+no code. The Runtime Host's parameterized `--prepare-media-binding` mode
+is already machine neutral, and its binding-candidate output is itself
+validated as a static format-1 media configuration before publication, so
+no conversion step exists. Commit
+`7214259ea0f545f2d61b928372d3d9356a056066` adds the "Enabling live media
+(optional)" section to the Two-Computer Provisioning reference: the
+binding run, the twelve-grant authorization policy (six operational plus
+six `media.*` grants, names verified against the permission code), the
+one-line installation-profile addition, and restart-and-stream. The
+production custody tooling remains untouched for the project machines.
+
 ### Increment 61F — Example 6 document
 
 The published webcam example on the secured setup.
+
+Completed result: commit `eadbe4a6ee1f495a206221822173c5400e51bc2d`
+publishes `docs/examples/Example-6-Webcam.md` — the media contracts and
+privacy posture up front, the four recipe steps inlined, the streaming
+interactions including the explicit audio opt-in and the source-loss
+exercise scoped honestly to the static configuration, and troubleshooting.
 
 ### Increment 61G — Example 6 walkthrough and closure
 
 Operator walkthrough with a camera on the host PC; corrective
 sub-increments; documentation-only closure.
 
+Completed result: the operator performed the walkthrough on the
+Example 3 pair. Corrective increment 61G1, commit
+`8da6c1477d01829cffe0488f3f2f68473599f8d7`, added the missing host-PC
+step attribution. One functional incident occurred: after a successful
+first stream, every subsequent `Start Video` in the same Client session
+failed instantly and silently until a Client restart. Investigation
+located a diagnosability gap — the presentation-boundary begin failure
+published no diagnostic — and corrective increment 61G2 step 1, commit
+`dd09f0dce0d9932576bc76be27d53268fbdcc0db`, added classified
+presentation-begin failures: a typed sanitized exception, an explicit
+browser-unavailable guard replacing a silent null dereference, the
+`MediaPresentationBeginFailed` diagnostic, and a focused test, at 6,464
+complete Release tests. The incident did not reproduce after the rebuilt
+Client; the most consistent classification is a one-time WebView2
+browser-process loss in that session, now permanently identifiable by the
+new diagnostic. The operator then accepted Example 6 fully, including the
+repeatable stop, close, reopen, and start cycle.
+
 ### Increment 61H — Objective closure
 
 Reconcile this ADR, Project Status, and Roadmap. Documentation-only.
+
+Completed result: ADR-0061 closes with every increment complete. The
+published material now covers every capability family HASE implements:
+Example 5 (KEL-103 on the development profile, read-only and controlled
+operation operator-validated), the SCPI Instrument Authoring Guide, the
+neutral media enablement recipe, and Example 6 (live video across the
+secured pair, operator-validated). The final automated baseline is 6,464
+tests, zero failed, zero skipped.
+
+Additional deferred item from the walkthroughs: automatic presentation
+boundary re-initialization after a WebView2 browser-process loss (step 2
+of the 61G2 classification), to be taken up if the now-instrumented
+`browser-unavailable` diagnostic ever recurs.
+
+ADR-0061 is closed.
 
 ## Deferred scope
 
