@@ -2188,4 +2188,29 @@ continuous integration remain deferred scope.
 ADR-0060 begins at exact commit
 `11f9129ce81abaaad2265cbbd166504bae4b33fe` with 6,391 complete Release tests.
 
+## Active objective — ADR-0061 Instrument and Media Examples
+
+**Status:** [Active] Accepted at Increment 61A
+
+ADR-0061 extends the onboarding material with the SCPI and media
+capability areas: Example 5 (using the supported KEL-103 on the
+development profile), the SCPI Instrument Authoring Guide (derived from
+the KEL-103 implementation), and Example 6 (a webcam on the secured
+Example 3 setup, after generalizing the media enablement tooling).
+
+Planned increments:
+
+1. 61A — Decision acceptance — complete.
+2. 61B — Example 5 document.
+3. 61C — Example 5 walkthrough and closure.
+4. 61D — SCPI Instrument Authoring Guide.
+5. 61E — Media enablement generalization.
+6. 61F — Example 6 document.
+7. 61G — Example 6 walkthrough and closure.
+8. 61H — Objective closure.
+
+ADR-0061 begins at exact commit
+`8abf9c1da6abd019de7fbe62bdebfdf05f3f4564` with 6,463 complete Release
+tests.
+
 Diagnostic Export and Offline Analysis remains accepted but deferred.

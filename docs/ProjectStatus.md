@@ -1,5 +1,32 @@
 # Project Status
 
+## Active architectural objective — ADR-0061
+
+**ADR-0061 — Instrument and Media Examples — accepted at Increment 61A from
+starting baseline `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564` with 6,463
+passing tests**
+
+- ADR-0061 extends the published onboarding material with the two
+  capability areas not yet represented in the examples: SCPI laboratory
+  instruments and runtime-hosted live media.
+- Three deliverables in order: Example 5 — using the already-supported
+  KEL-103 on the certificate-free development profile, read-only first
+  with controlled operation as a safety-conscious advanced section; the
+  SCPI Instrument Authoring Guide — the "add your own instrument" story at
+  authoring altitude, derived from the KEL-103 implementation; and
+  Example 6 — a webcam on the secured Example 3 setup, preceded by a
+  generalization of the machine-specific media enablement tooling.
+- The SCPI safety boundary, the media contracts (one session, one viewer,
+  no recording, no public relay, development-profile media rejection), and
+  the wizard's reliance on the validated ADR-0032 provisioning scripts are
+  unchanged.
+- Authoring a new physical SCPI instrument end-to-end remains explicitly
+  deferred future work.
+- Increment 61A is documentation-only. The next separately approved
+  increment is 61B — the Example 5 document.
+
+---
+
 ## Completed architectural objective — ADR-0060
 
 **ADR-0060 — Publication Onboarding and Guided Setup — implemented,
