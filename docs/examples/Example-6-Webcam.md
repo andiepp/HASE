@@ -48,8 +48,9 @@ means rerunning this step.
 
 ## Step 2 — Grant media to the client principal
 
-Rewrite the authorization policy with the six media grants beside the six
-operational ones from Example 3:
+On the **host PC** (like Steps 1 and 3 — all authored files live in the
+host's `Secured` folder), rewrite the authorization policy with the six
+media grants beside the six operational ones from Example 3:
 
 ```powershell
 $ErrorActionPreference = "Stop"
@@ -78,7 +79,7 @@ $secured = Join-Path $env:LocalAppData "HASE\Secured"
 
 ## Step 3 — Reference the media configuration
 
-Rewrite the installation profile with the added
+On the **host PC**, rewrite the installation profile with the added
 `mediaConfigurationFilePath` line:
 
 ```powershell
