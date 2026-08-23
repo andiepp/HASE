@@ -1,26 +1,42 @@
 # Project Status
 
-## Active architectural objective — ADR-0062
+## Completed architectural objective — ADR-0062
 
-**ADR-0062 — Diagnostic Export and Offline Analysis — accepted at Increment
-62A from starting baseline `67d471e750d63ed50fdd96a456fdd9cccfd9c001` with
-6,464 passing tests**
+**ADR-0062 — Diagnostic Export and Offline Analysis — implemented,
+operator-validated on the live secured pair, and closed at 6,516 passing
+tests from starting baseline `67d471e750d63ed50fdd96a456fdd9cccfd9c001`**
 
-- ADR-0062 takes up the objective deferred since the ADR-0047 era: both
-  applications' bounded diagnostic sessions are volatile, and evidence —
-  like the ADR-0061 media incident's diagnostics — dies with the window.
-- Three deliverables: one strict versioned JSON Lines export format
-  (envelope plus complete sanitized records, bounded byte snapshots
-  included) with a shared writer and fail-closed reader; explicit,
+- ADR-0062 took up the objective deferred since the ADR-0047 era: both
+  applications' bounded diagnostic sessions were volatile, and evidence —
+  like the ADR-0061 media incident's diagnostics — died with the window.
+- Three deliverables, all shipped: the strict versioned JSON Lines export
+  format (envelope plus complete sanitized records, bounded byte
+  snapshots included) with the shared atomic writer and fail-closed
+  bounded reader in the new `Hase.Diagnostics.Export` project; explicit,
   never-overwriting `Export` actions in the Runtime Host and Client
-  diagnostics windows covering the retained session; and the read-only
+  diagnostics windows covering the complete retained session independent
+  of display filters and presentation pause; and the read-only
   `Hase.Diagnostics.Offline` console tool with validate, summarize,
-  filter, and show.
+  filter, and show under strict exit-code discipline.
 - Capture semantics, bounds, and every sanitization rule are unchanged;
   export is manual only; the ADR-0049 remote stream remains live-only;
-  the tool has no live attachment.
-- Increment 62A is documentation-only. The next separately approved
-  increment is 62B — the export format, writer, and strict reader.
+  the tool has no live attachment and filter output preserves original
+  sequence numbers for traceability.
+- The operator validated the full chain physically: host export on
+  AEPRAKETE, client export on LTAEP (692 records at Bytes capture), all
+  four tool commands on both exports, and every refusal path — overwrite,
+  tampering, missing sequence, missing file, and usage errors.
+- Two corrective sub-increments from the walkthrough: 62F1 replaced the
+  view-models' optional `Func<DateTimeOffset>` clock parameter with the
+  DI-safe `IDiagnosticExportClock` interface after the DryIoc container
+  injected a wrapper delegate that failed on the first production Export
+  (the container-resolution path is invisible to direct-construction
+  tests); 62F2 corrected the tool's overwrite-refusal wording.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0062 is closed.
 
 ---
 

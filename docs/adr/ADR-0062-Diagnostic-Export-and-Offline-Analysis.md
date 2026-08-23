@@ -1,6 +1,6 @@
 # ADR-0062 — Diagnostic Export and Offline Analysis
 
-- Status: Accepted; Increment 62A decision acceptance
+- Status: Closed; Increment 62G objective closure
 - Date: 2026-08-23
 - Starting baseline: `67d471e750d63ed50fdd96a456fdd9cccfd9c001`
 - Starting subject: `ADR-0061 closing`
@@ -135,6 +135,14 @@ applications' record types, the writer, the strict bounded reader, and
 focused tests covering round-trips, sanitization preservation, version
 and unknown-field rejection, and truncated-document behavior.
 
+Completed result: the new `Hase.Diagnostics.Export` project carries the
+neutral model with construction-enforced invariants (including the
+256-byte snapshot bound and truncation consistency), the host and client
+mappers, the atomic temp-and-rename writer that refuses existing targets,
+and the strict 16 MB-bounded reader with unknown-field rejection and
+CRLF tolerance. Twenty-two focused tests cover round-trips of both
+applications' records and eleven distinct rejection paths.
+
 ### Increment 62C — Runtime Host diagnostics export
 
 The `Export` action in the Runtime Host diagnostics window over the
@@ -142,10 +150,23 @@ retained session, with focused view-model and file-behavior tests
 (operator-chosen path, refusal to overwrite, complete-session export
 independent of the display filter).
 
+Completed result: the host diagnostics window exports the fresh retained
+session — independent of the display filter and of presentation pause —
+through an operator save dialog, reentrancy-guarded, with a status line
+naming only the record count and file name. Seven focused tests prove
+filter and pause independence, overwrite refusal, cancellation, and the
+empty session.
+
 ### Increment 62D — Client diagnostics export
 
 The same action in the Client diagnostics window over the Client's
 retained records, with the corresponding focused tests.
+
+Completed result: the Client window exports its complete retained
+session past the level, category, and Runtime Host display filters and
+past the pause watermark, carrying per-record session context. Seven
+focused tests mirror the host set and additionally prove session-context
+round-trip and Runtime Host filter independence.
 
 ### Increment 62E — Offline analysis tool
 
@@ -153,15 +174,53 @@ retained records, with the corresponding focused tests.
 including exit-code discipline and focused tests over authored and
 exported documents.
 
+Completed result: the tool ships as a thin console shim over a testable
+command class. Exit codes are 0 for success, 1 for an invalid document or
+processing failure, and 2 for usage errors; errors go to stderr. The
+filter command writes its selection as a new valid export document
+through the never-overwriting writer and preserves the original sequence
+numbers so filtered evidence stays traceable to the source capture.
+Sixteen focused tests cover exported documents of both kinds and
+hand-authored JSON Lines, including every rejection and usage path.
+
 ### Increment 62F — Operator validation
 
 Capture a live session on real hardware, export from both applications,
 and exercise the tool offline — the operator walkthrough in the
 established style, with corrective sub-increments as findings arise.
 
+Completed result: the operator validated the full chain on the live
+secured pair — the Runtime Host export on AEPRAKETE (32 records over
+three physical and simulated endpoints) and the Client export on LTAEP
+(692 records at Bytes capture, including one real Warning and one real
+Failed outcome). Both windows exported their complete retained sessions
+independent of display filters and pause, both refused overwrites, and
+validate, summarize, filter, and show worked on both exports, with
+overwrite refusal, tamper rejection, missing-sequence, missing-file, and
+usage errors all exiting under the documented codes.
+
+Two corrective sub-increments arose. 62F1: both view-models took an
+optional `Func<DateTimeOffset>` clock, and the DryIoc container injects a
+wrapper delegate for such parameters that fails with a
+NullReferenceException on invocation — the first Export click in the
+production Runtime Host failed; the parameter became the DI-safe
+`IDiagnosticExportClock` interface, the failure mode proven by a
+container reproduction. The process lesson: view-model tests that
+construct directly never exercise the container-resolution path. 62F2:
+the tool's overwrite refusal was reworded from the misleading
+invalid-document prefix to "The filter output could not be written".
+
 ### Increment 62G — Objective closure
 
 Reconcile this ADR, Project Status, and Roadmap. Documentation-only.
+
+Completed result: ADR-0062 closes with every increment complete.
+Diagnostic evidence now survives the application session: one shared
+strict format, explicit never-overwriting Export in both diagnostics
+windows, and read-only offline analysis. The final automated baseline is
+6,516 tests, zero failed, zero skipped, across 28 test projects.
+
+ADR-0062 is closed.
 
 ## Deferred scope
 
