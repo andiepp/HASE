@@ -196,8 +196,17 @@ public sealed class ClientMediaApplicationControlClient :
                 Publish(result.Session, "Encrypted media negotiation started.");
                 return result;
             }
-            catch
+            catch (Exception exception)
             {
+                PublishFailureDiagnostic(
+                    "MediaPresentationBeginFailed",
+                    exception switch
+                    {
+                        ClientMediaPresentationException presentation =>
+                            presentation.FailureCategory,
+                        OperationCanceledException => "canceled",
+                        _ => FailureCategory(exception)
+                    });
                 _ = await TryStopRemoteAsync(client, result.Session.SessionId)
                     .ConfigureAwait(false);
                 boundary.ClearPresentation();

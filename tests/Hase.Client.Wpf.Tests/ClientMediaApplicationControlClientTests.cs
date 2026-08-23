@@ -65,6 +65,42 @@ public sealed class ClientMediaApplicationControlClientTests
     }
 
     [Fact]
+    public async Task PresentationBeginFailurePublishesCategoryAndStopsRemote()
+    {
+        var remote = new FakeRemoteClient();
+        var boundary = new FakeBoundary
+        {
+            BeginFailure = new ClientMediaPresentationException(
+                "browser-unavailable",
+                "The Client media browser is no longer available.")
+        };
+        var collector = new BoundedClientDiagnosticCollector(10);
+        var diagnostics = new ClientDiagnosticPublisher(collector);
+        await using var client = new ClientMediaApplicationControlClient(
+            _ => remote,
+            boundary,
+            new SynchronizationContext(),
+            diagnostics);
+        client.SelectRuntimeHost(new RuntimeHostProfileId("host"));
+
+        ClientMediaPresentationException exception = await Assert.ThrowsAsync<
+            ClientMediaPresentationException>(() => client.StartAsync(
+                new("camera", "generation"), includeAudio: false));
+
+        Assert.Equal("browser-unavailable", exception.FailureCategory);
+        ClientDiagnosticRecord record = Assert.Single(
+            collector.GetSnapshot().Records,
+            item => item.EventName == "MediaPresentationBeginFailed");
+        Assert.Equal(ClientDiagnosticCategory.ClientPresentation,
+            record.Category);
+        Assert.Equal(ClientDiagnosticOutcome.Failed, record.Outcome);
+        Assert.Equal("browser-unavailable",
+            record.Metadata["failureCategory"]);
+        Assert.Equal(1, remote.StopCount);
+        Assert.True(boundary.ClearCount >= 1);
+    }
+
+    [Fact]
     public async Task ExplicitStartAndStopOwnPresentationLifecycle()
     {
         var remote = new FakeRemoteClient();
@@ -443,6 +479,7 @@ public sealed class ClientMediaApplicationControlClientTests
     private sealed class FakeBoundary : IClientMediaPresentationBoundary
     {
         public event Action<ClientMediaWebMessage>? ValidatedMessage;
+        public Exception? BeginFailure { get; init; }
         public int BeginCount { get; private set; }
         public int ClearCount { get; private set; }
         public bool IncludeAudio { get; private set; }
@@ -452,7 +489,9 @@ public sealed class ClientMediaApplicationControlClientTests
         {
             BeginCount++;
             IncludeAudio = includeAudio;
-            return Task.CompletedTask;
+            return BeginFailure is null
+                ? Task.CompletedTask
+                : Task.FromException(BeginFailure);
         }
 
         public void SubmitNegotiation(RemoteMediaNegotiationMessage message)

@@ -134,13 +134,21 @@ public sealed class WebView2ClientMediaPresentationBoundary :
             ValidatedMessage?.Invoke(new(
                 ClientMediaWebMessageKind.PresentationFaulted,
                 "browser-failed"));
-            throw new InvalidOperationException(
+            throw new ClientMediaPresentationException(
+                "browser-failed",
                 "The Client media WebView did not become ready.", exception);
         }
         if (presentationActive)
         {
-            throw new InvalidOperationException(
+            throw new ClientMediaPresentationException(
+                "presentation-active",
                 "Media presentation is already active.");
+        }
+        if (webView.CoreWebView2 is null)
+        {
+            throw new ClientMediaPresentationException(
+                "browser-unavailable",
+                "The Client media browser is no longer available.");
         }
 
         presentationActive = true;
