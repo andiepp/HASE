@@ -73,12 +73,35 @@ The fields, exactly:
 
 ## Start and verify
 
-Start the Runtime Host and Client exactly as in Example 0 (the commands
-are unchanged). Expected result: `kel-103-01` publishes and becomes
-`Ready` after the host verifies the instrument's identity over SCPI
-(`KEL-103` product identity) and synchronizes all Properties. An
-unreachable port or absent instrument is tolerated at startup with a
-warning — fix the connection and press `Refresh`.
+This example uses the **development** pair — the loopback host started
+with `--development` and the local Client — not the secured hosts of
+Examples 3 and 4. If a secured Runtime Host is running on this machine,
+close it first (one Runtime Host per machine, and the instrument's COM
+port has one owner). A remote Client cannot see the development host: it
+is loopback-only by design.
+
+Start the development Runtime Host from the repository root:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\src\Hase.DesktopHost.App\bin\Release\net10.0-windows\Hase.DesktopHost.App.exe" `
+    --development (Join-Path $env:LocalAppData "HASE\Development\desktop-runtime-development.json")
+```
+
+Then start the local Client in a second window, also from the repository
+root, and press `Connect` on `Development (loopback, no TLS)`:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\src\Hase.Client.Wpf.App\bin\Release\net10.0-windows\Hase.Client.Wpf.App.exe" `
+    (Join-Path $env:LocalAppData "HASE\Development\client-runtime-hosts.json")
+```
+
+Expected result: `kel-103-01` publishes and becomes `Ready` after the
+host verifies the instrument's identity over SCPI (`KEL-103` product
+identity) and synchronizes all Properties. An unreachable port or absent
+instrument is tolerated at startup with a warning — fix the connection
+and press `Refresh`.
 
 Select the endpoint in the Client. The KEL-103 Electronic Load instrument
 shows read-only Properties for product identity, firmware version, the
