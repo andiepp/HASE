@@ -22,8 +22,14 @@ passing tests**
   unchanged.
 - Authoring a new physical SCPI instrument end-to-end remains explicitly
   deferred future work.
-- Increment 61A is documentation-only. The next separately approved
-  increment is 61B — the Example 5 document.
+- Increments 61B and 61C are complete. The published Example 5 attaches
+  the physical KEL-103 on the development profile — read-only first with
+  definition version 3, controlled operation with version 5 under the
+  ADR-0046 interlocks — and the operator validated both paths on
+  AEPRAKETE. Corrective increment 61C1 made the development-pair launch
+  explicit after the secured examples made "as in Example 0" ambiguous.
+- The next separately approved increment is 61D — the SCPI Instrument
+  Authoring Guide.
 
 ---
 

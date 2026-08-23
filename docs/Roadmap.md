@@ -2201,8 +2201,10 @@ Example 3 setup, after generalizing the media enablement tooling).
 Planned increments:
 
 1. 61A — Decision acceptance — complete.
-2. 61B — Example 5 document.
-3. 61C — Example 5 walkthrough and closure.
+2. 61B — Example 5 document — complete.
+3. 61C — Example 5 walkthrough and closure — complete; read-only and
+   controlled operation validated by the operator on the physical
+   KEL-103, with corrective increment 61C1.
 4. 61D — SCPI Instrument Authoring Guide.
 5. 61E — Media enablement generalization.
 6. 61F — Example 6 document.

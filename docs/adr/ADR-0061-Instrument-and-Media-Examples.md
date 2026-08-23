@@ -138,11 +138,34 @@ Read-only inspection (definition identifier and versions, serial
 parameters, development-profile KEL-103 path) and the published document
 with links into the ladder.
 
+Completed result: commit `f84dc087a60c8e7f551b4c1589f18190cfff2ea7`
+publishes `docs/examples/Example-5-KEL-103.md`. Inspection pinned the
+grounded values: one descriptor identifier `kel103-identity` with
+composition-accepted versions 2 through 5, version 3 recommended as the
+complete read-only first contact, version 5 for controlled operation, the
+characterized 115200-baud serial parameters, and the user-chosen logical
+endpoint identity. The document states the configured-never-discovered
+and no-SCPI-console boundaries up front and teaches the ADR-0046 safety
+model before the controlled section.
+
 ### Increment 61C — Example 5 walkthrough and closure
 
 Operator walkthrough with the physical KEL-103 on the development
 profile; corrective sub-increments as findings arise; documentation-only
 closure.
+
+Completed result: the operator performed the walkthrough on AEPRAKETE
+with the physical KEL-103. One finding: after the secured Examples 3 and
+4, the instruction "start exactly as in Example 0" was ambiguous between
+the development and secured worlds, and the operator reached for the
+secured host. Corrective increment 61C1, commit
+`72edc97ee54ea480866f5081a83ef4c9f509e9dc`, replaced it with the explicit
+development-pair launch blocks and the notes that a secured host on the
+same machine must be closed first and that the development host is
+invisible to remote Clients by design. The operator then validated the
+complete example: identity verification to `Ready`, live measurements,
+and controlled operation under the input-OFF interlocks, accepting both
+the read-only and controlled paths as working.
 
 ### Increment 61D — SCPI Instrument Authoring Guide
 
