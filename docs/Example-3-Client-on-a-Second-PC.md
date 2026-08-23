@@ -12,9 +12,7 @@ runnable path through it.
 
 ## Prerequisites
 
-- Two Windows 10/11 PCs on the same private network, each with the
-  repository cloned and built in `Release`
-  (see [Getting Started](Getting-Started.md)).
+- Two Windows 10/11 PCs on the same private network.
 - A stable address for the host PC (a DHCP reservation in your router) and
   one chosen TCP port (this example uses `52210`).
 - Ideally, an instrument from [Example 1](Example-1-Arduino-Uno.md) or
@@ -23,14 +21,37 @@ runnable path through it.
 - A secure way to move four files between the PCs, and a separate channel
   for one password.
 
-## Step 1 — Run the wizard on the host PC
+## Step 1 — Set up HASE on both PCs
 
-From the repository root, with your host PC's address:
+HASE runs from a built clone; there is no installer. **Each of the two
+PCs** needs the repository cloned and built — the host PC from the earlier
+examples already qualifies, and the client PC needs the same setup now:
+
+```powershell
+git clone https://github.com/andiepp/HASE.git
+cd HASE
+dotnet build .\HASE.slnx -c Release
+```
+
+The prerequisites (Windows, .NET 10 SDK, Git) and the expected build
+result are described in [Getting Started](Getting-Started.md). Every later
+step states which PC it runs on; "from the repository root" always means
+that PC's own clone.
+
+## Step 2 — Run the wizard on the host PC
+
+On the **host PC**, from the repository root. Set `$hostIp` to the host
+PC's actual address on your network (shown by `ipconfig`) — the wizard
+bakes it into the server certificate and the client's pinned
+configuration:
 
 ```powershell
 $ErrorActionPreference = "Stop"
+
+$hostIp = "192.168.0.50"
+
 & ".\tools\Setup\Start-HaseSetup.ps1" `
-    -ListenerAddress "192.168.0.50" `
+    -ListenerAddress $hostIp `
     -Port 52210 `
     -OutputDirectory (Join-Path $env:LocalAppData "HASE\Secured")
 ```
@@ -42,7 +63,7 @@ edit `desktop-runtime-endpoints.json` in the output folder for your own
 endpoint mix (the entries are exactly those of Examples 1 and 2) before
 starting the host.
 
-## Step 2 — Transfer four files
+## Step 3 — Transfer four files
 
 Move these files from `%LocalAppData%\HASE\Secured` on the host PC to
 `%LocalAppData%\HASE\Secured` on the client PC:
@@ -57,9 +78,9 @@ client-handoff.json
 Use a channel you control, and pass the transfer password separately —
 never beside the files.
 
-## Step 3 — Run the wizard on the client PC
+## Step 4 — Run the wizard on the client PC
 
-From the repository root:
+On the **client PC**, from the repository root:
 
 ```powershell
 $ErrorActionPreference = "Stop"
@@ -73,7 +94,7 @@ the client registry. Then securely delete `laptop-client.pfx` from every
 transfer location — the credential lives only in the certificate store
 now.
 
-## Step 4 — Allow the port on the host PC
+## Step 5 — Allow the port on the host PC
 
 In an **elevated** PowerShell on the host PC:
 
@@ -83,9 +104,9 @@ New-NetFirewallRule -DisplayName "HASE Runtime Host (secured)" `
     -Profile Private
 ```
 
-## Step 5 — Start and connect
+## Step 6 — Start and connect
 
-On the host PC, from the repository root:
+On the **host PC**, from the repository root:
 
 ```powershell
 $ErrorActionPreference = "Stop"
@@ -97,7 +118,7 @@ Expected result: the composition reads `Production private-network runtime
 host`, the binding is HTTPS, and the configured endpoints publish as in
 the earlier examples.
 
-On the client PC, from the repository root:
+On the **client PC**, from the repository root:
 
 ```powershell
 $ErrorActionPreference = "Stop"
@@ -133,7 +154,7 @@ your client principal succeed:
 ## Shut down
 
 Close the Client, then the Runtime Host. The provisioned configuration is
-persistent: the next start of both applications needs only Step 5.
+persistent: the next start of both applications needs only Step 6.
 
 ## Troubleshooting
 
@@ -142,7 +163,7 @@ wrong pin, an unenrolled credential, or a malformed document stops the
 affected side with an error rather than degrading. The
 [Two-Computer Provisioning](Provisioning-Two-Computers.md) failure section
 lists the causes; the most common first-run issues are the firewall rule
-(Step 4), a wrong host address, and PCs on networks that isolate clients
+(Step 5), a wrong host address, and PCs on networks that isolate clients
 from each other.
 
 ## Where to go next
