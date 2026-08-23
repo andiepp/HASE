@@ -199,7 +199,20 @@ public static class DiagnosticOfflineTool
                 filtered.Length),
             filtered);
 
-        await DiagnosticExportFile.WriteNewAsync(outputPath, filteredDocument);
+        try
+        {
+            await DiagnosticExportFile.WriteNewAsync(
+                outputPath,
+                filteredDocument);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException)
+        {
+            await error.WriteLineAsync(
+                "The filter output could not be written: "
+                + exception.Message);
+            return ExitFailure;
+        }
 
         await output.WriteLineAsync(
             "Filtered "

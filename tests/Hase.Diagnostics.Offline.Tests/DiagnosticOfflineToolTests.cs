@@ -289,7 +289,13 @@ public sealed class DiagnosticOfflineToolTests : IDisposable
             "filter", path, "--output", outputPath);
 
         Assert.Equal(DiagnosticOfflineTool.ExitFailure, exitCode);
+        Assert.StartsWith(
+            "The filter output could not be written:",
+            error,
+            StringComparison.Ordinal);
         Assert.Contains("already exists", error);
+        Assert.DoesNotContain(
+            "not a valid HASE diagnostic export", error);
         Assert.Equal("occupied", await File.ReadAllTextAsync(outputPath));
     }
 
