@@ -47,6 +47,37 @@ and loopback listeners.
   stick you control, or an encrypted channel), and a **separate** channel
   for one transfer password.
 
+## The guided way — run the setup wizard
+
+The wizard performs Steps 1 through 5 below by itself; the manual steps
+remain as the reference for what it does. On `HOST-PC`, from the
+repository root:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\tools\Setup\Start-HaseSetup.ps1" `
+    -ListenerAddress "192.168.0.50" `
+    -Port 52210 `
+    -OutputDirectory (Join-Path $env:LocalAppData "HASE\Secured")
+```
+
+It creates the credential bundle (prompting for the transfer password),
+authors all host documents, and prints the four files to transfer, the
+firewall command, and the launch command. Transfer the four files to
+`CLIENT-PC`, then run there, from the repository root:
+
+```powershell
+$ErrorActionPreference = "Stop"
+& ".\tools\Setup\Start-HaseSetup.ps1" `
+    -BundleDirectory (Join-Path $env:LocalAppData "HASE\Secured")
+```
+
+It installs the client credential (prompting for the same password),
+authors the client registry from the transferred handoff document, and
+prints the launch command. Continue with Step 6 (the firewall rule) and
+Step 7 (start and connect). Everything the wizard writes can also be
+authored by hand through the steps below.
+
 ## Step 1 — Create the credential bundle on HOST-PC
 
 On `HOST-PC`, in PowerShell from the repository root, set your values and
