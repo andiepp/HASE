@@ -16,9 +16,11 @@ one PC, still on the certificate-free loopback development profile.
   wires.
 
 Note on compatible boards: the endpoint configuration below matches the USB
-identity of the official Arduino Uno (vendor `0x2341`, product `0x0043`).
-Many Uno-compatible boards use a different USB serial chip (for example
-CH340) with a different identity. They run the same firmware, but you must
+identity of the official Arduino Uno R3 (vendor `0x2341`, product
+`0x0043`). Original first-generation Unos are genuine Arduino hardware but
+report product `0x0001` — for those, set `"productId": 1` in the
+configuration below. Many Uno-compatible boards use a different USB serial
+chip (for example CH340) with a different identity. They run the same firmware, but you must
 look up the board's vendor and product IDs in Windows Device Manager
 (*Ports → your board → Details → Hardware IDs*, shown as `VID_xxxx` and
 `PID_xxxx` in hexadecimal) and put those values — converted to decimal —

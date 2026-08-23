@@ -29,11 +29,14 @@ Each machine runs at most one Runtime Host.
 ## Step 1 — Run the wizard on the second host machine
 
 On the **second host machine**, from the repository root. Every value
-differs from Example 3: the address is this machine's own, the port,
-identity, profile id, and display name are new, and the output goes to a
-fresh `Secured-Host2` folder so nothing from Example 3 is touched:
+differs from Example 3: set `$hostIp` to **this machine's** actual address
+on your network (shown by `ipconfig`); the port, identity, profile id, and
+display name are new; and the output goes to a fresh `Secured-Host2`
+folder so nothing from Example 3 is touched. The first line permits script
+execution for this session:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 
 $hostIp = "192.168.0.60"
@@ -47,12 +50,22 @@ $hostIp = "192.168.0.60"
     -OutputDirectory (Join-Path $env:LocalAppData "HASE\Secured-Host2")
 ```
 
-(Execution-policy note: see Example 3, Step 2.) The default endpoint
-composition expects the Example 1 Arduino; an absent configured endpoint
-is tolerated at startup with a warning, so the second host publishes at
-least its simulation endpoint either way. Edit
-`Secured-Host2\desktop-runtime-endpoints.json` for this machine's real
-instruments.
+The wizard's endpoint composition is a **template** — edit
+`Secured-Host2\desktop-runtime-endpoints.json` to describe this machine's
+real instruments before starting the host. Three rules learned the hard
+way:
+
+- **At most one board matching the VID/PID filter may be connected.** An
+  absent configured endpoint is tolerated with a warning (the simulation
+  still publishes), but *several* matching HASE-flashed boards fault the
+  startup, because the host refuses to guess which one is meant.
+- **Original Arduino Unos report `PID 0x0001`**, not the R3's `0x0043`;
+  for such a board set `"productId": 1` (see also Example 1's
+  compatible-board note).
+- Each secured host's composition is **its own file** — separate from the
+  development-profile composition of Examples 0 through 2 and from other
+  hosts' files. An instrument appears on a host only when *that host's*
+  composition lists it.
 
 ## Step 2 — Transfer four files to the client PC
 
@@ -77,6 +90,7 @@ this is a local copy between the two folders.
 On the **client PC**, from the repository root:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 & ".\tools\Setup\Start-HaseSetup.ps1" `
     -BundleDirectory (Join-Path $env:LocalAppData "HASE\Secured-2")
@@ -157,9 +171,16 @@ second host's address and port. Specific to this example:
 - **The registry tool refuses** — the Client is still running, or the
   profile id already exists in the registry (each host needs a unique
   profile id and identity).
-- **Both hosts on one entry / mixed endpoints** — the registry was not
-  merged; check that Step 4 targeted `Secured\client-runtime-hosts.json`
-  and the Client was started with that same file.
+- **Only the second host appears in the Client** — the Client was started
+  with the byproduct registry in `Secured-2`; start it with the merged
+  registry `Secured\client-runtime-hosts.json`.
+- **`requires exactly one authoritatively verified compact endpoint`** —
+  more than one HASE-flashed board matching the composition's VID/PID
+  filter is connected to this host machine; leave exactly one attached.
+- **An endpoint from an earlier example is missing on a host** — add its
+  entry to *that host's* secured composition file and restart that host;
+  the composition is read at startup, and `Refresh` only attaches
+  endpoints already configured in it.
 
 ## The ladder is complete
 

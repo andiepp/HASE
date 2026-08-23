@@ -58,6 +58,7 @@ bakes it into the server certificate and the client's pinned
 configuration:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 
 $hostIp = "192.168.0.50"
@@ -97,6 +98,7 @@ and every later command reference that exact path.
 On the **client PC**, from the repository root:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 & ".\tools\Setup\Start-HaseSetup.ps1" `
     -BundleDirectory (Join-Path $env:LocalAppData "HASE\Secured")
