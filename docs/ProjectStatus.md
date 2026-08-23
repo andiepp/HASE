@@ -53,8 +53,14 @@
   validated it in the new-user role; corrective increments 60F2A
   (per-project sketchbook library setup) and 60F2B (inline launch blocks)
   captured the walkthrough findings.
-- The next separately approved increment is 60G — generalized provisioning
-  documentation, the on-ramp to Example 3's mutual TLS.
+- Increment 60G is complete. The published Two-Computer Provisioning
+  reference takes two arbitrary PCs through the full mutual-TLS setup by
+  wrapping the already-validated neutral ADR-0032 provisioning scripts and
+  adding the application documents, authorization grants, client registry,
+  and firewall rule they do not produce. The single-machine dry-run was
+  consciously skipped as redundant; Example 3's walkthrough carries the
+  end-to-end proof.
+- The next separately approved increment is 60H — the guided setup wizard.
 
 ---
 

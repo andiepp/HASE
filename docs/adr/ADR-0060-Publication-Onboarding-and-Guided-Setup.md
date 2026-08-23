@@ -333,6 +333,28 @@ accepted Example 2 as working.
 Goal: the neutral multi-computer provisioning document and any neutral
 install/publish scripts Example 3 requires.
 
+Completed result: commit `df0bd7071d661cc1e20d8aa7022e5c048a073531`
+publishes `docs/Provisioning-Two-Computers.md`. The inspection established
+that no new scripts are required: the parameterized ADR-0032 bundle and
+client-install scripts under `tools/PrivateNetwork` are already machine
+neutral and physically validated. The document explains the security model
+(mutual TLS, byte-exact pinning, certificate-to-principal enrollment,
+principal-to-grant authorization, with the development-grade caveats
+stated), wraps the two scripts with placeholder-based steps for two
+arbitrary PCs, and adds what they do not produce: the host identity,
+authorization policy (six operational grants; remote diagnostics
+deliberately absent), endpoint composition, installation profile, the
+client registry with the expected-identity check, and the Windows Firewall
+inbound rule no prior document covered. Every field name and grant string
+was verified against the strict loaders, all blocks pass the §5 parser,
+and the hand-authored documents were schema-validated.
+
+The planned single-machine dry-run was consciously skipped as redundant:
+the provisioning scripts are unchanged since their ADR-0032 physical
+validation and later ADR-0043/ADR-0053 exercise, and the genuinely new
+composition receives its end-to-end proof in the Example 3 walkthrough
+(Increment 60I).
+
 ### Increment 60H — Guided setup wizard
 
 Goal: the command-line wizard that generates certificate authority,

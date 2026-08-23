@@ -2166,7 +2166,10 @@ Planned increments:
    corrective increments 60F2A (per-project sketchbook library setup) and
    60F2B (inline launch blocks), proven by an operator walkthrough on
    physical ESP32/BME280 hardware with mDNS attachment.
-7. 60G — Generalized provisioning documentation.
+7. 60G — Generalized provisioning documentation — complete; the neutral
+   ADR-0032 provisioning scripts required no changes, and the published
+   reference adds the application documents, authorization, registry, and
+   firewall steps around them.
 8. 60H — Guided setup wizard.
 9. 60I — Example 3, Client on a second PC.
 10. 60J — Example 4, second Runtime Host.
