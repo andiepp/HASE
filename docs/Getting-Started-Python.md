@@ -42,7 +42,13 @@ The client is deliberately conservative:
    result is four files: your client certificate chain, private key, the
    host's trusted server certificate, and a connection profile referencing
    them.
-3. **64-bit CPython 3.12 or 3.13.**
+3. **64-bit CPython 3.12 or 3.13.** If the machine has none, install it
+   from the official 64-bit Windows installer at
+   https://www.python.org/downloads/windows/ — run it as a normal user
+   and check **"Add python.exe to PATH"** on the first screen. The
+   initialization tool below finds Python through the `python` command
+   on PATH, so open a **new** PowerShell window afterwards (PATH changes
+   do not reach already-open windows) and verify with `python --version`.
 
 ## Installing the package
 
@@ -50,9 +56,14 @@ For development directly from the repository, from
 `python\hase-client` in an ordinary PowerShell window:
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 .\tools\Initialize-HasePythonDevelopment.ps1
 .\tools\Test-HasePythonDevelopment.ps1
 ```
+
+The first line permits script execution for this one PowerShell window
+only; Windows blocks `.ps1` files by default, and nothing outside this
+window is changed.
 
 This creates a private `.venv` inside `python\hase-client` with the package
 installed editable. Activate it with
@@ -98,10 +109,56 @@ a certificate or key itself:
 - Loading the profile validates file custody only — credential bytes are
   read just once, at connection time.
 
+### Finding your profile on a provisioned computer
+
+If your computer was provisioned earlier, the profile already exists and
+you only need to find it. This lists candidate documents under the HASE
+application data by shape, printing paths only:
+
+```powershell
+Get-ChildItem "$env:LocalAppData\HASE" -Recurse -Filter *.json -File | ForEach-Object {
+    try { $doc = Get-Content $_.FullName -Raw | ConvertFrom-Json } catch { return }
+    $names = @($doc.PSObject.Properties.Name)
+    if ($names -contains "clientCertificate" -and $names -contains "trustedServerCertificate") { "PROFILE:  $($_.FullName)" }
+    elseif ($names -contains "targets" -and $names -contains "formatVersion") { "REGISTRY: $($_.FullName)" }
+}
+```
+
+Two document kinds look similar but are different: a **registry** maps
+target IDs to profile paths, while a **profile** is the connection
+document itself. When a registry exists, its `profilePath` entries are
+authoritative — trust them over folder names or memory, especially after
+a credential rotation. Ignore anything under `…Rollback…` or staging
+folders (retained recovery evidence), and note that the WPF Client's own
+network configurations match the filter loosely but are not Python
+profiles. Verify whatever you selected by its member names — exactly
+`formatVersion`, `address`, `clientCertificate`, and
+`trustedServerCertificate`:
+
+```powershell
+(Get-Content C:\HasePython\profile.json -Raw | ConvertFrom-Json).PSObject.Properties.Name
+```
+
 ## First program — list the inventory
 
-Save your profile as, for example, `C:\HasePython\profile.json`, start the
-secured Runtime Host, and run:
+Save (or copy) your profile as, for example,
+`C:\HasePython\profile.json`, and start the Runtime Host **deployment
+this profile was provisioned against**. A computer can carry several host
+deployments — for example the repository-built Example 3 host and an
+installed desktop-shortcut host — with different addresses, ports, and
+certificates; the profile's `address` decides which one must run. A VPN
+address (for example a Tailscale `100.x` address) is perfectly normal
+here.
+
+The programs in this guide are ordinary Python files, not shell input:
+save each code block into its own `.py` file and run it with the
+development environment's interpreter, from `python\hase-client`:
+
+```powershell
+& .\.venv\Scripts\python.exe C:\HasePython\list_inventory.py
+```
+
+Now the first program:
 
 ```python
 """List every Endpoint, Instrument, Property, Command, and Event."""
@@ -409,7 +466,21 @@ addresses, or raw server diagnostics:
   credential files are missing.
 - `RuntimeHostChannelError` — the channel could not be opened or closed
   (for example `channel-readiness-timeout` when the host is not running or
-  not reachable).
+  not reachable). To triage reachability, test exactly what the profile
+  points at — and note that ping may fail (VPNs and firewalls often block
+  ICMP) while the TCP test succeeds; only the TCP result matters:
+
+  ```powershell
+  $profileDocument = Get-Content C:\HasePython\profile.json -Raw | ConvertFrom-Json
+  $uri = [Uri]$profileDocument.address
+  $result = Test-NetConnection -ComputerName $uri.Host -Port $uri.Port -WarningAction SilentlyContinue
+  "ping succeeded: $($result.PingSucceeded)"
+  "tcp  succeeded: $($result.TcpTestSucceeded)"
+  ```
+
+  If TCP fails, check that the host deployment matching the profile is
+  running and that both computers are on the network the address belongs
+  to (a VPN address requires the VPN up on both ends).
 - `RuntimeHostClientError` — an operation failed
   (`rpc-permission-denied` means your principal lacks the grant;
   `rpc-unavailable` means the connection was lost).
