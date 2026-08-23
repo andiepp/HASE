@@ -240,7 +240,9 @@ if ($PSCmdlet.ParameterSetName -eq "Host") {
     Write-Host ""
     Write-Host "Communicate the transfer password through a separate channel."
     Write-Host ""
-    Write-Host "Allow the port through the firewall (elevated PowerShell):"
+    Write-Host ("Allow the port through the firewall in an elevated " +
+        "window (right-click Start, Terminal (Admin)); without " +
+        "elevation the rule is not created:")
     Write-Host ("  New-NetFirewallRule -DisplayName `"HASE Runtime Host " +
         "(secured)`" -Direction Inbound -Action Allow -Protocol TCP " +
         "-LocalPort $Port -Profile Private")

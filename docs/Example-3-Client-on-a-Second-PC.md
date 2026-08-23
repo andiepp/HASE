@@ -40,6 +40,18 @@ that PC's own clone.
 
 ## Step 2 — Run the wizard on the host PC
 
+A note before the first script: Windows PowerShell's default execution
+policy blocks `.ps1` files. If the wizard is refused with a
+`running scripts is disabled` error, allow scripts for the current session
+first:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+(or durably for your account with `-Scope CurrentUser -ExecutionPolicy
+RemoteSigned`). The same applies on the client PC in Step 4.
+
 On the **host PC**, from the repository root. Set `$hostIp` to the host
 PC's actual address on your network (shown by `ipconfig`) — the wizard
 bakes it into the server certificate and the client's pinned
@@ -76,7 +88,9 @@ client-handoff.json
 ```
 
 Use a channel you control, and pass the transfer password separately —
-never beside the files.
+never beside the files. Place the files exactly in
+`%LocalAppData%\HASE\Secured` (create the folder if needed) — the wizard
+and every later command reference that exact path.
 
 ## Step 4 — Run the wizard on the client PC
 
@@ -96,13 +110,29 @@ now.
 
 ## Step 5 — Allow the port on the host PC
 
-In an **elevated** PowerShell on the host PC:
+Creating a firewall rule requires an **elevated** PowerShell: right-click
+the Start button and choose *Terminal (Admin)* or *Windows PowerShell
+(Administrator)*. In a normal window the command fails with
+`access denied` — and then the rule does **not** exist. On the host PC,
+elevated:
 
 ```powershell
 New-NetFirewallRule -DisplayName "HASE Runtime Host (secured)" `
     -Direction Inbound -Action Allow -Protocol TCP -LocalPort 52210 `
     -Profile Private
 ```
+
+Verify it in the same elevated window — the output must show
+`Enabled: True` and `Profile: Private`:
+
+```powershell
+Get-NetFirewallRule -DisplayName "HASE Runtime Host (secured)" | Select-Object DisplayName, Enabled, Profile
+```
+
+The rule is scoped to the `Private` firewall profile. If Windows
+classifies your network as `Public`, the rule does not apply; check with
+`Get-NetConnectionProfile` and recategorize with
+`Set-NetConnectionProfile -NetworkCategory Private` (elevated) if needed.
 
 ## Step 6 — Start and connect
 
@@ -158,13 +188,46 @@ persistent: the next start of both applications needs only Step 6.
 
 ## Troubleshooting
 
-The security boundary fails closed by design — a missing certificate, a
-wrong pin, an unenrolled credential, or a malformed document stops the
-affected side with an error rather than degrading. The
+First, read the symptom. A client stuck in `Connecting` means packets are
+not getting through — a network or firewall problem. A fast failure with
+an error means the connection arrived but a security check refused it —
+the boundary fails closed by design, and the
 [Two-Computer Provisioning](Provisioning-Two-Computers.md) failure section
-lists the causes; the most common first-run issues are the firewall rule
-(Step 5), a wrong host address, and PCs on networks that isolate clients
-from each other.
+lists those causes.
+
+For the stuck-`Connecting` case, diagnose from the **client PC**:
+
+```powershell
+Test-NetConnection 192.168.0.50 -Port 52210
+```
+
+(with your host address). Interpret the result:
+
+- **`PingSucceeded: False`** — the PCs cannot reach each other: wrong
+  address, different networks, or a network that isolates clients (guest
+  Wi-Fi).
+- **`PingSucceeded: True`, `TcpTestSucceeded: False`** — the network is
+  fine and the host PC's firewall is blocking the port. Verify the rule
+  and the network category as described in Step 5; the most common causes
+  are a rule that was never created because the command ran without
+  elevation, and a network Windows classified as `Public`.
+- **`TcpTestSucceeded: True`** — reachability is fine; if `Connect` still
+  fails, the error now names a security cause: a wrong `$hostIp` baked
+  into the certificate, files from different provisioning runs mixed
+  together (re-run the wizard into a fresh directory on both sides), or an
+  `expectedRuntimeHostId` mismatch.
+
+Further hints:
+
+- **`running scripts is disabled`** — the execution-policy note in
+  Step 2.
+- **The wizard reports a missing file** — the four transferred files are
+  not exactly in `%LocalAppData%\HASE\Secured` (Step 3).
+- **The host window shows `Identity: hase-desktop-runtime-host`** — a
+  known cosmetic display constant; the effective identity is the one the
+  wizard wrote, and the Client verifies against that.
+- No step requires restarting the Runtime Host after firewall or network
+  changes — fix the reachability and press `Connect` again.
 
 ## Where to go next
 
