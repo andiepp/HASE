@@ -1,6 +1,6 @@
 # ADR-0060 — Publication Onboarding and Guided Setup
 
-- Status: Accepted; Increment 60A decision acceptance
+- Status: Closed; Increment 60K objective closure
 - Date: 2026-08-22
 - Starting baseline: `11f9129ce81abaaad2265cbbd166504bae4b33fe`
 - Starting subject: `ADR-0059 closing`
@@ -413,10 +413,61 @@ were misplaced. Corrective increments:
 
 Goal: the multi-host example, largely reusing Example 3 provisioning.
 
+Completed result: after Increment 60I4, commit
+`0e59678b238c5712df820ce9686167354ddd0bd3`, moved Examples 1 through 3
+into `docs/examples/`, Increment 60J1, commit
+`3ec8bac16303d7f0c0d033f721a5ae3cdec497e1`, publishes
+`docs/examples/Example-4-Second-Runtime-Host.md` — the second host through
+a repeated wizard run with distinct identity, profile, and port; the
+transfer into a second folder; and the ADR-0043-validated
+`Hase.Client.RegistryTool` merging the second host into the existing
+client registry.
+
+The operator performed the 60J2 walkthrough with host 2 on the MiniPC.
+One startup fault was classified as designed behavior, not a defect: two
+HASE-flashed boards matched the composition's VID/PID filter, and the host
+refused to guess. With exactly one board attached — an original Arduino
+Uno reporting `PID 0x0001`, adapted in the composition — host 2 published
+its Arduino and simulation endpoints, the client connected both hosts over
+mutual TLS, host 1 gained its ESP32 through its own secured composition,
+and the operator accepted Example 4 completely with all endpoints on both
+hosts.
+
+Corrective commit `c9b10daec501791e392d6d70be366e28b0a59bfe` (60J2A and
+60J2B) folds the findings in: execution-policy lines inlined in every
+wizard block, the explicit host-address instruction, the
+composition-as-template rules (one matching board, `PID 0x0001` originals,
+per-host composition files), four new troubleshooting entries including
+the exact multiple-board refusal text, and the original-Uno note in
+Example 1.
+
 ### Increment 60K — Closure
 
 Goal: reconcile this ADR, Project Status, and Roadmap with the final
 baselines. Documentation-only.
+
+Completed result: ADR-0060 closes with every planned increment complete.
+Delivered: the MIT license and external-reader README; the certificate-free
+loopback development profile for Runtime Host and Client; the five-example
+onboarding ladder (simulation, Arduino Uno, ESP32, secured second-PC
+client, multi-host), each proven by an operator walkthrough in the
+new-user role; the Two-Computer Provisioning reference; and the guided
+setup wizard. The walkthroughs drove ten corrective increments, fixing two
+real code defects (line-ending-brittle contract tests, byte-order-mark
+intolerance in identity reading) and hardening every document against the
+obstacles a real user meets. A fresh clone passes the complete Release
+suite; the final automated baseline is 6,463 tests, zero failed, zero
+skipped, at the 66-warning cold-build baseline.
+
+Remaining deferred scope, unchanged from the decision plus walkthrough
+observations: prebuilt releases and installers, package-registry
+publication, a graphical configuration tool, non-Windows hosts,
+contribution governance and continuous integration, the Runtime Host
+window's static `Identity` display, and the impossibility of a
+simulation-only secured host (the endpoint composition requires at least
+one endpoint).
+
+ADR-0060 is closed.
 
 ## Deferred scope
 

@@ -2121,7 +2121,7 @@ operator.
 
 ## Active objective — ADR-0060 Publication Onboarding and Guided Setup
 
-**Status:** [Active] Accepted at Increment 60A
+**Status:** [Completed] Closed at Increment 60K with 6,463 passing tests
 
 ADR-0060 publishes HASE for external users. The audience is engineers
 comfortable with PowerShell and with flashing microcontroller firmware.
@@ -2176,8 +2176,10 @@ Planned increments:
    corrective increments 60I2A (explicit two-PC setup) and 60I2B
    (networking troubleshooting), proven by an operator two-computer
    walkthrough over mutual TLS.
-10. 60J — Example 4, second Runtime Host.
-11. 60K — Closure.
+10. 60J — Example 4, second Runtime Host — complete, after 60I4 moved the
+    examples into `docs/examples/`; proven by an operator multi-host
+    walkthrough with all endpoints on both wizard-provisioned hosts.
+11. 60K — Closure — complete; ADR-0060 is closed at 6,463 tests.
 
 Prebuilt releases, versioning, package-registry publication, a graphical
 configuration tool, non-Windows hosts, contribution governance, and

@@ -1,10 +1,10 @@
 # Project Status
 
-## Active architectural objective — ADR-0060
+## Completed architectural objective — ADR-0060
 
-**ADR-0060 — Publication Onboarding and Guided Setup — accepted at Increment
-60A from starting baseline `11f9129ce81abaaad2265cbbd166504bae4b33fe` with
-6,391 passing tests**
+**ADR-0060 — Publication Onboarding and Guided Setup — implemented,
+operator-validated in the new-user role, and closed at 6,463 passing tests
+from starting baseline `11f9129ce81abaaad2265cbbd166504bae4b33fe`**
 
 - ADR-0060 publishes HASE for external users through a ladder of runnable
   examples, the MIT License, an explicitly labeled certificate-free single-PC
@@ -72,9 +72,24 @@
   walkthrough's networking findings (execution policy, firewall elevation
   and verification, network category, symptom-based diagnosis) were folded
   into the document by corrective increments 60I2A and 60I2B.
-- The next separately approved increments are 60I4 — moving Examples 1
-  through 3 into `docs/examples/` — and 60J — Example 4, a second Runtime
-  Host.
+- Increments 60I4, 60J, and 60K are complete. The examples live in
+  `docs/examples/`; the published Example 4 adds a second wizard-provisioned
+  Runtime Host and merges it into the client registry with the ADR-0043
+  registry tool; the operator validated the multi-host session with all
+  endpoints on both hosts, including the designed refusal of multiple
+  matching compact boards and the original-Uno `PID 0x0001` adaptation,
+  both folded into the documents.
+- ADR-0060 is closed. HASE is publicly usable: MIT-licensed,
+  clone-and-build, with a five-example operator-proven onboarding ladder
+  from simulation to a secured multi-host laboratory, a provisioning
+  reference, and a guided setup wizard. Deferred scope remains recorded in
+  the ADR.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0060 is closed. Diagnostic Export and Offline
+Analysis remains accepted but deferred.
 
 ---
 
