@@ -171,7 +171,7 @@ confirmed `ShortCircuit.Activate`. With the external supply output off:
 
 ## Where to go next
 
-To bring your **own** SCPI instrument into HASE, continue with the SCPI
-Instrument Authoring Guide (in preparation under ADR-0061), which walks
-the characterization-first authoring discipline using the KEL-103
-implementation as the worked reference.
+To bring your **own** SCPI instrument into HASE, continue with the
+[SCPI Instrument Authoring Guide](../SCPI-Instrument-Authoring-Guide.md),
+which walks the characterization-first authoring discipline using the
+KEL-103 implementation as the worked reference.

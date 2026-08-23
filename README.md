@@ -239,6 +239,7 @@ or environment-specific client configuration files.
 - [Example 5 — A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
+- [SCPI Instrument Authoring Guide](docs/SCPI-Instrument-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
