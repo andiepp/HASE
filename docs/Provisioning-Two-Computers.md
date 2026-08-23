@@ -291,6 +291,95 @@ Press `Connect` on `Example Host (secured)`: the tile turns green and the
 host's endpoints appear — every read, write, Command, and Event now
 crossing the network under mutual TLS.
 
+## Enabling live media (optional)
+
+A camera on `HOST-PC` can stream view-only live video (optionally with
+microphone audio) into the Client's detached media window. The contracts
+are fixed: one session and one viewer, explicit Client-controlled Start
+and Stop, no recording, no public relay, and camera device identifiers
+never leave the host. Media requires the secured profile — the
+development loopback profile rejects it by design — and the Microsoft
+Edge WebView2 runtime on both PCs.
+
+Four steps, all on the provisioned setup from above:
+
+**1. Bind the camera.** On `HOST-PC`, with both applications closed, the
+Runtime Host's binding mode enumerates cameras locally and writes the
+media configuration:
+
+```powershell
+$ErrorActionPreference = "Stop"
+$secured = Join-Path $env:LocalAppData "HASE\Secured"
+
+& ".\src\Hase.DesktopHost.App\bin\Release\net10.0-windows\Hase.DesktopHost.App.exe" `
+    --prepare-media-binding `
+    (Join-Path $secured "media-configuration.json") `
+    "runtime-host-camera-01" `
+    ([Guid]::NewGuid().ToString("N")) `
+    "Runtime Host Camera"
+```
+
+A window lists the machine's cameras; select one (and optionally a
+microphone) and confirm. The selection is written atomically to
+`media-configuration.json` — already in the exact format the Runtime Host
+loads — and an existing file is refused, never overwritten. Windows
+camera privacy settings must allow desktop apps to access the camera.
+
+**2. Grant media to the client principal.** Rewrite the authorization
+policy with the six media grants beside the six operational ones:
+
+```powershell
+$ErrorActionPreference = "Stop"
+$secured = Join-Path $env:LocalAppData "HASE\Secured"
+
+@"
+{
+  "formatVersion": 1,
+  "grants": [
+    { "principalId": "laptop-validation-client", "permission": "runtime-host.snapshot.read" },
+    { "principalId": "laptop-validation-client", "permission": "property.cached.read" },
+    { "principalId": "laptop-validation-client", "permission": "property.authoritative.read" },
+    { "principalId": "laptop-validation-client", "permission": "property.write" },
+    { "principalId": "laptop-validation-client", "permission": "command.execute" },
+    { "principalId": "laptop-validation-client", "permission": "observation.subscribe" },
+    { "principalId": "laptop-validation-client", "permission": "media.capability.read" },
+    { "principalId": "laptop-validation-client", "permission": "media.video.receive" },
+    { "principalId": "laptop-validation-client", "permission": "media.audio.receive" },
+    { "principalId": "laptop-validation-client", "permission": "media.session.start" },
+    { "principalId": "laptop-validation-client", "permission": "media.session.negotiate" },
+    { "principalId": "laptop-validation-client", "permission": "media.session.stop" }
+  ]
+}
+"@ | Set-Content -Encoding utf8 (Join-Path $secured "authorization-policy.json")
+```
+
+**3. Reference the media configuration.** Rewrite the installation
+profile with the added `mediaConfigurationFilePath` line:
+
+```powershell
+$ErrorActionPreference = "Stop"
+$secured = Join-Path $env:LocalAppData "HASE\Secured"
+
+@"
+{
+  "formatVersion": 1,
+  "identityFilePath": "$($secured.Replace('\', '\\'))\\runtime-host-identity.json",
+  "privateNetworkConfigurationFilePath": "$($secured.Replace('\', '\\'))\\desktop-private-network.json",
+  "endpointCompositionFilePath": "$($secured.Replace('\', '\\'))\\desktop-runtime-endpoints.json",
+  "authorizationPolicyFilePath": "$($secured.Replace('\', '\\'))\\authorization-policy.json",
+  "mediaConfigurationFilePath": "$($secured.Replace('\', '\\'))\\media-configuration.json",
+  "includeByteBufferSimulation": true
+}
+"@ | Set-Content -Encoding utf8 (Join-Path $secured "desktop-runtime-host.json")
+```
+
+**4. Restart and stream.** Start the Runtime Host and the Client as in
+Step 7. In the Client, open the `Video / Audio` window, select
+`Runtime Host Camera`, and press `Start Video` — the stream travels
+directly between the two PCs over encrypted WebRTC while the secured gRPC
+channel carries only control. `Stop` releases the camera; closing the
+media window ends any active session.
+
 ## Failure behavior
 
 Everything fails closed. A missing, unenrolled, or wrong certificate, a
