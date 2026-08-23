@@ -362,10 +362,52 @@ certificates, enrollment, trust, and profile files and one transfer package,
 built from the existing validated provisioning logic, with focused automated
 tests for parsing, success, rejection, failure, and recovery paths.
 
+Completed result: commit `206f735f85e7992695ec24b8f2a461dba7b58247` adds
+`tools/Setup/Start-HaseSetup.ps1` with a host role and a client role
+selected by parameter set. All cryptography stays with the validated
+ADR-0032 provisioning scripts; the wizard refuses pre-existing targets
+before creating anything, authors the identity, authorization policy,
+endpoint composition, installation profile, and client registry, and adds
+the non-secret `client-handoff.json` that makes the transfer package
+self-sufficient. Eight focused tests execute both roles non-interactively
+with a stubbed provisioning step and validate the authored documents
+through the real application parsers; the complete Release baseline is
+6,463 tests at the 66-warning baseline. Physical proof followed in the
+Example 3 walkthrough under Increment 60I.
+
 ### Increment 60I — Example 3, Client on a second PC
 
 Goal: the second-PC example using the wizard, physically validated on the
 project computers acting as stand-ins for a new user's machines.
+
+Completed result: Increment 60I1, commit
+`b0a0a5ca67ee711117d4aeffd7c400c6d1025e6b`, publishes
+`docs/Example-3-Client-on-a-Second-PC.md` around the wizard and the
+provisioning reference. The operator performed the 60I2 walkthrough on two
+computers in the new-user role — the wizard's first execution with real
+certificates on both roles. The secured session succeeded end to end: the
+wizard provisioned the host, the four-file transfer package installed the
+client credential and authored the registry, and after the firewall rule
+existed the first `Connect` established the mutual-TLS session with the
+Arduino and simulation endpoints served across the network. The operator
+accepted Example 3 as working and praised the walkthrough as a
+demonstration of real networking obstacles.
+
+The walkthrough surfaced documentation gaps, no wizard or application
+defects; the wizard failed closed correctly when the transferred files
+were misplaced. Corrective increments:
+
+1. 60I2A, commit `0e07e2739b2027db0b012e6cdee53c5225c03527` — an explicit
+   "Set up HASE on both PCs" step (the client-PC clone-and-build was
+   previously only a prerequisite bullet), the listener address hoisted
+   into an explained variable, and per-step PC attribution.
+2. 60I2B, commit `e6bc9a255ce1c9e9b7f9bff14db066ab9a47186d` — the
+   execution-policy note, transfer-path exactness, an elevation-verified
+   firewall step with the warning that an access-denied attempt creates no
+   rule, the Public network-category trap, symptom-based
+   `Test-NetConnection` troubleshooting distinguishing reachability from
+   security refusal, and the wizard's printed firewall step naming the
+   elevated-terminal route.
 
 ### Increment 60J — Example 4, second Runtime Host
 

@@ -60,7 +60,21 @@
   and firewall rule they do not produce. The single-machine dry-run was
   consciously skipped as redundant; Example 3's walkthrough carries the
   end-to-end proof.
-- The next separately approved increment is 60H — the guided setup wizard.
+- Increment 60H is complete: the guided setup wizard
+  `tools/Setup/Start-HaseSetup.ps1` performs the complete two-computer
+  provisioning in a host role and a client role around the validated
+  ADR-0032 scripts, with eight focused tests that execute both roles
+  non-interactively and validate the authored documents through the real
+  application parsers.
+- Increment 60I is complete. The published Example 3 crosses the network
+  under mutual TLS through the wizard; the operator validated it on two
+  computers, including the intended fail-closed behavior, and the
+  walkthrough's networking findings (execution policy, firewall elevation
+  and verification, network category, symptom-based diagnosis) were folded
+  into the document by corrective increments 60I2A and 60I2B.
+- The next separately approved increments are 60I4 — moving Examples 1
+  through 3 into `docs/examples/` — and 60J — Example 4, a second Runtime
+  Host.
 
 ---
 

@@ -2170,8 +2170,12 @@ Planned increments:
    ADR-0032 provisioning scripts required no changes, and the published
    reference adds the application documents, authorization, registry, and
    firewall steps around them.
-8. 60H — Guided setup wizard.
-9. 60I — Example 3, Client on a second PC.
+8. 60H — Guided setup wizard — complete at 6,463 tests with executed
+   host- and client-role coverage.
+9. 60I — Example 3, Client on a second PC — complete, including the
+   corrective increments 60I2A (explicit two-PC setup) and 60I2B
+   (networking troubleshooting), proven by an operator two-computer
+   walkthrough over mutual TLS.
 10. 60J — Example 4, second Runtime Host.
 11. 60K — Closure.
 
