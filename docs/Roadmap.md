@@ -2218,4 +2218,27 @@ ADR-0061 begins at exact commit
 `8abf9c1da6abd019de7fbe62bdebfdf05f3f4564` with 6,463 complete Release
 tests.
 
-Diagnostic Export and Offline Analysis remains accepted but deferred.
+## Active objective — ADR-0062 Diagnostic Export and Offline Analysis
+
+**Status:** [Active] Accepted at Increment 62A
+
+ADR-0062 makes diagnostic evidence survive the application session: one
+strict versioned export format shared by both applications, explicit
+`Export` actions in the Runtime Host and Client diagnostics windows, and
+the read-only `Hase.Diagnostics.Offline` analysis tool. Capture
+semantics and sanitization are unchanged; export is manual only.
+
+Planned increments:
+
+1. 62A — Decision acceptance — complete.
+2. 62B — Export format, writer, and strict reader.
+3. 62C — Runtime Host diagnostics export.
+4. 62D — Client diagnostics export.
+5. 62E — Offline analysis tool.
+6. 62F — Operator validation.
+7. 62G — Objective closure.
+
+ADR-0062 begins at exact commit
+`67d471e750d63ed50fdd96a456fdd9cccfd9c001` with 6,464 complete Release
+tests. The long-standing "Diagnostic Export and Offline Analysis remains
+accepted but deferred" note is hereby taken up.

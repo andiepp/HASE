@@ -1,5 +1,29 @@
 # Project Status
 
+## Active architectural objective — ADR-0062
+
+**ADR-0062 — Diagnostic Export and Offline Analysis — accepted at Increment
+62A from starting baseline `67d471e750d63ed50fdd96a456fdd9cccfd9c001` with
+6,464 passing tests**
+
+- ADR-0062 takes up the objective deferred since the ADR-0047 era: both
+  applications' bounded diagnostic sessions are volatile, and evidence —
+  like the ADR-0061 media incident's diagnostics — dies with the window.
+- Three deliverables: one strict versioned JSON Lines export format
+  (envelope plus complete sanitized records, bounded byte snapshots
+  included) with a shared writer and fail-closed reader; explicit,
+  never-overwriting `Export` actions in the Runtime Host and Client
+  diagnostics windows covering the retained session; and the read-only
+  `Hase.Diagnostics.Offline` console tool with validate, summarize,
+  filter, and show.
+- Capture semantics, bounds, and every sanitization rule are unchanged;
+  export is manual only; the ADR-0049 remote stream remains live-only;
+  the tool has no live attachment.
+- Increment 62A is documentation-only. The next separately approved
+  increment is 62B — the export format, writer, and strict reader.
+
+---
+
 ## Completed architectural objective — ADR-0061
 
 **ADR-0061 — Instrument and Media Examples — implemented,
