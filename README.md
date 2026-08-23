@@ -228,6 +228,7 @@ or environment-specific client configuration files.
 - [Getting Started](docs/Getting-Started.md)
 - [Example 1 — Arduino Uno on one PC](docs/Example-1-Arduino-Uno.md)
 - [Example 2 — ESP32 in the local network](docs/Example-2-ESP32.md)
+- [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)

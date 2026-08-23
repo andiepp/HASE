@@ -248,6 +248,7 @@ attaches it again.
 ## Where to go next
 
 Example 3 (Client on a second PC through guided mutual-TLS provisioning) is
-in preparation. The
+in preparation; its security setup is already documented in
+[Two-Computer Provisioning](Provisioning-Two-Computers.md). The
 [ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md)
 explains how to author your own ESP32 endpoints on the same library.
