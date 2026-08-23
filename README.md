@@ -190,7 +190,10 @@ instrument. Example 3 is published:
 [Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md) crosses
 the network under mutual TLS through the guided setup wizard. Example 4 is
 published: [A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
-completes the ladder with the multi-host Client.
+completes the ladder with the multi-host Client. Beyond the ladder,
+Example 5 is published:
+[A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
+attaches a real SCPI instrument on the development profile.
 
 ### Advanced guides
 
@@ -233,6 +236,7 @@ or environment-specific client configuration files.
 - [Example 2 — ESP32 in the local network](docs/examples/Example-2-ESP32.md)
 - [Example 3 — Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md)
 - [Example 4 — A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
+- [Example 5 — A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
