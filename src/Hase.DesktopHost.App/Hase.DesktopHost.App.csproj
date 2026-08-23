@@ -19,6 +19,7 @@
     <ProjectReference Include="..\Hase.CompactProtocol\Hase.CompactProtocol.csproj" />
     <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
     <ProjectReference Include="..\Hase.DesktopHost\Hase.DesktopHost.csproj" />
+    <ProjectReference Include="..\Hase.Diagnostics.Export\Hase.Diagnostics.Export.csproj" />
     <ProjectReference Include="..\Hase.Operator.Input\Hase.Operator.Input.csproj" />
     <ProjectReference Include="..\Hase.Protocol\Hase.Protocol.csproj" />
     <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />

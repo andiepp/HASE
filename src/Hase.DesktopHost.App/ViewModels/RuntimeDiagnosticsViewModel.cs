@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using Hase.Diagnostics.Export;
 using Hase.Runtime.Diagnostics;
 using Prism.Commands;
 
@@ -19,14 +21,25 @@ public sealed class RuntimeDiagnosticsViewModel
         DesktopRuntimeDiagnosticEntry> entries =
             [];
 
+    private readonly IDesktopDiagnosticExportDialogService?
+        exportDialogService;
+    private readonly string? hostIdentity;
+    private readonly Func<DateTimeOffset> utcNow;
+
     private DesktopRuntimeDiagnosticEntry? selectedEntry;
     private RuntimeDiagnosticLevel selectedDisplayMaximumLevel;
     private bool isPresentationPaused;
+    private bool isExporting;
+    private string exportStatusText =
+        string.Empty;
 
     public RuntimeDiagnosticsViewModel(
         IDesktopRuntimeDiagnosticSource? source = null,
         DesktopRuntimeByteInterpretationService?
-            byteInterpretationService = null)
+            byteInterpretationService = null,
+        IDesktopDiagnosticExportDialogService? exportDialogService = null,
+        DesktopRuntimeHostShellInformation? shellInformation = null,
+        Func<DateTimeOffset>? utcNow = null)
     {
         this.source =
             source
@@ -34,6 +47,13 @@ public sealed class RuntimeDiagnosticsViewModel
         this.byteInterpretationService =
             byteInterpretationService
             ?? DesktopRuntimeByteInterpretationService.CreateDefault();
+        this.exportDialogService =
+            exportDialogService;
+        hostIdentity =
+            shellInformation?.HostIdentity;
+        this.utcNow =
+            utcNow
+            ?? (() => DateTimeOffset.UtcNow);
 
         CaptureMaximumLevel =
             this.source.MaximumLevel;
@@ -71,6 +91,13 @@ public sealed class RuntimeDiagnosticsViewModel
                 ResumePresentation,
                 () =>
                     IsPresentationPaused);
+
+        ExportDiagnosticsCommand =
+            new DelegateCommand(
+                async () =>
+                    await ExportDiagnosticsAsync(),
+                () =>
+                    !isExporting);
     }
 
     public event PropertyChangedEventHandler?
@@ -212,6 +239,109 @@ public sealed class RuntimeDiagnosticsViewModel
     public DelegateCommand ResumePresentationCommand
     {
         get;
+    }
+
+    public DelegateCommand ExportDiagnosticsCommand
+    {
+        get;
+    }
+
+    public string ExportStatusText
+    {
+        get =>
+            exportStatusText;
+
+        private set
+        {
+            if (string.Equals(
+                    exportStatusText,
+                    value,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            exportStatusText =
+                value;
+
+            OnPropertyChanged();
+            OnPropertyChanged(
+                nameof(HasExportStatus));
+        }
+    }
+
+    public bool HasExportStatus =>
+        ExportStatusText.Length > 0;
+
+    /// <summary>
+    /// Exports the complete retained diagnostic session to an
+    /// operator-chosen file, independent of the display filter and of
+    /// presentation pause. Never overwrites an existing file.
+    /// </summary>
+    public async Task ExportDiagnosticsAsync()
+    {
+        if (isExporting
+            || exportDialogService is null)
+        {
+            return;
+        }
+
+        isExporting =
+            true;
+        ExportDiagnosticsCommand.RaiseCanExecuteChanged();
+
+        try
+        {
+            DateTimeOffset exportedAtUtc =
+                utcNow().ToUniversalTime();
+
+            string suggestedFileName =
+                "runtime-host-diagnostics-"
+                + exportedAtUtc.ToString(
+                    "yyyyMMdd-HHmmss")
+                + "Z.jsonl";
+
+            string? targetPath =
+                exportDialogService.SelectExportTarget(
+                    suggestedFileName);
+
+            if (targetPath is null)
+            {
+                ExportStatusText =
+                    "Export cancelled.";
+
+                return;
+            }
+
+            IReadOnlyList<RuntimeDiagnosticRecord> records =
+                source.CaptureDiagnostics();
+
+            DiagnosticExportDocument document =
+                RuntimeHostDiagnosticExport.ToDocument(
+                    source.MaximumLevel,
+                    hostIdentity,
+                    exportedAtUtc,
+                    records);
+
+            await DiagnosticExportFile.WriteNewAsync(
+                targetPath,
+                document);
+
+            ExportStatusText =
+                $"Exported {records.Count} records to "
+                + $"{Path.GetFileName(targetPath)}.";
+        }
+        catch (Exception exception)
+        {
+            ExportStatusText =
+                $"Export failed: {exception.Message}";
+        }
+        finally
+        {
+            isExporting =
+                false;
+            ExportDiagnosticsCommand.RaiseCanExecuteChanged();
+        }
     }
 
     public void Refresh()

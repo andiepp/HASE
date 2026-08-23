@@ -199,6 +199,9 @@ public partial class App : PrismApplication
         containerRegistry.RegisterInstance(
             DesktopRuntimeByteInterpretationService.CreateDefault());
         containerRegistry.RegisterSingleton<
+            IDesktopDiagnosticExportDialogService,
+            WpfDesktopDiagnosticExportDialogService>();
+        containerRegistry.RegisterSingleton<
             RuntimeDiagnosticsViewModel>();
         containerRegistry.RegisterSingleton<
             IDesktopDiagnosticsWindowFactory,

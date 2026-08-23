@@ -40,6 +40,8 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <TextBlock
@@ -79,6 +81,13 @@
                 MinWidth="130"
                 Command="{Binding ClearDiagnosticsCommand}"
                 Content="Clear diagnostics" />
+            <Button
+                Grid.Column="14"
+                MinWidth="90"
+                AutomationProperties.Name="Export diagnostics"
+                Command="{Binding ExportDiagnosticsCommand}"
+                Content="Export"
+                ToolTip="Export the complete retained diagnostic session to a new file. The display filter does not change what is exported." />
         </Grid>
 
         <Border
@@ -135,6 +144,24 @@
                 <TextBlock
                     Foreground="DimGray"
                     Text="{Binding DisplayedEntryCount, StringFormat=Displayed records: {0}}" />
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Foreground="DimGray"
+                    Text="{Binding ExportStatusText}"
+                    TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger
+                                    Binding="{Binding HasExportStatus}"
+                                    Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <TextBlock
                     HorizontalAlignment="Right"
                     Foreground="DimGray"
