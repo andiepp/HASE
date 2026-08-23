@@ -24,9 +24,9 @@ Do not stage, commit, or push without explicit per-increment approval.
 
 ## Repository layout
 
-- `src/` — 33 .NET projects: runtime, protocol, transport, northbound gRPC,
-  WPF client, SCPI, simulation, deployment tools.
-- `tests/` — 26 xUnit projects mirroring `src/`, plus `tests/Arduino/`
+- `src/` — 34 .NET projects: runtime, protocol, transport, northbound gRPC,
+  WPF client, SCPI, simulation, diagnostics export, deployment tools.
+- `tests/` — 27 xUnit projects mirroring `src/`, plus `tests/Arduino/`
   (PowerShell-driven endpoint validation, not a .NET test project).
 - `docs/adr/` — the authoritative ADR set, including per-increment files.
 - `docs/ProjectStatus.md`, `docs/Roadmap.md` — closure state per §8.
@@ -58,10 +58,10 @@ python -m pytest
 
 Notes:
 
-- The complete suite takes approximately 100 seconds across 26 test projects.
+- The complete suite takes approximately 100 seconds across 27 test projects.
   Running it unprompted is authorized.
-- Expected result: 6,379 passed, 0 failed, 0 skipped. Report exact totals.
-- 60 warnings is the accepted baseline for a successful complete build. Report
+- Expected result: 6,486 passed, 0 failed, 0 skipped. Report exact totals.
+- 66 warnings is the accepted baseline for a successful complete build. Report
   the count and any drift from it. Warnings appear only on a cold build.
 - No test carries a `Skip` or hardware `Trait`. The complete suite is
   self-contained and needs no attached ESP32, Arduino, or KEL-103 hardware.

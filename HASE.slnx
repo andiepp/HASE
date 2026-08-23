@@ -14,6 +14,7 @@
   <Project Path="src/Hase.DesktopHost.EndpointProfileTool/Hase.DesktopHost.EndpointProfileTool.csproj" />
   <Project Path="src/Hase.DesktopHost.OnboardingAudit/Hase.DesktopHost.OnboardingAudit.csproj" />
   <Project Path="src/Hase.DesktopHost.App/Hase.DesktopHost.App.csproj" />
+  <Project Path="src/Hase.Diagnostics.Export/Hase.Diagnostics.Export.csproj" />
   <Project Path="src/Hase.Operator.Input/Hase.Operator.Input.csproj" />
   <Project Path="src/Hase.Operator.Presentation/Hase.Operator.Presentation.csproj" />
   <Project Path="src/Hase.Python.CredentialProvisioning/Hase.Python.CredentialProvisioning.csproj" />
@@ -41,6 +42,7 @@
   <Project Path="tests/Hase.CompactProtocol.Tests/Hase.CompactProtocol.Tests.csproj" Id="475ee51a-1128-400d-b652-18a4b53ec395" />
   <Project Path="tests/Hase.Core.Tests/Hase.Core.Tests.csproj" />
   <Project Path="tests/Hase.DesktopHost.Tests/Hase.DesktopHost.Tests.csproj" />
+  <Project Path="tests/Hase.Diagnostics.Export.Tests/Hase.Diagnostics.Export.Tests.csproj" />
   <Project Path="tests/Hase.Operator.Input.Tests/Hase.Operator.Input.Tests.csproj" />
   <Project Path="tests/Hase.Operator.Presentation.Tests/Hase.Operator.Presentation.Tests.csproj" />
   <Project Path="tests/Hase.Python.CredentialProvisioning.Tests/Hase.Python.CredentialProvisioning.Tests.csproj" />
