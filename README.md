@@ -189,7 +189,8 @@ physical USB instrument. Example 2 is published:
 instrument. Example 3 is published:
 [Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md) crosses
 the network under mutual TLS through the guided setup wizard. Example 4 is
-in preparation under ADR-0060 and gains its link here as it is published.
+published: [A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
+completes the ladder with the multi-host Client.
 
 ### Advanced guides
 
@@ -231,6 +232,7 @@ or environment-specific client configuration files.
 - [Example 1 — Arduino Uno on one PC](docs/examples/Example-1-Arduino-Uno.md)
 - [Example 2 — ESP32 in the local network](docs/examples/Example-2-ESP32.md)
 - [Example 3 — Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md)
+- [Example 4 — A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)

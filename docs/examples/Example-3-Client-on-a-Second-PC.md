@@ -231,8 +231,8 @@ Further hints:
 
 ## Where to go next
 
-Example 4 (a second Runtime Host and the multi-host Client) is in
-preparation. The
+[Example 4 — A second Runtime Host](Example-4-Second-Runtime-Host.md)
+completes the ladder with the multi-host Client. The
 [Northbound API Reference](../API%20reference/HASE-Northbound-API-Reference.md)
 documents the API you are now using remotely, and the
 [Laptop Client UI Tutorial](../Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
