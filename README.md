@@ -193,7 +193,9 @@ published: [A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.m
 completes the ladder with the multi-host Client. Beyond the ladder,
 Example 5 is published:
 [A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
-attaches a real SCPI instrument on the development profile.
+attaches a real SCPI instrument on the development profile, and Example 6
+is published: [A webcam](docs/examples/Example-6-Webcam.md) streams live
+video from the secured host into the remote Client.
 
 ### Advanced guides
 
@@ -237,6 +239,7 @@ or environment-specific client configuration files.
 - [Example 3 — Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md)
 - [Example 4 — A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
 - [Example 5 — A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
+- [Example 6 — A webcam (live video)](docs/examples/Example-6-Webcam.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [SCPI Instrument Authoring Guide](docs/SCPI-Instrument-Authoring-Guide.md)
