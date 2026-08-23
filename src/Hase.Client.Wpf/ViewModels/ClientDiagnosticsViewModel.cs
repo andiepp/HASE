@@ -1,4 +1,7 @@
+using System.IO;
 using Hase.Client.Diagnostics;
+using Hase.Client.Wpf.Services;
+using Hase.Diagnostics.Export;
 using Prism.Commands;
 using Prism.Mvvm;
 using Hase.Client.Configuration;
@@ -8,6 +11,8 @@ namespace Hase.Client.Wpf.ViewModels;
 public sealed class ClientDiagnosticsViewModel : BindableBase
 {
     private readonly BoundedClientDiagnosticCollector collector;
+    private readonly IClientDiagnosticExportFilePicker? exportFilePicker;
+    private readonly Func<DateTimeOffset> utcNow;
     private IReadOnlyList<ClientDiagnosticRecord> records = [];
     private IReadOnlyList<ClientDiagnosticRecord> presentationSource = [];
     private ClientDiagnosticRecord? selectedRecord;
@@ -18,10 +23,17 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     private int pendingRecordCount;
     private long presentationWatermark;
     private RuntimeHostDiagnosticFilterItem selectedRuntimeHostFilter;
+    private bool isExporting;
+    private string exportStatusText = string.Empty;
 
-    public ClientDiagnosticsViewModel(BoundedClientDiagnosticCollector collector)
+    public ClientDiagnosticsViewModel(
+        BoundedClientDiagnosticCollector collector,
+        IClientDiagnosticExportFilePicker? exportFilePicker = null,
+        Func<DateTimeOffset>? utcNow = null)
     {
         this.collector = collector ?? throw new ArgumentNullException(nameof(collector));
+        this.exportFilePicker = exportFilePicker;
+        this.utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
         LevelFilters = new[] { "All" }
             .Concat(Enum.GetNames<ClientDiagnosticLevel>())
             .ToArray();
@@ -33,6 +45,9 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
         ClearCommand = new DelegateCommand(Clear);
         PauseCommand = new DelegateCommand(Pause, () => !IsPaused);
         ResumeCommand = new DelegateCommand(Resume, () => IsPaused);
+        ExportCommand = new DelegateCommand(
+            async () => await ExportDiagnosticsAsync(),
+            () => !isExporting);
         Refresh();
     }
 
@@ -43,6 +58,7 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public DelegateCommand ClearCommand { get; }
     public DelegateCommand PauseCommand { get; }
     public DelegateCommand ResumeCommand { get; }
+    public DelegateCommand ExportCommand { get; }
     public IReadOnlyList<ClientDiagnosticRecord> Records => records;
     public int RecordCount => records.Count;
     public long EvictedRecordCount => evictedRecordCount;
@@ -133,6 +149,77 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
             SelectedRecord.Metadata
                 .OrderBy(item => item.Key, StringComparer.Ordinal)
                 .Select(item => $"{item.Key}: {item.Value}"));
+
+    public string ExportStatusText
+    {
+        get => exportStatusText;
+        private set
+        {
+            if (SetProperty(ref exportStatusText, value))
+            {
+                RaisePropertyChanged(nameof(HasExportStatus));
+            }
+        }
+    }
+
+    public bool HasExportStatus => ExportStatusText.Length > 0;
+
+    /// <summary>
+    /// Exports the complete retained diagnostic session to an
+    /// operator-chosen file, independent of the display filters and of
+    /// presentation pause. Never overwrites an existing file.
+    /// </summary>
+    public async Task ExportDiagnosticsAsync()
+    {
+        if (isExporting || exportFilePicker is null)
+        {
+            return;
+        }
+
+        isExporting = true;
+        ExportCommand.RaiseCanExecuteChanged();
+
+        try
+        {
+            DateTimeOffset exportedAtUtc = utcNow().ToUniversalTime();
+            string suggestedFileName =
+                "client-diagnostics-"
+                + exportedAtUtc.ToString("yyyyMMdd-HHmmss")
+                + "Z.jsonl";
+
+            string? targetPath =
+                exportFilePicker.SelectExportTarget(suggestedFileName);
+            if (targetPath is null)
+            {
+                ExportStatusText = "Export cancelled.";
+                return;
+            }
+
+            IReadOnlyList<ClientDiagnosticRecord> retained =
+                collector.GetSnapshot().Records;
+
+            DiagnosticExportDocument document =
+                ClientDiagnosticExport.ToDocument(
+                    collector.MaximumLevel,
+                    exportedAtUtc,
+                    retained);
+
+            await DiagnosticExportFile.WriteNewAsync(targetPath, document);
+
+            ExportStatusText =
+                $"Exported {retained.Count} records to "
+                + $"{Path.GetFileName(targetPath)}.";
+        }
+        catch (Exception exception)
+        {
+            ExportStatusText = $"Export failed: {exception.Message}";
+        }
+        finally
+        {
+            isExporting = false;
+            ExportCommand.RaiseCanExecuteChanged();
+        }
+    }
 
     public void Refresh()
     {

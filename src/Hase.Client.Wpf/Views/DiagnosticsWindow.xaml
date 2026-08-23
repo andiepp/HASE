@@ -20,6 +20,15 @@
                 DockPanel.Dock="Right"
                 MinWidth="80"
                 Padding="12,6"
+                AutomationProperties.Name="Export diagnostics"
+                Command="{Binding ExportCommand}"
+                Content="Export"
+                ToolTip="Export the complete retained diagnostic session to a new file. The display filters do not change what is exported." />
+            <Button
+                DockPanel.Dock="Right"
+                MinWidth="80"
+                Margin="0,0,8,0"
+                Padding="12,6"
                 Command="{Binding ClearCommand}"
                 Content="Clear" />
             <Button
@@ -47,6 +56,18 @@
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding EvictedRecordCount, StringFormat='Evicted: {0}'}" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding PresentationState}" />
                 <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="{Binding PendingRecordCount, StringFormat='Pending: {0}'}" />
+                <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Foreground="DimGray" Text="{Binding ExportStatusText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasExportStatus}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </StackPanel>
         </DockPanel>
         <DataGrid

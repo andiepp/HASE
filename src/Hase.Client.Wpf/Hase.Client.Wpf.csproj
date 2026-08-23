@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hase.Client\Hase.Client.csproj" />
+    <ProjectReference Include="..\Hase.Diagnostics.Export\Hase.Diagnostics.Export.csproj" />
     <ProjectReference Include="..\Hase.Operator.Input\Hase.Operator.Input.csproj" />
     <ProjectReference Include="..\Hase.Operator.Presentation\Hase.Operator.Presentation.csproj" />
   </ItemGroup>

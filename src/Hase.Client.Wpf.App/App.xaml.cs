@@ -146,6 +146,9 @@ public partial class App
                     startupConfiguration));
         containerRegistry.RegisterSingleton<
             RuntimeHostClientSessionController>();
+        containerRegistry.RegisterSingleton<
+            IClientDiagnosticExportFilePicker,
+            WpfClientDiagnosticExportFilePicker>();
         containerRegistry.RegisterSingleton<ClientDiagnosticsViewModel>();
         containerRegistry.RegisterSingleton<
             IClientDiagnosticsWindowController,
