@@ -5,7 +5,7 @@ BME280 environment sensor, joined to your Wi-Fi and attached by the
 development Runtime Host over native HASE Protocol Version 1 on framed TCP.
 The instrument leaves the USB cable; the Runtime Host and Client still run
 on one PC on the certificate-free loopback development profile from
-[Example 0](Getting-Started.md).
+[Example 0](../Getting-Started.md).
 
 Security note: the ESP32 endpoint speaks unauthenticated Protocol Version 1
 to anyone on your local network — appropriate for a trusted home or lab
@@ -250,6 +250,6 @@ attaches it again.
 [Example 3 — Client on a second PC](Example-3-Client-on-a-Second-PC.md)
 continues the ladder across the network under mutual TLS, with its security
 setup documented in
-[Two-Computer Provisioning](Provisioning-Two-Computers.md). The
-[ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md)
+[Two-Computer Provisioning](../Provisioning-Two-Computers.md). The
+[ESP32 Endpoint Authoring Guide](../ESP32-Endpoint-Authoring-Guide.md)
 explains how to author your own ESP32 endpoints on the same library.

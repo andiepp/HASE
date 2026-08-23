@@ -209,11 +209,11 @@ Example 4  A second Runtime Host and the multi-host Client
 ```
 
 Example 1 is published:
-[Arduino Uno on one PC](Example-1-Arduino-Uno.md) continues directly from
+[Arduino Uno on one PC](examples/Example-1-Arduino-Uno.md) continues directly from
 this guide with a physical USB instrument, and
-[Example 2 — ESP32 in the local network](Example-2-ESP32.md) follows with a
+[Example 2 — ESP32 in the local network](examples/Example-2-ESP32.md) follows with a
 Wi-Fi instrument, and
-[Example 3 — Client on a second PC](Example-3-Client-on-a-Second-PC.md)
+[Example 3 — Client on a second PC](examples/Example-3-Client-on-a-Second-PC.md)
 crosses the network under mutual TLS. Example 4 is in preparation and gains
 its link in the repository README as it is published. The
 [Laptop Client UI Tutorial](Tutorial/HASE-Laptop-Client-UI-Tutorial.md)

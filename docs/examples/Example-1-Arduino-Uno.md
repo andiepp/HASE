@@ -1,6 +1,6 @@
 # HASE Example 1 — Arduino Uno on one PC
 
-This example extends a completed [Example 0](Getting-Started.md) with a
+This example extends a completed [Example 0](../Getting-Started.md) with a
 physical instrument: an Arduino Uno connected over USB, running the
 repository's Compact Serial Protocol firmware. You will flash the firmware,
 add the endpoint to your development Runtime Host, and operate a real LED,
@@ -187,6 +187,6 @@ Close the Client, then the Runtime Host, as in Example 0.
 
 [Example 2 — ESP32 in the local network](Example-2-ESP32.md) continues the
 ladder with a Wi-Fi instrument. The
-[Arduino Uno Compact Endpoint How-To](Arduino-Uno-Compact-Endpoint-How-To.md)
+[Arduino Uno Compact Endpoint How-To](../Arduino-Uno-Compact-Endpoint-How-To.md)
 explains how to author your own compact endpoints — more Properties,
 Commands, Events, and multiple boards.

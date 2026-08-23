@@ -6,7 +6,7 @@ TLS, a pinned server certificate, certificate-to-principal enrollment, and
 per-operation authorization. The guided setup wizard performs the entire
 provisioning; you answer three questions and move four files.
 
-[Two-Computer Provisioning](Provisioning-Two-Computers.md) explains the
+[Two-Computer Provisioning](../Provisioning-Two-Computers.md) explains the
 security model and every document the wizard writes; this example is the
 runnable path through it.
 
@@ -34,7 +34,7 @@ dotnet build .\HASE.slnx -c Release
 ```
 
 The prerequisites (Windows, .NET 10 SDK, Git) and the expected build
-result are described in [Getting Started](Getting-Started.md). Every later
+result are described in [Getting Started](../Getting-Started.md). Every later
 step states which PC it runs on; "from the repository root" always means
 that PC's own clone.
 
@@ -192,7 +192,7 @@ First, read the symptom. A client stuck in `Connecting` means packets are
 not getting through — a network or firewall problem. A fast failure with
 an error means the connection arrived but a security check refused it —
 the boundary fails closed by design, and the
-[Two-Computer Provisioning](Provisioning-Two-Computers.md) failure section
+[Two-Computer Provisioning](../Provisioning-Two-Computers.md) failure section
 lists those causes.
 
 For the stuck-`Connecting` case, diagnose from the **client PC**:
@@ -233,7 +233,7 @@ Further hints:
 
 Example 4 (a second Runtime Host and the multi-host Client) is in
 preparation. The
-[Northbound API Reference](API%20reference/HASE-Northbound-API-Reference.md)
+[Northbound API Reference](../API%20reference/HASE-Northbound-API-Reference.md)
 documents the API you are now using remotely, and the
-[Laptop Client UI Tutorial](Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
+[Laptop Client UI Tutorial](../Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 covers the Client in depth.
