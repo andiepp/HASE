@@ -310,7 +310,17 @@ public sealed class RuntimeDiagnosticsExportTests : IDisposable
                 ApiVersion: "1",
                 LoopbackBinding: "none",
                 PrivateNetworkBinding: "none"),
-            () => ExportClock);
+            new FixedExportClock(ExportClock));
+    }
+
+    private sealed class FixedExportClock(
+        DateTimeOffset value)
+        : IDiagnosticExportClock
+    {
+        public DateTimeOffset UtcNow()
+        {
+            return value;
+        }
     }
 
     private static DesktopRuntimeDiagnosticSession CreateBytesSession()

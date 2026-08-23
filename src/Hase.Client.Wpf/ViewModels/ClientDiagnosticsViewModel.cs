@@ -29,11 +29,13 @@ public sealed class ClientDiagnosticsViewModel : BindableBase
     public ClientDiagnosticsViewModel(
         BoundedClientDiagnosticCollector collector,
         IClientDiagnosticExportFilePicker? exportFilePicker = null,
-        Func<DateTimeOffset>? utcNow = null)
+        IDiagnosticExportClock? exportClock = null)
     {
         this.collector = collector ?? throw new ArgumentNullException(nameof(collector));
         this.exportFilePicker = exportFilePicker;
-        this.utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
+        utcNow = exportClock is null
+            ? () => DateTimeOffset.UtcNow
+            : exportClock.UtcNow;
         LevelFilters = new[] { "All" }
             .Concat(Enum.GetNames<ClientDiagnosticLevel>())
             .ToArray();

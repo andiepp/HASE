@@ -39,7 +39,7 @@ public sealed class RuntimeDiagnosticsViewModel
             byteInterpretationService = null,
         IDesktopDiagnosticExportDialogService? exportDialogService = null,
         DesktopRuntimeHostShellInformation? shellInformation = null,
-        Func<DateTimeOffset>? utcNow = null)
+        IDiagnosticExportClock? exportClock = null)
     {
         this.source =
             source
@@ -51,9 +51,10 @@ public sealed class RuntimeDiagnosticsViewModel
             exportDialogService;
         hostIdentity =
             shellInformation?.HostIdentity;
-        this.utcNow =
-            utcNow
-            ?? (() => DateTimeOffset.UtcNow);
+        utcNow =
+            exportClock is null
+                ? () => DateTimeOffset.UtcNow
+                : exportClock.UtcNow;
 
         CaptureMaximumLevel =
             this.source.MaximumLevel;

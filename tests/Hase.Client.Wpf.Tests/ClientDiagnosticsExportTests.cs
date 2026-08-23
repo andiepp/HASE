@@ -214,7 +214,13 @@ public sealed class ClientDiagnosticsExportTests : IDisposable
         return new ClientDiagnosticsViewModel(
             collector,
             picker,
-            () => ExportClock);
+            new FixedExportClock(ExportClock));
+    }
+
+    private sealed class FixedExportClock(DateTimeOffset value)
+        : IDiagnosticExportClock
+    {
+        public DateTimeOffset UtcNow() => value;
     }
 
     private static ClientDiagnosticEvent CreateOperationalEvent(
