@@ -1,5 +1,12 @@
 # HASE Python Client
 
+> **New users start here:**
+> [Getting Started with HASE — Python API](../../docs/Getting-Started-Python.md)
+> introduces the client with runnable examples, and the
+> [Python Client API Reference](../../docs/API%20reference/HASE-Python-Client-API-Reference.md)
+> documents every public function and model. This file is the engineering
+> and provisioning record.
+
 This directory contains the asyncio-native Python Client for the HASE Runtime
 Host. The current implementation establishes an isolated package toolchain,
 package-internal generated Python bindings, a strict external Runtime Host
@@ -884,22 +891,27 @@ be committed, copied into a source archive, or displayed.
 
 ## Current scope
 
-The package currently provides:
+The package (version 0.6.0) currently provides:
 
 - distribution name `hase-client` and import namespace `hase`;
-- reproducible version-1 protobuf and gRPC bindings;
-- byte-exact freshness and descriptor-level parity validation;
-- an immutable strict external Runtime Host profile model; and
-- an asyncio mutual-TLS channel lifecycle with bounded readiness; and
-- immutable Runtime Host snapshot models with strict transport projection; and
-- one bounded, non-retrying asynchronous Runtime Host snapshot operation; and
-- immutable authoritative Property-operation models and strict projection; and
-- one bounded, non-retrying authoritative Property-read operation; and
-- strict mutation values and explicit uncertain-outcome semantics; and
-- dedicated-Python-identity provisioning, durable five-file publication, and
-  an explicit operator and interrupted-publication recovery boundaries.
+- reproducible version-1 protobuf and gRPC bindings with byte-exact
+  freshness and descriptor-level parity validation;
+- an immutable strict external Runtime Host profile model and the exact
+  two-target Laptop automation registry;
+- an asyncio mutual-TLS channel lifecycle with bounded readiness;
+- immutable snapshot, Property, Command, observation, and diagnostic
+  models with strict transport projection;
+- bounded, non-retrying operations for snapshot, authoritative and cached
+  Property reads, Property writes, and Command execution, with strict
+  mutation values and explicit uncertain-outcome semantics;
+- one caller-owned live observation stream and one caller-owned
+  authorized diagnostic stream, both strictly ordered and never
+  resubscribed; and
+- dedicated-Python-identity provisioning, durable five-file publication,
+  and explicit operator and interrupted-publication recovery boundaries.
 
-Observations require a later approved increment.
+The complete public API is documented in the
+[Python Client API Reference](../../docs/API%20reference/HASE-Python-Client-API-Reference.md).
 
 ## Command execution
 

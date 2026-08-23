@@ -254,7 +254,9 @@ or environment-specific client configuration files.
 - [Project Status](docs/ProjectStatus.md)
 - [Roadmap](docs/Roadmap.md)
 - [Architecture Decision Records](docs/adr)
-- [Python Client](python/hase-client/README.md)
+- [Getting Started with HASE — Python API](docs/Getting-Started-Python.md)
+- [Python Client API Reference](docs/API%20reference/HASE-Python-Client-API-Reference.md)
+- [Python Client engineering notes](python/hase-client/README.md)
 - [ADR-0051 — Python Client Local Distribution and Automation Workflows](docs/adr/ADR-0051-Python-Client-Local-Distribution-and-Automation-Workflows.md)
 
 The capability reports under `docs` record focused implementation and physical
