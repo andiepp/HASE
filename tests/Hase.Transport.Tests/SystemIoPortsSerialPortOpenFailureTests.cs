@@ -109,6 +109,10 @@ public sealed class SystemIoPortsSerialPortOpenFailureTests
             private set;
         }
 
+        public int BytesToRead =>
+            throw new InvalidOperationException(
+                "The buffered byte count must not be requested.");
+
         public Stream BaseStream =>
             throw new InvalidOperationException(
                 "The base stream must not be requested.");

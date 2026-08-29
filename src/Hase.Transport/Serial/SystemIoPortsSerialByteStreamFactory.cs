@@ -8,6 +8,17 @@ namespace Hase.Transport.Serial;
 public sealed class SystemIoPortsSerialByteStreamFactory
     : ISerialByteStreamFactory
 {
+    /// <summary>
+    /// Interval between two checks for buffered inbound bytes while no read
+    /// can be issued.
+    /// </summary>
+    /// <remarks>
+    /// The effective wait is the operating system timer granularity, which is
+    /// approximately 15 ms on Windows.
+    /// </remarks>
+    private static readonly TimeSpan ReadPollingInterval =
+        TimeSpan.FromMilliseconds(1);
+
     private readonly Func<
         SerialTransportOptions,
         ISystemIoPortsSerialPort> _serialPortFactory;
@@ -121,11 +132,27 @@ public sealed class SystemIoPortsSerialByteStreamFactory
             serialPort);
     }
 
+    /// <summary>
+    /// Owns one opened serial port and serializes its transfers.
+    /// </summary>
+    /// <remarks>
+    /// A read is issued only while the port reports buffered bytes, and a
+    /// transfer gate keeps reads and writes mutually exclusive. Some USB
+    /// serial adapters abort a pending overlapped read as soon as a write is
+    /// issued on the same handle, which leaves the stream unusable. Both
+    /// measures together guarantee that no read is outstanding while a write
+    /// is in progress.
+    /// </remarks>
     private sealed class OwnedSerialPortByteStream
         : ISerialByteStream
     {
         private readonly ISystemIoPortsSerialPort _serialPort;
         private readonly Stream _stream;
+        private readonly SemaphoreSlim _transferGate =
+            new(
+                1,
+                1);
+
         private bool _disposed;
 
         public OwnedSerialPortByteStream(
@@ -139,7 +166,7 @@ public sealed class SystemIoPortsSerialByteStreamFactory
                 stream;
         }
 
-        public ValueTask<int> ReadAsync(
+        public async ValueTask<int> ReadAsync(
             Memory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
@@ -147,12 +174,36 @@ public sealed class SystemIoPortsSerialByteStreamFactory
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return _stream.ReadAsync(
-                buffer,
-                cancellationToken);
+            while (true)
+            {
+                ThrowIfDisposed();
+
+                await _transferGate.WaitAsync(
+                    cancellationToken);
+
+                try
+                {
+                    ThrowIfDisposed();
+
+                    if (_serialPort.BytesToRead > 0)
+                    {
+                        return await _stream.ReadAsync(
+                            buffer,
+                            cancellationToken);
+                    }
+                }
+                finally
+                {
+                    _transferGate.Release();
+                }
+
+                await Task.Delay(
+                    ReadPollingInterval,
+                    cancellationToken);
+            }
         }
 
-        public ValueTask WriteAsync(
+        public async ValueTask WriteAsync(
             ReadOnlyMemory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
@@ -160,9 +211,21 @@ public sealed class SystemIoPortsSerialByteStreamFactory
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            return _stream.WriteAsync(
-                buffer,
+            await _transferGate.WaitAsync(
                 cancellationToken);
+
+            try
+            {
+                ThrowIfDisposed();
+
+                await _stream.WriteAsync(
+                    buffer,
+                    cancellationToken);
+            }
+            finally
+            {
+                _transferGate.Release();
+            }
         }
 
         public ValueTask DisposeAsync()
@@ -203,6 +266,9 @@ public sealed class SystemIoPortsSerialByteStreamFactory
         public Stream BaseStream =>
             _serialPort.BaseStream;
 
+        public int BytesToRead =>
+            _serialPort.BytesToRead;
+
         public void Open()
         {
             _serialPort.Open();
@@ -223,6 +289,14 @@ internal interface ISystemIoPortsSerialPort
     : IDisposable
 {
     Stream BaseStream
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets the number of bytes currently buffered for reading.
+    /// </summary>
+    int BytesToRead
     {
         get;
     }

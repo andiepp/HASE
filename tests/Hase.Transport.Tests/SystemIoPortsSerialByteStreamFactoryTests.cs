@@ -323,6 +323,16 @@ public sealed class SystemIoPortsSerialByteStreamFactoryTests
         public MemoryStream Stream =>
             _stream;
 
+        public int BytesToRead =>
+            BytesToReadOverride
+            ?? (int)(_stream.Length - _stream.Position);
+
+        public int? BytesToReadOverride
+        {
+            get;
+            set;
+        }
+
         public Stream BaseStream =>
             BaseStreamException is null
                 ? _stream
@@ -344,5 +354,207 @@ public sealed class SystemIoPortsSerialByteStreamFactoryTests
 
             _stream.Dispose();
         }
+    }
+
+    [Fact]
+    public async Task ReadAsync_NoBufferedBytes_ShouldWaitUntilBytesArrive()
+    {
+        var baseStream =
+            new MemoryStream();
+
+        var port =
+            new TestSerialPort(
+                baseStream)
+            {
+                BytesToReadOverride =
+                    0
+            };
+
+        var factory =
+            new SystemIoPortsSerialByteStreamFactory(
+                _ => port);
+
+        await using ISerialByteStream stream =
+            await factory.OpenAsync(
+                new SerialTransportOptions(
+                    "COM5",
+                    115200));
+
+        var readBuffer =
+            new byte[4];
+
+        ValueTask<int> pendingRead =
+            stream.ReadAsync(
+                readBuffer);
+
+        await Task.Delay(
+            50);
+
+        Assert.False(
+            pendingRead.IsCompleted);
+
+        await baseStream.WriteAsync(
+            new byte[]
+            {
+                0x11,
+                0x22
+            });
+
+        baseStream.Position =
+            0;
+
+        port.BytesToReadOverride =
+            null;
+
+        int bytesRead =
+            await pendingRead;
+
+        Assert.Equal(
+            2,
+            bytesRead);
+
+        Assert.Equal(
+            new byte[]
+            {
+                0x11,
+                0x22
+            },
+            readBuffer[..bytesRead]);
+    }
+
+    [Fact]
+    public async Task WriteAsync_WhileReadIsWaitingForBytes_ShouldComplete()
+    {
+        var baseStream =
+            new MemoryStream();
+
+        var port =
+            new TestSerialPort(
+                baseStream)
+            {
+                BytesToReadOverride =
+                    0
+            };
+
+        var factory =
+            new SystemIoPortsSerialByteStreamFactory(
+                _ => port);
+
+        await using ISerialByteStream stream =
+            await factory.OpenAsync(
+                new SerialTransportOptions(
+                    "COM5",
+                    115200));
+
+        ValueTask<int> pendingRead =
+            stream.ReadAsync(
+                new byte[4]);
+
+        byte[] request =
+        [
+            0x48,
+            0x53
+        ];
+
+        await stream
+            .WriteAsync(
+                request)
+            .AsTask()
+            .WaitAsync(
+                TimeSpan.FromSeconds(5));
+
+        Assert.False(
+            pendingRead.IsCompleted);
+
+        Assert.Equal(
+            request,
+            baseStream.ToArray());
+
+        port.BytesToReadOverride =
+            null;
+
+        baseStream.Position =
+            0;
+
+        int bytesRead =
+            await pendingRead
+                .AsTask()
+                .WaitAsync(
+                    TimeSpan.FromSeconds(5));
+
+        Assert.Equal(
+            2,
+            bytesRead);
+    }
+
+    [Fact]
+    public async Task ReadAsync_CancelledWhileWaiting_ShouldThrow()
+    {
+        var port =
+            new TestSerialPort
+            {
+                BytesToReadOverride =
+                    0
+            };
+
+        var factory =
+            new SystemIoPortsSerialByteStreamFactory(
+                _ => port);
+
+        await using ISerialByteStream stream =
+            await factory.OpenAsync(
+                new SerialTransportOptions(
+                    "COM5",
+                    115200));
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        ValueTask<int> pendingRead =
+            stream.ReadAsync(
+                new byte[4],
+                cancellationTokenSource.Token);
+
+        cancellationTokenSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () =>
+                await pendingRead);
+    }
+
+    [Fact]
+    public async Task ReadAsync_AfterDispose_ShouldThrow()
+    {
+        var port =
+            new TestSerialPort
+            {
+                BytesToReadOverride =
+                    0
+            };
+
+        var factory =
+            new SystemIoPortsSerialByteStreamFactory(
+                _ => port);
+
+        ISerialByteStream stream =
+            await factory.OpenAsync(
+                new SerialTransportOptions(
+                    "COM5",
+                    115200));
+
+        await stream.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () =>
+                await stream.ReadAsync(
+                    new byte[4]));
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(
+            async () =>
+                await stream.WriteAsync(
+                    new byte[]
+                    {
+                        0x01
+                    }));
     }
 }
