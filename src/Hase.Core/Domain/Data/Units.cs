@@ -42,4 +42,18 @@ public static class Units
             "Hectopascal",
             "hPa",
             Quantities.Pressure);
+
+    public static readonly Unit MicrowattPerSquareCentimetre =
+        new(
+            "microwatt-per-square-centimetre",
+            "Microwatt per Square Centimetre",
+            "µW/cm²",
+            Quantities.Irradiance);
+
+    public static readonly Unit Count =
+        new(
+            "count",
+            "Count",
+            "counts",
+            Quantities.Count);
 }

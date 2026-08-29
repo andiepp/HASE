@@ -17,5 +17,13 @@ public enum CompactPropertyValueEncoding : byte
     /// materializes it as a <see cref="double"/> value in volts.
     /// </summary>
     Unsigned16LittleEndianMillivolts =
-        0x02
+        0x02,
+
+    /// <summary>
+    /// Encodes an unsigned 16-bit little-endian integer and materializes it as
+    /// a <see cref="double"/> in the unit declared by the descriptor. The wire
+    /// value carries no implicit scale factor.
+    /// </summary>
+    Unsigned16LittleEndian =
+        0x03
 }

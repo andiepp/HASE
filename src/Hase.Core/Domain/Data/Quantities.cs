@@ -11,5 +11,7 @@ public static class Quantities
     public static readonly Quantity Mass = new("mass", "Mass");
     public static readonly Quantity Time = new("time", "Time");
     public static readonly Quantity Length = new("length", "Length");
+    public static readonly Quantity Irradiance = new("irradiance", "Irradiance");
+    public static readonly Quantity Count = new("count", "Count");
 
 }

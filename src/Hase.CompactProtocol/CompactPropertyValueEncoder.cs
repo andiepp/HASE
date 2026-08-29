@@ -32,6 +32,10 @@ internal static class CompactPropertyValueEncoder
                 EncodeUnsigned16LittleEndianMillivolts(
                     value),
 
+            CompactPropertyValueEncoding.Unsigned16LittleEndian =>
+                EncodeUnsigned16LittleEndian(
+                    value),
+
             _ =>
                 throw new InvalidOperationException(
                     $"Compact property-value encoding '{encoding}' is not "
@@ -71,6 +75,40 @@ internal static class CompactPropertyValueEncoder
         {
             (byte)(millivolts & 0xFF),
             (byte)(millivolts >> 8)
+        };
+    }
+
+    private static ReadOnlyMemory<byte> EncodeUnsigned16LittleEndian(
+        object value)
+    {
+        if (value is not double numericValue)
+        {
+            throw new ArgumentException(
+                "A compact unsigned 16-bit value must be represented by "
+                + "System.Double.",
+                nameof(value));
+        }
+
+        if (!double.IsFinite(numericValue)
+            || numericValue < 0.0
+            || numericValue > ushort.MaxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(value),
+                value,
+                "A compact unsigned 16-bit value must be finite and encode "
+                + "within an unsigned 16-bit value.");
+        }
+
+        ushort rawValue =
+            checked((ushort)Math.Round(
+                numericValue,
+                MidpointRounding.AwayFromZero));
+
+        return new byte[]
+        {
+            (byte)(rawValue & 0xFF),
+            (byte)(rawValue >> 8)
         };
     }
 

@@ -18,6 +18,7 @@ changes.
 - Descriptor-driven endpoints, instruments, Properties, Commands, and Events
 - Native HASE Protocol Version 1 over framed TCP
 - Compact Serial Protocol Version 1 for resource-constrained endpoints
+- Multi-instrument physical endpoints with per-instrument readiness
 - Physical, simulated, network, and USB-serial endpoint support
 - Explicit endpoint discovery, verification, attachment, and detachment
 - Endpoint-authoritative identity and attachment generations
@@ -75,6 +76,26 @@ The Compact Serial Protocol Version 1 validation endpoint exposes:
 - Push-button notifications as an Event
 - USB-serial discovery and authoritative endpoint verification
 - USB unplug, reset, and reconnect recovery
+
+### Arduino Uno with AS7331 and AS7343
+
+The Arduino Uno Light endpoint is a second Compact Serial Protocol Version 1
+board carrying two ams-OSRAM light sensors on its I2C bus, published as two
+instruments:
+
+- An AS7331 UV sensor
+  - UV-A, UV-B, and UV-C irradiance in µW/cm²
+  - A writable UV-A alarm threshold
+  - An immediate measurement Command and a threshold-crossing Event
+- An AS7343 14-channel spectral sensor
+  - F1, F2, FZ, F3, F4, F5, FY, FXL, F6, F7, F8, NIR, and two visible
+    channels in acquisition counts
+  - An immediate measurement Command
+- Per-sensor readiness Properties, so a partially wired board still attaches
+  and reports which sensor is unavailable
+
+The board uses a CH340 USB-serial adapter, which is supported since
+ADR-0064.
 
 These devices validate the architecture; they do not define its limits. HASE's
 runtime model supports other endpoint families and multi-instrument devices.
@@ -247,6 +268,8 @@ or environment-specific client configuration files.
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [SCPI Instrument Authoring Guide](docs/SCPI-Instrument-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
+- [ADR-0063 — Arduino Uno Light Endpoint](docs/adr/ADR-0063-Arduino-Uno-Light-Endpoint.md)
+- [ADR-0064 — Serial Transfer Serialization](docs/adr/ADR-0064-Serial-Transfer-Serialization.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 - [Descriptor-Driven Property Editing Tutorial](docs/Tutorial/HASE-Descriptor-Driven-Property-Editing-Tutorial.md)
@@ -300,6 +323,8 @@ physically validated with:
 - Property reads and writes
 - Command execution
 - Correctly attributed Arduino and ESP32 push-button Events
+- Two Arduino Uno boards on one host, one of them exposing two sensor
+  instruments over CH340 USB serial
 
 See [Project Status](docs/ProjectStatus.md) for the maintained implementation
 status and [Roadmap](docs/Roadmap.md) for planned work.

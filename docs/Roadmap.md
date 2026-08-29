@@ -2245,3 +2245,49 @@ ADR-0062 begins at exact commit
 `67d471e750d63ed50fdd96a456fdd9cccfd9c001` with 6,464 complete Release
 tests. The long-standing "Diagnostic Export and Offline Analysis remains
 accepted but deferred" note is hereby taken up and completed.
+
+## Completed objective — ADR-0063 Arduino Uno Light Endpoint
+
+**Status:** [Complete] Closed at Increment 63D
+
+ADR-0063 adds `ArduinoUnoLight`, the first compact endpoint carrying real
+measurement instruments. One Arduino Uno publishes an AS7331 UV sensor and an
+AS7343 14-channel spectral sensor as two instruments, using one additive
+Compact Serial Protocol encoding for unsigned 16-bit values and two new core
+quantities.
+
+Increments:
+
+1. 63A — Repository application — complete; encoding, quantities and units,
+   host definition, Arduino application, focused tests, and the ADR.
+2. 63B — Firmware compilation — complete; 12,722 bytes of program storage and
+   625 bytes of dynamic memory on the ATmega328P.
+3. 63C — Controlled upload and physical validation — complete, after the
+   blocker recorded in the ADR was resolved by ADR-0064.
+4. 63D — Objective closure — complete; ADR-0063 is closed at 6,552 tests
+   across 28 test projects.
+
+ADR-0063 begins at exact commit
+`a28fa55ea50f3b2206bf941cc28127f0fb63bfe4` with 6,516 complete Release tests.
+
+## Completed objective — ADR-0064 Serial Transfer Serialization
+
+**Status:** [Complete] Closed at Increment 64C
+
+ADR-0064 makes the owned serial byte stream serialize its transfers. A read is
+issued only while the port reports buffered bytes, and one transfer gate keeps
+reads and writes mutually exclusive, so no read is outstanding while a write is
+in progress. CH340-class USB serial adapters become usable, which the published
+Arduino guidance already promised.
+
+Increments:
+
+1. 64A — Repository application — complete; availability-gated reads, the
+   transfer gate, and focused boundary tests.
+2. 64B — Physical revalidation — complete; both Arduino boards verified,
+   attached, and operated on AEPRAKETE.
+3. 64C — Objective closure — complete; ADR-0064 is closed at 6,552 tests
+   across 28 test projects.
+
+ADR-0064 was opened by ADR-0063 Increment 63C and begins at the same exact
+commit `a28fa55ea50f3b2206bf941cc28127f0fb63bfe4`.

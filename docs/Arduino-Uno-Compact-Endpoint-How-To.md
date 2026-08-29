@@ -10,6 +10,14 @@ The repository reference implementation is
 Its host definition is
 [`ArduinoUnoCompactDefinitionFactory.cs`](../src/Hase.DesktopHost.App/Physical/ArduinoUnoCompactDefinitionFactory.cs).
 
+A second reference implementation,
+[`HaseArduinoUnoLight/HaseArduinoUnoLight.ino`](../HaseArduinoUnoLight/HaseArduinoUnoLight.ino)
+with
+[`ArduinoUnoLightCompactDefinitionFactory.cs`](../src/Hase.DesktopHost.App/Physical/ArduinoUnoLightCompactDefinitionFactory.cs),
+carries two I2C sensors as two instruments and uses the unsigned 16-bit
+integer encoding. See
+[ADR-0063](adr/ADR-0063-Arduino-Uno-Light-Endpoint.md).
+
 This is a source-authoring guide. Building, uploading firmware, changing a
 deployed Runtime Host profile, opening a serial device, and physically testing
 hardware remain separately controlled operations.
@@ -31,7 +39,7 @@ The current production boundary supports:
 
 | Capability | Supported forms |
 | --- | --- |
-| Property | Boolean; unsigned 16-bit little-endian millivolts materialized as `double` volts |
+| Property | Boolean; unsigned 16-bit little-endian millivolts materialized as `double` volts; unsigned 16-bit little-endian integer materialized as `double` in the unit the descriptor declares |
 | Property access | Read-only or read/write, as declared by the descriptor |
 | Command | Parameterless request with success/unknown-command status |
 | Event | Unsolicited, no payload, correlation ID zero |
@@ -143,6 +151,29 @@ The same encoding can back a read/write numeric Property, but the firmware
 must validate the two-byte write value and the C# descriptor must declare
 `PropertyAccessMode.ReadWrite`. Do not silently clamp an invalid value; return
 `InvalidValue`.
+
+### Add an unsigned 16-bit integer Property
+
+Where the value is not a voltage, use
+`CompactPropertyValueEncoding.Unsigned16LittleEndian`. It transports the
+integer unchanged and materializes it as a `double` in the unit the descriptor
+declares, so the descriptor alone carries the physical meaning:
+
+```cpp
+const uint8_t IrradiancePropertyId = 0x05;
+
+const uint16_t microwattsPerSquareCentimetre = 1234;
+const uint8_t value[] =
+{
+  static_cast<uint8_t>(microwattsPerSquareCentimetre & 0xFF),
+  static_cast<uint8_t>(microwattsPerSquareCentimetre >> 8)
+};
+```
+
+The declared range must be `0` to `65535` with resolution `1`, because that is
+what the wire carries. The host encoder rejects a write outside that interval
+rather than clamping it. The reference light endpoint uses this encoding for
+both irradiance in µW/cm² and raw spectral acquisition counts.
 
 ### Add a parameterless Command
 

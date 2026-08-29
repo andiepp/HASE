@@ -121,4 +121,46 @@ public sealed class CompactPropertyValueEncoderTests
                 CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
                 5));
     }
+
+    [Theory]
+    [InlineData(0.0, 0x00, 0x00)]
+    [InlineData(1.0, 0x01, 0x00)]
+    [InlineData(1000.0, 0xE8, 0x03)]
+    [InlineData(65535.0, 0xFF, 0xFF)]
+    [InlineData(0.4, 0x00, 0x00)]
+    [InlineData(0.5, 0x01, 0x00)]
+    public void Encode_Unsigned16_ShouldReturnLittleEndianValue(
+        double value,
+        byte expectedLow,
+        byte expectedHigh)
+    {
+        ReadOnlyMemory<byte> result = CompactPropertyValueEncoder.Encode(
+            CompactPropertyValueEncoding.Unsigned16LittleEndian,
+            value);
+
+        Assert.Equal(new byte[] { expectedLow, expectedHigh }, result.ToArray());
+    }
+
+    [Theory]
+    [InlineData(-0.001)]
+    [InlineData(65535.001)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void Encode_Unsigned16OutsideWireRange_ShouldThrow(double value)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CompactPropertyValueEncoder.Encode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndian,
+                value));
+    }
+
+    [Fact]
+    public void Encode_Unsigned16NonDouble_ShouldThrow()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            CompactPropertyValueEncoder.Encode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndian,
+                5));
+    }
 }

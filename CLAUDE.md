@@ -34,8 +34,8 @@ Do not stage, commit, or push without explicit per-increment approval.
 - `tools/` — operational PowerShell for Arduino/ESP32, Deployment, and
   PrivateNetwork. Treat every script here as physical-mutation tooling.
 - `python/hase-client/` — asyncio Python client, pytest, setuptools.
-- `libraries/`, `templates/`, `HaseEndpoint/`, `HaseArduinoUno/` — endpoint
-  firmware sources.
+- `libraries/`, `templates/`, `HaseEndpoint/`, `HaseArduinoUno/`, and
+  `HaseArduinoUnoLight/` — endpoint firmware sources.
 
 Solution file is `HASE.slnx`. Target framework is `net10.0` throughout, except
 six WPF/Windows projects on `net10.0-windows`. Installed SDK: .NET 10.0.301.
@@ -61,7 +61,7 @@ Notes:
 
 - The complete suite takes approximately 100 seconds across 28 test projects.
   Running it unprompted is authorized.
-- Expected result: 6,516 passed, 0 failed, 0 skipped. Report exact totals.
+- Expected result: 6,552 passed, 0 failed, 0 skipped. Report exact totals.
 - 66 warnings is the accepted baseline for a successful complete build. Report
   the count and any drift from it. Warnings appear only on a cold build.
 - No test carries a `Skip` or hardware `Trait`. The complete suite is

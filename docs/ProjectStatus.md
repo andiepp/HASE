@@ -1,5 +1,56 @@
 # Project Status
 
+## Completed architectural objective — ADR-0063 and ADR-0064
+
+**ADR-0063 — Arduino Uno Light Endpoint and ADR-0064 — Serial Transfer
+Serialization — implemented, physically validated on AEPRAKETE, and closed at
+6,552 passing tests from starting baseline
+`a28fa55ea50f3b2206bf941cc28127f0fb63bfe4`**
+
+- ADR-0063 adds the first compact endpoint that carries real measurement
+  instruments rather than transport-validation affordances. A second Arduino
+  Uno publishes an AS7331 UV sensor and an AS7343 14-channel spectral sensor
+  as two instruments of endpoint `arduino-uno-light-01`, descriptor
+  `arduino-uno-light` version 1.
+- Compact Serial Protocol Version 1 gained one additive Property value
+  encoding, `Unsigned16LittleEndian`, which transports an unsigned 16-bit
+  integer and materializes it in the unit the descriptor declares. `Hase.Core`
+  gained the quantities `irradiance` and `count` with their units. No existing
+  message type, status, or encoding was reinterpreted.
+- The firmware refreshes one coherent snapshot of both sensors every 500 ms, so
+  a Property read never triggers a conversion. Per-sensor readiness Properties
+  and `ReadFailed` channel reads make a partially wired board diagnosable
+  through the normal model, which matters because the compact transport forbids
+  diagnostic text on the serial line.
+- ADR-0064 was opened by what ADR-0063 exposed. The new board uses a CH340
+  USB-serial adapter, and on that adapter a write issued while an overlapped
+  read is pending aborts the read with `ERROR_OPERATION_ABORTED` and leaves the
+  stream unusable. Because every compact connection holds a pending read for
+  unsolicited Events, no CH340-class board could be verified, whatever firmware
+  it ran. The Runtime Host reported `NoVerifiedCandidate`, which reads as absent
+  hardware.
+- The owned serial byte stream now serializes its transfers: a read is issued
+  only while the port reports buffered bytes, and one transfer gate keeps reads
+  and writes mutually exclusive. The cost is approximately one Windows timer
+  tick of added exchange latency.
+- Physical validation on AEPRAKETE: the development Runtime Host publishes
+  `arduino-uno-01`, `arduino-uno-light-01`, and the byte-buffer simulation, all
+  `Ready`; the Client renders both instruments from the descriptor alone; both
+  sensors report ready; all 20 read Properties report `Quality: Good` with
+  their declared units; a Client write of `Uv/AlarmThreshold` was confirmed by
+  the endpoint on readback; both Measure Commands executed; and crossing the
+  threshold produced exactly one `Uv/AlarmRaised` occurrence attributed to the
+  endpoint and its AS7331 instrument.
+- The Client needed no endpoint-specific code. The complete user interface for
+  the new endpoint is descriptor-driven.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0063 and ADR-0064 are closed.
+
+---
+
 ## Completed architectural objective — ADR-0062
 
 **ADR-0062 — Diagnostic Export and Offline Analysis — implemented,

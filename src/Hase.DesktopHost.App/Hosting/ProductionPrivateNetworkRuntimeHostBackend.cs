@@ -432,9 +432,15 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 ArduinoUnoCompactDefinitionFactory.Create();
             CompactEndpointDefinition legacyCompactDefinition =
                 ArduinoUnoCompactDefinitionFactory.CreateLegacy();
+            CompactEndpointDefinition lightCompactDefinition =
+                ArduinoUnoLightCompactDefinitionFactory.Create();
             var definitionRepository =
                 new InMemoryCompactEndpointDefinitionRepository(
-                    [legacyCompactDefinition, compactDefinition]);
+                    [
+                        legacyCompactDefinition,
+                        compactDefinition,
+                        lightCompactDefinition
+                    ]);
 
             bool hasKel103Endpoints = kel103Plans.Count > 0;
 

@@ -141,4 +141,33 @@ public sealed class CompactPropertyValueDecoderTests
                 CompactPropertyValueEncoding.Unsigned16LittleEndianMillivolts,
                 new byte[length]));
     }
+
+    [Theory]
+    [InlineData(0x00, 0x00, 0.0)]
+    [InlineData(0x01, 0x00, 1.0)]
+    [InlineData(0xE8, 0x03, 1000.0)]
+    [InlineData(0xFF, 0xFF, 65535.0)]
+    public void Decode_Unsigned16_ShouldReturnRawValue(
+        byte lowByte,
+        byte highByte,
+        double expected)
+    {
+        object result = CompactPropertyValueDecoder.Decode(
+            CompactPropertyValueEncoding.Unsigned16LittleEndian,
+            [lowByte, highByte]);
+
+        Assert.Equal(expected, Assert.IsType<double>(result), precision: 3);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Decode_Unsigned16WrongLength_ShouldThrow(int length)
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            CompactPropertyValueDecoder.Decode(
+                CompactPropertyValueEncoding.Unsigned16LittleEndian,
+                new byte[length]));
+    }
 }
