@@ -2308,7 +2308,10 @@ Increments:
    presentation, and the endpoint-selection fix.
 2. 65B — Physical validation — complete; verified on AEPRAKETE against
    `arduino-uno-light-01`.
-3. 65C — Objective closure — complete; ADR-0065 is closed at 6,570 tests
+3. 65C — Objective closure — complete.
+4. 65D — Spectral curve completion — complete; the FZ, FY, and FXL channels
+   deferred at 65A now carry their centre wavelengths, so the curve covers all
+   twelve AS7343 channels that have one. ADR-0065 is closed at 6,575 tests
    across 28 test projects.
 
 ADR-0065 begins at exact commit

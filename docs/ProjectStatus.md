@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0065
 
 **ADR-0065 — Descriptor-Declared Property Presentation — implemented,
-physically validated on AEPRAKETE, and closed at 6,570 passing tests from
+physically validated on AEPRAKETE, and closed at 6,575 passing tests from
 starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
 
 - ADR-0065 answers a question the model could not previously express: which
@@ -45,7 +45,8 @@ starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
 - Physically validated on AEPRAKETE against `arduino-uno-light-01`: the tile
   stayed selected 25 seconds on across continuous refreshes; the three UV
   irradiances render as one row with one unit, one timestamp, and one `Read`;
-  the nine declared AS7343 channels render as one curve from 405 nm to 855 nm;
+  the AS7343 channels that carry a centre wavelength render as one curve from
+  405 nm to 855 nm;
   and the ungrouped Properties, the writable threshold editor, and the Commands
   are unchanged.
 

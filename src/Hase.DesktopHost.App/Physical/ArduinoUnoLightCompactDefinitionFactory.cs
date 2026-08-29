@@ -123,7 +123,8 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             SpectralFzCompactPropertyId,
             "spectral-fz",
             "FZ",
-            "FZ 450 nm"),
+            "FZ 450 nm",
+            450.0),
         new(
             SpectralF3CompactPropertyId,
             "spectral-f3",
@@ -146,12 +147,14 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             SpectralFyCompactPropertyId,
             "spectral-fy",
             "FY",
-            "FY 555 nm"),
+            "FY 555 nm",
+            555.0),
         new(
             SpectralFxlCompactPropertyId,
             "spectral-fxl",
             "FXL",
-            "FXL 600 nm"),
+            "FXL 600 nm",
+            600.0),
         new(
             SpectralF6CompactPropertyId,
             "spectral-f6",

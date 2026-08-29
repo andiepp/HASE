@@ -371,4 +371,108 @@ public sealed class ArduinoUnoLightCompactDefinitionFactoryTests
         return instrument.Interface.Properties.Single(
             property => property.Id == propertyId);
     }
+
+    [Fact]
+    public void Create_SpectralChannels_ShouldDeclareTheCurveAgainstWavelength()
+    {
+        CompactEndpointDefinition definition =
+            ArduinoUnoLightCompactDefinitionFactory.Create();
+
+        (string PropertyId, double Nanometres)[] expected =
+        [
+            ("spectral-f1", 405.0),
+            ("spectral-f2", 425.0),
+            ("spectral-fz", 450.0),
+            ("spectral-f3", 475.0),
+            ("spectral-f4", 515.0),
+            ("spectral-f5", 550.0),
+            ("spectral-fy", 555.0),
+            ("spectral-fxl", 600.0),
+            ("spectral-f6", 640.0),
+            ("spectral-f7", 690.0),
+            ("spectral-f8", 745.0),
+            ("spectral-nir", 855.0)
+        ];
+
+        PropertyDescriptor[] withAbscissa =
+            definition.DescriptorDefinition.Instruments
+                .Single(instrument => instrument.Id == SpectralInstrumentId)
+                .Interface.Properties
+                .Where(property => property.Presentation?.Abscissa is not null)
+                .ToArray();
+
+        Assert.Equal(
+            expected.Select(entry => entry.PropertyId).ToArray(),
+            withAbscissa.Select(property => property.Id.Value).ToArray());
+
+        foreach ((string propertyId, double nanometres) in expected)
+        {
+            PropertyDescriptor descriptor =
+                withAbscissa.Single(
+                    property => property.Id.Value == propertyId);
+
+            Assert.Equal(
+                "spectral-scan",
+                descriptor.Presentation!.GroupId);
+            Assert.Equal(
+                nanometres,
+                descriptor.Presentation.Abscissa!.Value);
+            Assert.Equal(
+                Units.Nanometre,
+                descriptor.Presentation.Abscissa.Unit);
+        }
+    }
+
+    [Fact]
+    public void Create_NonSpectralProperties_ShouldNotDeclareAnAbscissa()
+    {
+        CompactEndpointDefinition definition =
+            ArduinoUnoLightCompactDefinitionFactory.Create();
+
+        string[] withoutAbscissa =
+            definition.DescriptorDefinition.Instruments
+                .SelectMany(instrument => instrument.Interface.Properties)
+                .Where(property => property.Presentation?.Abscissa is null)
+                .Select(property => property.Id.Value)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToArray();
+
+        Assert.Equal(
+            [
+                "spectral-sensor-ready",
+                "spectral-visible-bottom-right",
+                "spectral-visible-top-left",
+                "uv-sensor-ready",
+                "uva-alarm-threshold",
+                "uva-irradiance",
+                "uvb-irradiance",
+                "uvc-irradiance"
+            ],
+            withoutAbscissa);
+    }
+
+    [Fact]
+    public void Create_UvIrradiances_ShouldShareOneGroupWithoutAnAbscissa()
+    {
+        CompactEndpointDefinition definition =
+            ArduinoUnoLightCompactDefinitionFactory.Create();
+
+        PropertyDescriptor[] grouped =
+            definition.DescriptorDefinition.Instruments
+                .Single(instrument => instrument.Id == UvInstrumentId)
+                .Interface.Properties
+                .Where(property => property.Presentation?.GroupId is not null)
+                .ToArray();
+
+        Assert.Equal(
+            ["uva-irradiance", "uvb-irradiance", "uvc-irradiance"],
+            grouped.Select(property => property.Id.Value).ToArray());
+        Assert.All(
+            grouped,
+            property =>
+            {
+                Assert.Equal("uv-irradiance", property.Presentation!.GroupId);
+                Assert.Null(property.Presentation.Abscissa);
+            });
+    }
 }

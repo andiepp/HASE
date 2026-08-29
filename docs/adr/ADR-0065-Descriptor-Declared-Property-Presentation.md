@@ -1,6 +1,6 @@
 # ADR-0065 — Descriptor-Declared Property Presentation
 
-- Status: Closed; Increment 65C documentation closure
+- Status: Closed; Increment 65D spectral curve completion
 - Date: 2026-08-29
 - Starting baseline: `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`
 - Starting subject: `ADR-0063: Arduino Uno Light endpoint with AS7331 and AS7343`
@@ -98,9 +98,10 @@ Properties. The writable alarm threshold and the readiness Property stay
 ungrouped, because they are not part of the reading.
 
 The AS7343 instrument declares group `spectral-scan` with a nanometre abscissa
-on `F1` 405, `F2` 425, `F3` 475, `F4` 515, `F5` 550, `F6` 640, `F7` 690, `F8`
-745, and `NIR` 855. `FZ`, `FY`, `FXL`, the two visible channels, and the
-readiness Property stay ungrouped.
+on every channel that has a centre wavelength: `F1` 405, `F2` 425, `FZ` 450,
+`F3` 475, `F4` 515, `F5` 550, `FY` 555, `FXL` 600, `F6` 640, `F7` 690, `F8`
+745, and `NIR` 855. The two broadband visible channels and the readiness
+Property stay ungrouped.
 
 ### Selection survives inventory refresh
 
@@ -172,8 +173,13 @@ Rollback boundary: the working tree before the increment.
 Definition of done: the complete Release suite passes, and the contract test
 pins the new field and messages rather than tolerating them.
 
-Result: 6,570 passed, 0 failed, 0 skipped across 28 test projects, from the
-6,552-test starting baseline. One SCPI transmission-timeout test failed on the
+Result: 6,572 passed, 0 failed, 0 skipped across 28 test projects, from the
+6,552-test starting baseline.
+
+The figure first recorded here was 6,570, measured before the last two
+selection tests were added. Those were covered by the focused
+`Hase.Client.Wpf.Tests` suite, and the complete suite was not re-run before
+the commit. Corrected at Increment 65D, which re-measured the same code.
 first complete run and passed both in isolation and on a clean rerun; it is the
 known load-sensitive test and is unrelated to this change.
 
@@ -209,14 +215,35 @@ shortcut launches the installed Client, which still carries the previously
 published build. Validation used the repository Release build. Refreshing the
 installed Client is a separate deployment decision.
 
+
 ### Increment 65C — Documentation closure
 
 Documentation-only closure updates this ADR, `README.md`, `CLAUDE.md`,
 `docs/ProjectStatus.md`, and `docs/Roadmap.md` to a consistent closed
 state.
 
-Result: complete. ADR-0065 is closed at 6,570 tests across 28 test
+Result: complete. ADR-0065 is closed at 6,575 tests across 28 test
 projects.
+
+### Increment 65D — Spectral curve completion
+
+Goal: take up the deferred `FZ`, `FY`, and `FXL` channels so the curve covers
+every AS7343 channel with a centre wavelength.
+
+The three channels were excluded at 65A only because the requested scope named
+`F1` to `F8` and `NIR`. They are physically part of the same spectrum, and the
+mechanism needed no change: declaring their wavelength is the whole edit.
+
+Files modified:
+
+- `src/Hase.DesktopHost.App/Physical/ArduinoUnoLightCompactDefinitionFactory.cs`
+- `tests/Hase.DesktopHost.Tests/ArduinoUnoLightCompactDefinitionFactoryTests.cs`
+- `docs/adr/ADR-0065-Descriptor-Declared-Property-Presentation.md`
+
+Physical or deployment effects: none in the repository. The endpoint firmware,
+the wire contract, and the Client are unchanged.
+
+Definition of done: the curve carries twelve points in wavelength order, the
 
 ## Deferred scope
 
@@ -225,6 +252,3 @@ projects.
 - Grouping across instruments. Group identifiers are scoped to one instrument.
 - A declared preferred order within a group that has no abscissa; members
   currently follow descriptor declaration order.
-- `FZ`, `FY`, and `FXL` in the spectral curve. They carry centre wavelengths
-  too and would extend it to twelve points; they are excluded because the
-  requested scope named `F1` to `F8` and `NIR`.
