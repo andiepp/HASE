@@ -1,6 +1,6 @@
 # ADR-0065 — Descriptor-Declared Property Presentation
 
-- Status: Closed; Increment 65D spectral curve completion
+- Status: Closed; Increment 65E detail-pane refresh correction
 - Date: 2026-08-29
 - Starting baseline: `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`
 - Starting subject: `ADR-0063: Arduino Uno Light endpoint with AS7331 and AS7343`
@@ -119,10 +119,13 @@ the detail pane stayed populated while the tile stopped looking selected.
 The fix is the pattern the Runtime Host list in the same window already uses
 successfully: the tile draws its selection from an `IsSelected` flag on the
 projected item, re-applied to every rebuilt projection, instead of from the
-control's own visual state. `EndpointInventoryItemViewModel` additionally
-compares by attachment key alone, so a retained item still matches its
-replacement; selection is presentation state and is excluded from that
-equality.
+control's own visual state.
+
+An earlier attempt additionally overrode the item's equality to compare by
+attachment key alone. That did not fix the selection, and it silently froze
+the selected-endpoint detail pane, because the property system discards a
+content update whose new value compares equal to the current one. Increment
+65E removed it; see below.
 
 This was always latent. It became constant with an endpoint whose values move.
 
@@ -245,6 +248,52 @@ the wire contract, and the Client are unchanged.
 
 Definition of done: the curve carries twelve points in wavelength order, the
 
+
+### Increment 65E — Detail-pane refresh regression
+
+A corrective increment from operator use, in the pattern of 62F1.
+
+The operator reported that in the installed Client the selected endpoint's
+values no longer updated: the UV group, the spectral curve, and every other
+Property of the selected endpoint changed only when the endpoint was
+deselected and re-selected. The endpoint tiles themselves stayed live.
+
+Cause: the key-only equality override introduced at 65A alongside the
+selection fix. The detail pane binds the projected endpoint item into a
+content control, and the property system discards an update whose new value
+compares equal to the current one. With equality reduced to the attachment
+key, every fresh projection compared equal to the stale one, so the pane's
+data context was never replaced. Re-selection went through a different value
+and therefore refreshed. The regression escaped 65B because that validation
+captured freshly selected panes and verified selection persistence, not value
+propagation into an already-selected pane.
+
+Fix: the equality override is removed and the record's default value equality
+restored, so two consecutive projections always compare unequal and bindings
+refresh. The `IsSelected` flag mechanism — which is the actual selection fix
+and does not depend on equality — is unchanged. A regression test now pins
+that a refreshed projection of the same attachment must not compare equal to
+its predecessor, stating why.
+
+Files modified:
+
+- `src/Hase.Client.Wpf/ViewModels/EndpointInventoryItemViewModel.cs`
+- `tests/Hase.Client.Wpf.Tests/MainWindowSelectedHostProjectionTests.cs`
+- `docs/adr/ADR-0065-Descriptor-Declared-Property-Presentation.md`
+
+Physical or deployment effects: none in the repository; the installed Client
+carries the regression until republished.
+
+Definition of done: with the endpoint selected and untouched, every displayed
+timestamp of the selected endpoint advances; the selection indication still
+survives refresh; the focused client suite and the complete Release suite
+pass.
+
+Result: complete. Against the live endpoint, all seven displayed timestamps
+advanced within six seconds with no reselection, and the selection flag
+remained set. Focused client suite: 303 passed; complete Release suite: 6,574
+passed, 0 failed, 0 skipped across 28 test projects (two equality tests
+removed, one regression test added).
 ## Deferred scope
 
 - Axis ticks, gridlines, log scaling, and zoom. The plot states range and

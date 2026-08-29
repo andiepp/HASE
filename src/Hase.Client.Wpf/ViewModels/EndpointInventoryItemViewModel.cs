@@ -4,17 +4,19 @@ namespace Hase.Client.Wpf.ViewModels;
 /// Presents one published endpoint attachment in the client inventory.
 /// </summary>
 /// <remarks>
-/// Equality is identity equality on <see cref="Key"/> alone, deliberately
-/// excluding the live values carried by the projected instruments.
+/// The default record value equality is deliberate and load-bearing. The
+/// selected-endpoint detail pane binds this item into a content control, and
+/// the property system discards an update whose new value compares equal to
+/// the current one. An equality that ignored the projected live values froze
+/// the pane at its first projection, so values only changed on reselection
+/// (ADR-0065 Increment 65E). Two consecutive projections must therefore
+/// compare unequal.
 ///
-/// The projection is immutable and is replaced completely whenever the
-/// observation state changes, which happens continuously for an endpoint whose
-/// values move. A selection control holds the item instance it selected, so
-/// with the default record equality it could never match the replacement and
-/// the visual selection was lost on the first refresh. Identity equality lets
-/// the control re-match its retained item against the rebuilt inventory, which
-/// is the same rule <see cref="MainWindowViewModel.SelectedEndpoint"/> already
-/// applies when it resolves the logical selection by key.
+/// The visual selection indication does not rely on equality. It is drawn
+/// from <see cref="IsSelected"/>, which
+/// <see cref="MainWindowViewModel.SelectedEndpoint"/> re-applies to every
+/// rebuilt projection, the same way the Runtime Host list presents its
+/// selection.
 /// </remarks>
 public sealed record EndpointInventoryItemViewModel(
     RemoteEndpointAttachmentKey Key,
@@ -33,27 +35,11 @@ public sealed record EndpointInventoryItemViewModel(
     /// The selection indication is drawn from this flag rather than from the
     /// selection control's own visual state, because the projection is
     /// replaced on every observation change and the control clears its
-    /// visual selection when its item source is replaced. The Runtime Host
-    /// list already presents its selection the same way.
-    ///
-    /// It is excluded from equality: selection is presentation state, not
-    /// attachment identity.
+    /// visual selection when its item source is replaced.
     /// </remarks>
     public bool IsSelected
     {
         get;
         set;
-    }
-
-    public bool Equals(
-        EndpointInventoryItemViewModel? other)
-    {
-        return other is not null
-            && Key == other.Key;
-    }
-
-    public override int GetHashCode()
-    {
-        return Key.GetHashCode();
     }
 }

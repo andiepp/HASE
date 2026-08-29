@@ -762,12 +762,14 @@ public sealed class MainWindowSelectedHostProjectionTests
     }
 
     [Fact]
-    public void EndpointItem_AfterRefresh_ShouldStillMatchTheRetainedInstance()
+    public void EndpointItem_Refresh_ShouldNotCompareEqualSoBindingsRefresh()
     {
-        // A selection control keeps the item instance it selected. The
-        // projection is replaced on every observation change, so the retained
-        // instance must still compare equal to its replacement or the visual
-        // selection is lost while the logical selection survives.
+        // The selected-endpoint detail pane binds the projected item into a
+        // content control, and the property system discards an update whose
+        // new value compares equal to the current one. If two consecutive
+        // projections of the same attachment ever compare equal, the pane
+        // freezes at its first projection and values only change on
+        // reselection.
         RuntimeHostProfile profile = Profile("first", "host-01");
         Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
         MainWindowViewModel viewModel = Create(
@@ -783,31 +785,7 @@ public sealed class MainWindowSelectedHostProjectionTests
         EndpointInventoryItemViewModel refreshed = Assert.Single(viewModel.Endpoints);
 
         Assert.NotSame(retained, refreshed);
-        Assert.Equal(retained, refreshed);
-        Assert.Contains(retained, viewModel.Endpoints);
-        Assert.Equal(retained.GetHashCode(), refreshed.GetHashCode());
-    }
-
-    [Fact]
-    public void EndpointItem_DifferentAttachment_ShouldNotBeEqual()
-    {
-        RuntimeHostProfile profile = Profile("first", "host-01");
-        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
-        Guid replacement = Guid.Parse("2b8f1c04-96ad-4a4e-9a1e-6bb0a4b1f0c7");
-        MainWindowViewModel viewModel = Create(
-            profile,
-            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
-        viewModel.SelectRuntimeHost(profile.ProfileId);
-
-        EndpointInventoryItemViewModel retained = Assert.Single(viewModel.Endpoints);
-
-        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
-            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", replacement, 1))]));
-
-        EndpointInventoryItemViewModel replaced = Assert.Single(viewModel.Endpoints);
-
-        Assert.NotEqual(retained, replaced);
-        Assert.DoesNotContain(retained, viewModel.Endpoints);
+        Assert.NotEqual(retained, refreshed);
     }
 
     [Fact]

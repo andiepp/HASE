@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0065
 
 **ADR-0065 — Descriptor-Declared Property Presentation — implemented,
-physically validated on AEPRAKETE, and closed at 6,575 passing tests from
+physically validated on AEPRAKETE, and closed at 6,574 passing tests from
 starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
 
 - ADR-0065 answers a question the model could not previously express: which
@@ -42,6 +42,12 @@ starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
   control settles after the notification. The tile now draws its selection from
   a flag on the projected item, re-applied to every rebuilt projection, exactly
   as the Runtime Host list in the same window already did.
+- A corrective increment from operator use, 65E: the key-only equality
+  override introduced beside the selection fix froze the selected
+  endpoint's detail pane, because the property system discards a content
+  update whose new value compares equal to the current one. Values only
+  changed on reselection. The override is removed; the `IsSelected` flag
+  alone is the selection fix.
 - Physically validated on AEPRAKETE against `arduino-uno-light-01`: the tile
   stayed selected 25 seconds on across continuous refreshes; the three UV
   irradiances render as one row with one unit, one timestamp, and one `Read`;
