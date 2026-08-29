@@ -172,6 +172,7 @@ copy-and-paste steps, expected output, and troubleshooting.
 Example 0  Simulation only: one PC, Runtime Host and Client on
            loopback, no hardware, no certificates
 Example 1  Arduino Uno on the same PC over USB serial
+Example 1B Operating the Arduino Uno from the Client on the same PC
 Example 2  ESP32 in the local network
 Example 3  Client on a second PC through guided mutual-TLS provisioning
 Example 4  A second Runtime Host and the multi-host Client
@@ -184,7 +185,9 @@ client certificates.
 Example 0 is published: [Getting Started](docs/Getting-Started.md) takes a
 fresh clone to a running simulated system on one PC. Example 1 is
 published: [Arduino Uno on one PC](docs/examples/Example-1-Arduino-Uno.md) adds a
-physical USB instrument. Example 2 is published:
+physical USB instrument. Example 1B is published:
+[Operating the Arduino Uno from the Client](docs/examples/Example-1B-Arduino-Uno-from-the-Client.md)
+works the same board from the Client beside the host. Example 2 is published:
 [ESP32 in the local network](docs/examples/Example-2-ESP32.md) adds a Wi-Fi
 instrument. Example 3 is published:
 [Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md) crosses

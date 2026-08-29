@@ -133,10 +133,14 @@ running with the simulation endpoint only. Connect the board and press
 `Refresh`: the endpoint is searched, verified, and attached without a
 restart.
 
-Start the Client exactly as in Example 0 and press `Connect`. Selecting the
-`arduino-uno-01` endpoint shows its instrument with the Properties
-`Led/State` and `Analog/Voltage`, the Command `Led/Toggle`, and the Event
-`Controller/ButtonPressed`.
+The Runtime Host window is a full operator surface — everything below
+works directly in it. To operate the same endpoint from the Client on
+this PC, continue with
+[Example 1B](Example-1B-Arduino-Uno-from-the-Client.md), which repeats
+the launch scripts ready to paste and walks the client-side interaction.
+Either way, selecting the `arduino-uno-01` endpoint shows its instrument
+with the Properties `Led/State` and `Analog/Voltage`, the Command
+`Led/Toggle`, and the Event `Controller/ButtonPressed`.
 
 ## Interact with the physical endpoint
 
@@ -187,6 +191,9 @@ Close the Client, then the Runtime Host, as in Example 0.
 
 ## Where to go next
 
+[Example 1B — Operating the Arduino Uno from the Client](Example-1B-Arduino-Uno-from-the-Client.md)
+runs the Client beside the Runtime Host on this PC and works the LED from
+the client side.
 [Example 2 — ESP32 in the local network](Example-2-ESP32.md) continues the
 ladder with a Wi-Fi instrument. The
 [Arduino Uno Compact Endpoint How-To](../Arduino-Uno-Compact-Endpoint-How-To.md)
