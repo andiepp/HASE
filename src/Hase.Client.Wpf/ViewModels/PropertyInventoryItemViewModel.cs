@@ -1,3 +1,4 @@
+using System.Globalization;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
@@ -162,6 +163,47 @@ public sealed class PropertyInventoryItemViewModel
     public PropertyDescriptor Descriptor
     {
         get;
+    }
+
+    /// <summary>
+    /// Gets the presentation group this Property belongs to, if any.
+    /// </summary>
+    public string? GroupId =>
+        Descriptor.Presentation?.GroupId;
+
+    /// <summary>
+    /// Gets whether this Property is presented as part of a group.
+    /// </summary>
+    public bool IsGrouped =>
+        GroupId is not null;
+
+    /// <summary>
+    /// Gets this Property's coordinate on the independent axis of its group.
+    /// </summary>
+    public double? AbscissaValue =>
+        Descriptor.Presentation?.Abscissa?.Value;
+
+    /// <summary>
+    /// Gets the unit symbol of the abscissa, if one is declared.
+    /// </summary>
+    public string? AbscissaUnitSymbol =>
+        Descriptor.Presentation?.Abscissa?.Unit.Symbol;
+
+    /// <summary>
+    /// Attempts to read the cached value as a number.
+    /// </summary>
+    /// <remarks>
+    /// Numeric values are projected with round-trip invariant formatting, so
+    /// parsing recovers the exact value that was received.
+    /// </remarks>
+    public bool TryGetNumericValue(
+        out double value)
+    {
+        return double.TryParse(
+            Value,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out value);
     }
 
     public PropertyInputEditorKind EditorKind

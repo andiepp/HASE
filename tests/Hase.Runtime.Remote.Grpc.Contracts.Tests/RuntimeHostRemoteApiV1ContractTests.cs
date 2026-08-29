@@ -1449,9 +1449,65 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 "data",
                 6,
                 DataDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "presentation",
+                7,
+                PropertyPresentation.Descriptor,
                 false));
     }
 
+
+    [Fact]
+    public void PropertyPresentation_DefinesGroupAndAbscissa()
+    {
+        FieldDescriptor[] fields =
+            PropertyPresentation.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertField(
+                field,
+                "group_id",
+                1,
+                FieldType.String,
+                true,
+                false),
+            field => AssertMessageField(
+                field,
+                "abscissa",
+                2,
+                QuantityValue.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void QuantityValue_DefinesValueAndUnit()
+    {
+        FieldDescriptor[] fields =
+            QuantityValue.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertField(
+                field,
+                "value",
+                1,
+                FieldType.Double,
+                false,
+                false),
+            field => AssertMessageField(
+                field,
+                "unit",
+                2,
+                Unit.Descriptor,
+                false));
+    }
     [Fact]
     public void PropertyAccessMode_DefinesClrFlagValues()
     {

@@ -92,6 +92,15 @@ public sealed class MainWindowViewModel
                     && IsOperationHostConnected
                     && !IsBusy
                     && property.CanRead);
+        ReadPropertyGroupCommand =
+            new DelegateCommand<PropertyGroupItemViewModel>(
+                ExecuteReadPropertyGroup,
+                group =>
+                    group is not null
+                    && sessionController is not null
+                    && IsOperationHostConnected
+                    && !IsBusy
+                    && group.CanRead);
         WritePropertyCommand =
             new DelegateCommand<PropertyInventoryItemViewModel>(
                 ExecuteWriteProperty,
@@ -226,6 +235,7 @@ public sealed class MainWindowViewModel
             }
 
             selectedEndpointKey = valueKey;
+            ApplyEndpointSelectionFlags();
             RaisePropertyChanged();
         }
     }
@@ -797,6 +807,12 @@ public sealed class MainWindowViewModel
 
     public DelegateCommand<PropertyInventoryItemViewModel>
         ReadPropertyCommand
+    {
+        get;
+    }
+
+    public DelegateCommand<PropertyGroupItemViewModel>
+        ReadPropertyGroupCommand
     {
         get;
     }
@@ -1494,7 +1510,19 @@ public sealed class MainWindowViewModel
             selectedEndpointKey = null;
         }
 
+        ApplyEndpointSelectionFlags();
+
         RaisePropertyChanged(nameof(SelectedEndpoint));
+    }
+
+    private void ApplyEndpointSelectionFlags()
+    {
+        foreach (EndpointInventoryItemViewModel endpoint in endpoints)
+        {
+            endpoint.IsSelected =
+                selectedEndpointKey is not null
+                && endpoint.Key == selectedEndpointKey;
+        }
     }
 
     private void PreserveRequestedBooleanValues()
@@ -1677,6 +1705,24 @@ public sealed class MainWindowViewModel
         }
     }
 
+    private async void ExecuteReadPropertyGroup(
+        PropertyGroupItemViewModel? group)
+    {
+        if (group is null)
+        {
+            return;
+        }
+
+        foreach (PropertyInventoryItemViewModel member in group.Members)
+        {
+            if (member.CanRead)
+            {
+                await ReadPropertyAsync(
+                    member);
+            }
+        }
+    }
+
     private async void ExecuteWriteProperty(
         PropertyInventoryItemViewModel? property)
     {
@@ -1702,6 +1748,7 @@ public sealed class MainWindowViewModel
         ConnectCommand.RaiseCanExecuteChanged();
         DisconnectCommand.RaiseCanExecuteChanged();
         ReadPropertyCommand.RaiseCanExecuteChanged();
+        ReadPropertyGroupCommand.RaiseCanExecuteChanged();
         WritePropertyCommand.RaiseCanExecuteChanged();
         ExecuteCommand.RaiseCanExecuteChanged();
         ConnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();

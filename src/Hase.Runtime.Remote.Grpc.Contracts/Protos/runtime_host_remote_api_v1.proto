@@ -315,6 +315,7 @@ message PropertyDescriptor {
   optional string description = 4;
   PropertyAccessMode access_mode = 5;
   DataDescriptor data = 6;
+  PropertyPresentation presentation = 7;
 }
 
 enum PropertyAccessMode {
@@ -338,6 +339,16 @@ message NumericDataDescriptor {
   Unit native_unit = 2;
   ValueRange range = 3;
   Resolution resolution = 4;
+}
+
+message PropertyPresentation {
+  optional string group_id = 1;
+  QuantityValue abscissa = 2;
+}
+
+message QuantityValue {
+  double value = 1;
+  Unit unit = 2;
 }
 
 message BooleanDataDescriptor {

@@ -121,7 +121,19 @@
                              BorderThickness="0" Background="Transparent">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="10" BorderBrush="#FFD0D0D0" BorderThickness="1" CornerRadius="4">
+                                <Border Margin="0,0,0,8" Padding="10" CornerRadius="4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="#FFD0D0D0" />
+                                            <Setter Property="BorderThickness" Value="1" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#FF315A7D" />
+                                                    <Setter Property="BorderThickness" Value="3" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel>
                                         <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" TextWrapping="Wrap" />
                                         <TextBlock Margin="0,3,0,0" FontSize="11" Text="{Binding EndpointId, StringFormat='Endpoint: {0}'}" TextWrapping="Wrap" />
@@ -182,7 +194,100 @@
                                                     <Run Text=" — "/>
                                                     <Run Text="{Binding Kind}"/>
                                                 </TextBlock>
-                                                <ItemsControl Margin="16,4,0,8" ItemsSource="{Binding Properties}">
+                                                <ItemsControl Margin="16,4,0,8" ItemsSource="{Binding PropertyGroups}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Margin="0,2,0,8" Padding="10" BorderBrush="#FFD0D0D0" BorderThickness="1" CornerRadius="4">
+                                                                <StackPanel>
+                                                                    <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}"/>
+                                                                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding Members}">
+                                                                        <ItemsControl.Style>
+                                                                            <Style TargetType="ItemsControl">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsCurve}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </ItemsControl.Style>
+                                                                        <ItemsControl.ItemsPanel>
+                                                                            <ItemsPanelTemplate>
+                                                                                <StackPanel Orientation="Horizontal"/>
+                                                                            </ItemsPanelTemplate>
+                                                                        </ItemsControl.ItemsPanel>
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <StackPanel Margin="0,0,24,0" MinWidth="96">
+                                                                                    <TextBlock FontSize="11" Foreground="#FF666666" Text="{Binding DisplayName}"/>
+                                                                                    <TextBlock FontSize="18" Text="{Binding Value}"/>
+                                                                                    <TextBlock FontSize="11" Foreground="#FF666666" Text="{Binding Quality, StringFormat='Quality: {0}'}"/>
+                                                                                </StackPanel>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                    <Grid Margin="0,6,0,0">
+                                                                        <Grid.Style>
+                                                                            <Style TargetType="Grid">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsCurve}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Grid.Style>
+                                                                        <StackPanel>
+                                                                            <TextBlock FontSize="11" Foreground="#FF666666" Text="{Binding MaximumValueText, StringFormat='Maximum: {0}'}"/>
+                                                                            <Border Margin="0,2,0,0" HorizontalAlignment="Left" Background="#FFFAFAFA" BorderBrush="#FFD0D0D0" BorderThickness="1">
+                                                                                <Canvas Width="460" Height="170">
+                                                                                    <Polyline Points="{Binding PolylinePoints}" Stroke="#FF2A6FB0" StrokeThickness="1.5"/>
+                                                                                    <ItemsControl ItemsSource="{Binding CurvePoints}">
+                                                                                        <ItemsControl.ItemsPanel>
+                                                                                            <ItemsPanelTemplate>
+                                                                                                <Canvas/>
+                                                                                            </ItemsPanelTemplate>
+                                                                                        </ItemsControl.ItemsPanel>
+                                                                                        <ItemsControl.ItemContainerStyle>
+                                                                                            <Style TargetType="ContentPresenter">
+                                                                                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                                                                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                                                                            </Style>
+                                                                                        </ItemsControl.ItemContainerStyle>
+                                                                                        <ItemsControl.ItemTemplate>
+                                                                                            <DataTemplate>
+                                                                                                <Ellipse Width="7" Height="7" Margin="-3.5,-3.5,0,0" Fill="#FF2A6FB0" ToolTip="{Binding Tooltip}"/>
+                                                                                            </DataTemplate>
+                                                                                        </ItemsControl.ItemTemplate>
+                                                                                    </ItemsControl>
+                                                                                </Canvas>
+                                                                            </Border>
+                                                                            <Grid Width="462" HorizontalAlignment="Left" Margin="0,2,0,0">
+                                                                                <TextBlock FontSize="11" Foreground="#FF666666" HorizontalAlignment="Left" Text="{Binding MinimumAbscissaText}"/>
+                                                                                <TextBlock FontSize="11" Foreground="#FF666666" HorizontalAlignment="Right" Text="{Binding MaximumAbscissaText}"/>
+                                                                            </Grid>
+                                                                        </StackPanel>
+                                                                    </Grid>
+                                                                    <TextBlock Margin="0,6,0,0" Text="{Binding Unit, StringFormat='Unit: {0}'}"/>
+                                                                    <TextBlock Text="{Binding OldestTimestampUtc, StringFormat='UTC: {0}'}"/>
+                                                                    <Button Width="90" Margin="0,6,0,0" HorizontalAlignment="Left" Padding="10,4" Command="{Binding DataContext.ReadPropertyGroupCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Content="Read" IsEnabled="{Binding CanRead}">
+                                                                        <Button.Style>
+                                                                            <Style TargetType="Button">
+                                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding SupportsRead}" Value="False">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Button.Style>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <ItemsControl Margin="16,4,0,8" ItemsSource="{Binding UngroupedProperties}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
                                                             <StackPanel Margin="0,2">

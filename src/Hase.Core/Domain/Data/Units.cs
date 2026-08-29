@@ -56,4 +56,11 @@ public static class Units
             "Count",
             "counts",
             Quantities.Count);
+
+    public static readonly Unit Nanometre =
+        new(
+            "nanometre",
+            "Nanometre",
+            "nm",
+            Quantities.Length);
 }

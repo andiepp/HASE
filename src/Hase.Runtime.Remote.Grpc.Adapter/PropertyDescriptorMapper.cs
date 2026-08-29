@@ -10,17 +10,39 @@ public sealed class PropertyDescriptorMapper
     : IPropertyDescriptorMapper
 {
     private readonly IDataDescriptorMapper dataDescriptorMapper;
+    private readonly IUnitMapper unitMapper;
+
+    /// <summary>
+    /// Initializes the mapper.
+    /// </summary>
+    /// <summary>
+    /// Initializes the mapper with a self-composed unit mapper.
+    /// </summary>
+    public PropertyDescriptorMapper(
+        IDataDescriptorMapper dataDescriptorMapper)
+        : this(
+            dataDescriptorMapper,
+            new UnitMapper(
+                new QuantityMapper()))
+    {
+    }
 
     /// <summary>
     /// Initializes the mapper.
     /// </summary>
     public PropertyDescriptorMapper(
-        IDataDescriptorMapper dataDescriptorMapper)
+        IDataDescriptorMapper dataDescriptorMapper,
+        IUnitMapper unitMapper)
     {
         this.dataDescriptorMapper =
             dataDescriptorMapper
             ?? throw new ArgumentNullException(
                 nameof(dataDescriptorMapper));
+
+        this.unitMapper =
+            unitMapper
+            ?? throw new ArgumentNullException(
+                nameof(unitMapper));
     }
 
     /// <inheritdoc />
@@ -57,6 +79,43 @@ public sealed class PropertyDescriptorMapper
         {
             result.Description =
                 descriptor.Description;
+        }
+
+        if (descriptor.Presentation is not null)
+        {
+            result.Presentation =
+                MapPresentation(
+                    descriptor.Presentation);
+        }
+
+        return result;
+    }
+
+    private GrpcV1.PropertyPresentation MapPresentation(
+        DomainProperties.PropertyPresentation presentation)
+    {
+        var result =
+            new GrpcV1.PropertyPresentation();
+
+        if (presentation.GroupId is not null)
+        {
+            result.GroupId =
+                presentation.GroupId;
+        }
+
+        if (presentation.Abscissa is not null)
+        {
+            result.Abscissa =
+                new GrpcV1.QuantityValue
+                {
+                    Value =
+                        presentation.Abscissa.Value,
+                    Unit =
+                        unitMapper.Map(
+                            presentation.Abscissa.Unit)
+                        ?? throw new InvalidOperationException(
+                            "The unit mapper returned null.")
+                };
         }
 
         return result;

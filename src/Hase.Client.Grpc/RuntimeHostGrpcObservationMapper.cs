@@ -382,7 +382,34 @@ public sealed class RuntimeHostGrpcObservationMapper
                         throw Invalid(
                             "The Property descriptor has an unsupported "
                             + "access mode.")
-                }
+                },
+            Presentation =
+                MapPresentation(
+                    descriptor.Presentation)
+        };
+    }
+
+    private static PropertyPresentation? MapPresentation(
+        GrpcV1.PropertyPresentation? presentation)
+    {
+        if (presentation is null)
+        {
+            return null;
+        }
+
+        return new PropertyPresentation
+        {
+            GroupId =
+                OptionalText(
+                    presentation.HasGroupId,
+                    presentation.GroupId),
+            Abscissa =
+                presentation.Abscissa is null
+                    ? null
+                    : new QuantityValue(
+                        presentation.Abscissa.Value,
+                        MapUnit(
+                            presentation.Abscissa.Unit))
         };
     }
 

@@ -157,4 +157,40 @@ public sealed record InstrumentInventoryItemViewModel(
         set;
     }
 
+    /// <summary>
+    /// Gets the Properties that declare a presentation group, grouped and in
+    /// declaration order.
+    /// </summary>
+    public IReadOnlyList<PropertyGroupItemViewModel> PropertyGroups =>
+        Properties
+            .Where(
+                property =>
+                    property.IsGrouped)
+            .GroupBy(
+                property =>
+                    property.GroupId!,
+                StringComparer.Ordinal)
+            .Select(
+                group =>
+                    new PropertyGroupItemViewModel(
+                        group.Key,
+                        group.ToArray()))
+            .ToArray();
+
+    /// <summary>
+    /// Gets whether this instrument declares any presentation group.
+    /// </summary>
+    public bool HasPropertyGroups =>
+        PropertyGroups.Count > 0;
+
+    /// <summary>
+    /// Gets the Properties that are presented on their own.
+    /// </summary>
+    public IReadOnlyList<PropertyInventoryItemViewModel> UngroupedProperties =>
+        Properties
+            .Where(
+                property =>
+                    !property.IsGrouped)
+            .ToArray();
+
 }

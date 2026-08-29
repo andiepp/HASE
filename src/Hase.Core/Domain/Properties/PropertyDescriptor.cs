@@ -62,4 +62,10 @@ public sealed record PropertyDescriptor
     /// Defines whether the property can be read and/or written.
     /// </summary>
     public PropertyAccessMode AccessMode { get; init; } = PropertyAccessMode.ReadWrite;
+
+    /// <summary>
+    /// Gets the optional declaration of how this Property relates to the other
+    /// Properties of its instrument.
+    /// </summary>
+    public PropertyPresentation? Presentation { get; init; }
 }

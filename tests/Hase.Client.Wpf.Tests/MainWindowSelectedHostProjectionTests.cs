@@ -760,4 +760,92 @@ public sealed class MainWindowSelectedHostProjectionTests
                     [attachment]),
                 new RemoteObservationSequence(sequence)));
     }
+
+    [Fact]
+    public void EndpointItem_AfterRefresh_ShouldStillMatchTheRetainedInstance()
+    {
+        // A selection control keeps the item instance it selected. The
+        // projection is replaced on every observation change, so the retained
+        // instance must still compare equal to its replacement or the visual
+        // selection is lost while the logical selection survives.
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+
+        EndpointInventoryItemViewModel retained = Assert.Single(viewModel.Endpoints);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 2))]));
+
+        EndpointInventoryItemViewModel refreshed = Assert.Single(viewModel.Endpoints);
+
+        Assert.NotSame(retained, refreshed);
+        Assert.Equal(retained, refreshed);
+        Assert.Contains(retained, viewModel.Endpoints);
+        Assert.Equal(retained.GetHashCode(), refreshed.GetHashCode());
+    }
+
+    [Fact]
+    public void EndpointItem_DifferentAttachment_ShouldNotBeEqual()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        Guid replacement = Guid.Parse("2b8f1c04-96ad-4a4e-9a1e-6bb0a4b1f0c7");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+
+        EndpointInventoryItemViewModel retained = Assert.Single(viewModel.Endpoints);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", replacement, 1))]));
+
+        EndpointInventoryItemViewModel replaced = Assert.Single(viewModel.Endpoints);
+
+        Assert.NotEqual(retained, replaced);
+        Assert.DoesNotContain(retained, viewModel.Endpoints);
+    }
+
+    [Fact]
+    public void EndpointItem_AfterRefresh_ShouldStillCarryTheSelectionFlag()
+    {
+        // The tile draws its selection from this flag, so it must be re-applied
+        // to every rebuilt projection or the indication disappears.
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+        viewModel.SelectedEndpoint = Assert.Single(viewModel.Endpoints);
+
+        Assert.True(Assert.Single(viewModel.Endpoints).IsSelected);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 2))]));
+
+        Assert.True(Assert.Single(viewModel.Endpoints).IsSelected);
+
+        viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 3))]));
+
+        Assert.True(Assert.Single(viewModel.Endpoints).IsSelected);
+    }
+
+    [Fact]
+    public void EndpointItem_WithoutSelection_ShouldNotCarryTheSelectionFlag()
+    {
+        RuntimeHostProfile profile = Profile("first", "host-01");
+        Guid generation = Guid.Parse("19a37b52-f7c2-47c8-b32c-915f34a9bc21");
+        MainWindowViewModel viewModel = Create(
+            profile,
+            Session(profile, RuntimeHostClientSessionState.Connected, ModeState("host-01", generation, 1)));
+        viewModel.SelectRuntimeHost(profile.ProfileId);
+
+        Assert.False(Assert.Single(viewModel.Endpoints).IsSelected);
+    }
 }

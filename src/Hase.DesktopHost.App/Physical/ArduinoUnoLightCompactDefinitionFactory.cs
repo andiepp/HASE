@@ -46,6 +46,9 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
 
     private const double MaximumUnsigned16Value = ushort.MaxValue;
 
+    private const string UvIrradianceGroupId = "uv-irradiance";
+    private const string SpectralScanGroupId = "spectral-scan";
+
     private static readonly DescriptorReference DescriptorReference =
         new(
             new DescriptorId("arduino-uno-light"),
@@ -108,12 +111,14 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             SpectralF1CompactPropertyId,
             "spectral-f1",
             "F1",
-            "F1 405 nm"),
+            "F1 405 nm",
+            405.0),
         new(
             SpectralF2CompactPropertyId,
             "spectral-f2",
             "F2",
-            "F2 425 nm"),
+            "F2 425 nm",
+            425.0),
         new(
             SpectralFzCompactPropertyId,
             "spectral-fz",
@@ -123,17 +128,20 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             SpectralF3CompactPropertyId,
             "spectral-f3",
             "F3",
-            "F3 475 nm"),
+            "F3 475 nm",
+            475.0),
         new(
             SpectralF4CompactPropertyId,
             "spectral-f4",
             "F4",
-            "F4 515 nm"),
+            "F4 515 nm",
+            515.0),
         new(
             SpectralF5CompactPropertyId,
             "spectral-f5",
             "F5",
-            "F5 550 nm"),
+            "F5 550 nm",
+            550.0),
         new(
             SpectralFyCompactPropertyId,
             "spectral-fy",
@@ -148,22 +156,26 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             SpectralF6CompactPropertyId,
             "spectral-f6",
             "F6",
-            "F6 640 nm"),
+            "F6 640 nm",
+            640.0),
         new(
             SpectralF7CompactPropertyId,
             "spectral-f7",
             "F7",
-            "F7 690 nm"),
+            "F7 690 nm",
+            690.0),
         new(
             SpectralF8CompactPropertyId,
             "spectral-f8",
             "F8",
-            "F8 745 nm"),
+            "F8 745 nm",
+            745.0),
         new(
             SpectralNearInfraredCompactPropertyId,
             "spectral-nir",
             "NIR",
-            "NIR 855 nm"),
+            "NIR 855 nm",
+            855.0),
         new(
             SpectralVisibleTopLeftCompactPropertyId,
             "spectral-visible-top-left",
@@ -260,7 +272,8 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
                 UvaIrradiancePropertyPath,
                 "UV-A Irradiance",
                 "Reports the UV-A irradiance measured by the AS7331 sensor.",
-                PropertyAccessMode.Read);
+                PropertyAccessMode.Read,
+                UvIrradianceGroupId);
 
         PropertyDescriptor uvbIrradiance =
             CreateIrradianceProperty(
@@ -268,7 +281,8 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
                 UvbIrradiancePropertyPath,
                 "UV-B Irradiance",
                 "Reports the UV-B irradiance measured by the AS7331 sensor.",
-                PropertyAccessMode.Read);
+                PropertyAccessMode.Read,
+                UvIrradianceGroupId);
 
         PropertyDescriptor uvcIrradiance =
             CreateIrradianceProperty(
@@ -276,7 +290,8 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
                 UvcIrradiancePropertyPath,
                 "UV-C Irradiance",
                 "Reports the UV-C irradiance measured by the AS7331 sensor.",
-                PropertyAccessMode.Read);
+                PropertyAccessMode.Read,
+                UvIrradianceGroupId);
 
         PropertyDescriptor uvaAlarmThreshold =
             CreateIrradianceProperty(
@@ -433,7 +448,8 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
         DescriptorPath propertyPath,
         string displayName,
         string description,
-        PropertyAccessMode accessMode)
+        PropertyAccessMode accessMode,
+        string? groupId = null)
     {
         return new PropertyDescriptor(
             propertyId,
@@ -451,7 +467,14 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
             Description =
                 description,
             AccessMode =
-                accessMode
+                accessMode,
+            Presentation =
+                groupId is null
+                    ? null
+                    : new PropertyPresentation
+                    {
+                        GroupId = groupId
+                    }
         };
     }
 
@@ -479,7 +502,18 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
                 + channel.DisplayName
                 + ".",
             AccessMode =
-                PropertyAccessMode.Read
+                PropertyAccessMode.Read,
+            Presentation =
+                channel.WavelengthNanometres is null
+                    ? null
+                    : new PropertyPresentation
+                    {
+                        GroupId = SpectralScanGroupId,
+                        Abscissa =
+                            new QuantityValue(
+                                channel.WavelengthNanometres.Value,
+                                Units.Nanometre)
+                    }
         };
     }
 
@@ -487,5 +521,6 @@ internal static class ArduinoUnoLightCompactDefinitionFactory
         byte CompactPropertyId,
         string PropertyId,
         string PathSegment,
-        string DisplayName);
+        string DisplayName,
+        double? WavelengthNanometres = null);
 }
