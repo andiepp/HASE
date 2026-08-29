@@ -19,6 +19,7 @@ changes.
 - Native HASE Protocol Version 1 over framed TCP
 - Compact Serial Protocol Version 1 for resource-constrained endpoints
 - Multi-instrument physical endpoints with per-instrument readiness
+- Descriptor-declared Property grouping and sampled-curve presentation
 - Physical, simulated, network, and USB-serial endpoint support
 - Explicit endpoint discovery, verification, attachment, and detachment
 - Endpoint-authoritative identity and attachment generations
@@ -39,6 +40,8 @@ changes.
   - Endpoint and instrument inventory
   - Live Property values
   - Descriptor-driven Boolean, Numeric, String, and ByteArray Property writes
+  - Descriptor-declared Property groups as one compact reading, and grouped
+    channels with a declared abscissa as a sampled curve
   - Parameterless Command execution
   - Endpoint disconnect and reconnect state
   - Live Event feed with endpoint and instrument attribution
@@ -270,6 +273,7 @@ or environment-specific client configuration files.
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
 - [ADR-0063 — Arduino Uno Light Endpoint](docs/adr/ADR-0063-Arduino-Uno-Light-Endpoint.md)
 - [ADR-0064 — Serial Transfer Serialization](docs/adr/ADR-0064-Serial-Transfer-Serialization.md)
+- [ADR-0065 — Descriptor-Declared Property Presentation](docs/adr/ADR-0065-Descriptor-Declared-Property-Presentation.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)
 - [Laptop Client UI Tutorial](docs/Tutorial/HASE-Laptop-Client-UI-Tutorial.md)
 - [Descriptor-Driven Property Editing Tutorial](docs/Tutorial/HASE-Descriptor-Driven-Property-Editing-Tutorial.md)

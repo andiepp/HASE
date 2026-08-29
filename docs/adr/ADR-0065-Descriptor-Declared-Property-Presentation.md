@@ -1,6 +1,6 @@
 # ADR-0065 — Descriptor-Declared Property Presentation
 
-- Status: Proposed; Increments 65A and 65B complete, pending 65C closure
+- Status: Closed; Increment 65C documentation closure
 - Date: 2026-08-29
 - Starting baseline: `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`
 - Starting subject: `ADR-0063: Arduino Uno Light endpoint with AS7331 and AS7343`
@@ -211,8 +211,12 @@ installed Client is a separate deployment decision.
 
 ### Increment 65C — Documentation closure
 
-Documentation-only closure updates this ADR, `README.md`,
-`docs/ProjectStatus.md`, and `docs/Roadmap.md` to a consistent closed state.
+Documentation-only closure updates this ADR, `README.md`, `CLAUDE.md`,
+`docs/ProjectStatus.md`, and `docs/Roadmap.md` to a consistent closed
+state.
+
+Result: complete. ADR-0065 is closed at 6,570 tests across 28 test
+projects.
 
 ## Deferred scope
 

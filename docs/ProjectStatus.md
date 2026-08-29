@@ -1,5 +1,61 @@
 # Project Status
 
+## Completed architectural objective — ADR-0065
+
+**ADR-0065 — Descriptor-Declared Property Presentation — implemented,
+physically validated on AEPRAKETE, and closed at 6,570 passing tests from
+starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
+
+- ADR-0065 answers a question the model could not previously express: which
+  Properties belong together, and where a Property sits on an axis shared with
+  its peers. The Arduino Uno Light endpoint made the gap visible — twenty
+  vertical blocks with twenty `Read` buttons, and a spectrum whose shape was
+  nowhere to be seen.
+- Three options were weighed. Special-casing the endpoint in the Client was
+  rejected because the Client's stated principle is that it knows no device.
+  Inferring the wavelength from the display name `F1 405 nm` was rejected
+  because renaming or translating presentation text would then silently change
+  the physics. The relationship is declared in the descriptor instead.
+- `PropertyDescriptor` gained an optional `Presentation` carrying a group
+  identifier and an abscissa, the latter as the new `QuantityValue` type: a
+  scalar with its unit, distinct from `NumericDataDescriptor`, which describes
+  the shape every value takes. `Hase.Core` gained the nanometre unit.
+- The northbound contract carries it as additive field 7 with the new
+  `PropertyPresentation` and `QuantityValue` messages. No existing field
+  number, type, or meaning changed, so a client built against the previous
+  contract is unaffected and the reported API version is unchanged. The
+  contract test pins the new field and messages rather than tolerating them.
+- The Client groups an instrument's Properties by declared group and renders a
+  curve when the members carry both an abscissa and a numeric value, or a
+  compact row otherwise, with one shared unit, the least recent member
+  timestamp, and one `Read` button covering every readable member. The Client
+  contains no endpoint, descriptor, or device identifier: any instrument
+  declaring the same metadata renders the same way.
+- The metadata carries relationship, not appearance. It does not prescribe a
+  control, a layout, or a colour, and a presentation layer may ignore it and
+  render each Property on its own.
+- The increment also fixed a latent defect that the new presentation made
+  unusable: the selected endpoint lost its visual indication within a second,
+  because the immutable projection is replaced on every observation change and
+  the list control clears its own visual selection when its item source is
+  replaced. Re-asserting the bound selection does not restore it, because the
+  control settles after the notification. The tile now draws its selection from
+  a flag on the projected item, re-applied to every rebuilt projection, exactly
+  as the Runtime Host list in the same window already did.
+- Physically validated on AEPRAKETE against `arduino-uno-light-01`: the tile
+  stayed selected 25 seconds on across continuous refreshes; the three UV
+  irradiances render as one row with one unit, one timestamp, and one `Read`;
+  the nine declared AS7343 channels render as one curve from 405 nm to 855 nm;
+  and the ungrouped Properties, the writable threshold editor, and the Commands
+  are unchanged.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0063, ADR-0064, and ADR-0065 are closed.
+
+---
+
 ## Completed architectural objective — ADR-0063 and ADR-0064
 
 **ADR-0063 — Arduino Uno Light Endpoint and ADR-0064 — Serial Transfer
@@ -47,7 +103,8 @@ Serialization — implemented, physically validated on AEPRAKETE, and closed at
 ### Next
 
 Select the next architectural objective through a separately approved
-decision or increment. ADR-0063 and ADR-0064 are closed.
+decision or increment. ADR-0063 and ADR-0064 are closed; the objective
+that followed them is recorded above.
 
 ---
 

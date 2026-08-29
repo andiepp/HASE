@@ -2291,3 +2291,25 @@ Increments:
 
 ADR-0064 was opened by ADR-0063 Increment 63C and begins at the same exact
 commit `a28fa55ea50f3b2206bf941cc28127f0fb63bfe4`.
+
+## Completed objective — ADR-0065 Descriptor-Declared Property Presentation
+
+**Status:** [Complete] Closed at Increment 65C
+
+ADR-0065 lets a descriptor declare which Properties belong together and where
+a Property sits on an axis shared with its peers, so the Client can present a
+group as one reading or as a sampled curve without knowing the device. The
+metadata carries relationship, not appearance.
+
+Increments:
+
+1. 65A — Repository application — complete; the core model, the additive
+   northbound contract, the Arduino Uno Light declaration, the Client
+   presentation, and the endpoint-selection fix.
+2. 65B — Physical validation — complete; verified on AEPRAKETE against
+   `arduino-uno-light-01`.
+3. 65C — Objective closure — complete; ADR-0065 is closed at 6,570 tests
+   across 28 test projects.
+
+ADR-0065 begins at exact commit
+`5f07edd4194c6c618ec1bf0cc203ea1a95c63236` with 6,552 complete Release tests.
