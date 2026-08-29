@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Hase.Scpi.Tests;
 
 public sealed class ScpiTextSessionLifecycleTests
@@ -59,28 +61,65 @@ public sealed class ScpiTextSessionLifecycleTests
     [Fact]
     public async Task ExchangeTimeout_StartsAfterSerializationOwnershipIsAcquired()
     {
+        // The exchange timeout must start when an exchange acquires
+        // serialization ownership, not when it was requested. The query below
+        // waits for the command to release the gate and then needs its own
+        // read time; together those exceed the timeout, so the query can only
+        // succeed if its budget started at ownership.
+        //
+        // Ownership order is established by gate rather than by elapsed time:
+        // the command's write blocks until released, and the query is only
+        // requested once that write has started, so the query is provably
+        // queued behind it. Only the two durations below are wall-clock, and
+        // each leaves 400 ms of slack against the timeout so that scheduling
+        // jitter under a parallel suite run cannot decide the outcome.
+        TimeSpan exchangeTimeout = TimeSpan.FromMilliseconds(1000);
+        TimeSpan ownershipHold = TimeSpan.FromMilliseconds(600);
+        TimeSpan readDuration = TimeSpan.FromMilliseconds(600);
+
+        var commandWriteStarted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseCommandWrite = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         var writeNumber = 0;
         var stream = new ScriptedScpiByteStream(
             write: async (_, cancellationToken) =>
             {
                 if (Interlocked.Increment(ref writeNumber) == 1)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
+                    commandWriteStarted.SetResult();
+                    await releaseCommandWrite.Task.WaitAsync(cancellationToken);
                 }
             },
             read: async (buffer, cancellationToken) =>
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                await Task.Delay(readDuration, cancellationToken);
                 "OK\n"u8.CopyTo(buffer.Span);
                 return 3;
             });
-        await using var session = CreateSession(stream, TimeSpan.FromMilliseconds(200));
+        await using var session = CreateSession(stream, exchangeTimeout);
 
         var command = session.SendCommandAsync("OUTPUT ON");
+        await commandWriteStarted.Task;
+
+        var requested = Stopwatch.StartNew();
         var query = session.QueryAsync("READ?");
+
+        await Task.Delay(ownershipHold);
+        releaseCommandWrite.SetResult();
 
         await command;
         Assert.Equal("OK", await query);
+        requested.Stop();
+
+        // Without this the test could pass vacuously: if the query had not
+        // actually waited longer than the timeout, it would succeed whether or
+        // not the budget started at ownership.
+        Assert.True(
+            requested.Elapsed > exchangeTimeout,
+            $"The query completed in {requested.Elapsed}, which does not exceed "
+            + $"the {exchangeTimeout} exchange timeout, so it does not "
+            + "demonstrate that the timeout started at ownership.");
         Assert.Equal(ScpiTextSessionState.Open, session.State);
     }
 
