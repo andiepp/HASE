@@ -52,7 +52,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 profile.Kel103SerialEndpoints.Select(endpoint =>
                     endpoint.ExpectedEndpointId == expectedEndpointId
                         ? migrated
-                        : endpoint));
+                        : endpoint),
+                profile.RfLabSerialEndpoints);
         }, cancellationToken);
     }
 
@@ -65,7 +66,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints,
                 profile.CompactSerialEndpoints.Concat([endpoint]),
-                profile.Kel103SerialEndpoints), cancellationToken);
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints), cancellationToken);
     }
 
     public Task RemoveCompactAsync(string profilePath, string backupPath,
@@ -81,7 +83,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 profile.NativeNetworkEndpoints,
                 profile.CompactSerialEndpoints.Where(endpoint =>
                     endpoint.ExpectedEndpointId != expectedEndpointId),
-                profile.Kel103SerialEndpoints);
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints);
         }, cancellationToken);
     }
 
@@ -94,7 +97,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints.Concat([endpoint]),
                 profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints), cancellationToken);
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints), cancellationToken);
     }
 
     public Task RemoveNativeAsync(string profilePath, string backupPath,
@@ -110,7 +114,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 profile.NativeNetworkEndpoints.Where(endpoint =>
                     endpoint.ExpectedEndpointId != expectedEndpointId),
                 profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints);
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints);
         }, cancellationToken);
     }
 
@@ -123,7 +128,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             new DesktopRuntimeHostEndpointCompositionProfile(
                 profile.NativeNetworkEndpoints,
                 profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints.Concat([endpoint])), cancellationToken);
+                profile.Kel103SerialEndpoints.Concat([endpoint]),
+                profile.RfLabSerialEndpoints), cancellationToken);
     }
 
     public Task RemoveKel103Async(string profilePath, string backupPath,
@@ -139,6 +145,38 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 profile.NativeNetworkEndpoints,
                 profile.CompactSerialEndpoints,
                 profile.Kel103SerialEndpoints.Where(endpoint =>
+                    endpoint.ExpectedEndpointId != expectedEndpointId),
+                profile.RfLabSerialEndpoints);
+        }, cancellationToken);
+    }
+
+    public Task AddRfLabAsync(string profilePath, string backupPath,
+        DesktopRuntimeHostRfLabSerialEndpointProfile endpoint,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        return EditAsync(profilePath, backupPath, profile =>
+            new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints.Concat([endpoint])), cancellationToken);
+    }
+
+    public Task RemoveRfLabAsync(string profilePath, string backupPath,
+        string expectedEndpointId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        return EditAsync(profilePath, backupPath, profile =>
+        {
+            if (!profile.RfLabSerialEndpoints.Any(endpoint =>
+                    endpoint.ExpectedEndpointId == expectedEndpointId))
+                throw new KeyNotFoundException("The RF-Lab serial endpoint profile is not registered.");
+            return new DesktopRuntimeHostEndpointCompositionProfile(
+                profile.NativeNetworkEndpoints,
+                profile.CompactSerialEndpoints,
+                profile.Kel103SerialEndpoints,
+                profile.RfLabSerialEndpoints.Where(endpoint =>
                     endpoint.ExpectedEndpointId != expectedEndpointId));
         }, cancellationToken);
     }
@@ -192,6 +230,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         })).Concat(profile.Kel103SerialEndpoints.Select(endpoint => (object)new
         {
             kind = "Kel103Serial", expectedEndpointId = endpoint.ExpectedEndpointId,
+            definitionId = endpoint.DefinitionReference.Id.Value,
+            definitionVersion = endpoint.DefinitionReference.Version,
+            serialPort = endpoint.SerialPort, baudRate = endpoint.BaudRate
+        })).Concat(profile.RfLabSerialEndpoints.Select(endpoint => (object)new
+        {
+            kind = "RfLabSerial", expectedEndpointId = endpoint.ExpectedEndpointId,
             definitionId = endpoint.DefinitionReference.Id.Value,
             definitionVersion = endpoint.DefinitionReference.Version,
             serialPort = endpoint.SerialPort, baudRate = endpoint.BaudRate

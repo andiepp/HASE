@@ -18,6 +18,7 @@ using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Runtime.Transport.Discovery;
+using Hase.Mcnf.RfLab;
 using Hase.Scpi.Kel103;
 using Hase.Simulation.Runtime.ByteBuffer;
 using Hase.Transport.Discovery;
@@ -42,6 +43,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private readonly DesktopRuntimeHostStartupConfiguration configuration;
     private readonly Func<RuntimeContext, IEndpointAttachmentService>
         kel103AttachmentServiceProvider;
+    private readonly Func<RuntimeContext, IEndpointAttachmentService>
+        rfLabAttachmentServiceProvider;
 
     private RuntimeEndpointAttachmentHost? attachmentHost;
     private RuntimeHostNorthboundSnapshotComposition? composition;
@@ -74,6 +77,19 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         DesktopRuntimeHostStartupConfiguration configuration,
         Func<RuntimeContext, IEndpointAttachmentService>
             kel103AttachmentServiceProvider)
+        : this(
+            configuration,
+            kel103AttachmentServiceProvider,
+            CreateDefaultRfLabAttachmentServiceProvider())
+    {
+    }
+
+    internal ProductionPrivateNetworkRuntimeHostBackend(
+        DesktopRuntimeHostStartupConfiguration configuration,
+        Func<RuntimeContext, IEndpointAttachmentService>
+            kel103AttachmentServiceProvider,
+        Func<RuntimeContext, IEndpointAttachmentService>
+            rfLabAttachmentServiceProvider)
     {
         this.configuration =
             configuration
@@ -81,7 +97,18 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         this.kel103AttachmentServiceProvider =
             kel103AttachmentServiceProvider
             ?? throw new ArgumentNullException(nameof(kel103AttachmentServiceProvider));
+        this.rfLabAttachmentServiceProvider =
+            rfLabAttachmentServiceProvider
+            ?? throw new ArgumentNullException(nameof(rfLabAttachmentServiceProvider));
     }
+
+    private static Func<RuntimeContext, IEndpointAttachmentService>
+        CreateDefaultRfLabAttachmentServiceProvider() =>
+        runtimeContext =>
+            new DesktopRuntimeHostRfLabAttachmentService(
+                new DesktopRuntimeHostRfLabAttachmentFactory(
+                    runtimeContext,
+                    new SystemIoPortsSerialByteStreamFactory()));
 
     public void ConfigureMediaBoundary(
         IRuntimeHostMediaWebBoundary boundary)
@@ -371,6 +398,14 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                         endpointComposition.Kel103SerialEndpoints,
                         new Kel103DefinitionRepository(),
                         cancellationToken);
+        IReadOnlyList<DesktopRuntimeHostRfLabEndpointPlan> rfLabPlans =
+            endpointComposition is null
+                ? []
+                : await DesktopRuntimeHostRfLabDefinitionPreflight
+                    .ResolveAllAsync(
+                        endpointComposition.RfLabSerialEndpoints,
+                        new RfLabDefinitionRepository(),
+                        cancellationToken);
 
         try
         {
@@ -443,10 +478,17 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     ]);
 
             bool hasKel103Endpoints = kel103Plans.Count > 0;
+            bool hasRfLabEndpoints = rfLabPlans.Count > 0;
+            bool hasInstrumentEndpoints = hasKel103Endpoints || hasRfLabEndpoints;
+            Func<RuntimeContext, IEndpointAttachmentService>
+                instrumentAttachmentServiceProvider =
+                    CreateInstrumentAttachmentServiceProvider(
+                        hasKel103Endpoints,
+                        hasRfLabEndpoints);
 
             if (configuration.IncludeByteBufferSimulation)
             {
-                attachmentHost = hasKel103Endpoints
+                attachmentHost = hasInstrumentEndpoints
                     ? RuntimeEndpointAttachmentHost
                         .CreateNativeNetworkCompactSerialAndInProcess(
                             new ProtocolNativeEndpointBootstrapper(),
@@ -454,7 +496,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                 new EndpointDescriptorCompatibilityValidator()),
                             definitionRepository,
                             new DefaultRuntimeEndpointReconnectPolicy(),
-                            kel103AttachmentServiceProvider,
+                            instrumentAttachmentServiceProvider,
                             MaximumPayloadLength,
                             CompactEndpointHealthProbeOptions.Default,
                             diagnostics: session.Publisher)
@@ -471,7 +513,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
             }
             else
             {
-                attachmentHost = hasKel103Endpoints
+                attachmentHost = hasInstrumentEndpoints
                     ? RuntimeEndpointAttachmentHost
                         .CreateNativeNetworkAndCompactSerial(
                             new ProtocolNativeEndpointBootstrapper(),
@@ -479,7 +521,7 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                                 new EndpointDescriptorCompatibilityValidator()),
                             definitionRepository,
                             new DefaultRuntimeEndpointReconnectPolicy(),
-                            kel103AttachmentServiceProvider,
+                            instrumentAttachmentServiceProvider,
                             MaximumPayloadLength,
                             CompactEndpointHealthProbeOptions.Default,
                             diagnostics: session.Publisher)
@@ -538,7 +580,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                             currentAttachmentHost,
                             endpointComposition,
                             definitionRepository,
-                            kel103Plans);
+                            kel103Plans,
+                            rfLabPlans);
             int successfullyAttachedEndpointCount = 0;
 
             foreach (DesktopRuntimeHostEndpointRefreshTarget target
@@ -782,23 +825,50 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         diagnosticSession?.ClearDiagnostics();
     }
 
+    /// <summary>
+    /// Selects the additional-family attachment service for the configured
+    /// instrument endpoints. A family's service provider is invoked only
+    /// when at least one endpoint of that family is configured.
+    /// </summary>
+    private Func<RuntimeContext, IEndpointAttachmentService>
+        CreateInstrumentAttachmentServiceProvider(
+            bool hasKel103Endpoints,
+            bool hasRfLabEndpoints) =>
+        runtimeContext => new DesktopRuntimeHostInstrumentAttachmentRouter(
+            hasKel103Endpoints
+                ? kel103AttachmentServiceProvider(runtimeContext)
+                : null,
+            hasRfLabEndpoints
+                ? rfLabAttachmentServiceProvider(runtimeContext)
+                : null);
+
     private static IReadOnlyList<DesktopRuntimeHostEndpointRefreshTarget>
         CreateConfiguredEndpointTargets(
             RuntimeEndpointAttachmentHost host,
             DesktopRuntimeHostEndpointCompositionProfile endpointComposition,
             ICompactEndpointDefinitionRepository definitionRepository,
-            IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> kel103Plans)
+            IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> kel103Plans,
+            IReadOnlyList<DesktopRuntimeHostRfLabEndpointPlan> rfLabPlans)
     {
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(endpointComposition);
         ArgumentNullException.ThrowIfNull(definitionRepository);
         ArgumentNullException.ThrowIfNull(kel103Plans);
+        ArgumentNullException.ThrowIfNull(rfLabPlans);
 
         if (kel103Plans.Count
             != endpointComposition.Kel103SerialEndpoints.Count)
         {
             throw new InvalidDataException(
                 "The KEL-103 endpoint plans do not match the configured "
+                + "endpoint count.");
+        }
+
+        if (rfLabPlans.Count
+            != endpointComposition.RfLabSerialEndpoints.Count)
+        {
+            throw new InvalidDataException(
+                "The RF-Lab endpoint plans do not match the configured "
                 + "endpoint count.");
         }
 
@@ -844,6 +914,24 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                     endpoint.ExpectedEndpointId,
                     "Kel103Serial",
                     token => AttachKel103EndpointAsync(
+                        host,
+                        endpoint,
+                        plan,
+                        token)));
+        }
+
+        for (int index = 0; index < rfLabPlans.Count; index++)
+        {
+            DesktopRuntimeHostRfLabSerialEndpointProfile endpoint =
+                endpointComposition.RfLabSerialEndpoints[index];
+            DesktopRuntimeHostRfLabEndpointPlan plan =
+                rfLabPlans[index];
+
+            targets.Add(
+                new DesktopRuntimeHostEndpointRefreshTarget(
+                    endpoint.ExpectedEndpointId,
+                    "RfLabSerial",
+                    token => AttachRfLabEndpointAsync(
                         host,
                         endpoint,
                         plan,
@@ -959,6 +1047,39 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 new SerialTransportOptions(
                     endpoint.SerialPort,
                     endpoint.BaudRate)),
+            HostRepositoryDescriptorSource.Instance);
+
+        await host.AttachmentInventory.AttachAsync(
+            request,
+            cancellationToken);
+    }
+
+    private static async Task AttachRfLabEndpointAsync(
+        RuntimeEndpointAttachmentHost host,
+        DesktopRuntimeHostRfLabSerialEndpointProfile endpoint,
+        DesktopRuntimeHostRfLabEndpointPlan plan,
+        CancellationToken cancellationToken)
+    {
+        if (new EndpointId(endpoint.ExpectedEndpointId) != plan.ExpectedEndpointId)
+        {
+            throw new InvalidDataException(
+                "An RF-Lab endpoint profile does not match its preflight plan.");
+        }
+
+        // The RF-Lab node communicates only with asserted DTR and RTS lines.
+        var request = new EndpointAttachmentRequest(
+            new DesktopRuntimeHostRfLabConnectionDefinition(
+                plan.ExpectedEndpointId,
+                plan.Definition,
+                new SerialTransportOptions(
+                    endpoint.SerialPort,
+                    endpoint.BaudRate,
+                    dataBits: 8,
+                    SerialParity.None,
+                    SerialStopBits.One,
+                    SerialHandshake.None,
+                    assertDataTerminalReady: true,
+                    assertRequestToSend: true)),
             HostRepositoryDescriptorSource.Instance);
 
         await host.AttachmentInventory.AttachAsync(

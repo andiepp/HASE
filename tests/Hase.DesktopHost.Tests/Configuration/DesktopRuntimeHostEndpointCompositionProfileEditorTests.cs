@@ -487,6 +487,92 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         Assert.DoesNotContain("   ", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task AddRfLabAsync_ShouldAppendExactProfileAndBackup()
+    {
+        using Files files = new(); files.Write(Native("native"), Kel103("kel"));
+        var endpoint = new DesktopRuntimeHostRfLabSerialEndpointProfile(
+            "rflab", "rflab-signal-lab", 2, "external-target", 115200);
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().AddRfLabAsync(
+            files.Profile, files.Backup, endpoint);
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        DesktopRuntimeHostRfLabSerialEndpointProfile added =
+            Assert.Single(active.RfLabSerialEndpoints);
+        Assert.Equal("rflab", added.ExpectedEndpointId);
+        Assert.Equal("rflab-signal-lab", added.DefinitionReference.Id.Value);
+        Assert.Equal((ushort)2, added.DefinitionReference.Version);
+        Assert.Equal("external-target", added.SerialPort);
+        Assert.Equal(115200, added.BaudRate);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.Kel103SerialEndpoints);
+        Assert.Empty((await files.Load(files.Backup)).RfLabSerialEndpoints);
+    }
+
+    [Fact]
+    public async Task RemoveRfLabAsync_ShouldRemoveExactAndPreserveOtherFamilies()
+    {
+        using Files files = new();
+        files.Write(Native("native"), Kel103("kel"), RfLab("first"), RfLab("second"));
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveRfLabAsync(
+            files.Profile, files.Backup, "second");
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        Assert.Equal("first", Assert.Single(active.RfLabSerialEndpoints).ExpectedEndpointId);
+        Assert.Single(active.NativeNetworkEndpoints);
+        Assert.Single(active.Kel103SerialEndpoints);
+        Assert.Equal(2, (await files.Load(files.Backup)).RfLabSerialEndpoints.Count);
+    }
+
+    [Fact]
+    public async Task AddRfLabAsync_DuplicateAcrossKinds_ShouldPreserveActiveWithoutTargetLeak()
+    {
+        using Files files = new(); files.Write(Kel103("same"));
+        string before = File.ReadAllText(files.Profile);
+
+        ArgumentException exception = await Assert.ThrowsAsync<ArgumentException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().AddRfLabAsync(
+                files.Profile, files.Backup,
+                new DesktopRuntimeHostRfLabSerialEndpointProfile(
+                    "same", "rflab-signal-lab", 1, "sensitive-external-target", 115200)));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+        Assert.DoesNotContain("sensitive-external-target", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RemoveRfLabAsync_WrongKind_ShouldPreserveActive()
+    {
+        using Files files = new(); files.Write(Kel103("kel"));
+        string before = File.ReadAllText(files.Profile);
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(() =>
+            new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveRfLabAsync(
+                files.Profile, files.Backup, "kel"));
+
+        Assert.Equal(before, File.ReadAllText(files.Profile));
+        Assert.False(File.Exists(files.Backup));
+    }
+
+    [Fact]
+    public async Task Kel103Edits_ShouldPreserveRfLabEndpoints()
+    {
+        using Files files = new();
+        files.Write(RfLab("rflab"), Kel103("kel"));
+
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor().RemoveKel103Async(
+            files.Profile, files.Backup, "kel");
+
+        DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
+        Assert.Empty(active.Kel103SerialEndpoints);
+        Assert.Equal("rflab", Assert.Single(active.RfLabSerialEndpoints).ExpectedEndpointId);
+    }
+
+    private static object RfLab(string id) => new { kind = "RfLabSerial", expectedEndpointId = id, definitionId = "rflab-signal-lab", definitionVersion = 1, serialPort = $"external-target-{id}", baudRate = 115200 };
+
     private static object Native(string id) => new { kind = "NativeNetwork", expectedEndpointId = id, host = "192.0.2.1", port = 5000 };
     private static object Compact(string id) => new { kind = "CompactSerial", expectedEndpointId = id, vendorId = 0x2341, productId = 0x0043, baudRate = 115200, verificationTimeoutMilliseconds = 3000 };
     private static object Kel103(string id) => new { kind = "Kel103Serial", expectedEndpointId = id, definitionId = "korad-kel103", definitionVersion = 2, serialPort = $"external-target-{id}", baudRate = 115200 };

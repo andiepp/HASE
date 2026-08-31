@@ -89,6 +89,77 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
     }
 
     [Fact]
+    public void Constructor_RfLabComposition_ShouldPreserveEndpoint()
+    {
+        var rfLab = new DesktopRuntimeHostRfLabSerialEndpointProfile(
+            "rflab-01", "rflab-signal-lab", 1, "external-target", 115200);
+
+        var profile = new DesktopRuntimeHostEndpointCompositionProfile([], [], [], [rfLab]);
+
+        Assert.Same(rfLab, Assert.Single(profile.RfLabSerialEndpoints));
+        Assert.Empty(profile.Kel103SerialEndpoints);
+    }
+
+    [Fact]
+    public void Constructor_ThreeArgumentComposition_ShouldLeaveRfLabEmpty()
+    {
+        var kel103 = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "kel-01", "korad-kel103", 2, "external-target", 115200);
+
+        var profile = new DesktopRuntimeHostEndpointCompositionProfile([], [], [kel103]);
+
+        Assert.Empty(profile.RfLabSerialEndpoints);
+    }
+
+    [Fact]
+    public void Constructor_DuplicateExpectedIdentityAcrossKel103AndRfLab_ShouldReject()
+    {
+        var kel103 = new DesktopRuntimeHostKel103SerialEndpointProfile(
+            "endpoint-01", "korad-kel103", 2, "kel-target", 115200);
+        var rfLab = new DesktopRuntimeHostRfLabSerialEndpointProfile(
+            "endpoint-01", "rflab-signal-lab", 1, "rflab-target", 115200);
+
+        Assert.Throws<ArgumentException>(
+            () => new DesktopRuntimeHostEndpointCompositionProfile([], [], [kel103], [rfLab]));
+    }
+
+    [Fact]
+    public void Constructor_MoreThan64EndpointsIncludingRfLab_ShouldReject()
+    {
+        DesktopRuntimeHostRfLabSerialEndpointProfile[] rfLabEndpoints = Enumerable.Range(1, 64)
+            .Select(index => new DesktopRuntimeHostRfLabSerialEndpointProfile(
+                $"rflab-{index}", "rflab-signal-lab", 1, $"external-target-{index}", 115200))
+            .ToArray();
+        var native = new DesktopRuntimeHostNativeNetworkEndpointProfile("native-01", "device.local", 5000);
+
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new DesktopRuntimeHostEndpointCompositionProfile([native], [], [], rfLabEndpoints));
+    }
+
+    [Fact]
+    public void RfLabSerial_Values_ShouldNormalizeAndPreserveDefinitionReference()
+    {
+        var endpoint = new DesktopRuntimeHostRfLabSerialEndpointProfile(
+            " rflab-01 ", " rflab-signal-lab ", 2, " external-target ", 115200);
+
+        Assert.Equal("rflab-01", endpoint.ExpectedEndpointId);
+        Assert.Equal("rflab-signal-lab", endpoint.DefinitionReference.Id.Value);
+        Assert.Equal((ushort)2, endpoint.DefinitionReference.Version);
+        Assert.Equal("external-target", endpoint.SerialPort);
+        Assert.DoesNotContain("external-target", endpoint.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(9600)]
+    [InlineData(0)]
+    public void RfLabSerial_UnsupportedBaudRate_ShouldReject(int baudRate)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new DesktopRuntimeHostRfLabSerialEndpointProfile(
+                "rflab-01", "rflab-signal-lab", 1, "external-target", baudRate));
+    }
+
+    [Fact]
     public void Constructor_EmptyComposition_ShouldReject()
     {
         Assert.Throws<ArgumentOutOfRangeException>(
