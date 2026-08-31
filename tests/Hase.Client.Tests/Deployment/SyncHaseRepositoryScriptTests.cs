@@ -55,9 +55,11 @@ public sealed class SyncHaseRepositoryScriptTests
         string script = ReadScript();
 
         // Every native invocation must be followed by an exit-code check,
-        // or a failed command would be reported as a successful sync.
+        // or a failed command would be reported as a successful sync. The
+        // check is what matters, not the shape of the condition holding
+        // it, so count the check itself.
         int invocations = CountOccurrences(script, "& git ");
-        int checks = CountOccurrences(script, "if ($LASTEXITCODE -ne 0)");
+        int checks = CountOccurrences(script, "$LASTEXITCODE -ne 0");
 
         Assert.Equal(invocations, checks);
     }
@@ -83,11 +85,45 @@ public sealed class SyncHaseRepositoryScriptTests
 
         // Reporting a mismatch is not enough; it has to stop.
         Assert.Contains(
-            "$isExpected = $headAfter -eq $ExpectedCommit",
+            "$isExpected = $headAfter -eq $resolvedExpected",
             script,
             StringComparison.Ordinal);
         Assert.Contains(
-            "but $ExpectedCommit was expected",
+            "but $resolvedExpected was expected",
+            script,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Script_ShouldResolveTheExpectedCommitRatherThanCompareItAsText()
+    {
+        string script = ReadScript();
+
+        // Comparing the forty-character commit against what an operator
+        // types rejects an abbreviation, which is correct input.
+        Assert.Contains(
+            "git rev-parse --verify --quiet \"$ExpectedCommit^{commit}\"",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "$headAfter -eq $ExpectedCommit",
+            script,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Script_ShouldRejectAnExpectedCommitThatNamesNothing()
+    {
+        string script = ReadScript();
+
+        // A value that resolves to nothing is a different fault from a
+        // genuine mismatch and has to say so.
+        Assert.Contains(
+            "does not name a commit in this repository",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "[string]::IsNullOrWhiteSpace($resolvedExpected)",
             script,
             StringComparison.Ordinal);
     }

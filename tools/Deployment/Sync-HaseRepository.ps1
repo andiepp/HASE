@@ -19,15 +19,17 @@
     its previous build until it is republished on that computer.
 
 .PARAMETER ExpectedCommit
-    The commit this computer is expected to reach. When supplied, the
-    script reports whether HEAD matches it. Omit it to fast-forward to
-    whatever origin/main currently holds.
+    The commit this computer is expected to reach. It is resolved through
+    Git, so an abbreviation or any other revision Git understands is
+    accepted. The script stops if the result does not match, and stops if
+    the value names no commit at all. Omit it to fast-forward to whatever
+    origin/main currently holds.
 
 .EXAMPLE
     .\Sync-HaseRepository.ps1
 
 .EXAMPLE
-    .\Sync-HaseRepository.ps1 -ExpectedCommit 8815210e81a860de2b7779e68341e243ebb324ac
+    .\Sync-HaseRepository.ps1 -ExpectedCommit f154c5a
 #>
 [CmdletBinding()]
 param(
@@ -113,11 +115,21 @@ Write-Output "clean        : $isClean"
 Write-Output "level        : $isLevel"
 
 if ($PSBoundParameters.ContainsKey("ExpectedCommit")) {
-    $isExpected = $headAfter -eq $ExpectedCommit
+    # Resolve rather than compare as text, so that an abbreviation, a tag
+    # or any other revision Git understands is accepted. Comparing the
+    # forty-character commit against what an operator actually types
+    # rejects correct input.
+    $resolvedExpected = & git rev-parse --verify --quiet "$ExpectedCommit^{commit}"
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($resolvedExpected)) {
+        throw "'$ExpectedCommit' does not name a commit in this repository."
+    }
+
+    $isExpected = $headAfter -eq $resolvedExpected
+    Write-Output "expected     : $resolvedExpected"
     Write-Output "at expected  : $isExpected"
 
     if (-not $isExpected) {
-        throw "HEAD is $headAfter but $ExpectedCommit was expected."
+        throw "HEAD is $headAfter but $resolvedExpected was expected."
     }
 }
 
