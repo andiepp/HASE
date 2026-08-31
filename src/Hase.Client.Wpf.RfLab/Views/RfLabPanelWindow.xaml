@@ -551,11 +551,16 @@
                         Content="{Binding ClockGeneratorState}"
                         />
 
+                    <!-- NCMultiDigit sets its own DataContext, so a plain binding
+                         written here resolves against the control and silently
+                         fails. Every binding on one of these controls must name
+                         its source explicitly. -->
                     <Label Grid.Column="1" Grid.Row="2" Style="{StaticResource ModLabel}" Content="Fclk0" />
                     <Viewbox Grid.Column="2" Grid.Row="2" Margin="0,2" HorizontalAlignment="Left">
                         <local:NCMultiDigit
                             x:Name="NCMD_SI5351_Fclk0"
-                            IsEnabled="{Binding IsClockGeneratorPresent}"
+                            IsEnabled="{Binding DataContext.IsClockGeneratorPresent,
+                                RelativeSource={RelativeSource AncestorType=Window}}"
                             Min="10000" Max="160000000" Value="1000000"
                             NC_Background="White"
                             NC_Foreground="Black"
@@ -567,7 +572,8 @@
                     <Viewbox Grid.Column="2" Grid.Row="4" Margin="0,2" HorizontalAlignment="Left">
                         <local:NCMultiDigit
                             x:Name="NCMD_SI5351_Fclk1"
-                            IsEnabled="{Binding IsClockGeneratorPresent}"
+                            IsEnabled="{Binding DataContext.IsClockGeneratorPresent,
+                                RelativeSource={RelativeSource AncestorType=Window}}"
                             Min="10000" Max="160000000" Value="2000000"
                             NC_Background="White"
                             NC_Foreground="Black"
@@ -579,7 +585,8 @@
                     <Viewbox Grid.Column="2" Grid.Row="6" Margin="0,2" HorizontalAlignment="Left">
                         <local:NCMultiDigit
                             x:Name="NCMD_SI5351_Fclk2"
-                            IsEnabled="{Binding IsClockGeneratorPresent}"
+                            IsEnabled="{Binding DataContext.IsClockGeneratorPresent,
+                                RelativeSource={RelativeSource AncestorType=Window}}"
                             Min="10000" Max="160000000" Value="3000000"
                             NC_Background="White"
                             NC_Foreground="Black"
