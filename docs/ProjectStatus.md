@@ -1,5 +1,60 @@
 # Project Status
 
+## Completed architectural objective — ADR-0067
+
+**ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
+validated on AEPRAKETE, and closed at 6,875 passing tests from starting
+baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
+
+- ADR-0066 published the RF-MiniLab and the Client rendered it
+  generically. That was a faithful reading of the descriptor and a
+  misreading of the request: the operator had asked for the interface
+  they designed and use — an existing WPF application with its nixie
+  frequency display, dials, and measurement chart — to be the module in
+  the Client.
+- ADR-0065 had rejected special-casing an endpoint in the Client, so the
+  question became how a presentation layer that knows no device can host
+  a surface designed for one. The answer is declaration and composition:
+  an instrument descriptor may declare a bounded panel identifier as an
+  additive northbound field, the Client library owns a registry but ships
+  no panel, and the application composes the panels it ships. A panel is
+  offered only when a declaration and a hosted panel agree.
+- A panel's only route to the device is `IRuntimeHostInstrumentOperations`,
+  bound to one attachment and one instrument and routed through the
+  session the workspace already uses. It opens no transport and speaks no
+  device protocol.
+- The panel is the operator's own interface: the styles, the six numeric
+  and dial controls, and the window are the original files. Three
+  surgeries were needed — one local status converter replacing six
+  protocol-library ones, an in-repository polyline chart replacing the
+  licensed component so that neither the dependency nor its embedded
+  licence key entered the repository, and the message-generator tab left
+  out while its firmware does not transmit. The view model could not be
+  carried over because it *was* the device controller; its replacement
+  preserves the bound member names.
+- Changing a live target applies the signal at once, as the original
+  dials did. RF-Lab definition version 3 is version 2 plus the
+  declaration; versions 1 and 2 are untouched.
+- The ported code predates nullable reference types, so its project
+  disables it and every file written for HASE opts in — preserving the
+  66-warning cold-build baseline the ported code had pushed to 126.
+- Physically validated on AEPRAKETE: the declaration reaches the Client
+  over the northbound API and resolves against the hosted panel, the
+  button in the endpoint list entry opens the RF-MiniLab window, and the
+  panel drove the instrument to 21.4 MHz at 40 dB attenuation through the
+  path a dial movement triggers, each step acknowledged.
+- Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
+  (`a9d1c70`), 67C deployment and physical validation, 67D this
+  documentation. The ADR document was written in 67D; the earlier
+  increments referenced it before it existed, which the ADR records.
+
+### Next
+
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0067 is closed.
+
+---
+
 ## Completed architectural objective — ADR-0066
 
 **ADR-0066 — RF-Lab MCNF Instrument Family — implemented, physically
@@ -47,8 +102,8 @@ passing tests from starting baseline
 
 ### Next
 
-Select the next architectural objective through a separately approved
-decision or increment. ADR-0066 is closed.
+ADR-0066 is closed. ADR-0067 followed from it and is closed; it is
+recorded at the top of this document.
 
 ---
 

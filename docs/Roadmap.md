@@ -2355,3 +2355,38 @@ Increments:
 ADR-0066 begins at exact commit
 `2994ab8b7a226040cb8b662e4aaa887780996a3a` with 6,574 complete Release
 tests and stands at 6,828 after Increment 66C.
+
+## Completed objective — ADR-0067 Client-Hosted Instrument Panels
+
+**Status:** [Complete] Closed at Increment 67D
+
+ADR-0067 lets an instrument descriptor declare a dedicated operating
+surface by name, so a presentation layer that knows no device can host a
+surface designed for one. The Client library owns the registry and ships
+no panel; an application composes the panels it ships. The first panel is
+the operator's own RF-Lab interface, carried over with its visual
+identity intact and driven through bounded instrument operations rather
+than the device protocol it was written against.
+
+Increments:
+
+1. 67A — Declaration and generic dispatch — complete as `542e8fd`;
+   `InstrumentPresentation.PanelId`, the additive northbound field with
+   pinned contract tests, the panel registry, the bounded instrument
+   operations, and the endpoint list-entry button. No panel composed, so
+   the workspace was unchanged.
+2. 67B — The RF-Lab operating panel — complete as `a9d1c70`; the ported
+   styles, controls, and window, an in-repository chart replacing the
+   licensed component, the view model over the session, and RF-Lab
+   definition version 3 declaring the panel.
+3. 67C — Deployment and physical validation — complete; all three
+   AEPRAKETE compositions moved to definition version 3, the declaration
+   verified over the northbound API, the button confirmed to open the
+   window, and the panel drove the instrument to 21.4 MHz at 40 dB
+   attenuation through the live-target path.
+4. 67D — Documentation closure — complete; the ADR was written in this
+   increment, which it records.
+
+ADR-0067 begins at exact commit
+`62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
+tests and stands at 6,875 across 34 test projects.
