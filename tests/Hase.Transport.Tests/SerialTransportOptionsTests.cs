@@ -201,6 +201,99 @@ public sealed class SerialTransportOptionsTests
     }
 
     [Fact]
+    public void Constructor_WithoutControlLineAssertions_ShouldLeaveLinesDeasserted()
+    {
+        var options =
+            new SerialTransportOptions(
+                "COM5",
+                115200,
+                8,
+                SerialParity.None,
+                SerialStopBits.One,
+                SerialHandshake.None);
+
+        Assert.False(
+            options.AssertDataTerminalReady);
+
+        Assert.False(
+            options.AssertRequestToSend);
+    }
+
+    [Fact]
+    public void Constructor_ControlLineAssertions_ShouldStoreSettings()
+    {
+        var options =
+            new SerialTransportOptions(
+                "COM12",
+                115200,
+                8,
+                SerialParity.None,
+                SerialStopBits.One,
+                SerialHandshake.None,
+                assertDataTerminalReady: true,
+                assertRequestToSend: true);
+
+        Assert.True(
+            options.AssertDataTerminalReady);
+
+        Assert.True(
+            options.AssertRequestToSend);
+    }
+
+    [Theory]
+    [InlineData(SerialHandshake.RequestToSend)]
+    [InlineData(SerialHandshake.RequestToSendXOnXOff)]
+    public void Constructor_RtsAssertionWithHardwareFlowControl_ShouldThrow(
+        SerialHandshake handshake)
+    {
+        void Act()
+        {
+            _ = new SerialTransportOptions(
+                "COM5",
+                115200,
+                8,
+                SerialParity.None,
+                SerialStopBits.One,
+                handshake,
+                assertDataTerminalReady: false,
+                assertRequestToSend: true);
+        }
+
+        ArgumentException exception =
+            Assert.Throws<ArgumentException>(
+                Act);
+
+        Assert.Equal(
+            "assertRequestToSend",
+            exception.ParamName);
+    }
+
+    [Theory]
+    [InlineData(SerialHandshake.RequestToSend)]
+    [InlineData(SerialHandshake.RequestToSendXOnXOff)]
+    public void Constructor_HardwareFlowControlWithoutRtsAssertion_ShouldBeAccepted(
+        SerialHandshake handshake)
+    {
+        var options =
+            new SerialTransportOptions(
+                "COM5",
+                115200,
+                8,
+                SerialParity.None,
+                SerialStopBits.One,
+                handshake,
+                assertDataTerminalReady: true,
+                assertRequestToSend: false);
+
+        Assert.Equal(
+            handshake,
+            options.Handshake);
+
+        Assert.True(
+            options.AssertDataTerminalReady);
+    }
+
+    [Fact]
     public void Constructor_InvalidHandshake_ShouldThrow()
     {
         void Act()

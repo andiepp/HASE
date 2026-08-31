@@ -16,6 +16,11 @@
   <Project Path="src/Hase.DesktopHost.App/Hase.DesktopHost.App.csproj" />
   <Project Path="src/Hase.Diagnostics.Export/Hase.Diagnostics.Export.csproj" />
   <Project Path="src/Hase.Diagnostics.Offline/Hase.Diagnostics.Offline.csproj" />
+  <Project Path="src/Hase.Mcnf/Hase.Mcnf.csproj" />
+  <Project Path="src/Hase.Mcnf.RfLab/Hase.Mcnf.RfLab.csproj" />
+  <Project Path="src/Hase.Mcnf.RfLab.Hosting/Hase.Mcnf.RfLab.Hosting.csproj" />
+  <Project Path="src/Hase.Mcnf.RfLab.Runtime/Hase.Mcnf.RfLab.Runtime.csproj" />
+  <Project Path="src/Hase.Mcnf.Serial/Hase.Mcnf.Serial.csproj" />
   <Project Path="src/Hase.Operator.Input/Hase.Operator.Input.csproj" />
   <Project Path="src/Hase.Operator.Presentation/Hase.Operator.Presentation.csproj" />
   <Project Path="src/Hase.Python.CredentialProvisioning/Hase.Python.CredentialProvisioning.csproj" />
@@ -45,6 +50,11 @@
   <Project Path="tests/Hase.DesktopHost.Tests/Hase.DesktopHost.Tests.csproj" />
   <Project Path="tests/Hase.Diagnostics.Export.Tests/Hase.Diagnostics.Export.Tests.csproj" />
   <Project Path="tests/Hase.Diagnostics.Offline.Tests/Hase.Diagnostics.Offline.Tests.csproj" />
+  <Project Path="tests/Hase.Mcnf.Tests/Hase.Mcnf.Tests.csproj" />
+  <Project Path="tests/Hase.Mcnf.RfLab.Tests/Hase.Mcnf.RfLab.Tests.csproj" />
+  <Project Path="tests/Hase.Mcnf.RfLab.Hosting.Tests/Hase.Mcnf.RfLab.Hosting.Tests.csproj" />
+  <Project Path="tests/Hase.Mcnf.RfLab.Runtime.Tests/Hase.Mcnf.RfLab.Runtime.Tests.csproj" />
+  <Project Path="tests/Hase.Mcnf.Serial.Tests/Hase.Mcnf.Serial.Tests.csproj" />
   <Project Path="tests/Hase.Operator.Input.Tests/Hase.Operator.Input.Tests.csproj" />
   <Project Path="tests/Hase.Operator.Presentation.Tests/Hase.Operator.Presentation.Tests.csproj" />
   <Project Path="tests/Hase.Python.CredentialProvisioning.Tests/Hase.Python.CredentialProvisioning.Tests.csproj" />

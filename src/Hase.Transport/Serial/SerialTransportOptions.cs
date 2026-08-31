@@ -37,6 +37,31 @@ public sealed class SerialTransportOptions
         SerialParity parity,
         SerialStopBits stopBits,
         SerialHandshake handshake)
+        : this(
+            portName,
+            baudRate,
+            dataBits,
+            parity,
+            stopBits,
+            handshake,
+            assertDataTerminalReady: false,
+            assertRequestToSend: false)
+    {
+    }
+
+    /// <summary>
+    /// Initializes serial transport options including the modem control-line
+    /// assertions applied when the port is opened.
+    /// </summary>
+    public SerialTransportOptions(
+        string portName,
+        int baudRate,
+        int dataBits,
+        SerialParity parity,
+        SerialStopBits stopBits,
+        SerialHandshake handshake,
+        bool assertDataTerminalReady,
+        bool assertRequestToSend)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
             portName);
@@ -84,6 +109,16 @@ public sealed class SerialTransportOptions
                 "The serial handshake value is not supported.");
         }
 
+        if (assertRequestToSend
+            && handshake is SerialHandshake.RequestToSend
+                or SerialHandshake.RequestToSendXOnXOff)
+        {
+            throw new ArgumentException(
+                "The RTS line cannot be asserted manually while hardware "
+                + "flow control owns it.",
+                nameof(assertRequestToSend));
+        }
+
         PortName =
             portName;
 
@@ -101,6 +136,12 @@ public sealed class SerialTransportOptions
 
         Handshake =
             handshake;
+
+        AssertDataTerminalReady =
+            assertDataTerminalReady;
+
+        AssertRequestToSend =
+            assertRequestToSend;
     }
 
     /// <summary>
@@ -147,6 +188,25 @@ public sealed class SerialTransportOptions
     /// Gets the flow-control mode.
     /// </summary>
     public SerialHandshake Handshake
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets whether the Data Terminal Ready line is asserted when the port
+    /// is opened. Some USB-serial devices, such as auto-resetting Arduino
+    /// boards, require an asserted DTR line for host communication.
+    /// </summary>
+    public bool AssertDataTerminalReady
+    {
+        get;
+    }
+
+    /// <summary>
+    /// Gets whether the Request To Send line is asserted when the port is
+    /// opened. Only valid without hardware flow control.
+    /// </summary>
+    public bool AssertRequestToSend
     {
         get;
     }

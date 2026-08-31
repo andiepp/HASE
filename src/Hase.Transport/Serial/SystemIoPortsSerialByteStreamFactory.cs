@@ -128,6 +128,20 @@ public sealed class SystemIoPortsSerialByteStreamFactory
                             options.Handshake)
             };
 
+        if (options.AssertDataTerminalReady)
+        {
+            serialPort.DtrEnable =
+                true;
+        }
+
+        // Assigning RtsEnable throws while hardware flow control owns the
+        // line, so the line is only touched when an assertion is requested.
+        if (options.AssertRequestToSend)
+        {
+            serialPort.RtsEnable =
+                true;
+        }
+
         return new SystemIoPortsSerialPort(
             serialPort);
     }

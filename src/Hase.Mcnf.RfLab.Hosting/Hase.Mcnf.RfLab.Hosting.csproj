@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
+    <ProjectReference Include="..\Hase.Mcnf\Hase.Mcnf.csproj" />
+    <ProjectReference Include="..\Hase.Mcnf.RfLab\Hase.Mcnf.RfLab.csproj" />
+    <ProjectReference Include="..\Hase.Mcnf.RfLab.Runtime\Hase.Mcnf.RfLab.Runtime.csproj" />
+    <ProjectReference Include="..\Hase.Mcnf.Serial\Hase.Mcnf.Serial.csproj" />
+    <ProjectReference Include="..\Hase.Runtime\Hase.Runtime.csproj" />
+    <ProjectReference Include="..\Hase.Runtime.Transport\Hase.Runtime.Transport.csproj" />
+    <ProjectReference Include="..\Hase.Transport\Hase.Transport.csproj" />
+  </ItemGroup>
+</Project>
