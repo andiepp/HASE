@@ -340,10 +340,30 @@ public sealed class RuntimeHostGrpcObservationMapper
                         descriptor.Commands.Select(
                             MapCommandDescriptor),
                         descriptor.Events.Select(
-                            MapEventDescriptor))
+                            MapEventDescriptor)),
+                Presentation =
+                    MapInstrumentPresentation(
+                        descriptor.Presentation)
             };
 
         return mapped;
+    }
+
+    private static InstrumentPresentation? MapInstrumentPresentation(
+        GrpcV1.InstrumentPresentation? presentation)
+    {
+        if (presentation is null)
+        {
+            return null;
+        }
+
+        return new InstrumentPresentation
+        {
+            PanelId =
+                OptionalText(
+                    presentation.HasPanelId,
+                    presentation.PanelId)
+        };
     }
 
     private static PropertyDescriptor MapPropertyDescriptor(

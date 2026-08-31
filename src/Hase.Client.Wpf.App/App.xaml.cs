@@ -72,7 +72,8 @@ public partial class App
             sessionController,
             Container.Resolve<IClientConfigurationFilePicker>(),
             diagnosticsWindowController,
-            mediaWindowController);
+            mediaWindowController,
+            Container.Resolve<IClientInstrumentPanelRegistry>());
 
         PrivateNetworkRuntimeHostProfileRegistry registry =
             Container.Resolve<PrivateNetworkRuntimeHostProfileRegistry>();
@@ -153,6 +154,13 @@ public partial class App
         containerRegistry.RegisterSingleton<
             IClientDiagnosticsWindowController,
             ClientDiagnosticsWindowController>();
+
+        // The panels this application composes into the workspace. An
+        // instrument is offered a panel only when it declares one of these
+        // identifiers.
+        containerRegistry.RegisterInstance<IClientInstrumentPanelRegistry>(
+            new ClientInstrumentPanelRegistry(
+                Array.Empty<IClientInstrumentPanel>()));
     }
 
     protected override void OnExit(

@@ -260,6 +260,50 @@ public sealed class InstrumentDescriptorMapperTests
             exception.Message);
     }
 
+    [Fact]
+    public void Map_WithoutPresentation_ShouldLeaveTheDeclarationAbsent()
+    {
+        InstrumentDescriptorMapper mapper = CreateMapper();
+
+        GrpcV1.InstrumentDescriptor mapped = mapper.Map(CreateInstrument());
+
+        Assert.Null(mapped.Presentation);
+    }
+
+    [Fact]
+    public void Map_DeclaredPanel_ShouldCarryThePanelIdentifier()
+    {
+        InstrumentDescriptorMapper mapper = CreateMapper();
+        InstrumentDescriptor descriptor = CreateInstrument() with
+        {
+            Presentation = new InstrumentPresentation
+            {
+                PanelId = "rf-lab-signal-lab"
+            }
+        };
+
+        GrpcV1.InstrumentDescriptor mapped = mapper.Map(descriptor);
+
+        Assert.NotNull(mapped.Presentation);
+        Assert.True(mapped.Presentation.HasPanelId);
+        Assert.Equal("rf-lab-signal-lab", mapped.Presentation.PanelId);
+    }
+
+    [Fact]
+    public void Map_PresentationWithoutPanel_ShouldCarryNoPanelIdentifier()
+    {
+        InstrumentDescriptorMapper mapper = CreateMapper();
+        InstrumentDescriptor descriptor = CreateInstrument() with
+        {
+            Presentation = new InstrumentPresentation()
+        };
+
+        GrpcV1.InstrumentDescriptor mapped = mapper.Map(descriptor);
+
+        Assert.NotNull(mapped.Presentation);
+        Assert.False(mapped.Presentation.HasPanelId);
+    }
+
     private static InstrumentDescriptorMapper CreateMapper()
     {
         return new InstrumentDescriptorMapper(

@@ -19,7 +19,8 @@ public static class RuntimeHostInventoryProjector
             string>? requestedCommandArgumentTexts = null,
         IReadOnlyDictionary<
             RemotePropertyTarget,
-            string>? requestedPropertyValueTexts = null)
+            string>? requestedPropertyValueTexts = null,
+        IReadOnlySet<string>? availablePanelIds = null)
     {
         ArgumentNullException.ThrowIfNull(
             state);
@@ -27,51 +28,101 @@ public static class RuntimeHostInventoryProjector
         return state.Snapshot?.Attachments
             .Select(
                 attachment =>
-                    new EndpointInventoryItemViewModel(
-                        attachment.Key,
-                        attachment.EndpointId.Value,
-                        attachment.Generation.ToString(),
-                        attachment.Descriptor.Metadata.DisplayName
-                            ?? attachment.EndpointId.Value,
-                        attachment.ConnectionStatus.State.ToString(),
-                        attachment.ConnectionStatus.State
-                            == RemoteEndpointConnectionState.Ready,
-                        attachment.ConnectionStatus.State
-                            != RemoteEndpointConnectionState.Ready,
-                        attachment.Descriptor.Instruments
-                            .Select(
-                                instrument =>
-                                    new InstrumentInventoryItemViewModel(
-                                        instrument.Id.Value,
-                                        instrument.Name,
-                                        instrument.Kind.Name,
-                                        instrument.Interface.Properties
-                                            .Select(
-                                                property =>
-                                                    ProjectProperty(
-                                                        state,
-                                                        attachment,
-                                                        instrument.Id,
-                                                        property,
-                                                        confirmedReads,
-                                                        requestedBooleanValues,
-                                                        requestedPropertyValueTexts))
-                                            .ToArray(),
-                                        instrument.Interface.Commands
-                                            .Select(
-                                                command =>
-                                                    ProjectCommand(
-                                                        state,
-                                                        attachment,
-                                                        instrument.Id,
-                                                        instrument.Interface.Properties,
-                                                        command,
-                                                        confirmedReads,
-                                                        requestedCommandArgumentTexts))
-                                            .ToArray()))
-                            .ToArray()))
+                    ProjectEndpoint(
+                        state,
+                        attachment,
+                        confirmedReads,
+                        requestedBooleanValues,
+                        requestedCommandArgumentTexts,
+                        requestedPropertyValueTexts,
+                        availablePanelIds))
             .ToArray()
             ?? [];
+    }
+
+    private static EndpointInventoryItemViewModel ProjectEndpoint(
+        RemoteObservationState state,
+        RemoteEndpointAttachmentSnapshot attachment,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            RemotePropertyValue>? confirmedReads,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            bool>? requestedBooleanValues,
+        IReadOnlyDictionary<
+            RemoteCommandTarget,
+            string>? requestedCommandArgumentTexts,
+        IReadOnlyDictionary<
+            RemotePropertyTarget,
+            string>? requestedPropertyValueTexts,
+        IReadOnlySet<string>? availablePanelIds)
+    {
+        InstrumentInventoryItemViewModel[] instruments =
+            attachment.Descriptor.Instruments
+                .Select(
+                    instrument =>
+                        new InstrumentInventoryItemViewModel(
+                            instrument.Id.Value,
+                            instrument.Name,
+                            instrument.Kind.Name,
+                            instrument.Interface.Properties
+                                .Select(
+                                    property =>
+                                        ProjectProperty(
+                                            state,
+                                            attachment,
+                                            instrument.Id,
+                                            property,
+                                            confirmedReads,
+                                            requestedBooleanValues,
+                                            requestedPropertyValueTexts))
+                                .ToArray(),
+                            instrument.Interface.Commands
+                                .Select(
+                                    command =>
+                                        ProjectCommand(
+                                            state,
+                                            attachment,
+                                            instrument.Id,
+                                            instrument.Interface.Properties,
+                                            command,
+                                            confirmedReads,
+                                            requestedCommandArgumentTexts))
+                                .ToArray())
+                        {
+                            PanelId =
+                                instrument.Presentation?.PanelId
+                        })
+                .ToArray();
+
+        // A declared panel is offered only when this client hosts one by that
+        // name; an unknown declaration presents exactly as no declaration.
+        InstrumentInventoryItemViewModel? panelInstrument =
+            availablePanelIds is null
+                ? null
+                : instruments.FirstOrDefault(
+                    instrument =>
+                        instrument.PanelId is not null
+                        && availablePanelIds.Contains(instrument.PanelId));
+
+        return new EndpointInventoryItemViewModel(
+            attachment.Key,
+            attachment.EndpointId.Value,
+            attachment.Generation.ToString(),
+            attachment.Descriptor.Metadata.DisplayName
+                ?? attachment.EndpointId.Value,
+            attachment.ConnectionStatus.State.ToString(),
+            attachment.ConnectionStatus.State
+                == RemoteEndpointConnectionState.Ready,
+            attachment.ConnectionStatus.State
+                != RemoteEndpointConnectionState.Ready,
+            instruments)
+        {
+            PanelId =
+                panelInstrument?.PanelId,
+            PanelInstrumentId =
+                panelInstrument?.InstrumentId
+        };
     }
 
     private static CommandInventoryItemViewModel ProjectCommand(

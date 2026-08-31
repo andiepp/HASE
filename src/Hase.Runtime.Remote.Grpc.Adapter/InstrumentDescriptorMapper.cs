@@ -62,6 +62,13 @@ public sealed class InstrumentDescriptorMapper
             descriptor.Metadata,
             result);
 
+        if (descriptor.Presentation is not null)
+        {
+            result.Presentation =
+                MapPresentation(
+                    descriptor.Presentation);
+        }
+
         foreach (DomainProperties.PropertyDescriptor property in
                  descriptor.Interface.Properties)
         {
@@ -90,6 +97,21 @@ public sealed class InstrumentDescriptorMapper
                     eventDescriptor)
                 ?? throw new InvalidOperationException(
                     "The Event descriptor mapper returned null."));
+        }
+
+        return result;
+    }
+
+    private static GrpcV1.InstrumentPresentation MapPresentation(
+        DomainInstruments.InstrumentPresentation presentation)
+    {
+        var result =
+            new GrpcV1.InstrumentPresentation();
+
+        if (presentation.PanelId is not null)
+        {
+            result.PanelId =
+                presentation.PanelId;
         }
 
         return result;

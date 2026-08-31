@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Client.Wpf.Services;
 using Hase.Client.Configuration;
 using Hase.Operator.Input;
@@ -26,6 +26,7 @@ public sealed class MainWindowViewModel
     private IClientConfigurationFilePicker? configurationFilePicker;
     private IClientDiagnosticsWindowController? diagnosticsWindowController;
     private IClientMediaWindowController? mediaWindowController;
+    private IClientInstrumentPanelRegistry? instrumentPanelRegistry;
     private bool isBusy;
     private string? failureMessage;
     private RuntimeHostClientFailureCategory? lastFailureCategory;
@@ -127,6 +128,14 @@ public sealed class MainWindowViewModel
             new DelegateCommand(
                 () => mediaWindowController!.Open(),
                 () => mediaWindowController is not null && Media.HasSources);
+        OpenInstrumentPanelCommand =
+            new DelegateCommand<EndpointInventoryItemViewModel>(
+                ExecuteOpenInstrumentPanel,
+                endpoint =>
+                    endpoint is not null
+                    && endpoint.CanOpenPanel
+                    && instrumentPanelRegistry is not null
+                    && IsOperationHostConnected);
         Media.PropertyChanged += (_, eventArgs) =>
         {
             if (eventArgs.PropertyName == nameof(RuntimeHostMediaViewModel.HasSources))
@@ -416,7 +425,8 @@ public sealed class MainWindowViewModel
                     confirmedReads,
                     requestedBooleanValues,
                     requestedCommandArgumentTexts,
-                    requestedPropertyValueTexts),
+                    requestedPropertyValueTexts,
+                    AvailablePanelIds),
                 nameof(Endpoints));
             ReconcileSelectedEndpoint();
         }
@@ -688,7 +698,8 @@ public sealed class MainWindowViewModel
                 confirmedReads,
                 requestedBooleanValues,
                 requestedCommandArgumentTexts,
-                requestedPropertyValueTexts),
+                requestedPropertyValueTexts,
+                AvailablePanelIds),
             nameof(Endpoints));
         ReconcileSelectedEndpoint();
     }
@@ -835,11 +846,19 @@ public sealed class MainWindowViewModel
     public DelegateCommand OpenDiagnosticsCommand { get; }
     public DelegateCommand OpenMediaCommand { get; }
 
+    /// <summary>
+    /// Opens the hosted panel an endpoint's instrument declares.
+    /// </summary>
+    public DelegateCommand<EndpointInventoryItemViewModel>
+        OpenInstrumentPanelCommand
+    { get; }
+
     public void Configure(
         IRuntimeHostClientSessionController controller,
         IClientConfigurationFilePicker filePicker,
         IClientDiagnosticsWindowController? diagnosticsController = null,
-        IClientMediaWindowController? mediaController = null)
+        IClientMediaWindowController? mediaController = null,
+        IClientInstrumentPanelRegistry? panelRegistry = null)
     {
         ArgumentNullException.ThrowIfNull(
             controller);
@@ -858,6 +877,7 @@ public sealed class MainWindowViewModel
             filePicker;
         diagnosticsWindowController = diagnosticsController;
         mediaWindowController = mediaController;
+        instrumentPanelRegistry = panelRegistry;
         OpenDiagnosticsCommand.RaiseCanExecuteChanged();
         OpenMediaCommand.RaiseCanExecuteChanged();
         RaiseCommandStateChanged();
@@ -1013,7 +1033,8 @@ public sealed class MainWindowViewModel
                 confirmedReads,
                 requestedBooleanValues,
                 requestedCommandArgumentTexts,
-                requestedPropertyValueTexts),
+                requestedPropertyValueTexts,
+                AvailablePanelIds),
             nameof(Endpoints));
         ReconcileSelectedEndpoint();
         RaisePropertyChanged(
@@ -1194,7 +1215,8 @@ public sealed class MainWindowViewModel
                         confirmedReads,
                         requestedBooleanValues,
                         requestedCommandArgumentTexts,
-                        requestedPropertyValueTexts),
+                        requestedPropertyValueTexts,
+                        AvailablePanelIds),
                     nameof(Endpoints));
             ReconcileSelectedEndpoint();
                 PropertyReadMessage =
@@ -1301,7 +1323,8 @@ public sealed class MainWindowViewModel
                         confirmedReads,
                         requestedBooleanValues,
                         requestedCommandArgumentTexts,
-                        requestedPropertyValueTexts),
+                        requestedPropertyValueTexts,
+                        AvailablePanelIds),
                     nameof(Endpoints));
             ReconcileSelectedEndpoint();
                 PropertyReadMessage =
@@ -1501,6 +1524,86 @@ public sealed class MainWindowViewModel
             await ConnectSelectedRuntimeHostAsync();
         }
     }
+
+    /// <summary>
+    /// Gets the panel identifiers this workspace can host.
+    /// </summary>
+    private IReadOnlySet<string>? AvailablePanelIds =>
+        instrumentPanelRegistry?.AvailablePanelIds;
+
+    private void ExecuteOpenInstrumentPanel(
+        EndpointInventoryItemViewModel? endpoint)
+    {
+        if (endpoint?.PanelId is not string panelId
+            || endpoint.PanelInstrumentId is not string instrumentId
+            || instrumentPanelRegistry is null
+            || !instrumentPanelRegistry.TryResolve(
+                panelId,
+                out IClientInstrumentPanel panel))
+        {
+            return;
+        }
+
+        panel.Open(
+            new ClientInstrumentPanelContext(
+                panelId,
+                endpoint.EndpointId,
+                instrumentId,
+                endpoint.DisplayName,
+                CreateInstrumentOperations(
+                    endpoint.Key,
+                    instrumentId)));
+    }
+
+    /// <summary>
+    /// Binds instrument operations for a panel to the same session routing the
+    /// workspace itself uses.
+    /// </summary>
+    private IRuntimeHostInstrumentOperations CreateInstrumentOperations(
+        RemoteEndpointAttachmentKey attachment,
+        string instrumentId)
+    {
+        return new RuntimeHostInstrumentOperations(
+            attachment,
+            new Hase.Core.Domain.Identity.InstrumentId(instrumentId),
+            (target, cancellationToken) =>
+                multiHostCoordinator is null
+                    ? sessionController!.ReadPropertyAsync(
+                        target,
+                        cancellationToken)
+                    : multiHostCoordinator.ReadPropertyAsync(
+                        new RemoteRuntimeHostPropertyTarget(
+                            RequireOperationHostId(),
+                            target),
+                        cancellationToken),
+            (target, requestedValue, cancellationToken) =>
+                multiHostCoordinator is null
+                    ? sessionController!.WritePropertyAsync(
+                        target,
+                        requestedValue,
+                        cancellationToken)
+                    : multiHostCoordinator.WritePropertyAsync(
+                        new RemoteRuntimeHostPropertyTarget(
+                            RequireOperationHostId(),
+                            target),
+                        requestedValue,
+                        cancellationToken),
+            (request, cancellationToken) =>
+                multiHostCoordinator is null
+                    ? sessionController!.ExecuteCommandAsync(
+                        request,
+                        cancellationToken)
+                    : multiHostCoordinator.ExecuteCommandAsync(
+                        new RemoteRuntimeHostCommandExecutionRequest(
+                            RequireOperationHostId(),
+                            request),
+                        cancellationToken));
+    }
+
+    private RemoteRuntimeHostId RequireOperationHostId() =>
+        SelectedRuntimeHost?.AuthoritativeRuntimeHostId
+        ?? throw new InvalidOperationException(
+            "The selected host has no authoritative identity.");
 
     private void ReconcileSelectedEndpoint()
     {
@@ -1754,5 +1857,6 @@ public sealed class MainWindowViewModel
         ConnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
         DisconnectSelectedRuntimeHostCommand.RaiseCanExecuteChanged();
         ToggleRuntimeHostConnectionCommand.RaiseCanExecuteChanged();
+        OpenInstrumentPanelCommand.RaiseCanExecuteChanged();
     }
 }

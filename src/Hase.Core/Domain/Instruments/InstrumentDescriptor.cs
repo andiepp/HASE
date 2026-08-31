@@ -29,6 +29,12 @@ public sealed record InstrumentDescriptor
 
     public InstrumentInterface Interface { get; init; } = new();
 
+    /// <summary>
+    /// Gets the optional declaration of how this instrument may be presented
+    /// as a whole, independently of its individual Properties.
+    /// </summary>
+    public InstrumentPresentation? Presentation { get; init; }
+
     private static string RequireText(string value, string parameterName)
     {
         if (string.IsNullOrWhiteSpace(value))

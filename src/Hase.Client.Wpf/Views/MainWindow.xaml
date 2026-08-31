@@ -137,6 +137,21 @@
                                     <StackPanel>
                                         <TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" TextWrapping="Wrap" />
                                         <TextBlock Margin="0,3,0,0" FontSize="11" Text="{Binding EndpointId, StringFormat='Endpoint: {0}'}" TextWrapping="Wrap" />
+                                        <Button Margin="0,6,0,0" Padding="8,3" HorizontalAlignment="Left"
+                                                Content="Open panel"
+                                                Command="{Binding DataContext.OpenInstrumentPanelCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanOpenPanel}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                         <TextBlock Margin="0,3,0,0" FontWeight="SemiBold" Text="{Binding ConnectionState}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">

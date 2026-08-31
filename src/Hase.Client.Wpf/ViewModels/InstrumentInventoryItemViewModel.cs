@@ -193,4 +193,13 @@ public sealed record InstrumentInventoryItemViewModel(
                     !property.IsGrouped)
             .ToArray();
 
+    /// <summary>
+    /// Gets the panel identifier this instrument declares, if any.
+    /// </summary>
+    public string? PanelId
+    {
+        get;
+        init;
+    }
+
 }

@@ -1162,7 +1162,32 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 "events",
                 12,
                 EventDescriptor.Descriptor,
-                true));
+                true),
+            field => AssertMessageField(
+                field,
+                "presentation",
+                13,
+                InstrumentPresentation.Descriptor,
+                false));
+    }
+
+    [Fact]
+    public void InstrumentPresentation_DefinesTheOptionalPanelDeclaration()
+    {
+        FieldDescriptor[] fields =
+            InstrumentPresentation.Descriptor.Fields
+                .InDeclarationOrder()
+                .ToArray();
+
+        Assert.Collection(
+            fields,
+            field => AssertField(
+                field,
+                "panel_id",
+                1,
+                FieldType.String,
+                true,
+                false));
     }
 
     [Fact]

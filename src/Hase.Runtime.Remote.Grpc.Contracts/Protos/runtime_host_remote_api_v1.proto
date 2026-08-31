@@ -306,6 +306,11 @@ message InstrumentDescriptor {
   repeated PropertyDescriptor properties = 10;
   repeated CommandDescriptor commands = 11;
   repeated EventDescriptor events = 12;
+  InstrumentPresentation presentation = 13;
+}
+
+message InstrumentPresentation {
+  optional string panel_id = 1;
 }
 
 message PropertyDescriptor {

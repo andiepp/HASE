@@ -42,4 +42,37 @@ public sealed record EndpointInventoryItemViewModel(
         get;
         set;
     }
+
+    /// <summary>
+    /// Gets the panel identifier declared by an instrument of this endpoint
+    /// that this client can host, or null when there is none.
+    /// </summary>
+    /// <remarks>
+    /// This is set only when the declaration and a hosted panel agree. An
+    /// endpoint that declares a panel this client does not host presents
+    /// exactly as one that declares none.
+    /// </remarks>
+    public string? PanelId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets the identity of the instrument whose panel <see cref="PanelId"/>
+    /// names.
+    /// </summary>
+    public string? PanelInstrumentId
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets whether a hosted panel can be opened for this endpoint.
+    /// </summary>
+    public bool CanOpenPanel =>
+        PanelId is not null
+        && PanelInstrumentId is not null
+        && IsReady;
 }
