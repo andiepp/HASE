@@ -2320,9 +2320,9 @@ Increments:
 ADR-0065 begins at exact commit
 `5f07edd4194c6c618ec1bf0cc203ea1a95c63236` with 6,552 complete Release tests.
 
-## Active objective — ADR-0066 RF-Lab MCNF Instrument Family
+## Completed objective — ADR-0066 RF-Lab MCNF Instrument Family
 
-**Status:** [Active] Increments 66A–66D complete, 66E open
+**Status:** [Complete] Closed at Increment 66E
 
 ADR-0066 publishes the RF-MiniLab signal laboratory as a runtime-hosted
 instrument family over a generic, reusable MCNF protocol layer. The node's
@@ -2344,10 +2344,13 @@ Increments:
    post-reset settle corrected to the verified three seconds.
 4. 66D — Documentation — complete; ADR-0066, Project Status, and this
    roadmap record the active objective consistently.
-5. 66E — Deployment and physical validation — open; composition entries
-   for both AEPRAKETE profiles, Client refresh, LABC and LTAEP
-   synchronization, and supervised physical validation as separately
-   approved steps.
+5. 66E — Deployment and physical validation — complete; the installed
+   host and Client republished from `fa0f3a1`, the `RfLabSerial` entry
+   added with backups to the development, secured, and installed
+   compositions, end-to-end validation identical in both operating modes
+   including the acknowledged 10 MHz carrier, and LABC and LTAEP
+   synchronized clean. ADR-0066 is closed at 6,828 tests across 33 test
+   projects.
 
 ADR-0066 begins at exact commit
 `2994ab8b7a226040cb8b662e4aaa887780996a3a` with 6,574 complete Release

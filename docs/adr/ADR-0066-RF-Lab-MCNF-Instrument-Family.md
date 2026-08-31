@@ -1,6 +1,6 @@
 # ADR-0066 — RF-Lab MCNF Instrument Family
 
-- Status: Active; Increments 66A–66D complete, Increment 66E open
+- Status: Closed; Increment 66E result recorded
 - Date: 2026-08-31
 - Starting baseline: `2994ab8b7a226040cb8b662e4aaa887780996a3a`
 - Starting complete Release baseline: 6,574 passed, 0 failed, 0 skipped
@@ -185,13 +185,32 @@ suite unchanged at 6,828.
 This ADR, `docs/ProjectStatus.md`, and `docs/Roadmap.md` record the
 active objective consistently. Physical effects: none.
 
-### Increment 66E — Deployment and physical validation (open)
+### Increment 66E — Deployment and physical validation
 
 Deployment of the `RfLabSerial` composition entry for COM12 on AEPRAKETE
 in both profiles, Client refresh, LABC and LTAEP synchronization, and
 supervised physical validation of the published endpoint, each as a
 separately approved step. The objective closes only on its recorded
 result.
+
+Result: complete. The installed Runtime Host and Client on AEPRAKETE were
+republished from `fa0f3a1`, and the `RfLabSerial` entry — `rf-minilab-01`,
+definition version 2, COM12 — was added with timestamped backups to the
+development, secured, and installed compositions. The installed
+composition also carries the KEL-103 entry, so the instrument attachment
+router ran in its production mixed-family configuration. The endpoint was
+validated end to end in both operating modes — the development loopback
+through the client library and the secured host through the Python client
+over mutual TLS — with identical results: published `Ready` with 17
+Properties and 11 Commands; identity `RF-Lab` and node type `AE.70.10.80`;
+authoritative sensor reads; the indicator switched off and on with
+device-confirmed readback; and the staged 10 MHz, 30 dB carrier applied
+with acknowledged execution — the family's first signal-path mutation
+against the physical node. LABC and LTAEP were synchronized to `fa0f3a1`
+and reported clean by the operator. One operational note: both secured
+compositions carry the endpoint, and one running host owns COM12 at a
+time; the other reports it unavailable. ADR-0066 is closed at 6,828 tests
+across 33 test projects.
 
 ## Deferred scope
 

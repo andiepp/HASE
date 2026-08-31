@@ -1,11 +1,11 @@
 # Project Status
 
-## Active architectural objective — ADR-0066
+## Completed architectural objective — ADR-0066
 
-**ADR-0066 — RF-Lab MCNF Instrument Family — Increments 66A–66D complete
-at 6,828 passing tests from starting baseline
-`2994ab8b7a226040cb8b662e4aaa887780996a3a`; Increment 66E (deployment and
-physical validation) open**
+**ADR-0066 — RF-Lab MCNF Instrument Family — implemented, physically
+validated in both operating modes on AEPRAKETE, and closed at 6,828
+passing tests from starting baseline
+`2994ab8b7a226040cb8b662e4aaa887780996a3a`**
 
 - ADR-0066 brings the RF-MiniLab — an Arduino Mega 2560 with an AD9910
   DDS shield, AD8307 detector, and Si5351 clock generator on COM12 — into
@@ -30,14 +30,25 @@ physical validation) open**
   corrected the post-reset settle from 1.5 to the verified three seconds.
 - Increments: 66A generic stack and family (`7c17c81`), 66B host
   integration (`221355b`), 66C characterization and settle correction
-  (`c5ff089`), 66D this documentation. 66E — deployment to both profiles,
-  Client refresh, LABC/LTAEP synchronization, and supervised physical
-  validation — awaits separate approval.
+  (`c5ff089`), 66D documentation (`fa0f3a1`), 66E deployment and physical
+  validation — complete.
+- 66E result: the installed host and Client were republished from
+  `fa0f3a1`; the `RfLabSerial` entry was added with backups to the
+  development, secured, and installed compositions, the last beside the
+  KEL-103 entry so the mixed-family router ran in production
+  configuration. End-to-end validation succeeded identically in both
+  modes — development loopback through the client library, the secured
+  host through the Python client over mutual TLS: endpoint `Ready` with
+  17 Properties and 11 Commands, identity `RF-Lab` / `AE.70.10.80`,
+  authoritative sensor reads, the indicator switched off and on with
+  confirmed readback, and the staged 10 MHz, 30 dB carrier applied with
+  acknowledged execution. LABC and LTAEP synchronized to `fa0f3a1` and
+  clean.
 
 ### Next
 
-Increment 66E — deployment and physical validation of the RF-Lab
-endpoint on AEPRAKETE — through separately approved steps.
+Select the next architectural objective through a separately approved
+decision or increment. ADR-0066 is closed.
 
 ---
 
@@ -99,8 +110,8 @@ starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
 
 ### Next
 
-ADR-0063, ADR-0064, and ADR-0065 are closed. The active objective is
-ADR-0066, recorded at the top of this document.
+ADR-0063, ADR-0064, and ADR-0065 are closed. ADR-0066 followed and is
+closed; it is recorded at the top of this document.
 
 ---
 
