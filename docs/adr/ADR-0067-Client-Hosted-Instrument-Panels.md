@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67I documentation closure
+- Status: Closed; Increment 67L documentation closure
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -329,33 +329,85 @@ recorded under known defects.
 
 This increment records 67G and 67H, the design position that a panel
 never disables itself, and the two client defects found while validating
-them.
+them. Its account of the first defect was wrong and is corrected above.
 
-## Known defects
+### Increment 67J — The clock outputs reach the panel
 
-Both were found while validating 67G and 67H on the instrument, and both
-are recorded here rather than fixed in passing.
+Each clock control names its binding source, so its enablement follows
+the panel rather than resolving against the control itself. Tests run the
+interface on a dedicated thread and assert all three states: that the
+control owns its data context, that a plain binding does not reach the
+panel, and that an explicitly sourced one does.
+
+Result: complete as `0ecc4e7`; 6,902 passed, 0 failed, 0 skipped across
+34 test projects.
+
+Physically validated: with the client republished, the operator confirmed
+the clock controls respond and that all three outputs retune, measured on
+an oscilloscope. That completes the physical validation of 67H, whose
+controls had reached the instrument only after this fix.
+
+The panel's clock defaults do not match what the node boots to — the
+panel starts channel two at 3 MHz where the firmware sets 25 MHz. That is
+the staged-target model of ADR-0066 showing through rather than a fault:
+the node offers no readback, so the panel shows what has been staged, not
+what the hardware is doing.
+
+### Increment 67K — The endpoint pane can submit a write
+
+The write command's predicate keeps only what changes when the workspace
+changes, matching command execution, so the button's own enablement
+binding is free to follow the typed value.
+
+Result: complete; 6,907 passed, 0 failed, 0 skipped across 34 test
+projects. Tests assert that the command's answer does not move with the
+typed value, that the enablement binding does and announces each change,
+and that the coarse gates still refuse a read-only Property and a
+disconnected workspace.
+
+### Increment 67L — Documentation closure
+
+This increment records 67J and 67K, corrects the account 67I gave of the
+binding defect, and marks both defects resolved.
+
+## Defects found while validating
+
+Both were found while validating 67G and 67H on the instrument, recorded
+before they were understood, and fixed in 67J and 67K.
 
 - **A ported control cannot be bound to the panel.** `NCMultiDigit` sets
   `DataContext = this` in its constructor, so a binding written on that
   element resolves against the control rather than the panel. The clock
-  outputs therefore never track `IsClockGeneratorPresent`, and their
-  enablement is inert: the operator sees "Clock generator: present" while
-  the controls stay disabled. The binding was carried over verbatim from
-  the original, which has the same flaw and never showed it. The fix is
-  an explicit binding source; the deferred conversion of these controls
-  to dependency properties would remove the class of fault.
-- **The generic Selected Endpoint pane cannot submit a write.** Its Write
-  button carries both a `Command` and an `IsEnabled` binding, and WPF
-  combines the two so that the command's `CanExecute` decides. Nothing
-  re-queries `WritePropertyCommand` when the operator types, because
-  `RaiseCommandStateChanged` fires only on connection, busy and
-  projection changes and the command does not observe
-  `CommandManager.RequerySuggested`. The button's state is therefore
-  frozen from the last projection and typing a valid value cannot enable
-  it. This belongs to the Client rather than to this ADR — it affects
+  outputs therefore never tracked `IsClockGeneratorPresent`. The binding
+  was carried over verbatim from the original, which has the same flaw
+  and never showed it. Fixed in 67J by naming the binding source; the
+  deferred conversion of these controls to dependency properties would
+  remove the class of fault.
+
+  Increment 67I described the effect of this wrongly, saying the controls
+  stayed disabled. A binding that cannot resolve leaves the property at
+  its default, and the default here is enabled, so the controls were
+  always enabled and simply ignored the clock generator. The tests
+  written for 67J assert this directly.
+
+- **The generic Selected Endpoint pane could not submit a write.** Its
+  Write button carries both a `Command` and an enablement binding, and
+  the host combines them so that the command decides. Whether the typed
+  value is valid was inside the command's predicate, and nothing
+  re-queries a command while the operator types, so the button's state
+  was frozen from the last projection and a valid value could not enable
+  it.
+
+  Command execution never had this fault: its predicate carries only what
+  changes when the workspace does, and the per-keystroke validity lives
+  in the button's own binding, which follows the item directly. Fixed in
+  67K by giving the write path the same shape. The write already
+  re-checked the value before submitting it, exactly as command execution
+  does, so nothing was made less safe.
+
+  This belongs to the Client rather than to this objective — it affected
   every writable Property on every endpoint — and is recorded here only
-  because this objective's validation found it.
+  because this objective's validation found and fixed it.
 
 ## Deferred scope
 

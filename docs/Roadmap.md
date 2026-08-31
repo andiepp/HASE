@@ -2358,7 +2358,7 @@ tests and stands at 6,828 after Increment 66C.
 
 ## Completed objective — ADR-0067 Client-Hosted Instrument Panels
 
-**Status:** [Complete] Closed at Increment 67I
+**Status:** [Complete] Closed at Increment 67L
 
 ADR-0067 lets an instrument descriptor declare a dedicated operating
 surface by name, so a presentation layer that knows no device can host a
@@ -2407,8 +2407,22 @@ Increments:
    The operator confirmed the flicker is gone and the tab is present.
 8. 67I — Documentation closure — complete; records 67G and 67H, the
    position that a panel never disables itself, and the two client
-   defects found while validating them.
+   defects found while validating them. Its account of the binding defect
+   was wrong and 67L corrects it.
+9. 67J — The clock outputs reach the panel — complete as `0ecc4e7`. A
+   ported control owns its own data context, so a binding written against
+   it never reached the panel; each clock control now names its source.
+   Physically validated: the controls respond and all three outputs
+   retune, measured on an oscilloscope, which completes the physical
+   validation of 67H.
+10. 67K — The endpoint pane can submit a write — complete. Whether the
+    typed value is valid moved out of the command predicate, which no
+    re-query reaches while the operator types, and into the button's own
+    enablement binding, matching command execution, which never had the
+    fault.
+11. 67L — Documentation closure — complete; records 67J and 67K and
+    corrects the account 67I gave of the binding defect.
 
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
-tests and stands at 6,899 across 34 test projects.
+tests and stands at 6,907 across 34 test projects.

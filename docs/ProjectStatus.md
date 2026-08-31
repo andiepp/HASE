@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
-validated on AEPRAKETE, and closed at 6,899 passing tests from starting
+validated on AEPRAKETE, and closed at 6,907 passing tests from starting
 baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 
 - ADR-0066 published the RF-MiniLab and the Client rendered it
@@ -70,21 +70,29 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   the clock outputs share the tab and do transmit, so working function
   was lost with the dead function. No definition change was needed: the
   Properties and Commands have been in the descriptor since ADR-0066.
-- Two client defects were found while validating that work and are
-  recorded in the ADR rather than fixed in passing. A ported control sets
-  its own data context, so bindings written against it silently fail and
-  the clock outputs display a clock-generator state they do not act on.
-  And in the generic endpoint pane the Write button's state is frozen
-  from the last projection, because a command's execute check overrides
-  the enabled binding and nothing re-queries it while the operator types.
-  The second belongs to the Client, not to this objective.
+- Two client defects were found while validating that work, and both were
+  fixed. A ported control sets its own data context, so bindings written
+  against it resolve against the control and never reach the panel; the
+  clock controls now name their binding source. And in the generic
+  endpoint pane the Write button could not follow the typed value,
+  because that check sat inside a command predicate and nothing re-queries
+  a command while the operator types; the write path now has the same
+  shape as command execution, which never had the fault. The second
+  belongs to the Client, not to this objective.
+- The clock outputs are physically validated: with the client republished
+  the controls respond and all three outputs retune, measured on an
+  oscilloscope. Note that the panel's defaults do not match what the node
+  boots to, because the node offers no readback and the panel shows the
+  staged target rather than the device state.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
   67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
-  flicker and the clock outputs (`3e424b7`), 67I this documentation. The
-  ADR document was written in 67D; the earlier increments referenced it
-  before it existed, which the ADR records. 67E and later were added
-  after that closure, as ADR-0065 did with its own 65D and 65E.
+  flicker and the clock outputs (`3e424b7`), 67I documentation, 67J the
+  clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L this
+  documentation. The ADR document was written in 67D; the earlier
+  increments referenced it before it existed, which the ADR records. 67E
+  and later were added after that closure, as ADR-0065 did with its own
+  65D and 65E.
 
 ### Next
 
