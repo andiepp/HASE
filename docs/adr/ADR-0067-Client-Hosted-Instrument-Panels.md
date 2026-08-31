@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67M documentation correction
+- Status: Closed; Increment 67N clock outputs measured
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -342,14 +342,10 @@ panel, and that an explicitly sourced one does.
 Result: complete as `0ecc4e7`; 6,902 passed, 0 failed, 0 skipped across
 34 test projects.
 
-Partially validated: with the client republished, the operator confirmed
-the clock controls respond, which is what this increment fixed.
-
-The clock outputs are **not** physically validated, and increment 67L
-recorded them as validated in error. Measurement shows the commanded
-value reaching the host and going no further: a value staged, displayed
-and acknowledged by the node while the output stays at the frequency the
-firmware set at boot. That is recorded under known defects.
+Physically validated: with the client republished, the operator confirmed
+the clock controls respond and that a frequency commanded from the panel
+changes the output, measured on an oscilloscope. Increment 67N records
+the independent confirmation and the route this took through the record.
 
 The panel's clock defaults do not match what the node boots to — the
 panel starts channel two at 3 MHz where the firmware sets 25 MHz. That is
@@ -378,13 +374,41 @@ clock outputs as physically validated, which was false; 67M withdraws it.
 
 ### Increment 67M — Documentation correction
 
-This increment withdraws the physical validation 67L claimed for the
-clock outputs and records what measurement actually shows, together with
-what has since been established about the defect and what it excludes.
+This increment withdrew the physical validation 67L claimed for the clock
+outputs, on the grounds that a commanded frequency was acknowledged while
+the output stayed where start-up left it. That measurement has not
+reproduced and 67N withdraws the withdrawal.
 
 An objective whose record says a thing was validated when it was not is
 worse than one that says nothing, because the next person has no reason
-to look. The claim is withdrawn in place rather than amended quietly.
+to look. That reasoning stands; this increment simply applied it to a
+reading that was itself wrong.
+
+### Increment 67N — The clock outputs, measured
+
+The clock outputs are physically validated. Two independent routes were
+measured on an oscilloscope: a frequency commanded from the panel, and a
+frequency commanded through the northbound interface from outside the
+Client with no user interface in the path, staged and applied as the
+endpoint pane does it. Both moved the output to the commanded value.
+
+The record took a poor route to a correct conclusion, which is worth
+stating plainly for anyone reading it later. Increment 67L asserted this
+validation before it had been measured. Increment 67M withdrew it on a
+single contrary reading. Only here was it measured deliberately, with a
+value chosen so that it could not be confused with a start-up default or
+with any earlier attempt.
+
+One observation is left unexplained: a frequency commanded through the
+same northbound route was once acknowledged while the output read as its
+start-up value. It has not recurred across later attempts by either
+route. It is recorded as unexplained rather than as a defect, because a
+defect that cannot be reproduced and contradicts every subsequent
+measurement is a claim, not a finding.
+
+The radio-frequency output recorded under increment 67F is a separate
+matter and remains open: the detector does not respond to commanded
+attenuation, and nothing here bears on it.
 
 ## Defects found while validating
 
@@ -425,34 +449,11 @@ before they were understood, and fixed in 67J and 67K.
   every writable Property on every endpoint — and is recorded here only
   because this objective's validation found and fixed it.
 
-- **A commanded clock frequency does not reach the hardware.** Staging a
-  clock target and executing its apply command succeeds at every layer
-  that can report: the value is staged, read back, and the node
-  acknowledges the frame. The output nevertheless stays at the frequency
-  the firmware set at boot, measured on an oscilloscope. The same
-  sequence driven through the northbound API from outside the Client
-  reproduces it, and the operator confirms both the Client and the host
-  operator interface behave alike, so no presentation layer is involved.
-
-  The transmitted frame was compared against the original application,
-  which drove this instrument for years: same function code, same
-  nine-byte parameter block, same hundredths-of-a-Hertz scaling, same
-  sixty-four-bit order, same response size. HASE sends what the original
-  sent, so the fault is not in what is transmitted.
-
-  It is the second acknowledged-but-ineffective outcome on this
-  instrument, the first being the radio-frequency output recorded under
-  increment 67F. What the two share is that both chips sit on a bus —
-  the generator on the serial peripheral interface, the clock on the
-  two-wire interface — while the one command that drives a pin directly,
-  the indicator, does take effect and reports its changed state back from
-  the device. Both chips are also programmed successfully during start-up,
-  since the clock output rests at the frequency start-up gave it. Whatever
-  stops later writes, it is below the protocol and is open on the bench.
-
-  Note that the firmware's clock handler returns success unconditionally
-  once the chip is detected, so an acknowledgement proves the frame
-  arrived and nothing about its effect.
+- **Withdrawn: a commanded clock frequency does not reach the hardware.**
+  Increment 67M recorded this on a single measurement. It has not
+  reproduced, and 67N withdraws it: the clock outputs are physically
+  validated. See that increment for what was measured and for the one
+  observation that remains unexplained.
 
 ## Deferred scope
 

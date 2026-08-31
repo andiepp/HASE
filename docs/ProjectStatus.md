@@ -79,23 +79,23 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   a command while the operator types; the write path now has the same
   shape as command execution, which never had the fault. The second
   belongs to the Client, not to this objective.
-- The clock controls are physically validated as controls: they respond,
-  which is what the binding fix addressed. The clock outputs themselves
-  are not. A commanded frequency is staged, read back and acknowledged by
-  the node while the hardware stays at its boot frequency, measured on an
-  oscilloscope. Driving the same sequence through the northbound API from
-  outside the Client reproduces it, which excludes the Client, the panel
-  and the operator interface. It is the second acknowledged-but-
-  ineffective outcome on this instrument and is recorded as open in the
-  ADR. An earlier increment recorded these outputs as validated in error;
-  the ADR records that correction.
+- The clock outputs are physically validated, measured on an oscilloscope
+  by two independent routes: a frequency commanded from the panel, and a
+  frequency commanded through the northbound interface from outside the
+  Client with no user interface in the path. Both moved the output to the
+  commanded value. The record reached this the long way — asserted before
+  it was measured, then withdrawn on a single contrary reading, then
+  measured deliberately — and the ADR records that route rather than
+  hiding it. One acknowledged-but-unchanged reading remains unexplained
+  and is recorded as unexplained rather than as a defect, having not
+  recurred by either route.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
   67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
   flicker and the clock outputs (`3e424b7`), 67I documentation, 67J the
   clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L
-  documentation, 67M this correction. The ADR document was written in
-  67D; the earlier
+  documentation, 67M a correction later withdrawn, 67N the measured clock
+  outputs. The ADR document was written in 67D; the earlier
   increments referenced it before it existed, which the ADR records. 67E
   and later were added after that closure, as ADR-0065 did with its own
   65D and 65E.
