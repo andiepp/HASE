@@ -148,6 +148,31 @@ public sealed class SyncHaseRepositoryScriptTests
     }
 
     [Fact]
+    public void Script_ShouldSayThatItCannotCarryAComputerAcrossItsOwnCommit()
+    {
+        string script = ReadScript();
+
+        // A computer older than the commit that added this file does not
+        // have this file, so the first synchronization onto it cannot use
+        // the script. Saying so here is cheaper than rediscovering it.
+        Assert.Contains(
+            "cannot carry a computer across the commit that introduced",
+            script,
+            StringComparison.Ordinal);
+
+        // And it must say what to run instead, not merely that a problem
+        // exists.
+        Assert.Contains(
+            "has to be done with\n    Git directly",
+            script.Replace("\r\n", "\n", StringComparison.Ordinal),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "git status --porcelain      # must print nothing",
+            script,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Script_ShouldSayThatAnInstalledApplicationIsNotRefreshed()
     {
         string script = ReadScript();

@@ -18,6 +18,19 @@
     the repository build, so an installed Client or Runtime Host stays on
     its previous build until it is republished on that computer.
 
+    This script cannot carry a computer across the commit that introduced
+    it. A working tree older than that commit does not contain this file,
+    so the first synchronization onto such a computer has to be done with
+    Git directly:
+
+        git status --porcelain      # must print nothing
+        git fetch origin main
+        git merge --ff-only origin/main
+
+    The same applies to any later commit that changes this script: the
+    version that runs is the one already on that computer, not the one
+    being fetched.
+
 .PARAMETER ExpectedCommit
     The commit this computer is expected to reach. It is resolved through
     Git, so an abbreviation or any other revision Git understands is
