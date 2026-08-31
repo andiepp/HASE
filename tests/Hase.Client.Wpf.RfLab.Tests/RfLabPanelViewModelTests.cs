@@ -226,11 +226,22 @@ public sealed class RfLabPanelViewModelTests
         }
     }
 
-    private sealed class RecordingScheduler : IRfLabPanelScheduler
+    internal sealed class RecordingScheduler : IRfLabPanelScheduler
     {
         public int ScheduleCount { get; private set; }
 
         public bool LastSubscriptionDisposed { get; private set; }
+
+        public List<TimeSpan> Delays { get; } = [];
+
+        public Task DelayAsync(
+            TimeSpan delay,
+            CancellationToken cancellationToken = default)
+        {
+            Delays.Add(delay);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
 
         public IDisposable Schedule(TimeSpan interval, Func<Task> operation)
         {

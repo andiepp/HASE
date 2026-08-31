@@ -12,5 +12,12 @@ public enum RfLabSignalMode
     AmplitudeModulation = 1,
     FrequencyModulation = 2,
     Sweep = 3,
+
+    /// <summary>
+    /// Steps the carrier across the sweep span and reads the detector at
+    /// every step, so the panel plots a scalar response over frequency.
+    /// </summary>
+    Analyze = 4,
+
     Measure = 5
 }

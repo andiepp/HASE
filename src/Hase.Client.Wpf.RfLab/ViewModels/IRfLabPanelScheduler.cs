@@ -13,6 +13,11 @@ namespace Hase.Client.Wpf.RfLab.ViewModels;
 public interface IRfLabPanelScheduler
 {
     IDisposable Schedule(TimeSpan interval, Func<Task> operation);
+
+    /// <summary>
+    /// Waits for the detector to settle between two analysed steps.
+    /// </summary>
+    Task DelayAsync(TimeSpan delay, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -20,6 +25,12 @@ public interface IRfLabPanelScheduler
 /// </summary>
 public sealed class RfLabPanelScheduler : IRfLabPanelScheduler
 {
+    /// <inheritdoc />
+    public Task DelayAsync(
+        TimeSpan delay,
+        CancellationToken cancellationToken = default) =>
+        Task.Delay(delay, cancellationToken);
+
     public IDisposable Schedule(TimeSpan interval, Func<Task> operation)
     {
         ArgumentNullException.ThrowIfNull(operation);

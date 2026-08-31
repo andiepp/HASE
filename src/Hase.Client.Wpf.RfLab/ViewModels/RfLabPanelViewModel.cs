@@ -25,6 +25,14 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     /// <summary>The rendered measurement window, as in the original panel.</summary>
     private const int MaximumMeasurementPoints = 500;
 
+    /// <summary>
+    /// The shortest analysis duration, carried over from the original panel,
+    /// which raised a shorter setting to this floor.
+    /// </summary>
+    private const int MinimumAnalyzeSweepTimeMs = 3_200;
+
+    private const int MinimumAnalyzePoints = 10;
+
     private static readonly IReadOnlyDictionary<string, string> SweepCommandPaths =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -53,6 +61,7 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     private string clockGeneratorState = string.Empty;
     private int measurementIndex;
     private IDisposable? measurementLoop;
+    private CancellationTokenSource? analyzeCancellation;
     private bool disposed;
     private int frequency = 10_000_000;
     private int amplitude = 20;
@@ -190,12 +199,17 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
             }
 
             mode = requested;
+            CancelAnalyze();
             RaisePropertyChanged(nameof(DDS_ModMode));
             RaisePropertyChanged(nameof(IsModeAM));
             RaisePropertyChanged(nameof(IsModeFM));
             RaisePropertyChanged(nameof(IsModeSWEEP));
+            RaisePropertyChanged(nameof(IsModeANALYZE));
             RaisePropertyChanged(nameof(IsModeMEASURE));
             RaisePropertyChanged(nameof(IsFModEnabled));
+            RaisePropertyChanged(nameof(Xlabel));
+            RaisePropertyChanged(nameof(Xmin));
+            RaisePropertyChanged(nameof(Xmax));
             _ = ApplyModeAsync();
         }
     }
@@ -204,7 +218,15 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
 
     public bool IsModeFM => mode == RfLabSignalMode.FrequencyModulation;
 
-    public bool IsModeSWEEP => mode == RfLabSignalMode.Sweep;
+    /// <summary>
+    /// Gets whether the sweep span and duration apply, which they do in both
+    /// the swept and the analysing mode. The original panel gated its sweep
+    /// fields on exactly this.
+    /// </summary>
+    public bool IsModeSWEEP =>
+        mode is RfLabSignalMode.Sweep or RfLabSignalMode.Analyze;
+
+    public bool IsModeANALYZE => mode == RfLabSignalMode.Analyze;
 
     public bool IsModeMEASURE => mode == RfLabSignalMode.Measure;
 
@@ -221,9 +243,16 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
             }
 
             RaisePropertyChanged(nameof(IsSweepInactive));
-            _ = value
-                ? StartSweepAsync()
-                : Task.CompletedTask;
+
+            if (!value)
+            {
+                CancelAnalyze();
+                return;
+            }
+
+            _ = IsModeANALYZE
+                ? StartAnalyzeAsync()
+                : StartSweepAsync();
         }
     }
 
@@ -377,6 +406,7 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         }
 
         disposed = true;
+        CancelAnalyze();
         StopMeasurementLoop();
     }
 
@@ -455,6 +485,196 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         if (mode != RfLabSignalMode.Measure)
         {
             IsMeasurementActive = false;
+        }
+    }
+
+    /// <summary>
+    /// Steps the carrier across the sweep span and reads the detector at each
+    /// step, plotting the response over frequency.
+    /// </summary>
+    /// <remarks>
+    /// This is the original panel's ANALYZE mode. It is orchestrated here
+    /// rather than on the node, because the instrument has no swept-measurement
+    /// function: each point is a staged frequency, an applied carrier, a
+    /// settling delay, and a detector read. The pace is therefore bounded by
+    /// the round trip to the Runtime Host, and a point takes longer than it
+    /// did when the original application owned the serial port.
+    ///
+    /// The sweep duration sets the settling delay per point, with the
+    /// original's floor. When the run ends — completed or stopped — the
+    /// carrier returns to the panel's own frequency and attenuation, as the
+    /// original did, so the generator is never left parked at the last step.
+    /// </remarks>
+    private async Task StartAnalyzeAsync()
+    {
+        CancelAnalyze();
+        var cancellation = new CancellationTokenSource();
+        analyzeCancellation = cancellation;
+        CancellationToken cancellationToken = cancellation.Token;
+
+        int points = Math.Clamp(MeasurementCount, MinimumAnalyzePoints, MaximumMeasurementPoints);
+        int start = SweepStartFrequency;
+        int stop = SweepStopFrequency;
+
+        if (stop <= start)
+        {
+            Fail("Analyze requires a stop frequency above the start frequency.");
+            IsSweepActive = false;
+            return;
+        }
+
+        int sweepTime = Math.Max(SweepTime, MinimumAnalyzeSweepTimeMs);
+        double settlingDelay = sweepTime / (double)points;
+        double step = (stop - start) / (double)points;
+
+        ClearMeasurement();
+        IsMeasurementActive = false;
+
+        try
+        {
+            for (int index = 0; index < points; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var frequency = (int)Math.Round(start + (step * index));
+                long startedTimestamp = Environment.TickCount64;
+
+                if (!await ApplyAnalyzePointAsync(frequency, cancellationToken)
+                    .ConfigureAwait(true))
+                {
+                    return;
+                }
+
+                double elapsed = Environment.TickCount64 - startedTimestamp;
+                if (settlingDelay > elapsed)
+                {
+                    await scheduler.DelayAsync(
+                        TimeSpan.FromMilliseconds(settlingDelay - elapsed),
+                        cancellationToken).ConfigureAwait(true);
+                }
+
+                RemotePropertyOperationResult reading = await operations
+                    .ReadAsync(SelectedSensor.PropertyId, cancellationToken)
+                    .ConfigureAwait(true);
+
+                if (!reading.IsSuccess
+                    || reading.ConfirmedValue?.Value?.NumericValue is not double value)
+                {
+                    Fail($"Analyze stopped: detector read failed ({reading.Status}).");
+                    return;
+                }
+
+                AddMeasurementPoint(frequency, value);
+                SensorValueString = value.ToString("0.0", CultureInfo.CurrentCulture);
+                SensorValueNormalized = Normalize(value);
+                StatusInfo =
+                    $"Analyze {index + 1}/{points} at "
+                    + $"{frequency / 1_000_000.0:0.###} MHz.";
+            }
+
+            ErrorStatus = false;
+            StatusInfo = $"Analyze complete: {points} points.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusInfo = "Analyze stopped.";
+        }
+        catch (Exception exception)
+        {
+            Fail($"Analyze stopped: {exception.Message}");
+        }
+        finally
+        {
+            await RestoreCarrierAfterAnalyzeAsync().ConfigureAwait(true);
+
+            if (ReferenceEquals(analyzeCancellation, cancellation))
+            {
+                analyzeCancellation = null;
+            }
+
+            cancellation.Dispose();
+
+            if (isSweepActive)
+            {
+                SetProperty(ref isSweepActive, false, nameof(IsSweepActive));
+                RaisePropertyChanged(nameof(IsSweepInactive));
+            }
+        }
+    }
+
+    private async Task<bool> ApplyAnalyzePointAsync(
+        int frequency,
+        CancellationToken cancellationToken)
+    {
+        RemotePropertyOperationResult staged = await operations
+            .WriteAsync(
+                "target-frequency",
+                RemoteValue.FromNumeric(frequency),
+                cancellationToken)
+            .ConfigureAwait(true);
+
+        if (!staged.IsSuccess)
+        {
+            Fail($"Analyze stopped: target-frequency {staged.Status}.");
+            return false;
+        }
+
+        RemoteCommandOperationResult applied = await operations
+            .ExecuteAsync("Signal.ApplyCarrier", argument: null, cancellationToken)
+            .ConfigureAwait(true);
+
+        if (!applied.IsSuccess)
+        {
+            Fail($"Analyze stopped: Signal.ApplyCarrier {applied.Status}.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Returns the generator to the panel's own carrier once an analysis run
+    /// ends, so it is never left parked at the last analysed step.
+    /// </summary>
+    private async Task RestoreCarrierAfterAnalyzeAsync()
+    {
+        try
+        {
+            RemotePropertyOperationResult staged = await operations
+                .WriteAsync("target-frequency", RemoteValue.FromNumeric(Frequency))
+                .ConfigureAwait(true);
+
+            if (staged.IsSuccess)
+            {
+                _ = await operations
+                    .ExecuteAsync("Signal.ApplyCarrier")
+                    .ConfigureAwait(true);
+            }
+        }
+        catch (Exception exception)
+        {
+            Fail(
+                "The analysed carrier could not be restored: "
+                + $"{exception.Message}");
+        }
+    }
+
+    private void CancelAnalyze()
+    {
+        CancellationTokenSource? cancellation = analyzeCancellation;
+        analyzeCancellation = null;
+
+        if (cancellation is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cancellation.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 
@@ -576,18 +796,26 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
 
     private void AddMeasurementPoint(double value)
     {
+        AddMeasurementPoint(
+            IsModeMEASURE
+                ? measurementIndex
+                : Xmin + ((Xmax - Xmin)
+                    * (measurementIndex / (double)MaximumMeasurementPoints)),
+            value);
+    }
+
+    /// <summary>
+    /// Adds one sample at an explicit abscissa, which an analysis run knows
+    /// exactly because it commanded the frequency.
+    /// </summary>
+    private void AddMeasurementPoint(double abscissa, double value)
+    {
         if (measurementData.Count >= MaximumMeasurementPoints)
         {
             ClearMeasurement();
         }
 
-        measurementData.Add(
-            new RfLabMeasurementPoint(
-                IsModeMEASURE
-                    ? measurementIndex
-                    : Xmin + ((Xmax - Xmin)
-                        * (measurementIndex / (double)MaximumMeasurementPoints)),
-                value));
+        measurementData.Add(new RfLabMeasurementPoint(abscissa, value));
         measurementIndex++;
     }
 
