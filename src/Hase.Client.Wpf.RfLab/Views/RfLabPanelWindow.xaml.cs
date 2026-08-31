@@ -41,6 +41,9 @@ public partial class RfLabPanelWindow : Window
         NCMD_Tsweep.SetValue(viewModel.SweepTime, false);
         NCMD_Tmeasure.SetValue(viewModel.MeasurementInterval, false);
         NCMD_Nmeasure.SetValue(viewModel.MeasurementCount, false);
+        NCMD_SI5351_Fclk0.SetValue(viewModel.ClockFrequency0, false);
+        NCMD_SI5351_Fclk1.SetValue(viewModel.ClockFrequency1, false);
+        NCMD_SI5351_Fclk2.SetValue(viewModel.ClockFrequency2, false);
 
         FrequencyDial.ValueChanged += (_, args) => viewModel.Frequency = args.Value;
         AmplitudeDial.ValueChanged += (_, args) => viewModel.Amplitude = args.Value;
@@ -55,6 +58,12 @@ public partial class RfLabPanelWindow : Window
         NCMD_Tmeasure.ValueChanged += (_, args) =>
             viewModel.MeasurementInterval = args.Value;
         NCMD_Nmeasure.ValueChanged += (_, args) => viewModel.MeasurementCount = args.Value;
+        NCMD_SI5351_Fclk0.ValueChanged += (_, args) =>
+            viewModel.ClockFrequency0 = args.Value;
+        NCMD_SI5351_Fclk1.ValueChanged += (_, args) =>
+            viewModel.ClockFrequency1 = args.Value;
+        NCMD_SI5351_Fclk2.ValueChanged += (_, args) =>
+            viewModel.ClockFrequency2 = args.Value;
 
         _ = viewModel.InitializeAsync();
     }

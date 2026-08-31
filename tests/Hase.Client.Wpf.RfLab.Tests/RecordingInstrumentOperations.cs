@@ -13,6 +13,12 @@ internal sealed class RecordingInstrumentOperations : IRuntimeHostInstrumentOper
     private readonly Dictionary<string, RemoteValue> readValues =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Holds every Command execution open until released, so a test can
+    /// observe what the panel does while an apply is still in flight.
+    /// </summary>
+    private TaskCompletionSource? gate;
+
     public RecordingInstrumentOperations()
     {
         Attachment = new RemoteEndpointAttachmentKey(
@@ -30,6 +36,13 @@ internal sealed class RecordingInstrumentOperations : IRuntimeHostInstrumentOper
     public List<string> Executions { get; } = [];
 
     public bool FailNextCommand { get; set; }
+
+    public void CloseGate() =>
+        gate = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public void OpenGate() =>
+        Interlocked.Exchange(ref gate, null)?.TrySetResult();
 
     public void SetRead(string propertyId, RemoteValue value) =>
         readValues[propertyId] = value;
@@ -66,22 +79,27 @@ internal sealed class RecordingInstrumentOperations : IRuntimeHostInstrumentOper
                     RemotePropertyQuality.Good)));
     }
 
-    public Task<RemoteCommandOperationResult> ExecuteAsync(
+    public async Task<RemoteCommandOperationResult> ExecuteAsync(
         string commandPath,
         RemoteValue? argument = null,
         CancellationToken cancellationToken = default)
     {
         Executions.Add(commandPath);
 
+        TaskCompletionSource? held = gate;
+        if (held is not null)
+        {
+            await held.Task.ConfigureAwait(false);
+        }
+
         if (FailNextCommand)
         {
             FailNextCommand = false;
-            return Task.FromResult(
-                RemoteCommandOperationResult.Failed(
-                    RemoteCommandOperationStatus.EndpointRejected,
-                    "rejected"));
+            return RemoteCommandOperationResult.Failed(
+                RemoteCommandOperationStatus.EndpointRejected,
+                "rejected");
         }
 
-        return Task.FromResult(RemoteCommandOperationResult.Successful());
+        return RemoteCommandOperationResult.Successful();
     }
 }

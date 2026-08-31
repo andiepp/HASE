@@ -62,6 +62,8 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     private int measurementIndex;
     private IDisposable? measurementLoop;
     private CancellationTokenSource? analyzeCancellation;
+    private bool applyInFlight;
+    private bool applyPending;
     private bool disposed;
     private int frequency = 10_000_000;
     private int amplitude = 20;
@@ -70,6 +72,12 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     private int frequencyDeviation = 10_000;
     private int sweepStartFrequency = 10_000_000;
     private int sweepStopFrequency = 30_000_000;
+    private bool isClockGeneratorPresent;
+    private int clockFrequency0 = 1_000_000;
+    private int clockFrequency1 = 2_000_000;
+    private int clockFrequency2 = 3_000_000;
+    private readonly bool[] clockApplyInFlight = new bool[3];
+    private readonly bool[] clockApplyPending = new bool[3];
 
     public RfLabPanelViewModel(
         ClientInstrumentPanelContext context,
@@ -279,6 +287,19 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Enables the panel as a whole. The ported window binds its root grid to
+    /// this, so lowering it greys and repaints every control.
+    /// </summary>
+    /// <remarks>
+    /// No operation lowers it. An apply is a single round trip, and disabling
+    /// the panel for its duration made the whole surface flicker on every dial
+    /// movement. A long run cannot use it either: the root grid carries the
+    /// Start control, so disabling the panel during a sweep or an analysis
+    /// would leave no way to stop the run. The controls that must not be
+    /// touched mid-run are gated individually on
+    /// <see cref="IsSweepInactive"/>, as the original panel gated them.
+    /// </remarks>
     public bool IsUIEnabled
     {
         get => isUiEnabled;
@@ -333,6 +354,34 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         private set => SetProperty(ref clockGeneratorState, value);
     }
 
+    /// <summary>
+    /// Whether the node reported an Si5351 clock generator, which gates the
+    /// clock-output controls the way the original panel gated them.
+    /// </summary>
+    public bool IsClockGeneratorPresent
+    {
+        get => isClockGeneratorPresent;
+        private set => SetProperty(ref isClockGeneratorPresent, value);
+    }
+
+    public int ClockFrequency0
+    {
+        get => clockFrequency0;
+        set => SetClockTarget(ref clockFrequency0, value, 0);
+    }
+
+    public int ClockFrequency1
+    {
+        get => clockFrequency1;
+        set => SetClockTarget(ref clockFrequency1, value, 1);
+    }
+
+    public int ClockFrequency2
+    {
+        get => clockFrequency2;
+        set => SetClockTarget(ref clockFrequency2, value, 2);
+    }
+
     public string CalText => "C";
 
     public string CalibrationInfo => string.Empty;
@@ -382,8 +431,11 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         RemotePropertyOperationResult clockGenerator = await operations
             .ReadAsync("clock-generator-present", cancellationToken)
             .ConfigureAwait(true);
+        IsClockGeneratorPresent =
+            clockGenerator.IsSuccess
+            && clockGenerator.ConfirmedValue?.Value?.BooleanValue == true;
         ClockGeneratorState = clockGenerator.IsSuccess
-            ? clockGenerator.ConfirmedValue?.Value?.BooleanValue == true
+            ? IsClockGeneratorPresent
                 ? "Clock generator: present"
                 : "Clock generator: absent"
             : "Clock generator: unknown";
@@ -431,7 +483,110 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
             or RfLabSignalMode.AmplitudeModulation
             or RfLabSignalMode.FrequencyModulation)
         {
-            _ = ApplyModeAsync();
+            _ = ApplyModeCoalescedAsync();
+        }
+    }
+
+    /// <summary>
+    /// Stages one Si5351 clock output and applies that channel at once, which
+    /// is how the original panel drove the clock generator.
+    /// </summary>
+    /// <remarks>
+    /// Each channel carries its own target Property and its own apply Command,
+    /// so a clock change touches neither the other channels nor the signal
+    /// path.
+    /// </remarks>
+    private void SetClockTarget(
+        ref int field,
+        int value,
+        int channel,
+        [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+    {
+        if (field == value)
+        {
+            return;
+        }
+
+        field = value;
+        RaisePropertyChanged(propertyName);
+
+        _ = ApplyClockCoalescedAsync(channel);
+    }
+
+    /// <summary>
+    /// Applies one clock channel, collapsing overlapping applies the way the
+    /// signal path collapses them, so the channel ends at its newest value.
+    /// </summary>
+    private async Task ApplyClockCoalescedAsync(int channel)
+    {
+        if (clockApplyInFlight[channel])
+        {
+            clockApplyPending[channel] = true;
+            return;
+        }
+
+        clockApplyInFlight[channel] = true;
+
+        try
+        {
+            do
+            {
+                clockApplyPending[channel] = false;
+                await ApplyAsync(
+                    $"Clock.ApplyOutput{channel}",
+                    [($"clock{channel}-frequency", ClockFrequency(channel))],
+                    $"Clock output {channel} applied.").ConfigureAwait(true);
+            }
+            while (clockApplyPending[channel] && !disposed);
+        }
+        finally
+        {
+            clockApplyInFlight[channel] = false;
+        }
+    }
+
+    private int ClockFrequency(int channel) =>
+        channel switch
+        {
+            0 => clockFrequency0,
+            1 => clockFrequency1,
+            _ => clockFrequency2
+        };
+
+    /// <summary>
+    /// Applies the current signal, collapsing the applies a moving dial
+    /// produces into one in flight and one pending.
+    /// </summary>
+    /// <remarks>
+    /// A dial reports every intermediate value, so a single movement raises
+    /// several applies. Letting them run concurrently interleaves their
+    /// writes, and the last apply to finish need not be the one carrying the
+    /// latest value. Collapsing them keeps the newest values, which is what a
+    /// signal generator should emit, and issues one apply per round trip
+    /// rather than one per reported value.
+    /// </remarks>
+    private async Task ApplyModeCoalescedAsync()
+    {
+        if (applyInFlight)
+        {
+            applyPending = true;
+            return;
+        }
+
+        applyInFlight = true;
+
+        try
+        {
+            do
+            {
+                applyPending = false;
+                await ApplyModeAsync().ConfigureAwait(true);
+            }
+            while (applyPending && !disposed);
+        }
+        finally
+        {
+            applyInFlight = false;
         }
     }
 
@@ -704,8 +859,6 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         IReadOnlyList<(string PropertyId, int Value)> targets,
         string successMessage)
     {
-        IsUIEnabled = false;
-
         try
         {
             foreach ((string propertyId, int value) in targets)
@@ -738,10 +891,6 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         catch (Exception exception)
         {
             Fail(exception.Message);
-        }
-        finally
-        {
-            IsUIEnabled = true;
         }
     }
 
