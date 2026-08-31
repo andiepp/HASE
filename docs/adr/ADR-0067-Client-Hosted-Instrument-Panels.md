@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67F documentation closure
+- Status: Closed; Increment 67I documentation closure
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -126,6 +126,27 @@ here. And the settling delay subtracts the time those round trips already
 consumed, so a commanded duration stays the duration of the run instead
 of becoming a lower bound on it.
 
+### The panel never disables itself to reach the device
+
+An apply is one round trip to the Runtime Host. Disabling the panel for
+its duration, which is what the first implementation did, made the whole
+surface grey and repaint on every dial movement — a flicker the original
+never had, because it owned the serial port and applied synchronously.
+
+A panel-wide disable cannot be moved to the long-running modes either.
+The root grid carries the Start control, so disabling the panel during a
+sweep or an analysis would leave the operator no way to stop the run. The
+controls that must not be touched mid-run are gated individually, as the
+original gated them.
+
+What the disable did protect, incidentally, was overlap: a dial reports
+every intermediate value it passes through, so one movement raises
+several applies, and the last to finish need not carry the newest value.
+That is now handled where it belongs — one apply in flight and one
+pending, the pending one re-reading the current values when it runs. The
+panel issues one apply per round trip rather than one per reported value,
+and the generator ends at the value the operator stopped on.
+
 ### Versions stay immutable
 
 The declaration is a new definition version. RF-Lab version 3 is version
@@ -173,6 +194,10 @@ which the ported code had otherwise pushed to 126.
 - An analysis is paced by the transport rather than by the measurement.
   Three round trips per point put a hundred-point run at about eleven
   seconds whatever duration is commanded.
+- Carrying the controls over unchanged carried their constraints over
+  too. One of them — a control that owns its own data context — silently
+  defeats any binding written against it, which is how the clock outputs
+  came to display a state they do not act on.
 
 ### Neutral
 
@@ -268,11 +293,76 @@ not as a HASE defect. This increment also records increment 67E, which
 was added after the 67D closure; ADR-0065 set the precedent with its own
 65D and 65E.
 
+### Increment 67G — The panel stops disabling itself
+
+The panel-wide disable around every apply is removed and replaced by the
+coalescing guard described above.
+
+Result: complete as `3e424b7`, jointly with 67H. Validated on the
+instrument: the operator confirmed the flicker is gone.
+
+### Increment 67H — The clock outputs return
+
+The Special Signals tab is restored carrying the Si5351 clock outputs.
+The tab had been left out because the message generator does not
+transmit, but the clock outputs share it and do transmit, so working
+function was lost with the dead function. The message generator stays
+out.
+
+Each channel writes its own target and executes its own apply command, so
+a clock change touches neither the other channels nor the signal path,
+and each channel coalesces as the signal path does. No definition change
+and no redeployment were needed: the Properties and Commands have been in
+the descriptor since ADR-0066, and only the surface was missing.
+
+Result: complete as `3e424b7`, jointly with 67G; 6,899 passed, 0 failed,
+0 skipped across 34 test projects; the 66-warning cold-build baseline
+preserved. The two increments share the view model and the test double
+and were validated as one tree, so they are recorded in one commit rather
+than a split whose intermediate state was never validated.
+
+The tab and its controls were confirmed on the instrument. Their
+enablement was not: the controls stay inert because of the binding defect
+recorded under known defects.
+
+### Increment 67I — Documentation closure
+
+This increment records 67G and 67H, the design position that a panel
+never disables itself, and the two client defects found while validating
+them.
+
+## Known defects
+
+Both were found while validating 67G and 67H on the instrument, and both
+are recorded here rather than fixed in passing.
+
+- **A ported control cannot be bound to the panel.** `NCMultiDigit` sets
+  `DataContext = this` in its constructor, so a binding written on that
+  element resolves against the control rather than the panel. The clock
+  outputs therefore never track `IsClockGeneratorPresent`, and their
+  enablement is inert: the operator sees "Clock generator: present" while
+  the controls stay disabled. The binding was carried over verbatim from
+  the original, which has the same flaw and never showed it. The fix is
+  an explicit binding source; the deferred conversion of these controls
+  to dependency properties would remove the class of fault.
+- **The generic Selected Endpoint pane cannot submit a write.** Its Write
+  button carries both a `Command` and an `IsEnabled` binding, and WPF
+  combines the two so that the command's `CanExecute` decides. Nothing
+  re-queries `WritePropertyCommand` when the operator types, because
+  `RaiseCommandStateChanged` fires only on connection, busy and
+  projection changes and the command does not observe
+  `CommandManager.RequerySuggested`. The button's state is therefore
+  frozen from the last projection and typing a valid value cannot enable
+  it. This belongs to the Client rather than to this ADR — it affects
+  every writable Property on every endpoint — and is recorded here only
+  because this objective's validation found it.
+
 ## Deferred scope
 
 - The stored-settings list of the original application. Presets are
   client-side state and need a store and a location; the panel presents
-  instrument identity in that column meanwhile.
+  instrument identity in that column meanwhile. The operator's own preset
+  files are available and are flat key-and-value text.
 - The message-generator surface, pending firmware that transmits.
 - Clamping the panel's amplitude to the range the node can produce. The
   firmware accepts −72 to 0 dBm, so the panel's full 80 dB of attenuation

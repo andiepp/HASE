@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
-validated on AEPRAKETE, and closed at 6,884 passing tests from starting
+validated on AEPRAKETE, and closed at 6,899 passing tests from starting
 baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 
 - ADR-0066 published the RF-MiniLab and the Client rendered it
@@ -58,12 +58,33 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   that matches the firmware, and an output the firmware enables in every
   session — places the fault in the analogue path. It is recorded as an
   open physical matter, not a HASE defect.
+- The panel never disables itself to reach the device. Doing so for the
+  length of a round trip made the whole surface flicker on every dial
+  movement, and it cannot be done during a long run either, because the
+  root grid carries the Start control and the operator would have no way
+  to stop the run. Overlapping applies — a dial reports every value it
+  passes through — are collapsed to one in flight and one pending
+  instead.
+- The Special Signals tab was restored with the Si5351 clock outputs. It
+  had been left out because the message generator does not transmit, but
+  the clock outputs share the tab and do transmit, so working function
+  was lost with the dead function. No definition change was needed: the
+  Properties and Commands have been in the descriptor since ADR-0066.
+- Two client defects were found while validating that work and are
+  recorded in the ADR rather than fixed in passing. A ported control sets
+  its own data context, so bindings written against it silently fail and
+  the clock outputs display a clock-generator state they do not act on.
+  And in the generic endpoint pane the Write button's state is frozen
+  from the last projection, because a command's execute check overrides
+  the enabled binding and nothing re-queries it while the operator types.
+  The second belongs to the Client, not to this objective.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
-  67E the ANALYZE sweep (`3da646b`), 67F this documentation. The ADR
-  document was written in 67D; the earlier increments referenced it
-  before it existed, which the ADR records. 67E was added after that
-  closure, as ADR-0065 did with its own 65D and 65E.
+  67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
+  flicker and the clock outputs (`3e424b7`), 67I this documentation. The
+  ADR document was written in 67D; the earlier increments referenced it
+  before it existed, which the ADR records. 67E and later were added
+  after that closure, as ADR-0065 did with its own 65D and 65E.
 
 ### Next
 

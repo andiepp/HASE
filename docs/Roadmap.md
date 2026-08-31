@@ -2358,7 +2358,7 @@ tests and stands at 6,828 after Increment 66C.
 
 ## Completed objective — ADR-0067 Client-Hosted Instrument Panels
 
-**Status:** [Complete] Closed at Increment 67F
+**Status:** [Complete] Closed at Increment 67I
 
 ADR-0067 lets an instrument descriptor declare a dedicated operating
 surface by name, so a presentation layer that knows no device can host a
@@ -2398,6 +2398,17 @@ Increments:
    respond to commanded output at all. That fault is in the analogue
    path, recorded as an open physical matter rather than a HASE defect.
 
+7. 67G and 67H — The panel flicker and the clock outputs — complete as
+   `3e424b7`. The panel no longer disables itself to apply, which had
+   made the whole surface repaint on every dial movement, and
+   overlapping applies are collapsed instead. The Special Signals tab
+   returns with the Si5351 clock outputs, which had been lost with the
+   message generator that shares it; no definition change was needed.
+   The operator confirmed the flicker is gone and the tab is present.
+8. 67I — Documentation closure — complete; records 67G and 67H, the
+   position that a panel never disables itself, and the two client
+   defects found while validating them.
+
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
-tests and stands at 6,884 across 34 test projects.
+tests and stands at 6,899 across 34 test projects.
