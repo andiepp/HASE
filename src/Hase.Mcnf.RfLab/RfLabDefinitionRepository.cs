@@ -11,7 +11,10 @@ public sealed class RfLabDefinitionRepository : IEndpointDescriptorRepository
             RfLabReadOnlyDefinition.EndpointDefinition),
         new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
             RfLabControlledSignalDefinition.Reference,
-            RfLabControlledSignalDefinition.EndpointDefinition)
+            RfLabControlledSignalDefinition.EndpointDefinition),
+        new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
+            RfLabPanelSignalDefinition.Reference,
+            RfLabPanelSignalDefinition.EndpointDefinition)
     ]);
 
     public ValueTask<EndpointDescriptorDefinition?> FindAsync(

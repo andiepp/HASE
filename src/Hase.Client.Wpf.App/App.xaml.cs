@@ -160,7 +160,9 @@ public partial class App
         // identifiers.
         containerRegistry.RegisterInstance<IClientInstrumentPanelRegistry>(
             new ClientInstrumentPanelRegistry(
-                Array.Empty<IClientInstrumentPanel>()));
+                [
+                    new Hase.Client.Wpf.RfLab.RfLabInstrumentPanel()
+                ]));
     }
 
     protected override void OnExit(

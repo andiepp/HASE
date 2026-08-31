@@ -229,19 +229,32 @@ public sealed class RfLabOperationalConnectionFactory
             return RfLabControlledSignalDefinition.Reference;
         }
 
+        if (ReferenceEquals(definition, RfLabPanelSignalDefinition.EndpointDefinition))
+        {
+            return RfLabPanelSignalDefinition.Reference;
+        }
+
         throw new InvalidDataException(
             "The supplied endpoint definition is not an exact supported RF-Lab definition.");
     }
 
     private static DescriptorReference RuntimeReference(RuntimeEndpoint endpoint) =>
-        endpoint.Instruments.Single().Commands.Count > 0
-            ? RfLabControlledSignalDefinition.Reference
-            : RfLabReadOnlyDefinition.Reference;
+        endpoint.Instruments.Single().Commands.Count == 0
+            ? RfLabReadOnlyDefinition.Reference
+            : DeclaresPanel(endpoint)
+                ? RfLabPanelSignalDefinition.Reference
+                : RfLabControlledSignalDefinition.Reference;
 
     private static EndpointDescriptorDefinition RuntimeDefinition(RuntimeEndpoint endpoint) =>
-        endpoint.Instruments.Single().Commands.Count > 0
-            ? RfLabControlledSignalDefinition.EndpointDefinition
-            : RfLabReadOnlyDefinition.EndpointDefinition;
+        endpoint.Instruments.Single().Commands.Count == 0
+            ? RfLabReadOnlyDefinition.EndpointDefinition
+            : DeclaresPanel(endpoint)
+                ? RfLabPanelSignalDefinition.EndpointDefinition
+                : RfLabControlledSignalDefinition.EndpointDefinition;
+
+    private static bool DeclaresPanel(RuntimeEndpoint endpoint) =>
+        endpoint.Instruments.Single().Descriptor.Presentation?.PanelId
+            == RfLabPanelDeclaration.PanelId;
 
     private static void ValidateSerialProfile(SerialTransportOptions options)
     {

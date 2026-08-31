@@ -43,7 +43,8 @@ public static class DesktopRuntimeHostRfLabDefinitionPreflight
         cancellationToken.ThrowIfCancellationRequested();
 
         if (profile.DefinitionReference != RfLabReadOnlyDefinition.Reference
-            && profile.DefinitionReference != RfLabControlledSignalDefinition.Reference)
+            && profile.DefinitionReference != RfLabControlledSignalDefinition.Reference
+            && profile.DefinitionReference != RfLabPanelSignalDefinition.Reference)
         {
             throw new InvalidDataException(
                 "The configured RF-Lab definition is not supported.");
@@ -62,7 +63,9 @@ public static class DesktopRuntimeHostRfLabDefinitionPreflight
         EndpointDescriptorDefinition expectedDefinition =
             profile.DefinitionReference == RfLabReadOnlyDefinition.Reference
                 ? RfLabReadOnlyDefinition.EndpointDefinition
-                : RfLabControlledSignalDefinition.EndpointDefinition;
+                : profile.DefinitionReference == RfLabControlledSignalDefinition.Reference
+                    ? RfLabControlledSignalDefinition.EndpointDefinition
+                    : RfLabPanelSignalDefinition.EndpointDefinition;
         if (!ReferenceEquals(definition, expectedDefinition))
         {
             throw new InvalidDataException(

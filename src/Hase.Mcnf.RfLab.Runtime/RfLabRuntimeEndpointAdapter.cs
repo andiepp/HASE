@@ -336,6 +336,15 @@ public sealed class RfLabRuntimeEndpointAdapter : IAsyncDisposable
             return (instrument, true);
         }
 
+        // Version 3 carries the identical interface and adds only the panel
+        // declaration, so it is operated exactly like version 2.
+        if (IsCompatible(
+                instrument,
+                RfLabPanelSignalDefinition.EndpointDefinition.Instruments.Single()))
+        {
+            return (instrument, true);
+        }
+
         throw Incompatible();
     }
 

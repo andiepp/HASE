@@ -72,7 +72,7 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
 
     [Theory]
     [InlineData("unknown-definition", 1)]
-    [InlineData("rflab-signal-lab", 3)]
+    [InlineData("rflab-signal-lab", 4)]
     public async Task ResolveAsync_UnsupportedReference_ShouldRejectBeforeRepositoryAccess(
         string definitionId,
         ushort definitionVersion)
@@ -87,6 +87,28 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
                 repository));
 
         Assert.Null(repository.Reference);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ExactPanelVersion_ShouldReturnRepositoryDefinition()
+    {
+        EndpointDescriptorDefinition definition =
+            RfLabPanelSignalDefinition.EndpointDefinition;
+        var repository = new RecordingRepository(definition);
+        var profile = new DesktopRuntimeHostRfLabSerialEndpointProfile(
+            "rflab-01",
+            RfLabPanelSignalDefinition.Reference.Id.Value,
+            RfLabPanelSignalDefinition.Reference.Version,
+            "external-target",
+            115200);
+
+        DesktopRuntimeHostRfLabEndpointPlan plan =
+            await DesktopRuntimeHostRfLabDefinitionPreflight.ResolveAsync(
+                profile,
+                repository);
+
+        Assert.Same(definition, plan.Definition);
+        Assert.Equal(RfLabPanelSignalDefinition.Reference, repository.Reference);
     }
 
     [Fact]

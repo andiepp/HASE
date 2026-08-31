@@ -17,6 +17,9 @@ public sealed class RfLabDefinitionRepositoryTests
 
         Assert.Same(RfLabReadOnlyDefinition.EndpointDefinition, readOnly);
         Assert.Same(RfLabControlledSignalDefinition.EndpointDefinition, controlled);
+        Assert.Same(
+            RfLabPanelSignalDefinition.EndpointDefinition,
+            await repository.FindAsync(RfLabPanelSignalDefinition.Reference));
     }
 
     [Fact]
@@ -25,7 +28,7 @@ public sealed class RfLabDefinitionRepositoryTests
         var repository = new RfLabDefinitionRepository();
 
         Assert.Null(await repository.FindAsync(
-            new DescriptorReference(new DescriptorId("rflab-signal-lab"), version: 3)));
+            new DescriptorReference(new DescriptorId("rflab-signal-lab"), version: 4)));
         Assert.Null(await repository.FindAsync(
             new DescriptorReference(new DescriptorId("unknown"), version: 1)));
     }

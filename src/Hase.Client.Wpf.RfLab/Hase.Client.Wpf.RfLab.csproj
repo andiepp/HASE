@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- The ported RF-Lab user interface predates nullable reference
+         types; files written for HASE opt in with #nullable enable. -->
+    <Nullable>disable</Nullable>
+    <RootNamespace>Hase.Client.Wpf.RfLab</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Prism.DryIoc" Version="9.0.537" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hase.Client\Hase.Client.csproj" />
+    <ProjectReference Include="..\Hase.Client.Wpf\Hase.Client.Wpf.csproj" />
+    <ProjectReference Include="..\Hase.Core\Hase.Core.csproj" />
+    <ProjectReference Include="..\Hase.Mcnf.RfLab\Hase.Mcnf.RfLab.csproj" />
+  </ItemGroup>
+
+</Project>
