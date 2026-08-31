@@ -102,6 +102,12 @@ public sealed class MainWindowViewModel
                     && IsOperationHostConnected
                     && !IsBusy
                     && group.CanRead);
+        // The predicate carries only what changes when the workspace does, so
+        // that a re-query reaches it. Whether the typed value is valid changes
+        // on every keystroke and belongs to the button's own enablement
+        // binding, which follows the item directly; a command cannot see it,
+        // because nothing re-queries a command while the operator types. The
+        // write itself re-checks the value, exactly as command execution does.
         WritePropertyCommand =
             new DelegateCommand<PropertyInventoryItemViewModel>(
                 ExecuteWriteProperty,
@@ -110,7 +116,7 @@ public sealed class MainWindowViewModel
                     && sessionController is not null
                     && IsOperationHostConnected
                     && !IsBusy
-                    && property.CanSubmitWrite);
+                    && property.CanWrite);
         ExecuteCommand =
             new DelegateCommand<CommandInventoryItemViewModel>(
                 ExecuteParameterlessCommand,
