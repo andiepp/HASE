@@ -1,5 +1,46 @@
 # Project Status
 
+## Active architectural objective — ADR-0066
+
+**ADR-0066 — RF-Lab MCNF Instrument Family — Increments 66A–66D complete
+at 6,828 passing tests from starting baseline
+`2994ab8b7a226040cb8b662e4aaa887780996a3a`; Increment 66E (deployment and
+physical validation) open**
+
+- ADR-0066 brings the RF-MiniLab — an Arduino Mega 2560 with an AD9910
+  DDS shield, AD8307 detector, and Si5351 clock generator on COM12 — into
+  HASE as a runtime-hosted instrument family. The Client is unchanged:
+  one composition entry publishes the endpoint in both the secured and
+  the development loopback profile through the descriptor-driven model.
+- The MCNF protocol layer (`Hase.Mcnf`, `Hase.Mcnf.Serial`) is generic
+  and carries no RF-Lab knowledge, so the operator's other MCNF
+  applications can build on it. The RF-Lab family mirrors the KEL-103
+  five-layer shape on top.
+- The node's signal path is set-only, so version 2 of the definition
+  models it as host-staged target Properties pushed by parameterless
+  apply Commands; the acknowledged MCNF response is the execution
+  confirmation, and a missing response is an explicitly uncertain,
+  never-replayed outcome.
+- The single additional attachment-service slot is now shared between the
+  KEL-103 and RF-Lab families by a host-side router dispatching on the
+  connection-definition type; the transport API is unchanged.
+- Read-only physical characterization on AEPRAKETE confirmed every
+  characterized byte against the live node — connectivity, node identity
+  `AE.70.10.80`, configuration, indicator, and sensor reads — and
+  corrected the post-reset settle from 1.5 to the verified three seconds.
+- Increments: 66A generic stack and family (`7c17c81`), 66B host
+  integration (`221355b`), 66C characterization and settle correction
+  (`c5ff089`), 66D this documentation. 66E — deployment to both profiles,
+  Client refresh, LABC/LTAEP synchronization, and supervised physical
+  validation — awaits separate approval.
+
+### Next
+
+Increment 66E — deployment and physical validation of the RF-Lab
+endpoint on AEPRAKETE — through separately approved steps.
+
+---
+
 ## Completed architectural objective — ADR-0065
 
 **ADR-0065 — Descriptor-Declared Property Presentation — implemented,
@@ -58,8 +99,8 @@ starting baseline `5f07edd4194c6c618ec1bf0cc203ea1a95c63236`**
 
 ### Next
 
-Select the next architectural objective through a separately approved
-decision or increment. ADR-0063, ADR-0064, and ADR-0065 are closed.
+ADR-0063, ADR-0064, and ADR-0065 are closed. The active objective is
+ADR-0066, recorded at the top of this document.
 
 ---
 
