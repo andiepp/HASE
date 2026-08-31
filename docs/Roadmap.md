@@ -2358,7 +2358,7 @@ tests and stands at 6,828 after Increment 66C.
 
 ## Completed objective — ADR-0067 Client-Hosted Instrument Panels
 
-**Status:** [Complete] Closed at Increment 67D
+**Status:** [Complete] Closed at Increment 67F
 
 ADR-0067 lets an instrument descriptor declare a dedicated operating
 surface by name, so a presentation layer that knows no device can host a
@@ -2386,7 +2386,18 @@ Increments:
    attenuation through the live-target path.
 4. 67D — Documentation closure — complete; the ADR was written in this
    increment, which it records.
+5. 67E — The ANALYZE sweep — complete as `3da646b`; the panel steps the
+   carrier across the span, settles, reads the detector, plots the
+   response, and restores its own carrier. Added after the 67D closure,
+   as ADR-0065 did with its own 65D and 65E.
+6. 67F — ANALYZE physical validation and documentation closure —
+   complete; the Client was republished from `3da646b` and ANALYZE ran
+   twice from 10 to 30 MHz over 100 points, stepping and plotting every
+   point in 10.9 seconds without a protocol error. The mechanism is
+   validated; the measurement is not, because the detector does not
+   respond to commanded output at all. That fault is in the analogue
+   path, recorded as an open physical matter rather than a HASE defect.
 
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
-tests and stands at 6,875 across 34 test projects.
+tests and stands at 6,884 across 34 test projects.

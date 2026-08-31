@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
-validated on AEPRAKETE, and closed at 6,875 passing tests from starting
+validated on AEPRAKETE, and closed at 6,884 passing tests from starting
 baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 
 - ADR-0066 published the RF-MiniLab and the Client rendered it
@@ -38,15 +38,32 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 - The ported code predates nullable reference types, so its project
   disables it and every file written for HASE opts in — preserving the
   66-warning cold-build baseline the ported code had pushed to 126.
+- The ANALYZE mode, deferred at the 67D closure, was implemented in 67E:
+  the panel steps the carrier across the span, settles, reads the
+  detector, plots the response, and restores its own carrier. It runs in
+  the panel rather than the instrument family because the node has no
+  sweep-and-measure function to delegate to, so the family would have had
+  to acquire a measurement policy its device does not have.
 - Physically validated on AEPRAKETE: the declaration reaches the Client
   over the northbound API and resolves against the hosted panel, the
   button in the endpoint list entry opens the RF-MiniLab window, and the
   panel drove the instrument to 21.4 MHz at 40 dB attenuation through the
-  path a dial movement triggers, each step acknowledged.
+  path a dial movement triggers, each step acknowledged. ANALYZE then ran
+  twice from 10 to 30 MHz over 100 points, stepping and plotting every
+  point in 10.9 seconds without a protocol error.
+- ANALYZE's measurement remains unproven, for a reason outside HASE. The
+  detector does not respond to commanded output at all: stepping the
+  attenuation from 0 to 80 dB moved it by one converter count. The
+  evidence — a powered detector at its no-signal floor, a command path
+  that matches the firmware, and an output the firmware enables in every
+  session — places the fault in the analogue path. It is recorded as an
+  open physical matter, not a HASE defect.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
-  (`a9d1c70`), 67C deployment and physical validation, 67D this
-  documentation. The ADR document was written in 67D; the earlier
-  increments referenced it before it existed, which the ADR records.
+  (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
+  67E the ANALYZE sweep (`3da646b`), 67F this documentation. The ADR
+  document was written in 67D; the earlier increments referenced it
+  before it existed, which the ADR records. 67E was added after that
+  closure, as ADR-0065 did with its own 65D and 65E.
 
 ### Next
 

@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67D documentation closure
+- Status: Closed; Increment 67F documentation closure
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -97,6 +97,35 @@ dials drove the generator and the way a signal generator behaves. Sweep
 and measurement values are staged and take effect when the sweep or the
 measurement starts.
 
+### ANALYZE sweeps from the panel
+
+The original ANALYZE mode steps the carrier across the sweep span, lets
+the detector settle, reads it, and plots the response over frequency.
+Increment 67D deferred it, reasoning that a client-side loop is bounded
+by round-trip latency and that a host-orchestrated sweep would belong to
+the instrument family. That deferral is reversed here, and the reasoning
+that produced it was only half right.
+
+The latency is real and it does set the pace: three round trips per point
+cost about 110 milliseconds, so a hundred-point analysis takes about
+eleven seconds however short a duration is commanded. That is acceptable
+for a bench measurement, and it is visible rather than hidden, because
+the panel reports each point as it is taken.
+
+The other half was wrong. A host-orchestrated sweep has nothing to
+orchestrate: the node offers no sweep-and-measure function to delegate
+to, so the family would have to acquire a measurement policy — how long
+to settle, how many points, what to do when a reading fails — that its
+device does not have. The panel is where the operator sets those values,
+so the panel runs the loop and the instrument family stays set-only.
+
+Two deviations from the original, which owned the serial port directly.
+The point count follows the panel's measurement-count field rather than
+the original's fixed 500, because each point costs three round trips
+here. And the settling delay subtracts the time those round trips already
+consumed, so a commanded duration stays the duration of the run instead
+of becoming a lower bound on it.
+
 ### Versions stay immutable
 
 The declaration is a new definition version. RF-Lab version 3 is version
@@ -141,11 +170,17 @@ which the ported code had otherwise pushed to 126.
 - The ported code keeps its original shape — no nullable annotations, and
   values pushed into controls through events rather than bindings —
   which is a maintenance seam for anyone editing it later.
+- An analysis is paced by the transport rather than by the measurement.
+  Three round trips per point put a hundred-point run at about eleven
+  seconds whatever duration is commanded.
 
 ### Neutral
 
-- The preset list and the host-orchestrated sweep of the original
-  application are not part of this panel; see deferred scope.
+- The preset list of the original application is not part of this panel;
+  see deferred scope.
+- ANALYZE's mechanism is validated against the instrument; its
+  measurement is not, for a reason outside HASE recorded under increment
+  67F.
 
 ## Increment plan
 
@@ -187,14 +222,64 @@ objective consistently. The ADR document itself was written in this
 increment; increments 67A through 67C referenced it before it existed,
 which is recorded here rather than quietly corrected.
 
+### Increment 67E — The ANALYZE sweep
+
+The panel steps the carrier across the sweep span, settles, reads the
+detector, and plots the response, returning the generator to the panel's
+own carrier when the run ends or is stopped. The ported window needed no
+change: its ANALYZE selection was inert only because the replacement view
+model had lost the original's mode gating, in which `IsModeSWEEP` covers
+both the swept and the analysing mode.
+
+Result: complete as `3da646b`; 6,884 passed, 0 failed, 0 skipped across
+34 test projects; the 66-warning cold-build baseline preserved.
+
+### Increment 67F — ANALYZE physical validation and documentation closure
+
+The Client on AEPRAKETE was republished from `3da646b` and ANALYZE was
+run twice against the physical instrument, from 10 to 30 MHz over 100
+points at 20 dB attenuation with a commanded duration of 8 seconds. Both
+runs stepped every point, took 10.9 seconds, reported no protocol error,
+plotted all 100 readings, and returned the generator to the panel
+carrier. The mechanism is validated.
+
+The measurement is not. The detector reported a flat −72.8 to −71.9 dB
+across the whole span, which is its no-signal floor. A follow-up probe
+then held the carrier at 10 MHz and stepped the commanded attenuation
+from 0 to 80 dB: the detector stayed between 375 and 380 millivolts
+throughout, a spread of one converter count. An 80 dB change in commanded
+output produced no change at the detector.
+
+The evidence places that fault in the analogue path rather than assuming
+it there. The detector is powered and working, because an unpowered board
+reads near zero volts at the converter instead of the several hundred
+millivolts an AD8307 sits at with no input. The command path matches the
+firmware, which reads the frequency in hertz, negates the amplitude
+magnitude exactly as the family transmits it, and drives the single-tone
+profile. The output is enabled in every session, because initialization
+drives the power-down pin low, the node resets when the port opens, and
+this firmware build compiles the front-panel output button out. The
+panel's own calibration anchors roughly 2,235 millivolts at about 0 dB,
+so a detector on the output at full drive should read about 2.2 volts —
+some 72 dB above what it reads.
+
+The measurement path is therefore recorded as an open physical matter and
+not as a HASE defect. This increment also records increment 67E, which
+was added after the 67D closure; ADR-0065 set the precedent with its own
+65D and 65E.
+
 ## Deferred scope
 
 - The stored-settings list of the original application. Presets are
   client-side state and need a store and a location; the panel presents
   instrument identity in that column meanwhile.
-- The ANALYZE mode: a frequency sweep with a detector reading per point.
-  As a client-side loop it is bounded by round-trip latency; a
-  host-orchestrated sweep would belong to the instrument family instead.
 - The message-generator surface, pending firmware that transmits.
+- Clamping the panel's amplitude to the range the node can produce. The
+  firmware accepts −72 to 0 dBm, so the panel's full 80 dB of attenuation
+  asks for a level the DDS cannot reach, and the node neither rejects the
+  request nor reports the clipping.
+- The declared detector floor. The sensor minimum is −70 dB while the
+  characterized transfer puts the no-signal floor near −72.3 dB, so a
+  reading taken with no signal present sits below the chart axis.
 - Converting the ported numeric controls to dependency properties, which
   would let the panel bind them instead of wiring their events.
