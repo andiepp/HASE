@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67L documentation closure
+- Status: Closed; Increment 67M documentation correction
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -342,16 +342,21 @@ panel, and that an explicitly sourced one does.
 Result: complete as `0ecc4e7`; 6,902 passed, 0 failed, 0 skipped across
 34 test projects.
 
-Physically validated: with the client republished, the operator confirmed
-the clock controls respond and that all three outputs retune, measured on
-an oscilloscope. That completes the physical validation of 67H, whose
-controls had reached the instrument only after this fix.
+Partially validated: with the client republished, the operator confirmed
+the clock controls respond, which is what this increment fixed.
+
+The clock outputs are **not** physically validated, and increment 67L
+recorded them as validated in error. Measurement shows the commanded
+value reaching the host and going no further: a value staged, displayed
+and acknowledged by the node while the output stays at the frequency the
+firmware set at boot. That is recorded under known defects.
 
 The panel's clock defaults do not match what the node boots to — the
 panel starts channel two at 3 MHz where the firmware sets 25 MHz. That is
 the staged-target model of ADR-0066 showing through rather than a fault:
 the node offers no readback, so the panel shows what has been staged, not
-what the hardware is doing.
+what the hardware is doing. It also means the panel cannot reveal the
+defect above, because it displays the target either way.
 
 ### Increment 67K — The endpoint pane can submit a write
 
@@ -368,7 +373,18 @@ disconnected workspace.
 ### Increment 67L — Documentation closure
 
 This increment records 67J and 67K, corrects the account 67I gave of the
-binding defect, and marks both defects resolved.
+binding defect, and marks both defects resolved. It also recorded the
+clock outputs as physically validated, which was false; 67M withdraws it.
+
+### Increment 67M — Documentation correction
+
+This increment withdraws the physical validation 67L claimed for the
+clock outputs and records what measurement actually shows, together with
+what has since been established about the defect and what it excludes.
+
+An objective whose record says a thing was validated when it was not is
+worse than one that says nothing, because the next person has no reason
+to look. The claim is withdrawn in place rather than amended quietly.
 
 ## Defects found while validating
 
@@ -408,6 +424,35 @@ before they were understood, and fixed in 67J and 67K.
   This belongs to the Client rather than to this objective — it affected
   every writable Property on every endpoint — and is recorded here only
   because this objective's validation found and fixed it.
+
+- **A commanded clock frequency does not reach the hardware.** Staging a
+  clock target and executing its apply command succeeds at every layer
+  that can report: the value is staged, read back, and the node
+  acknowledges the frame. The output nevertheless stays at the frequency
+  the firmware set at boot, measured on an oscilloscope. The same
+  sequence driven through the northbound API from outside the Client
+  reproduces it, and the operator confirms both the Client and the host
+  operator interface behave alike, so no presentation layer is involved.
+
+  The transmitted frame was compared against the original application,
+  which drove this instrument for years: same function code, same
+  nine-byte parameter block, same hundredths-of-a-Hertz scaling, same
+  sixty-four-bit order, same response size. HASE sends what the original
+  sent, so the fault is not in what is transmitted.
+
+  It is the second acknowledged-but-ineffective outcome on this
+  instrument, the first being the radio-frequency output recorded under
+  increment 67F. What the two share is that both chips sit on a bus —
+  the generator on the serial peripheral interface, the clock on the
+  two-wire interface — while the one command that drives a pin directly,
+  the indicator, does take effect and reports its changed state back from
+  the device. Both chips are also programmed successfully during start-up,
+  since the clock output rests at the frequency start-up gave it. Whatever
+  stops later writes, it is below the protocol and is open on the bench.
+
+  Note that the firmware's clock handler returns success unconditionally
+  once the chip is detected, so an acknowledgement proves the frame
+  arrived and nothing about its effect.
 
 ## Deferred scope
 

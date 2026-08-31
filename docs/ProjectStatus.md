@@ -79,17 +79,23 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   a command while the operator types; the write path now has the same
   shape as command execution, which never had the fault. The second
   belongs to the Client, not to this objective.
-- The clock outputs are physically validated: with the client republished
-  the controls respond and all three outputs retune, measured on an
-  oscilloscope. Note that the panel's defaults do not match what the node
-  boots to, because the node offers no readback and the panel shows the
-  staged target rather than the device state.
+- The clock controls are physically validated as controls: they respond,
+  which is what the binding fix addressed. The clock outputs themselves
+  are not. A commanded frequency is staged, read back and acknowledged by
+  the node while the hardware stays at its boot frequency, measured on an
+  oscilloscope. Driving the same sequence through the northbound API from
+  outside the Client reproduces it, which excludes the Client, the panel
+  and the operator interface. It is the second acknowledged-but-
+  ineffective outcome on this instrument and is recorded as open in the
+  ADR. An earlier increment recorded these outputs as validated in error;
+  the ADR records that correction.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
   67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
   flicker and the clock outputs (`3e424b7`), 67I documentation, 67J the
-  clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L this
-  documentation. The ADR document was written in 67D; the earlier
+  clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L
+  documentation, 67M this correction. The ADR document was written in
+  67D; the earlier
   increments referenced it before it existed, which the ADR records. 67E
   and later were added after that closure, as ADR-0065 did with its own
   65D and 65E.
