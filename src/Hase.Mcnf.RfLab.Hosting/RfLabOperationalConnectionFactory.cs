@@ -22,9 +22,11 @@ public sealed class RfLabOperationalConnectionFactory
 
     /// <summary>
     /// The characterized reset settle time of the auto-resetting node after
-    /// the port opens.
+    /// the port opens. The physical node needed more than 1.5 seconds before
+    /// answering its first exchange; three seconds were verified against the
+    /// device on 2026-08-31.
     /// </summary>
-    public static readonly TimeSpan DefaultSettleDelay = TimeSpan.FromMilliseconds(1500);
+    public static readonly TimeSpan DefaultSettleDelay = TimeSpan.FromSeconds(3);
 
     private readonly RuntimeContext runtimeContext;
     private readonly SerialMcnfByteStreamFactory streamFactory;

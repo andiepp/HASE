@@ -124,7 +124,7 @@ public sealed class RfLabOperationalConnectionFactoryTests
     public void DefaultSettleDelay_CoversTheCharacterizedNodeReset()
     {
         Assert.Equal(
-            TimeSpan.FromMilliseconds(1500),
+            TimeSpan.FromSeconds(3),
             RfLabOperationalConnectionFactory.DefaultSettleDelay);
     }
 }
