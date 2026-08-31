@@ -628,6 +628,48 @@
                        TextWrapping="Wrap" Text="{Binding NodeType}" />
             <TextBlock Grid.Row="5" Margin="8,2,4,0" Foreground="#FFB0B0B0" FontSize="11"
                        TextWrapping="Wrap" Text="{Binding ClockGeneratorState}" />
+
+            <!-- ======== -->
+            <!-- Settings -->
+            <!-- ======== -->
+            <!-- Stored settings are read, not written. The original panel
+                 also saved, renamed and deleted them; those are not here. -->
+            <Grid Grid.Row="6" Margin="0,10,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="28" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Label
+                    Style="{StaticResource HeaderLabelStyle}" FontSize="14"
+                    BorderThickness="0,1,0,1"
+                    Content="Settings" />
+
+                <Button
+                    Grid.Row="1" Margin="6,6,6,4" Height="22"
+                    HorizontalAlignment="Stretch"
+                    Command="{Binding ApplyPresetCommand}"
+                    IsEnabled="{Binding CanApplyPreset}"
+                    Content="Apply" />
+
+                <ListView
+                    x:Name="LB_SettingFileNames"
+                    Grid.Row="2" Margin="0,0,2,0" Padding="2"
+                    BorderThickness="0,1,0,0" BorderBrush="#FF2B2929"
+                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    FontWeight="Normal" FontSize="11"
+                    Foreground="White" Background="Black"
+                    ItemsSource="{Binding SettingsFiles}"
+                    SelectedItem="{Binding SelectedSettingsFile, Mode=TwoWay}">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <Setter Property="Margin" Value="2"/>
+                            <Setter Property="Padding" Value="2"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                </ListView>
+            </Grid>
         </Grid>
 
 

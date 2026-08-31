@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using System.Windows;
+using Hase.Client.Wpf.RfLab.Presets;
 using Hase.Client.Wpf.RfLab.ViewModels;
 using Hase.Client.Wpf.RfLab.Views;
 using Hase.Client.Wpf.Services;
@@ -14,7 +15,20 @@ namespace Hase.Client.Wpf.RfLab;
 /// </summary>
 public sealed class RfLabInstrumentPanel : IClientInstrumentPanel
 {
+    private readonly IRfLabPresetStore presetStore;
+
     private RfLabPanelWindow? window;
+
+    /// <param name="presetStore">
+    /// Supplies the panel's stored settings. The composing application names
+    /// the location, because a path that exists on one computer need not
+    /// exist on another. When none is given the client's own preset
+    /// directory is used, which is empty until an operator puts files there.
+    /// </param>
+    public RfLabInstrumentPanel(IRfLabPresetStore? presetStore = null) =>
+        this.presetStore = presetStore
+            ?? new RfLabPresetDirectoryStore(
+                RfLabPresetDirectoryStore.DefaultDirectoryPath);
 
     /// <inheritdoc />
     public string PanelId => RfLabPanelDeclaration.PanelId;
@@ -35,7 +49,8 @@ public sealed class RfLabInstrumentPanel : IClientInstrumentPanel
             return;
         }
 
-        window = new RfLabPanelWindow(new RfLabPanelViewModel(context))
+        window = new RfLabPanelWindow(
+            new RfLabPanelViewModel(context, presetStore: presetStore))
         {
             Owner = Application.Current?.MainWindow
         };

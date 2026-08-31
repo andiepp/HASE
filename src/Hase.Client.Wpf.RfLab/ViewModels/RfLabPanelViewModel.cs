@@ -3,6 +3,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows.Input;
+using Hase.Client.Wpf.RfLab.Presets;
 using Hase.Client.Wpf.Services;
 using Prism.Commands;
 using Prism.Mvvm;
@@ -78,15 +79,22 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     private int clockFrequency2 = 3_000_000;
     private readonly bool[] clockApplyInFlight = new bool[3];
     private readonly bool[] clockApplyPending = new bool[3];
+    private readonly IRfLabPresetStore? presetStore;
+    private readonly bool[] pendingPresetClocks = new bool[3];
+    private string? selectedSettingsFile;
+    private bool loadingPreset;
 
     public RfLabPanelViewModel(
         ClientInstrumentPanelContext context,
-        IRfLabPanelScheduler? scheduler = null)
+        IRfLabPanelScheduler? scheduler = null,
+        IRfLabPresetStore? presetStore = null)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         operations = context.Operations;
         this.scheduler = scheduler ?? new RfLabPanelScheduler();
+        this.presetStore = presetStore;
+        SettingsFiles = presetStore?.ListNames() ?? [];
         EndpointId = $"Endpoint: {context.EndpointId}";
         InstrumentId = $"Instrument: {context.InstrumentId}";
         Title = $"RF-Lab — {context.DisplayName}";
@@ -104,6 +112,9 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         CalibrateCommand = new DelegateCommand(() => { }, () => false);
         ToggleIndicatorCommand = new DelegateCommand(
             async () => await ToggleIndicatorAsync().ConfigureAwait(true));
+        ApplyPresetCommand = new DelegateCommand(
+            ApplySelectedPreset,
+            () => CanApplyPreset);
     }
 
     public string Title { get; }
@@ -218,7 +229,11 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
             RaisePropertyChanged(nameof(Xlabel));
             RaisePropertyChanged(nameof(Xmin));
             RaisePropertyChanged(nameof(Xmax));
-            _ = ApplyModeAsync();
+
+            if (!loadingPreset)
+            {
+                _ = ApplyModeAsync();
+            }
         }
     }
 
@@ -411,11 +426,34 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     public double Xmax =>
         IsModeMEASURE ? MaximumMeasurementPoints : SweepStopFrequency;
 
-    // The original panel offered a stored-settings list. Presets are not part
-    // of this panel yet; the members remain so the view binds unchanged.
-    public IReadOnlyList<string> SettingsFiles { get; } = [];
+    /// <summary>
+    /// The stored settings the panel offers, as the original listed them.
+    /// </summary>
+    public IReadOnlyList<string> SettingsFiles { get; }
 
-    public string? SelectedSettingsFile { get; set; }
+    /// <summary>
+    /// The selected stored setting. Selecting one loads and applies it, as
+    /// the original panel did.
+    /// </summary>
+    public string? SelectedSettingsFile
+    {
+        get => selectedSettingsFile;
+        set
+        {
+            if (!SetProperty(ref selectedSettingsFile, value))
+            {
+                return;
+            }
+
+            RaisePropertyChanged(nameof(CanApplyPreset));
+            ApplySelectedPreset();
+        }
+    }
+
+    public bool CanApplyPreset => SelectedSettingsFile is not null;
+
+    /// <summary>Reapplies the selected stored setting.</summary>
+    public ICommand ApplyPresetCommand { get; }
 
     /// <summary>
     /// Reads the instrument's identity and current state once, so the panel
@@ -479,6 +517,14 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         field = value;
         RaisePropertyChanged(propertyName);
 
+        if (loadingPreset)
+        {
+            // A preset sets many targets. Applying each one would command
+            // the instrument through the preset's intermediate states; the
+            // caller applies once when the whole preset is staged.
+            return;
+        }
+
         if (mode is RfLabSignalMode.Off
             or RfLabSignalMode.AmplitudeModulation
             or RfLabSignalMode.FrequencyModulation)
@@ -486,6 +532,108 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
             _ = ApplyModeCoalescedAsync();
         }
     }
+
+    /// <summary>
+    /// Loads the selected stored setting into the panel and applies it, as
+    /// the original panel did on selection.
+    /// </summary>
+    /// <remarks>
+    /// The signal mode is set last. Every other value is staged first, so
+    /// that the single apply the mode triggers carries the whole preset
+    /// rather than the panel commanding the instrument once per field.
+    ///
+    /// A value the file does not carry leaves the panel's own value alone.
+    /// A preset written by the original application may hold settings for
+    /// surfaces this panel does not present, and those are ignored here
+    /// rather than treated as an error.
+    /// </remarks>
+    private void ApplySelectedPreset()
+    {
+        string? name = SelectedSettingsFile;
+        if (name is null || presetStore is null)
+        {
+            return;
+        }
+
+        RfLabPreset? preset = presetStore.Read(name);
+        if (preset is null)
+        {
+            Fail($"The stored setting '{name}' could not be read.");
+            return;
+        }
+
+        Array.Clear(pendingPresetClocks);
+        loadingPreset = true;
+
+        try
+        {
+            StagePreset(preset);
+        }
+        finally
+        {
+            loadingPreset = false;
+        }
+
+        _ = ApplyModeCoalescedAsync();
+
+        for (int channel = 0; channel < pendingPresetClocks.Length; channel++)
+        {
+            if (pendingPresetClocks[channel])
+            {
+                _ = ApplyClockCoalescedAsync(channel);
+            }
+        }
+
+        ErrorStatus = false;
+        StatusInfo = $"Stored setting '{name}' applied.";
+    }
+
+    private void StagePreset(RfLabPreset preset)
+    {
+        Frequency = Clamp(preset.Frequency, Frequency);
+        Amplitude = Clamp(preset.Amplitude, Amplitude);
+        ModulationFrequency = Clamp(preset.ModulationFrequency, ModulationFrequency);
+        AmplitudeModulationDepth =
+            Clamp(preset.AmplitudeModulationDepth, AmplitudeModulationDepth);
+        FrequencyDeviation = Clamp(preset.FrequencyDeviation, FrequencyDeviation);
+        SweepStartFrequency = Clamp(preset.SweepStartFrequency, SweepStartFrequency);
+        SweepStopFrequency = Clamp(preset.SweepStopFrequency, SweepStopFrequency);
+        SweepTime = Clamp(preset.SweepTime, SweepTime);
+        MeasurementInterval = Clamp(preset.MeasurementInterval, MeasurementInterval);
+        MeasurementCount = Clamp(preset.MeasurementCount, MeasurementCount);
+
+        if (preset.SweepMode is not null
+            && SweepModes.Contains(preset.SweepMode, StringComparer.Ordinal))
+        {
+            SelectedSweepMode = preset.SweepMode;
+        }
+
+        if (preset.Sensor is not null)
+        {
+            RfLabSensorOption? sensor = Sensors.FirstOrDefault(
+                candidate => string.Equals(
+                    candidate.Name,
+                    preset.Sensor,
+                    StringComparison.OrdinalIgnoreCase));
+            if (sensor is not null)
+            {
+                SelectedSensor = sensor;
+            }
+        }
+
+        ClockFrequency0 = Clamp(preset.ClockFrequency0, ClockFrequency0);
+        ClockFrequency1 = Clamp(preset.ClockFrequency1, ClockFrequency1);
+        ClockFrequency2 = Clamp(preset.ClockFrequency2, ClockFrequency2);
+
+        if (preset.Mode is int presetMode
+            && Enum.IsDefined(typeof(RfLabSignalMode), presetMode))
+        {
+            DDS_ModMode = presetMode;
+        }
+    }
+
+    private static int Clamp(int? presetValue, int currentValue) =>
+        presetValue ?? currentValue;
 
     /// <summary>
     /// Stages one Si5351 clock output and applies that channel at once, which
@@ -509,6 +657,13 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
 
         field = value;
         RaisePropertyChanged(propertyName);
+
+        if (loadingPreset)
+        {
+            // Applied once by the caller, with the rest of the preset.
+            pendingPresetClocks[channel] = true;
+            return;
+        }
 
         _ = ApplyClockCoalescedAsync(channel);
     }

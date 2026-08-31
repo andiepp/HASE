@@ -250,10 +250,21 @@ public sealed class MainWindowWritePropertyCommandTests
         public StubCoordinator(MultiHostClientSessionSnapshot snapshot) =>
             Snapshot = snapshot;
 
-        public event EventHandler? SnapshotChanged;
+        // The stub never raises these, so they carry no backing field. A
+        // field-backed event that nothing raises is a compiler warning, and
+        // the baseline has no room for one.
+        public event EventHandler? SnapshotChanged
+        {
+            add { }
+            remove { }
+        }
 
         public event EventHandler<RuntimeHostProfileEventOccurredEventArgs>?
-            EventOccurred;
+            EventOccurred
+        {
+            add { }
+            remove { }
+        }
 
         public MultiHostClientSessionSnapshot Snapshot { get; }
 

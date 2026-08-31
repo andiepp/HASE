@@ -157,11 +157,16 @@ public partial class App
 
         // The panels this application composes into the workspace. An
         // instrument is offered a panel only when it declares one of these
-        // identifiers.
+        // identifiers. The application also names where a panel's stored
+        // settings live, because a path that exists on one computer need
+        // not exist on another and a panel carries no machine knowledge.
         containerRegistry.RegisterInstance<IClientInstrumentPanelRegistry>(
             new ClientInstrumentPanelRegistry(
                 [
-                    new Hase.Client.Wpf.RfLab.RfLabInstrumentPanel()
+                    new Hase.Client.Wpf.RfLab.RfLabInstrumentPanel(
+                        new Hase.Client.Wpf.RfLab.Presets.RfLabPresetDirectoryStore(
+                            Hase.Client.Wpf.RfLab.Presets
+                                .RfLabPresetDirectoryStore.DefaultDirectoryPath))
                 ]));
     }
 
