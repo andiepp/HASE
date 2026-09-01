@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68E complete, the estate migrated, at 7,006 passing tests from
+through 68F complete, the estate migrated, at 7,008 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -50,21 +50,30 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   and the presentation layer offers them without recognising a path. Two
   rules changed with it: a selection is offered at whatever size the
   instrument declares, and the declared order is honoured.
+- The protocol explorer names no instrument. Its KEL-103
+  characterization, 39 files and 28 tests, moved to a project of its own
+  with its own entry point, and a layering test pins that the published
+  explorer references no instrument and declares no scenario named for
+  one.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
   (`10e993f`), 68D2 documentation closure (`6823cea`), 68D the migration
   itself, 68D3 its closure (`1fe2eba`), 68E device knowledge leaves the
-  client library (`753ba0d`). 68D1 was not in the original plan; 68C left
-  nothing able to write the new shape, so the migration had to be built
-  before there was a migration to run.
+  client library (`753ba0d`), 68E1 its closure (`ca4cbfb`), 68F the
+  protocol explorer splits (`60bce77`). 68D1 was not in the original plan;
+  68C left nothing able to write the new shape, so the migration had to be
+  built before there was a migration to run.
 
 ### Next
 
-68F the protocol explorer split, 68G proving the base device-free by
-building and running it without the instrument projects, 68H the add-on
-repository, and 68I publication, which is separately approved and the only
-irreversible step. All three computers are synchronized and clean.
+68G proving the base device-free by building and running it without the
+instrument projects, 68H the add-on repository, and 68I publication, which
+is separately approved and the only irreversible step.
+
+68G is the increment that tests the claim rather than asserting it, and the
+Runtime Host application is the most likely thing it surfaces: it still
+holds the KEL-103 command block the Client library shed in 68E.
 
 Two matters remain open outside that sequence. The Runtime Host
 application still holds the KEL-103 command block the Client library shed

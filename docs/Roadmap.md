@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68E complete; 68F to 68I remain
+**Status:** [Active] 68A through 68F complete; 68G to 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2530,14 +2530,26 @@ Increments:
    declarations. Two rules changed: a selection is offered at whatever
    size the instrument declares, and the declared order is honoured.
 
-Increments 68F through 68I remain as recorded in the ADR: the protocol
-explorer splits, the base is proven device-free by building and running it
-without the instrument projects, the add-on repository is created, and
-publication is separately approved as the only irreversible step.
+9. 68E1 — Documentation closure for the client library — complete as
+   `ca4cbfb`.
+10. 68F — The protocol explorer splits — complete as `60bce77`. The
+    KEL-103 characterization, 31 files under `ScpiCharacterization` and 8
+    of the 77 scenarios, moved with its 28 tests to a project of its own
+    with its own entry point; the base explorer keeps 105 source files and
+    references no instrument. The published program is three lines, and
+    only the two scenario contracts became public, because exposing the
+    explorer host would have cascaded into the protocol client and the
+    trace generator for no benefit. A layering test pins that the
+    published assembly names no instrument.
+
+Increments 68G through 68I remain as recorded in the ADR: the base is
+proven device-free by building and running it without the instrument
+projects, the add-on repository is created, and publication is separately
+approved as the only irreversible step.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 7,006 across 34 test projects. The physical work of
+tests and stands at 7,008 across 35 test projects. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
 republished from `6823cea` before their compositions were touched.

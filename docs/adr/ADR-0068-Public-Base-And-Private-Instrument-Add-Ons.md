@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68E complete; 68F to 68I remain
+- Status: Accepted; 68A through 68F complete; 68G to 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -345,6 +345,34 @@ composition edit, which is a physical increment of its own.
 ### Increment 68F — The protocol explorer splits
 
 Instrument characterization separates from generic exploration.
+
+Result: complete as `60bce77`; 7,008 passed, 0 failed, 0 skipped across 35
+test projects. The measurement held exactly: `ScpiCharacterization` was 31
+files and entirely KEL-103, and 8 of the 77 scenarios were as well. Those
+39 files and their 28 tests moved to `HASE.ProtocolExplorer.Kel103` and its
+own test project, recorded as renames at full similarity, so no
+characterization logic changed. The base explorer keeps 105 source files
+and no longer references `Hase.Scpi.Kel103`.
+
+The seam is the one this objective has now used three times.
+`Program.cs` was already a composition root handing a scenario list to a
+runner, so the work was extracting an application that runs the generic
+scenarios plus any an entry point composes into it, and giving the add-on
+its own entry point. The published program is three lines; the add-on's
+supplies its eight scenarios and their usage lines.
+
+The public surface was deliberately kept narrow. Exposing the explorer host
+cascaded into the protocol client and the trace generator, which would have
+widened the published API for no benefit, because the characterization
+scenarios take no constructor arguments. Only the two scenario contracts
+are public.
+
+A layering test pins the result: the published assembly may reference
+nothing matching `Kel103`, `RfLab` or `Mcnf`, and no scenario type may
+carry an instrument name.
+
+The characterization commands now run from a differently named executable,
+with the same arguments and output.
 
 ### Increment 68G — The base is proven device-free
 
