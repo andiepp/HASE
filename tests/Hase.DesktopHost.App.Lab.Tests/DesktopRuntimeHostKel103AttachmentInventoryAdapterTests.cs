@@ -1,31 +1,34 @@
 ﻿using System.IO;
+using Hase.Core.Domain.Commands;
+using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
-using Hase.Mcnf.RfLab;
+using Hase.Runtime.Diagnostics;
 using Hase.Runtime.Northbound;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
+using Hase.Scpi.Kel103;
 using Hase.Transport.Serial;
 using Hase.DesktopHost.Hosting;
-using Hase.Mcnf.RfLab.DesktopHost;
+using Hase.Scpi.Kel103.DesktopHost;
 
-namespace Hase.DesktopHost.Tests;
+namespace Hase.DesktopHost.App.Lab.Tests;
 
-public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
+public sealed class DesktopRuntimeHostKel103AttachmentInventoryAdapterTests
 {
     [Fact]
     public void ConnectionDefinition_ConfiguredValues_ShouldPreserveIdentityAndHideTarget()
     {
         const string sensitiveTarget = "sensitive-target";
-        var definition = new DesktopRuntimeHostRfLabConnectionDefinition(
-            new EndpointId("rflab-01"),
+        var definition = new DesktopRuntimeHostKel103ConnectionDefinition(
+            new EndpointId("kel-01"),
             new SerialTransportOptions(sensitiveTarget, 115200));
 
         Assert.Equal(EndpointConnectionOrigin.Configured, definition.Origin);
-        Assert.Equal(new EndpointId("rflab-01"), definition.ExpectedEndpointId);
-        Assert.Same(RfLabReadOnlyDefinition.EndpointDefinition, definition.Definition);
+        Assert.Equal(new EndpointId("kel-01"), definition.ExpectedEndpointId);
+        Assert.Same(Kel103ReadOnlyMeasurementDefinition.EndpointDefinition, definition.Definition);
         Assert.Equal(sensitiveTarget, definition.SerialOptions.PortName);
         Assert.DoesNotContain(sensitiveTarget, definition.ToString(), StringComparison.Ordinal);
     }
@@ -35,14 +38,14 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
     {
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context);
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
-        EndpointAttachmentRequest request = Request("rflab-01", "target-one");
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+        EndpointAttachmentRequest request = Request("kel-01", "target-one");
 
         await using IEndpointAttachmentSession session =
             await service.AttachAsync(request);
 
         Assert.Same(request, session.Request);
-        Assert.Equal(new EndpointId("rflab-01"), session.RuntimeEndpoint.Descriptor.Id);
+        Assert.Equal(new EndpointId("kel-01"), session.RuntimeEndpoint.Descriptor.Id);
         Assert.Same(factory.PropertyOperations, session.PropertyOperations);
         Assert.Same(factory.CommandOperations, session.CommandOperations);
         Assert.Single(context.Endpoints);
@@ -52,31 +55,38 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         Assert.Equal(1, factory.DisposeCount);
     }
 
-    [Fact]
-    public async Task AttachAsync_ControlledDefinitionReachesFactoryAndEndpoint()
+    [Theory]
+    [InlineData(4, 5)]
+    [InlineData(5, 8)]
+    public async Task AttachAsync_ControlledDefinitionReachesFactoryAndEndpoint(
+        ushort version,
+        int expectedCommands)
     {
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context);
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+        EndpointDescriptorDefinition definition = version == 4
+            ? Kel103ControlledSetpointDefinition.EndpointDefinition
+            : Kel103ControlledInputDefinition.EndpointDefinition;
         var request = new EndpointAttachmentRequest(
-            new DesktopRuntimeHostRfLabConnectionDefinition(
-                new EndpointId("rflab-01"),
-                RfLabControlledSignalDefinition.EndpointDefinition,
+            new DesktopRuntimeHostKel103ConnectionDefinition(
+                new EndpointId("kel-01"),
+                definition,
                 new SerialTransportOptions("external-target", 115200)),
             HostRepositoryDescriptorSource.Instance);
 
         await using IEndpointAttachmentSession session = await service.AttachAsync(request);
 
-        Assert.Same(RfLabControlledSignalDefinition.EndpointDefinition, factory.Definition);
-        Assert.Equal(17, session.RuntimeEndpoint.Instruments.Single().Properties.Count);
-        Assert.Equal(11, session.RuntimeEndpoint.Instruments.Single().Commands.Count);
+        Assert.Same(definition, factory.Definition);
+        Assert.Equal(11, session.RuntimeEndpoint.Instruments.Single().Properties.Count);
+        Assert.Equal(expectedCommands, session.RuntimeEndpoint.Instruments.Single().Commands.Count);
     }
 
     [Fact]
     public async Task AttachAsync_WrongConnectionFamily_ShouldRejectBeforeFactory()
     {
         var factory = new RecordingFactory(new RuntimeContext());
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
         var request = new EndpointAttachmentRequest(
             new UnsupportedConnectionDefinition(),
             HostRepositoryDescriptorSource.Instance);
@@ -91,10 +101,10 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
     public async Task AttachAsync_WrongDescriptorSource_ShouldRejectBeforeFactory()
     {
         var factory = new RecordingFactory(new RuntimeContext());
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
         var request = new EndpointAttachmentRequest(
-            new DesktopRuntimeHostRfLabConnectionDefinition(
-                new EndpointId("rflab-01"),
+            new DesktopRuntimeHostKel103ConnectionDefinition(
+                new EndpointId("kel-01"),
                 new SerialTransportOptions("target-one", 115200)),
             EndpointProvidedDescriptorSource.Instance);
 
@@ -110,10 +120,10 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         const string sensitiveTarget = "sensitive-target";
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context, returnedEndpointId: "different");
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
 
         InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.AttachAsync(Request("rflab-01", sensitiveTarget)));
+            () => service.AttachAsync(Request("kel-01", sensitiveTarget)));
 
         Assert.Empty(context.Endpoints);
         Assert.Equal(1, factory.DisposeCount);
@@ -130,10 +140,10 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
             returnedEndpointId: "different",
             failDisposal: true,
             sensitiveTarget: sensitiveTarget);
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
 
         AggregateException exception = await Assert.ThrowsAsync<AggregateException>(
-            () => service.AttachAsync(Request("rflab-01", sensitiveTarget)));
+            () => service.AttachAsync(Request("kel-01", sensitiveTarget)));
 
         Assert.Equal(2, exception.InnerExceptions.Count);
         Assert.Empty(context.Endpoints);
@@ -150,13 +160,13 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         var factory = new RecordingFactory(
             new RuntimeContext(),
             openFailure: failure);
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
 
         DesktopRuntimeHostEndpointUnavailableException exception =
             await Assert.ThrowsAsync<
                 DesktopRuntimeHostEndpointUnavailableException>(
                 () => service.AttachAsync(
-                    Request("rflab-01", sensitiveTarget)));
+                    Request("kel-01", sensitiveTarget)));
 
         Assert.Equal(expectedCategory, exception.FailureCategory);
         Assert.Equal(1, factory.OpenCount);
@@ -167,63 +177,71 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
     }
 
     [Fact]
-    public async Task AttachAsync_Cancellation_ShouldPropagateWithoutTargetLeak()
-    {
-        const string sensitiveTarget = "sensitive-target";
-        var factory = new RecordingFactory(
-            new RuntimeContext(),
-            cancelOpen: true,
-            sensitiveTarget: sensitiveTarget);
-        var service = new DesktopRuntimeHostRfLabAttachmentService(factory);
-
-        OperationCanceledException exception =
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(
-                () => service.AttachAsync(Request("rflab-01", sensitiveTarget)));
-
-        Assert.DoesNotContain(sensitiveTarget, exception.ToString(), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task Inventory_AttachFindAndDetach_ShouldUseAuthoritativePath()
+    public async Task Inventory_AttachFindObserveAndDetach_ShouldUseAuthoritativePath()
     {
         var context = new RuntimeContext();
         var factory = new RecordingFactory(context);
         var inventory = new RuntimeEndpointAttachmentInventory(
-            new DesktopRuntimeHostRfLabAttachmentService(factory));
+            new DesktopRuntimeHostKel103AttachmentService(factory));
+        var observer = new RecordingObserver();
+        using IDisposable subscription = inventory.Subscribe(observer);
 
         RuntimeEndpointAttachmentInventoryEntry entry =
-            await inventory.AttachAsync(Request("rflab-01", "target-one"));
+            await inventory.AttachAsync(Request("kel-01", "target-one"));
 
-        Assert.Same(entry, inventory.Find(new EndpointId("rflab-01")));
+        Assert.Same(entry, inventory.Find(new EndpointId("kel-01")));
         Assert.Same(entry, Assert.Single(inventory.List()));
+        Assert.Same(entry, Assert.Single(observer.Published).Entry);
         Assert.Same(factory.PropertyOperations, entry.AttachmentSession.PropertyOperations);
         Assert.Same(factory.CommandOperations, entry.AttachmentSession.CommandOperations);
 
-        Assert.True(await inventory.DetachAsync(new EndpointId("rflab-01")));
+        Assert.True(await inventory.DetachAsync(new EndpointId("kel-01")));
         Assert.Empty(inventory.List());
         Assert.Empty(context.Endpoints);
+        Assert.Same(entry, Assert.Single(observer.Ended).Entry);
         Assert.Equal(1, factory.DisposeCount);
 
         await inventory.DisposeAsync();
     }
 
     [Fact]
-    public async Task NorthboundCommandService_ApplyCarrierCommand_ShouldUseAttachmentPortOnce()
+    public async Task Inventory_DuplicateIdentity_ShouldPreserveExistingAttachment()
+    {
+        var context = new RuntimeContext();
+        var factory = new RecordingFactory(context);
+        var inventory = new RuntimeEndpointAttachmentInventory(
+            new DesktopRuntimeHostKel103AttachmentService(factory));
+        EndpointAttachmentRequest request = Request("kel-01", "target-one");
+
+        RuntimeEndpointAttachmentInventoryEntry existing =
+            await inventory.AttachAsync(request);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => inventory.AttachAsync(request));
+
+        Assert.Same(existing, Assert.Single(inventory.List()));
+        Assert.Single(context.Endpoints);
+
+        await inventory.DisposeAsync();
+        Assert.Empty(context.Endpoints);
+    }
+
+    [Fact]
+    public async Task NorthboundCommandService_VersionFourModeCommand_ShouldUseAttachmentPortOnce()
     {
         string directoryPath = Path.Combine(
             Path.GetTempPath(),
-            $"hase-rflab-command-composition-{Guid.NewGuid():N}");
+            $"hase-kel103-command-composition-{Guid.NewGuid():N}");
 
         try
         {
             var context = new RuntimeContext();
             var factory = new RecordingFactory(context);
             await using var inventory = new RuntimeEndpointAttachmentInventory(
-                new DesktopRuntimeHostRfLabAttachmentService(factory));
+                new DesktopRuntimeHostKel103AttachmentService(factory));
             var request = new EndpointAttachmentRequest(
-                new DesktopRuntimeHostRfLabConnectionDefinition(
-                    new EndpointId("rflab-01"),
-                    RfLabControlledSignalDefinition.EndpointDefinition,
+                new DesktopRuntimeHostKel103ConnectionDefinition(
+                    new EndpointId("kel-01"),
+                    Kel103ControlledSetpointDefinition.EndpointDefinition,
                     new SerialTransportOptions("external-target", 115200)),
                 HostRepositoryDescriptorSource.Instance);
 
@@ -233,7 +251,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
                 await RuntimeHostNorthboundSnapshotComposition.CreateFileBackedAsync(
                     inventory,
                     Path.Combine(directoryPath, "runtime-host-identity.json"),
-                    new RuntimeHostId("runtime-host-rflab-command-composition"));
+                    new RuntimeHostId("runtime-host-kel103-command-composition"));
             PublishedRuntimeEndpointSnapshot endpoint = Assert.Single(
                 composition.InventorySnapshotProvider.List());
             InstrumentId instrumentId = entry.RuntimeEndpoint.Instruments
@@ -244,7 +262,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
                 endpoint.EndpointId,
                 endpoint.Generation,
                 instrumentId,
-                RfLabCommandMapping.ApplyCarrier.CommandPath);
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath);
 
             RuntimeHostCommandOperationResult result =
                 await composition.CommandService.ExecuteAsync(target, argument: null);
@@ -253,7 +271,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
             Assert.Equal(1, factory.CommandOperations.ExecuteCount);
             Assert.Equal(instrumentId, factory.CommandOperations.InstrumentId);
             Assert.Equal(
-                RfLabCommandMapping.ApplyCarrier.CommandPath,
+                Kel103ModeSelectionMapping.ConstantVoltage.CommandPath,
                 factory.CommandOperations.CommandPath);
             Assert.Null(factory.CommandOperations.Argument);
             Assert.Equal(0, factory.PropertyOperations.CallCount);
@@ -265,6 +283,118 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
                 Directory.Delete(directoryPath, recursive: true);
             }
         }
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task NorthboundCommandService_VersionFiveInputCommandPreservesInventoryAndDiagnostics(
+        int mappingIndex)
+    {
+        string directoryPath = Path.Combine(
+            Path.GetTempPath(),
+            $"hase-kel103-input-command-composition-{Guid.NewGuid():N}");
+
+        try
+        {
+            var collector = new BoundedRuntimeDiagnosticCollector(10);
+            var diagnostics = new RuntimeDiagnosticPublisher(collector);
+            var context = new RuntimeContext(diagnostics);
+            var factory = new RecordingFactory(context);
+            await using var inventory = new RuntimeEndpointAttachmentInventory(
+                new DesktopRuntimeHostKel103AttachmentService(factory));
+            var request = new EndpointAttachmentRequest(
+                new DesktopRuntimeHostKel103ConnectionDefinition(
+                    new EndpointId("kel-01"),
+                    Kel103ControlledInputDefinition.EndpointDefinition,
+                    new SerialTransportOptions("external-target", 115200)),
+                HostRepositoryDescriptorSource.Instance);
+
+            RuntimeEndpointAttachmentInventoryEntry entry =
+                await inventory.AttachAsync(request);
+            await using RuntimeHostNorthboundSnapshotComposition composition =
+                await RuntimeHostNorthboundSnapshotComposition.CreateFileBackedAsync(
+                    inventory,
+                    Path.Combine(directoryPath, "runtime-host-identity.json"),
+                    new RuntimeHostId("runtime-host-kel103-input-command-composition"),
+                    diagnostics: diagnostics);
+            PublishedRuntimeEndpointSnapshot endpoint = Assert.Single(
+                composition.InventorySnapshotProvider.List());
+            CommandDescriptor[] commands = endpoint.Descriptor.Instruments
+                .Single()
+                .Interface.Commands
+                .ToArray();
+            Kel103InputControlMapping mapping = Kel103InputControlMapping.All[mappingIndex];
+            InstrumentId instrumentId = entry.RuntimeEndpoint.Instruments
+                .Single()
+                .Descriptor.Id;
+            var target = new RuntimeHostCommandTarget(
+                endpoint.EndpointId,
+                endpoint.Generation,
+                instrumentId,
+                mapping.CommandPath);
+            object? argument = mapping.RequiresConfirmation ? true : null;
+
+            RuntimeHostCommandOperationResult result =
+                await composition.CommandService.ExecuteAsync(target, argument);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(8, commands.Length);
+            CommandDescriptor shortActivation = commands.Single(
+                command => command.Path == Kel103InputControlMapping.ShortCircuitActivate.CommandPath);
+            Assert.IsType<BooleanDataDescriptor>(shortActivation.Argument!.Data);
+            Assert.Equal(1, factory.CommandOperations.ExecuteCount);
+            Assert.Equal(instrumentId, factory.CommandOperations.InstrumentId);
+            Assert.Equal(mapping.CommandPath, factory.CommandOperations.CommandPath);
+            Assert.Equal(argument, factory.CommandOperations.Argument);
+            Assert.Equal(0, factory.PropertyOperations.CallCount);
+
+            IReadOnlyList<RuntimeDiagnosticRecord> records = collector.GetSnapshot()
+                .Where(record => record.EventName.StartsWith(
+                    "CommandExecution",
+                    StringComparison.Ordinal))
+                .ToArray();
+            Assert.Equal(
+                ["CommandExecutionStarted", "CommandExecutionCompleted"],
+                records.Select(record => record.EventName).ToArray());
+            Assert.Equal(records[0].OperationId, records[1].OperationId);
+            Assert.Equal(endpoint.EndpointId.Value, records[0].EndpointId);
+            Assert.Equal(endpoint.Generation.Value, records[0].AttachmentGeneration);
+            Assert.Equal(instrumentId.Value, records[0].Details["instrument"]);
+            Assert.Equal(mapping.CommandPath.ToString(), records[0].Details["path"]);
+            Assert.All(records, record =>
+            {
+                Assert.Equal(2, record.Details.Count);
+                Assert.DoesNotContain(
+                    record.Details.Values,
+                    value => value.Contains("True", StringComparison.OrdinalIgnoreCase));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task AttachAsync_Cancellation_ShouldPropagateWithoutTargetLeak()
+    {
+        const string sensitiveTarget = "sensitive-target";
+        var factory = new RecordingFactory(
+            new RuntimeContext(),
+            cancelOpen: true,
+            sensitiveTarget: sensitiveTarget);
+        var service = new DesktopRuntimeHostKel103AttachmentService(factory);
+
+        OperationCanceledException exception =
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                () => service.AttachAsync(Request("kel-01", sensitiveTarget)));
+
+        Assert.DoesNotContain(sensitiveTarget, exception.ToString(), StringComparison.Ordinal);
     }
 
     public static IEnumerable<object[]> AvailabilityFailures()
@@ -283,9 +413,25 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         [
             new SerialPortOpenException(
                 sensitiveTarget,
+                SerialPortOpenFailure.Unavailable,
+                new IOException(sensitiveTarget)),
+            "SerialPortUnavailable"
+        ];
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
                 SerialPortOpenFailure.AccessDenied,
                 new UnauthorizedAccessException(sensitiveTarget)),
             "SerialPortAccessDenied"
+        ];
+        yield return
+        [
+            new SerialPortOpenException(
+                sensitiveTarget,
+                SerialPortOpenFailure.Failed,
+                new IOException(sensitiveTarget)),
+            "SerialPortOpenFailed"
         ];
         yield return
         [
@@ -303,7 +449,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         string endpointId,
         string serialTarget) =>
         new(
-            new DesktopRuntimeHostRfLabConnectionDefinition(
+            new DesktopRuntimeHostKel103ConnectionDefinition(
                 new EndpointId(endpointId),
                 new SerialTransportOptions(serialTarget, 115200)),
             HostRepositoryDescriptorSource.Instance);
@@ -315,7 +461,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         Exception? openFailure = null,
         bool failDisposal = false,
         string sensitiveTarget = "unused-sensitive-target")
-        : IDesktopRuntimeHostRfLabAttachmentFactory
+        : IDesktopRuntimeHostKel103AttachmentFactory
     {
         public int OpenCount { get; private set; }
         public int DisposeCount { get; private set; }
@@ -323,7 +469,17 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         public RecordingPropertyOperations PropertyOperations { get; } = new();
         public RecordingCommandOperations CommandOperations { get; } = new();
 
-        public Task<IDesktopRuntimeHostRfLabAttachment> OpenAsync(
+        public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
+            EndpointId endpointId,
+            SerialTransportOptions serialOptions,
+            CancellationToken cancellationToken = default)
+            => OpenAsync(
+                endpointId,
+                Kel103ReadOnlyMeasurementDefinition.EndpointDefinition,
+                serialOptions,
+                cancellationToken);
+
+        public Task<IDesktopRuntimeHostKel103Attachment> OpenAsync(
             EndpointId endpointId,
             EndpointDescriptorDefinition definition,
             SerialTransportOptions serialOptions,
@@ -349,7 +505,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
                 definition.Materialize(actualEndpointId));
             context.PublishEndpoint(endpoint);
 
-            return Task.FromResult<IDesktopRuntimeHostRfLabAttachment>(
+            return Task.FromResult<IDesktopRuntimeHostKel103Attachment>(
                 new RecordingAttachment(
                     context,
                     endpoint,
@@ -368,7 +524,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         IEndpointAttachmentCommandOperations commandOperations,
         Action onDispose,
         bool failDisposal,
-        string sensitiveTarget) : IDesktopRuntimeHostRfLabAttachment
+        string sensitiveTarget) : IDesktopRuntimeHostKel103Attachment
     {
         private bool disposed;
 
@@ -395,7 +551,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         }
     }
 
-    internal sealed class RecordingPropertyOperations
+    private sealed class RecordingPropertyOperations
         : IEndpointAttachmentPropertyOperations
     {
         public int CallCount { get; private set; }
@@ -420,7 +576,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
         }
     }
 
-    internal sealed class RecordingCommandOperations
+    private sealed class RecordingCommandOperations
         : IEndpointAttachmentCommandOperations
     {
         public int ExecuteCount { get; private set; }
@@ -442,6 +598,18 @@ public sealed class DesktopRuntimeHostRfLabAttachmentInventoryAdapterTests
             return Task.FromResult(
                 EndpointAttachmentCommandOperationResult.Successful());
         }
+    }
+
+    private sealed class RecordingObserver : IRuntimeEndpointAttachmentInventoryObserver
+    {
+        public List<RuntimeEndpointAttachmentPublished> Published { get; } = [];
+        public List<RuntimeEndpointAttachmentEnded> Ended { get; } = [];
+
+        public void OnAttachmentPublished(RuntimeEndpointAttachmentPublished publication) =>
+            Published.Add(publication);
+
+        public void OnAttachmentEnded(RuntimeEndpointAttachmentEnded ending) =>
+            Ended.Add(ending);
     }
 
     private sealed class UnsupportedConnectionDefinition : IEndpointConnectionDefinition

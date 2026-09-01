@@ -1,6 +1,7 @@
 ﻿using Hase.CompactProtocol;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
+using Hase.DesktopHost.App.Lab;
 using Hase.DesktopHost.Configuration;
 using Hase.DesktopHost.Hosting;
 using Hase.Mcnf.RfLab;
@@ -12,7 +13,7 @@ using Hase.Scpi.Kel103.DesktopHost;
 using Hase.Transport.Serial;
 using Hase.Transport.Tcp;
 
-namespace Hase.DesktopHost.Tests.Hosting;
+namespace Hase.DesktopHost.App.Lab.Tests;
 
 /// <summary>
 /// Covers the instrument families now supplied through the endpoint-provider
@@ -149,11 +150,10 @@ public sealed class DesktopRuntimeHostInstrumentEndpointProviderTests
     }
 
     [Fact]
-    public void TheShippedCompositionRegistersEveryFamilyThisHostOperates()
+    public void TheLabCompositionRegistersEveryFamilyThisHostOperates()
     {
         DesktopRuntimeHostEndpointProviderRegistry registry =
-            ProductionPrivateNetworkRuntimeHostBackend
-                .CreateDefaultEndpointProviders();
+            LabApp.CreateLabEndpointProviders();
 
         Assert.Equal(
             new HashSet<string>(StringComparer.Ordinal)

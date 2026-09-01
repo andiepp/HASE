@@ -1,4 +1,4 @@
-using Hase.DesktopHost.App.Physical;
+﻿using Hase.DesktopHost.App.Physical;
 using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Northbound;
 
@@ -15,10 +15,11 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
         IdentityFilePath = identityFilePath;
         ConfiguredRuntimeHostId = configuredRuntimeHostId;
         EndpointComposition = endpointComposition;
+        // Every configured endpoint counts, whoever supplies it. The
+        // previous per-family sum omitted RF-Lab, which nothing in
+        // production consumed.
         ExpectedPublishedEndpointCount =
-            (endpointComposition?.NativeNetworkEndpoints.Count ?? 0)
-            + (endpointComposition?.CompactSerialEndpoints.Count ?? 0)
-            + (endpointComposition?.Kel103SerialEndpoints.Count ?? 0)
+            (endpointComposition?.Endpoints.Count ?? 0)
             + (includeByteBufferSimulation ? 1 : 0);
     }
 

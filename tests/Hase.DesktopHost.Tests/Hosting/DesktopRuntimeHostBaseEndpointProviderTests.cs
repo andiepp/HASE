@@ -123,6 +123,22 @@ public sealed class DesktopRuntimeHostBaseEndpointProviderTests
             registry.RegisteredProviderIds);
     }
 
+    [Fact]
+    public void ThePublishedCompositionRegistersNoInstrument()
+    {
+        DesktopRuntimeHostEndpointProviderRegistry registry =
+            ProductionPrivateNetworkRuntimeHostBackend
+                .CreateDefaultEndpointProviders();
+
+        Assert.Equal(
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                "native-network",
+                "compact-serial"
+            },
+            registry.RegisteredProviderIds);
+    }
+
     private static DesktopRuntimeHostEndpointProviderContext CreateContext(
         DesktopRuntimeHostEndpointCompositionProfile? endpointComposition =
             null) =>

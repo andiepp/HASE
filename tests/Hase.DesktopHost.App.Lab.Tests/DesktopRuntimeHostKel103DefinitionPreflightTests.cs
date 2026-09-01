@@ -12,7 +12,7 @@ using Hase.Transport.Serial;
 using Hase.DesktopHost.Hosting;
 using Hase.Mcnf.RfLab.DesktopHost;
 
-namespace Hase.DesktopHost.Tests;
+namespace Hase.DesktopHost.App.Lab.Tests;
 
 public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
 {

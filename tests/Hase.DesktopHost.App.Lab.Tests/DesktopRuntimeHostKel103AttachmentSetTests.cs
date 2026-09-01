@@ -10,7 +10,7 @@ using Hase.Transport.Serial;
 using Hase.DesktopHost.Hosting;
 using Hase.Scpi.Kel103.DesktopHost;
 
-namespace Hase.DesktopHost.Tests;
+namespace Hase.DesktopHost.App.Lab.Tests;
 
 public sealed class DesktopRuntimeHostKel103AttachmentSetTests
 {

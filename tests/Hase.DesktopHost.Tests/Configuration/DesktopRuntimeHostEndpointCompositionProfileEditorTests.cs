@@ -1,13 +1,21 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using Hase.Core.Domain.Descriptors;
+using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
-using Hase.Scpi.Kel103;
 
 namespace Hase.DesktopHost.Tests.Configuration;
 
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
 {
+    /// <summary>
+    /// A definition reference of the family the editor migrates. The editor
+    /// takes references rather than definitions, so these tests need no
+    /// instrument project to exercise it.
+    /// </summary>
+    private static DescriptorReference SerialInstrumentDefinition(ushort version) =>
+        new(new DescriptorId("kel103-identity"), version);
+
     [Fact]
     public async Task MigrateKel103DefinitionAsync_VersionFourToFivePreservesIdentityTransportAndBackup()
     {
@@ -23,8 +31,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                 files.Profile,
                 files.Backup,
                 "selected",
-                Kel103ControlledSetpointDefinition.Reference,
-                Kel103ControlledInputDefinition.Reference);
+                SerialInstrumentDefinition(4),
+                SerialInstrumentDefinition(5));
 
         DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
         DesktopRuntimeHostKel103SerialEndpointProfile selected =
@@ -32,12 +40,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                 endpoint.ExpectedEndpointId == "selected");
         Assert.Equal("selected", selected.ExpectedEndpointId);
         Assert.Equal(
-            Kel103ControlledInputDefinition.Reference,
+            SerialInstrumentDefinition(5),
             selected.DefinitionReference);
         Assert.Equal("external-target-selected", selected.SerialPort);
         Assert.Equal(115200, selected.BaudRate);
         Assert.Equal(
-            Kel103ControlledSetpointDefinition.Reference,
+            SerialInstrumentDefinition(4),
             active.Kel103SerialEndpoints.Single(endpoint =>
                 endpoint.ExpectedEndpointId == "preserved").DefinitionReference);
         Assert.Single(active.NativeNetworkEndpoints);
@@ -48,7 +56,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         Assert.All(
             backup.Kel103SerialEndpoints,
             endpoint => Assert.Equal(
-                Kel103ControlledSetpointDefinition.Reference,
+                SerialInstrumentDefinition(4),
                 endpoint.DefinitionReference));
     }
 
@@ -68,8 +76,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ControlledSetpointDefinition.Reference,
-                    Kel103ControlledInputDefinition.Reference));
+                    SerialInstrumentDefinition(4),
+                    SerialInstrumentDefinition(5)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.False(File.Exists(files.Backup));
@@ -90,17 +98,17 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                 files.Profile,
                 files.Backup,
                 "selected",
-                Kel103ReadOnlyMeasurementDefinition.Reference,
-                Kel103ControlledSetpointDefinition.Reference);
+                SerialInstrumentDefinition(2),
+                SerialInstrumentDefinition(4));
 
         DesktopRuntimeHostEndpointCompositionProfile active = await files.Load();
         DesktopRuntimeHostKel103SerialEndpointProfile selected = active.Kel103SerialEndpoints
             .Single(endpoint => endpoint.ExpectedEndpointId == "selected");
-        Assert.Equal(Kel103ControlledSetpointDefinition.Reference, selected.DefinitionReference);
+        Assert.Equal(SerialInstrumentDefinition(4), selected.DefinitionReference);
         Assert.Equal("external-target-selected", selected.SerialPort);
         Assert.Equal(115200, selected.BaudRate);
         Assert.Equal(
-            Kel103ReadOnlyMeasurementDefinition.Reference,
+            SerialInstrumentDefinition(2),
             active.Kel103SerialEndpoints.Single(endpoint =>
                 endpoint.ExpectedEndpointId == "first").DefinitionReference);
         Assert.Single(active.NativeNetworkEndpoints);
@@ -110,7 +118,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
         Assert.All(
             backup.Kel103SerialEndpoints,
             endpoint => Assert.Equal(
-                Kel103ReadOnlyMeasurementDefinition.Reference,
+                SerialInstrumentDefinition(2),
                 endpoint.DefinitionReference));
     }
 
@@ -132,8 +140,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference));
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.False(File.Exists(files.Backup));
@@ -152,8 +160,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "missing",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference));
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.False(File.Exists(files.Backup));
@@ -172,8 +180,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference));
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.False(File.Exists(files.Backup));
@@ -193,8 +201,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference));
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.Equal("preserved-backup", File.ReadAllText(files.Backup));
@@ -215,8 +223,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference,
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4),
                     cancellation.Token));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
@@ -236,8 +244,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
                     files.Profile,
                     files.Backup,
                     "selected",
-                    Kel103ReadOnlyMeasurementDefinition.Reference,
-                    Kel103ControlledSetpointDefinition.Reference));
+                    SerialInstrumentDefinition(2),
+                    SerialInstrumentDefinition(4)));
 
         Assert.Equal(before, File.ReadAllText(files.Profile));
         Assert.False(File.Exists(files.Backup));
@@ -252,8 +260,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
             "unused-profile",
             "unused-backup",
             "selected",
-            Kel103ReadOnlyMeasurementDefinition.Reference,
-            Kel103ReadOnlyMeasurementDefinition.Reference));
+            SerialInstrumentDefinition(2),
+            SerialInstrumentDefinition(2)));
     }
 
     [Fact]
@@ -580,7 +588,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditorTests
     {
         kind = "Kel103Serial",
         expectedEndpointId = id,
-        definitionId = Kel103IdentityDefinition.Reference.Id.Value,
+        definitionId = "kel103-identity",
         definitionVersion = version,
         serialPort = serialTarget,
         baudRate = 115200

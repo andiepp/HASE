@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -10,6 +10,8 @@ using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Northbound;
 using Prism.DryIoc;
 using Prism.Ioc;
+
+using Hase.DesktopHost.Hosting;
 
 namespace Hase.DesktopHost.App;
 
@@ -30,6 +32,20 @@ public partial class App : PrismApplication
     private DesktopRuntimeHostSingleInstanceLease? singleInstanceLease;
     private ProductionPrivateNetworkRuntimeHostBackend? productionBackend;
     private RuntimeHostMediaBindingStartupRequest? mediaBindingRequest;
+
+    /// <summary>
+    /// Composes the endpoint providers this application ships.
+    /// </summary>
+    /// <remarks>
+    /// This application ships the generic endpoint kinds and names no
+    /// instrument. A composition root that ships instruments overrides this
+    /// and registers them alongside, which is the only thing its entry point
+    /// needs to do differently.
+    /// </remarks>
+    protected virtual DesktopRuntimeHostEndpointProviderRegistry
+        CreateEndpointProviders() =>
+        ProductionPrivateNetworkRuntimeHostBackend
+            .CreateDefaultEndpointProviders();
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -136,7 +152,8 @@ public partial class App : PrismApplication
 
         productionBackend =
             new ProductionPrivateNetworkRuntimeHostBackend(
-                startupConfiguration);
+                startupConfiguration,
+                CreateEndpointProviders());
 
         containerRegistry.RegisterInstance<
             IDesktopRuntimeHostBackend>(

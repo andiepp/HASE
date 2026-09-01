@@ -2,8 +2,6 @@
 using System.Text;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
-using Hase.Mcnf.RfLab.DesktopHost;
-using Hase.Scpi.Kel103.DesktopHost;
 
 namespace Hase.DesktopHost.Tests.Configuration;
 
@@ -135,8 +133,8 @@ public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
             [
                 DesktopRuntimeHostNativeNetworkEndpointProvider.Id,
                 DesktopRuntimeHostCompactSerialEndpointProvider.Id,
-                DesktopRuntimeHostKel103EndpointProvider.Id,
-                DesktopRuntimeHostRfLabEndpointProvider.Id
+                "kel-103-serial",
+                "rf-lab-serial"
             ],
             profile.Endpoints.Select(endpoint => endpoint.ProviderId));
     }

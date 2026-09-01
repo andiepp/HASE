@@ -18,8 +18,6 @@ using Hase.Runtime.Remote.Grpc.Hosting;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport;
 using Hase.Runtime.Transport.Attachment;
-using Hase.Mcnf.RfLab.DesktopHost;
-using Hase.Scpi.Kel103.DesktopHost;
 using Hase.Simulation.Runtime.ByteBuffer;
 
 namespace Hase.DesktopHost.App.Hosting;
@@ -89,17 +87,18 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
 
     /// <summary>
     /// Composes the endpoint providers this application ships: the two
-    /// generic endpoint kinds, and the instrument families this
-    /// installation operates.
+    /// endpoint kinds that carry no instrument knowledge.
     /// </summary>
+    /// <remarks>
+    /// This application names no instrument. A composition root that ships
+    /// instruments registers their providers alongside these.
+    /// </remarks>
     public static DesktopRuntimeHostEndpointProviderRegistry
         CreateDefaultEndpointProviders() =>
         new(
             [
                 new DesktopRuntimeHostNativeNetworkEndpointProvider(),
-                new DesktopRuntimeHostCompactSerialEndpointProvider(),
-                new DesktopRuntimeHostKel103EndpointProvider(),
-                new DesktopRuntimeHostRfLabEndpointProvider()
+                new DesktopRuntimeHostCompactSerialEndpointProvider()
             ]);
 
     public void ConfigureMediaBoundary(
