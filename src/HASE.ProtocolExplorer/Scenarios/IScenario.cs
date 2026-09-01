@@ -1,6 +1,6 @@
 ﻿namespace Hase.ProtocolExplorer.Scenarios;
 
-internal interface IScenario
+public interface IScenario
 {
     string Name { get; }
 

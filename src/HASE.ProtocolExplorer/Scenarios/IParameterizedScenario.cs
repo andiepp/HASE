@@ -4,7 +4,7 @@
 /// Represents a Protocol Explorer scenario that accepts
 /// runtime command-line arguments.
 /// </summary>
-internal interface IParameterizedScenario
+public interface IParameterizedScenario
     : IScenario
 {
     /// <summary>
