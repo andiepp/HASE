@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68D complete, the estate migrated, at 6,996 passing tests from
+through 68E complete, the estate migrated, at 7,006 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -44,21 +44,34 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   Windows dynamic range where Hyper-V holds a reservation. That predates
   this objective, proven by restoring its version 1 backup and observing
   the identical fault.
+- The Client library no longer knows the KEL-103. An instrument declares
+  how its commands relate to one another - a short label, the selection a
+  command belongs to, the property reporting which member is in effect -
+  and the presentation layer offers them without recognising a path. Two
+  rules changed with it: a selection is offered at whatever size the
+  instrument declares, and the declared order is honoured.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
   (`10e993f`), 68D2 documentation closure (`6823cea`), 68D the migration
-  itself, 68D3 this closure. 68D1 was not in the original plan; 68C left
+  itself, 68D3 its closure (`1fe2eba`), 68E device knowledge leaves the
+  client library (`753ba0d`). 68D1 was not in the original plan; 68C left
   nothing able to write the new shape, so the migration had to be built
   before there was a migration to run.
 
 ### Next
 
-68E, the KEL-103 command labels leaving `CommandInventoryItemViewModel`,
-then 68F the protocol explorer split, 68G proving the base device-free by
+68F the protocol explorer split, 68G proving the base device-free by
 building and running it without the instrument projects, 68H the add-on
 repository, and 68I publication, which is separately approved and the only
 irreversible step. All three computers are synchronized and clean.
+
+Two matters remain open outside that sequence. The Runtime Host
+application still holds the KEL-103 command block the Client library shed
+in 68E; it is a composition root, which this objective accepts, but it is
+device naming that would be published. And KEL-103 definition version 6
+exists without being in service, which needs a tool operation, a
+republish and a composition edit to change.
 
 ---
 

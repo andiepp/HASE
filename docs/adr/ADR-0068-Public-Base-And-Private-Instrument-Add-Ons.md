@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68D complete; 68E to 68I remain
+- Status: Accepted; 68A through 68E complete; 68F to 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -304,6 +304,43 @@ about the plan, and the one composition left unverified.
 ### Increment 68E — Device knowledge leaves the client library
 
 The KEL-103 labels move out of `CommandInventoryItemViewModel`.
+
+Result: complete as `753ba0d`; 7,006 passed, 0 failed, 0 skipped across 34
+test projects. The library held six things rather than the two this plan
+named, and the last three became visible only once the first three were
+gone: the two label dictionaries, the hardcoded `ShortCircuit.Activate`
+path, the instrument's own SCPI vocabulary in `NormalizeOperatingMode`,
+the hardcoded `Operating.Mode` property path in two separate places, and
+the arrays that imposed both an order and a completeness requirement.
+
+`CommandPresentation` follows `PropertyPresentation` exactly: relationship
+and the instrument's own naming, not appearance. A command may declare its
+short label, the selection it belongs to, the property reporting which
+member is in effect, and the value that property reads when this member
+is. `RequiresExplicitConfirmation` sits beside it rather than inside it,
+being a statement about severity rather than presentation. Both cross the
+northbound API as additive fields, and the pinned contract test failed
+when they landed, which is what it is for.
+
+`Kel103DeclaredControlDefinition` is version 6, version 5 plus the
+declarations; version 5 is untouched and a test pins that it declares
+none. The `SHORt` and `SHORT` spellings differ only in case, so comparing
+the declared value without case sensitivity reproduces the removed
+normalizer exactly.
+
+Two rules changed, both consequences of removing the device knowledge
+rather than side effects of it. A selection is offered at whatever size
+the instrument declares, because a presentation layer cannot know what
+complete means for an instrument it has never seen. And the declared order
+is honoured, because the client no longer has an order of its own. For the
+KEL-103 both are invisible: version 6 declares all five members in the
+original order.
+
+Two things this increment did not do. The Runtime Host application holds
+the same block; it is a composition root, which this ADR accepts, but it
+is still device naming that would be published. And nothing uses version 6
+yet: putting it into service needs a tool operation, a republish, and a
+composition edit, which is a physical increment of its own.
 
 ### Increment 68F — The protocol explorer splits
 

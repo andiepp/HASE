@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68D complete; 68E to 68I remain
+**Status:** [Active] 68A through 68E complete; 68F to 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2519,16 +2519,26 @@ Increments:
    predate this objective.
 7. 68D3 — Documentation closure for the migration — complete; records
    what the migration did and what discovery changed about the plan.
+8. 68E — Device knowledge leaves the client library — complete as
+   `753ba0d`. An instrument declares how its commands relate to one
+   another and the presentation layer offers them without recognising a
+   path. The library held six pieces of device knowledge rather than the
+   two the plan named. `CommandPresentation` follows `PropertyPresentation`;
+   both it and an explicit-confirmation declaration cross the northbound
+   API as additive fields, and the pinned contract test failed when they
+   landed. KEL-103 definition version 6 is version 5 plus the
+   declarations. Two rules changed: a selection is offered at whatever
+   size the instrument declares, and the declared order is honoured.
 
-Increments 68E through 68I remain as recorded in the ADR: device
-knowledge leaves the client library, the protocol explorer splits, the
-base is proven device-free by building and running it without the
-instrument projects, the add-on repository is created, and publication is
-separately approved as the only irreversible step.
+Increments 68F through 68I remain as recorded in the ADR: the protocol
+explorer splits, the base is proven device-free by building and running it
+without the instrument projects, the add-on repository is created, and
+publication is separately approved as the only irreversible step.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 6,996 across 34 test projects. The physical work is
-done: every composition in the estate is on the open format, and the
-installed applications on AEPRAKETE and LABC were republished from
-`6823cea` before their compositions were touched.
+tests and stands at 7,006 across 34 test projects. The physical work of
+the migration is done: every composition in the estate is on the open
+format, and the installed applications on AEPRAKETE and LABC were
+republished from `6823cea` before their compositions were touched.
+KEL-103 definition version 6 exists but is not yet in service.
