@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A, 68B, 68C and 68D1 complete; 68D proposed
+- Status: Accepted; 68A through 68D complete; 68E to 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -240,6 +240,13 @@ One test was removed rather than repaired: 68C's assertion that a foreign
 provider blocks an edit is the rule this increment lifts. Three tests
 replace it.
 
+### Increment 68D2 — Documentation closure before the migration
+
+Result: complete as `6823cea`. Recorded 68A through 68D1 across this ADR,
+Project Status and the Roadmap, so that the written state matched the
+pushed state before anything physical happened. It ran before 68D rather
+than after it, which is why it is numbered here.
+
 ### Increment 68D — Migration
 
 The existing composition files are migrated on each computer, with
@@ -256,6 +263,43 @@ How many installations exist is not assumed. The composition path comes
 from `endpointCompositionFilePath` in each installation profile, and a
 read-only discovery phase enumerates them and runs the preflight against
 each before anything is written.
+
+Result: complete. Discovery found five compositions across three
+computers: three on AEPRAKETE, two on LABC, and none on LTAEP, which is
+client-only and had nothing to migrate. **All five are migrated, and four
+are verified by publication.** Each retains a backup proven byte-identical
+to the file it replaced.
+
+The republish-then-migrate order held, and discovery changed what it
+applied to. Neither multi-host computer has one application per
+configuration: each has a single installed application serving several,
+so republishing it covers every configuration on that computer at once.
+AEPRAKETE's `Development` needed no republish at all, because it runs from
+the repository build rather than an installation. The applications on
+AEPRAKETE and LABC were republished from `6823cea` before either
+computer's compositions were touched.
+
+The one composition not verified by publication is AEPRAKETE's `Secured`.
+Its host cannot bind: the private-network port sits inside the machine's
+Windows dynamic port range, where Hyper-V holds a reservation covering it,
+so the host faults on a socket permission error and publishes nothing.
+That predates this objective, proven by restoring the version 1 backup and
+observing the identical fault. It was migrated anyway, on the operator's
+instruction and on file-level verification alone, and is recorded as
+migrated with publication outstanding.
+
+Two operational findings worth keeping. A first start can omit an endpoint
+that a restart then publishes; it happened twice, once where the device
+had enumerated late, and neither was caused by the migration. And the
+publish tooling does not retain the previous application — it moves it
+aside as a transaction, restoring on failure and deleting on success — so
+an application rollback means republishing from an earlier commit, while
+composition backups are retained.
+
+### Increment 68D3 — Documentation closure for the migration
+
+Result: complete. Records what the migration did, what discovery changed
+about the plan, and the one composition left unverified.
 
 ### Increment 68E — Device knowledge leaves the client library
 

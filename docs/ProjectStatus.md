@@ -2,8 +2,8 @@
 
 ## Active architectural objective — ADR-0068
 
-**ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A,
-68B, 68C and 68D1 complete and pushed, at 6,996 passing tests from
+**ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
+through 68D complete, the estate migrated, at 6,996 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -30,22 +30,35 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   version back, with migration the single operation that changes it. That
   is what lets the version 2 writer ship ahead of the migration: an
   unmigrated host cannot have the open shape written underneath it.
-- Nothing physical has happened. No installed composition has been
-  touched, and no host has been republished from any of these commits.
+- The estate is migrated. Five compositions across three computers are
+  on the open format, each with a backup proven byte-identical to the
+  file it replaced, and four are verified by publication. LTAEP is
+  client-only and had nothing to migrate.
+- Discovery corrected the plan's assumption that a computer has one
+  application per configuration. Both multi-host computers have a single
+  installed application serving several configurations, so republishing
+  it covers all of them at once; AEPRAKETE's `Development` needed no
+  republish, running from the repository build.
+- AEPRAKETE's `Secured` is migrated but its publication is unverified.
+  Its host cannot bind, because its private-network port lies inside the
+  Windows dynamic range where Hyper-V holds a reservation. That predates
+  this objective, proven by restoring its version 1 backup and observing
+  the identical fault.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
-  (`10e993f`). 68D1 was not in the original plan; 68C left nothing able
-  to write the new shape, so the migration had to be built before there
-  was a migration to run.
+  (`10e993f`), 68D2 documentation closure (`6823cea`), 68D the migration
+  itself, 68D3 this closure. 68D1 was not in the original plan; 68C left
+  nothing able to write the new shape, so the migration had to be built
+  before there was a migration to run.
 
 ### Next
 
-68D, the physical migration, separately approved and one installation at
-a time. It is preceded by a read-only discovery phase, because how many
-installations exist and where their compositions live is not assumed. All
-three computers are synchronized to `8a0bdb4` and are behind the current
-head.
+68E, the KEL-103 command labels leaving `CommandInventoryItemViewModel`,
+then 68F the protocol explorer split, 68G proving the base device-free by
+building and running it without the instrument projects, 68H the add-on
+repository, and 68I publication, which is separately approved and the only
+irreversible step. All three computers are synchronized and clean.
 
 ---
 

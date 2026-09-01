@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A, 68B, 68C and 68D1 complete; 68D proposed
+**Status:** [Active] 68A through 68D complete; 68E to 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2502,12 +2502,23 @@ Increments:
    migration. A read-only preflight reports what a migration would
    change, naming providers and counting settings but never reporting
    their values.
-5. 68D — Migration — proposed. Physical, one installation at a time,
-   preceded by read-only discovery because the number of installations
-   and the location of their compositions are not assumed. A host built
-   before 68D1 cannot read a migrated composition, so within an
-   installation the host is republished first and its composition
-   migrated second.
+5. 68D2 — Documentation closure before the migration — complete as
+   `6823cea`; recorded 68A through 68D1 so the written state matched the
+   pushed state before anything physical happened.
+6. 68D — Migration — complete. Five compositions across three computers,
+   all migrated, four verified by publication, each retaining a backup
+   proven byte-identical to the file it replaced. LTAEP is client-only
+   and had nothing to migrate. Discovery corrected the plan: neither
+   multi-host computer has one application per configuration, so
+   republishing the single installed application covers every
+   configuration on that computer, and AEPRAKETE's `Development` needed
+   no republish because it runs from the repository build. AEPRAKETE's
+   `Secured` is migrated but unverified: its host cannot bind, its
+   private-network port lying inside the Windows dynamic range under a
+   Hyper-V reservation, which restoring its version 1 backup showed to
+   predate this objective.
+7. 68D3 — Documentation closure for the migration — complete; records
+   what the migration did and what discovery changed about the plan.
 
 Increments 68E through 68I remain as recorded in the ADR: device
 knowledge leaves the client library, the protocol explorer splits, the
@@ -2517,6 +2528,7 @@ separately approved as the only irreversible step.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 6,996 across 34 test projects. Nothing physical has
-happened: no installed composition has been migrated and no host has been
-republished from any of these commits.
+tests and stands at 6,996 across 34 test projects. The physical work is
+done: every composition in the estate is on the open format, and the
+installed applications on AEPRAKETE and LABC were republished from
+`6823cea` before their compositions were touched.
