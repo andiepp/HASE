@@ -2358,7 +2358,7 @@ tests and stands at 6,828 after Increment 66C.
 
 ## Completed objective — ADR-0067 Client-Hosted Instrument Panels
 
-**Status:** [Complete] Closed at Increment 67N
+**Status:** [Complete] Closed at Increment 67O
 
 ADR-0067 lets an instrument descriptor declare a dedicated operating
 surface by name, so a presentation layer that knows no device can host a
@@ -2433,6 +2433,17 @@ Increments:
     defect. The radio-frequency output under 67F is separate and remains
     open.
 
+14. 67O — The stored-settings column — complete as `146104d`, whose commit
+    names it 67R. The preset list the original offered, deferred since
+    67B for want of a store and a location. Presets are read from a
+    directory the composing application names, defaulting beside the
+    client's own configuration; a missing directory yields no presets
+    rather than preventing the panel from opening. Applies are suppressed
+    while a preset loads, so the instrument is commanded once with the
+    whole preset instead of through its intermediate states. Reading
+    only. Physically validated: the column lists the operator's own files
+    and applying one works.
+
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
-tests and stands at 6,907 across 34 test projects.
+tests and stands at 6,940 across 34 test projects.

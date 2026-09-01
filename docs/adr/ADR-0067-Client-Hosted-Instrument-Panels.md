@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67N clock outputs measured
+- Status: Closed; Increment 67O the stored-settings column
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -410,6 +410,52 @@ The radio-frequency output recorded under increment 67F is a separate
 matter and remains open: the detector does not respond to commanded
 attenuation, and nothing here bears on it.
 
+### Increment 67O — The stored-settings column
+
+The preset list the original panel offered, deferred since 67B for want of
+a store and a location. It now has both.
+
+Presets are read from a directory the composing application names,
+defaulting to the client's own configuration folder, which an application
+update preserves because it replaces only the program. The panel carries
+no machine knowledge, because a path that exists on one computer need not
+exist on another. A directory that is missing or unreadable yields no
+presets rather than preventing the panel from opening, and a name that
+would resolve outside it is refused.
+
+The parser reads the operator's own files as the original wrote them and
+is forgiving of what they contain: a malformed line is skipped rather
+than costing the whole preset, a value may contain commas, and a value
+the file omits leaves the panel alone rather than commanding zero.
+Settings for surfaces this panel does not present are read and ignored
+rather than dropped.
+
+Selecting a preset loads and applies it, as the original did, and applies
+are suppressed while it loads. A preset sets many targets and each one is
+live, so applying as they are set would command the instrument through
+the preset's intermediate states: a new frequency against an old
+amplitude, which is a real state on the output and not merely an extra
+round trip. Everything is staged, including the mode, and then applied
+once, with each clock channel the preset carried. The original did the
+same with its own apply.
+
+Reading only. The original also saved, renamed and deleted presets and
+offered a directory picker. Those are absent by decision rather than
+oversight; they raise questions about naming and overwriting that deserve
+their own increment.
+
+Result: complete as `146104d`; 6,940 passed, 0 failed, 0 skipped across
+34 test projects; the 66-warning cold-build baseline restored, having
+drifted to 68 since increment 67K. Physically validated: with the client
+republished and the operator's own files in place, the column lists them
+and applying one works.
+
+Its commit names it increment 67R. The letters O, P and Q were used in
+conversation for repository tooling that is no part of this objective,
+and the commit took the next letter after them. It is recorded here as
+67O, this ADR's next increment; the discrepancy is stated rather than
+corrected, because the commit is pushed.
+
 ## Defects found while validating
 
 Both were found while validating 67G and 67H on the instrument, recorded
@@ -457,10 +503,10 @@ before they were understood, and fixed in 67J and 67K.
 
 ## Deferred scope
 
-- The stored-settings list of the original application. Presets are
-  client-side state and need a store and a location; the panel presents
-  instrument identity in that column meanwhile. The operator's own preset
-  files are available and are flat key-and-value text.
+- Saving, renaming and deleting stored settings, and choosing their
+  directory from the panel. Reading them is increment 67O; writing them
+  raises questions about naming, overwriting and custody that deserve an
+  increment of their own.
 - The message-generator surface, pending firmware that transmits.
 - Clamping the panel's amplitude to the range the node can produce. The
   firmware accepts −72 to 0 dBm, so the panel's full 80 dB of attenuation

@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
-validated on AEPRAKETE, and closed at 6,907 passing tests from starting
+validated on AEPRAKETE, and closed at 6,940 passing tests from starting
 baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 
 - ADR-0066 published the RF-MiniLab and the Client rendered it
@@ -89,13 +89,22 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   hiding it. One acknowledged-but-unchanged reading remains unexplained
   and is recorded as unexplained rather than as a defect, having not
   recurred by either route.
+- The stored-settings column of the original panel is back, reading the
+  operator's own preset files. Presets live in a directory the composing
+  application names, defaulting beside the client's other configuration so
+  an application update preserves them; the panel carries no machine path,
+  because one that exists on a desktop need not exist on a laptop. Applies
+  are suppressed while a preset loads, so the instrument is commanded once
+  with the whole preset rather than through its intermediate states.
+  Reading only: saving, renaming and deleting stay deferred.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
   67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
   flicker and the clock outputs (`3e424b7`), 67I documentation, 67J the
   clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L
   documentation, 67M a correction later withdrawn, 67N the measured clock
-  outputs. The ADR document was written in 67D; the earlier
+  outputs, 67O the stored-settings column (`146104d`, whose commit names
+  it 67R). The ADR document was written in 67D; the earlier
   increments referenced it before it existed, which the ADR records. 67E
   and later were added after that closure, as ADR-0065 did with its own
   65D and 65E.
