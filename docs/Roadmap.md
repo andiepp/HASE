@@ -2358,7 +2358,7 @@ tests and stands at 6,828 after Increment 66C.
 
 ## Completed objective — ADR-0067 Client-Hosted Instrument Panels
 
-**Status:** [Complete] Closed at Increment 67O
+**Status:** [Complete] Closed at Increment 67Q
 
 ADR-0067 lets an instrument descriptor declare a dedicated operating
 surface by name, so a presentation layer that knows no device can host a
@@ -2444,6 +2444,18 @@ Increments:
     only. Physically validated: the column lists the operator's own files
     and applying one works.
 
+15. 67P — The panel display follows what it did not type — complete as
+    `8fb9dfc`. The ported controls cannot be bound, so the window carries
+    values in both directions by hand; without the return direction a
+    loaded preset reached the instrument while the panel showed the
+    previous values. Three values had to begin announcing their changes
+    first. Physically validated: the display follows a loaded preset.
+16. 67Q — The output responds, measured — complete. The radio-frequency
+    output responds to commanded attenuation, measured on an
+    oscilloscope after the apply command. The conclusion 67F drew from a
+    flat detector is withdrawn; its observations stand, and the likely
+    cause of those readings is recorded as likely rather than shown.
+
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
-tests and stands at 6,940 across 34 test projects.
+tests and stands at 6,955 across 34 test projects.

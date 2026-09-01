@@ -3,7 +3,7 @@
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically
-validated on AEPRAKETE, and closed at 6,940 passing tests from starting
+validated on AEPRAKETE, and closed at 6,955 passing tests from starting
 baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
 
 - ADR-0066 published the RF-MiniLab and the Client rendered it
@@ -97,6 +97,18 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   are suppressed while a preset loads, so the instrument is commanded once
   with the whole preset rather than through its intermediate states.
   Reading only: saving, renaming and deleting stay deferred.
+- The panel display follows values it did not receive from the operator.
+  The ported controls cannot be bound, so the window carries every value
+  in both directions by hand; without the return direction a loaded
+  preset reached the instrument while the panel went on showing the
+  previous numbers. Three values had to begin announcing their changes
+  before the window could push them at all.
+- The radio-frequency output responds to commanded attenuation, measured
+  on an oscilloscope after the apply command. An earlier increment
+  concluded from a flat detector that the signal path was at fault; that
+  conclusion is withdrawn, the observations behind it are kept, and the
+  likely cause of those readings — a detector that was not seeing the
+  output — is recorded as likely rather than demonstrated.
 - Increments: 67A declaration and dispatch (`542e8fd`), 67B the panel
   (`a9d1c70`), 67C deployment and physical validation, 67D documentation,
   67E the ANALYZE sweep (`3da646b`), 67F documentation, 67G and 67H the
@@ -104,7 +116,8 @@ baseline `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`**
   clock binding (`0ecc4e7`), 67K the endpoint-pane write, 67L
   documentation, 67M a correction later withdrawn, 67N the measured clock
   outputs, 67O the stored-settings column (`146104d`, whose commit names
-  it 67R). The ADR document was written in 67D; the earlier
+  it 67R), 67P the panel display (`8fb9dfc`), 67Q this correction. The
+  ADR document was written in 67D; the earlier
   increments referenced it before it existed, which the ADR records. 67E
   and later were added after that closure, as ADR-0065 did with its own
   65D and 65E.

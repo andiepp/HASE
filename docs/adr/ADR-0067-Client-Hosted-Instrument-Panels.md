@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67O the stored-settings column
+- Status: Closed; Increment 67Q the output responds, measured
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -268,30 +268,33 @@ runs stepped every point, took 10.9 seconds, reported no protocol error,
 plotted all 100 readings, and returned the generator to the panel
 carrier. The mechanism is validated.
 
-The measurement is not. The detector reported a flat −72.8 to −71.9 dB
-across the whole span, which is its no-signal floor. A follow-up probe
-then held the carrier at 10 MHz and stepped the commanded attenuation
-from 0 to 80 dB: the detector stayed between 375 and 380 millivolts
-throughout, a spread of one converter count. An 80 dB change in commanded
-output produced no change at the detector.
+The measurement was not, and this increment's account of why was wrong.
+It is corrected under increment 67Q; what follows is what was observed,
+with the conclusion it does not support removed.
 
-The evidence places that fault in the analogue path rather than assuming
-it there. The detector is powered and working, because an unpowered board
-reads near zero volts at the converter instead of the several hundred
-millivolts an AD8307 sits at with no input. The command path matches the
-firmware, which reads the frequency in hertz, negates the amplitude
-magnitude exactly as the family transmits it, and drives the single-tone
-profile. The output is enabled in every session, because initialization
-drives the power-down pin low, the node resets when the port opens, and
-this firmware build compiles the front-panel output button out. The
-panel's own calibration anchors roughly 2,235 millivolts at about 0 dB,
-so a detector on the output at full drive should read about 2.2 volts —
-some 72 dB above what it reads.
+The detector reported a flat minus 72.8 to minus 71.9 dB across the whole
+span, which is its no-signal floor. A follow-up probe then held the
+carrier at 10 MHz and stepped the commanded attenuation from 0 to 80 dB:
+the detector stayed between 375 and 380 millivolts throughout, a spread
+of one converter count. An 80 dB change in commanded output produced no
+change at the detector.
 
-The measurement path is therefore recorded as an open physical matter and
-not as a HASE defect. This increment also records increment 67E, which
-was added after the 67D closure; ADR-0065 set the precedent with its own
-65D and 65E.
+Three things established here remain true and are worth keeping. The
+detector is powered and working, because an unpowered board reads near
+zero volts at the converter instead of the several hundred millivolts an
+AD8307 sits at with no input. The command path matches the firmware,
+which reads the frequency in hertz, negates the amplitude magnitude
+exactly as the family transmits it, and drives the single-tone profile.
+The output is enabled in every session, because initialization drives the
+power-down pin low, the node resets when the port opens, and this
+firmware build compiles the front-panel output button out.
+
+What does not follow is the conclusion drawn from them, that the signal
+path was at fault. The output does respond to commanded attenuation, as
+increment 67Q records on measurement.
+
+This increment also records increment 67E, which was added after the 67D
+closure; ADR-0065 set the precedent with its own 65D and 65E.
 
 ### Increment 67G — The panel stops disabling itself
 
@@ -456,6 +459,60 @@ and the commit took the next letter after them. It is recorded here as
 67O, this ADR's next increment; the discrepancy is stated rather than
 corrected, because the commit is pushed.
 
+### Increment 67P — The panel display follows what it did not type
+
+Loading a stored setting commanded the instrument and left the panel
+showing the previous values. The ported controls are not dependency
+properties and cannot be bound, so the window pushed values into them
+once when it opened and never subscribed to the view model afterwards. A
+value the operator did not type reached the device and not the display.
+
+The window now carries values in both directions. Each control change
+still reaches the view model, and each value the view model changes is
+pushed back into its control. This is not a preset concern: it applies to
+anything that sets values other than the operator.
+
+Three of the values could not have been repaired in the window alone. The
+sweep duration and the two measurement settings were plain properties
+that announced no change, and a window can only push what it is told
+about. They now announce.
+
+The echo is handled rather than hoped about. The digit controls are
+pushed with their change event suppressed, so a pushed value does not
+travel back out. The two dials offer no such option and do raise, but the
+view model already holds the value by then and stops on it, so there is
+no loop and no second apply.
+
+Result: complete as `8fb9dfc`; 6,955 passed, 0 failed, 0 skipped across
+34 test projects; the 66-warning cold-build baseline held. Physically
+validated: with the client republished, the operator confirms the display
+follows a loaded preset.
+
+### Increment 67Q — The output responds, measured
+
+The radio-frequency output responds to commanded attenuation. The
+operator measured it changing on an oscilloscope after the apply command,
+which is the direct physical evidence increment 67F lacked.
+
+67F concluded from a flat detector that the signal path was at fault.
+That conclusion is withdrawn. The observations behind it stand and are
+kept where they were; only the inference goes.
+
+One residual is left stated rather than resolved. The operator's earlier
+observation is explained by an apply command they had not issued, but the
+measurements recorded in 67F were taken by a harness that did issue it —
+the analysis applies the carrier at every point, and the amplitude probe
+applied between writes. Those readings were flat regardless. With the
+output now known to respond, the only account consistent with both is
+that the detector was not seeing the output at the time, which is a bench
+connection and not a fault in the instrument or in HASE. That is recorded
+as the likely cause rather than a demonstrated one, because it has not
+been measured.
+
+A pattern worth naming for whoever reads this next: three times in this
+objective a physical claim was recorded before it was measured, and each
+time the correction cost more than the measurement would have.
+
 ## Defects found while validating
 
 Both were found while validating 67G and 67H on the instrument, recorded
@@ -516,4 +573,8 @@ before they were understood, and fixed in 67J and 67K.
   characterized transfer puts the no-signal floor near −72.3 dB, so a
   reading taken with no signal present sits below the chart axis.
 - Converting the ported numeric controls to dependency properties, which
-  would let the panel bind them instead of wiring their events.
+  would let the panel bind them instead of wiring their events. Until
+  then the window carries every value in both directions by hand, added
+  in increment 67P, and a control added without being wired there will
+  silently fail to follow the panel. Two of this objective's defects came
+  from that seam.
