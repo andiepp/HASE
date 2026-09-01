@@ -1,4 +1,4 @@
-using Hase.Client.Configuration;
+﻿using Hase.Client.Configuration;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
@@ -171,11 +171,11 @@ public sealed class MainWindowInitialModeReadTests
         };
         CommandDescriptor[] commands =
         [
-            new(DescriptorPath.Parse("Mode.SelectConstantCurrent"), "Select CC"),
-            new(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
-            new(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
-            new(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
-            new(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT")
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantCurrent", "Select CC", "CC"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantVoltage", "Select CV", "CV"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantResistance", "Select CR", "CR"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantPower", "Select CW", "CW"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectShortCircuit", "Select SHORT", "SHORT")
         ];
         var instrument = new InstrumentDescriptor(
             new InstrumentId("electronic-load-01"),

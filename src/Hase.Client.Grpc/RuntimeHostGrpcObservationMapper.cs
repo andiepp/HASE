@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Commands;
+﻿using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Endpoints;
 using Hase.Core.Domain.Events;
@@ -551,6 +551,10 @@ public sealed class RuntimeHostGrpcObservationMapper
                 descriptor.HasDescription,
                 descriptor.Description);
 
+        CommandPresentation? presentation =
+            MapCommandPresentation(
+                descriptor.Presentation);
+
         if (descriptor.Argument is null)
         {
             return new CommandDescriptor(
@@ -558,7 +562,11 @@ public sealed class RuntimeHostGrpcObservationMapper
                 displayName)
             {
                 Description =
-                    description
+                    description,
+                Presentation =
+                    presentation,
+                RequiresExplicitConfirmation =
+                    descriptor.RequiresExplicitConfirmation
             };
         }
 
@@ -579,7 +587,42 @@ public sealed class RuntimeHostGrpcObservationMapper
             })
         {
             Description =
-                description
+                description,
+            Presentation =
+                presentation,
+            RequiresExplicitConfirmation =
+                descriptor.RequiresExplicitConfirmation
+        };
+    }
+
+    private static CommandPresentation? MapCommandPresentation(
+        GrpcV1.CommandPresentation? presentation)
+    {
+        if (presentation is null)
+        {
+            return null;
+        }
+
+        return new CommandPresentation
+        {
+            ShortLabel =
+                OptionalText(
+                    presentation.HasShortLabel,
+                    presentation.ShortLabel),
+            SelectionGroupId =
+                OptionalText(
+                    presentation.HasSelectionGroupId,
+                    presentation.SelectionGroupId),
+            SelectionStatePath =
+                presentation.SelectionStatePathSegments.Count == 0
+                    ? null
+                    : MapPath(
+                        presentation.SelectionStatePathSegments,
+                        "Command selection state path"),
+            SelectionValue =
+                OptionalText(
+                    presentation.HasSelectionValue,
+                    presentation.SelectionValue)
         };
     }
 

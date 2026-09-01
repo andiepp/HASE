@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Commands;
+﻿using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Properties;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
@@ -29,6 +29,81 @@ public sealed class CommandDescriptorMapperTests
             () =>
                 new CommandDescriptorMapper(
                     null!));
+    }
+
+    [Fact]
+    public void Map_DeclaredPresentation_ShouldCarryEveryMemberOnTheWire()
+    {
+        var mapper =
+            new CommandDescriptorMapper(
+                new TestDataDescriptorMapper());
+        var descriptor =
+            new CommandDescriptor(
+                DescriptorPath.Parse("Mode.SelectConstantCurrent"),
+                "Select constant-current mode")
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = "CC",
+                    SelectionGroupId = "operating-mode",
+                    SelectionStatePath =
+                        DescriptorPath.Parse("Operating.Mode"),
+                    SelectionValue = "CC"
+                }
+            };
+
+        GrpcV1.CommandDescriptor mapped =
+            mapper.Map(descriptor);
+
+        Assert.NotNull(mapped.Presentation);
+        Assert.Equal("CC", mapped.Presentation.ShortLabel);
+        Assert.Equal(
+            "operating-mode",
+            mapped.Presentation.SelectionGroupId);
+        Assert.Equal(
+            ["Operating", "Mode"],
+            mapped.Presentation.SelectionStatePathSegments);
+        Assert.Equal("CC", mapped.Presentation.SelectionValue);
+        Assert.False(mapped.RequiresExplicitConfirmation);
+    }
+
+    [Fact]
+    public void Map_WithoutPresentation_ShouldLeaveTheAdditiveMembersAbsent()
+    {
+        var mapper =
+            new CommandDescriptorMapper(
+                new TestDataDescriptorMapper());
+
+        GrpcV1.CommandDescriptor mapped =
+            mapper.Map(
+                new CommandDescriptor(
+                    DescriptorPath.Parse("System.Reset"),
+                    "Reset"));
+
+        Assert.Null(mapped.Presentation);
+        Assert.False(mapped.RequiresExplicitConfirmation);
+    }
+
+    [Fact]
+    public void Map_DeclaredConfirmation_ShouldCarryTheRequirement()
+    {
+        var mapper =
+            new CommandDescriptorMapper(
+                new TestDataDescriptorMapper());
+
+        GrpcV1.CommandDescriptor mapped =
+            mapper.Map(
+                new CommandDescriptor(
+                    DescriptorPath.Parse("ShortCircuit.Activate"),
+                    "Activate short circuit",
+                    new CommandArgumentDescriptor(
+                        "Confirmation",
+                        new BooleanDataDescriptor()))
+                {
+                    RequiresExplicitConfirmation = true
+                });
+
+        Assert.True(mapped.RequiresExplicitConfirmation);
     }
 
     [Fact]

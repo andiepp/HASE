@@ -1,4 +1,4 @@
-using DomainCommands = global::Hase.Core.Domain.Commands;
+﻿using DomainCommands = global::Hase.Core.Domain.Commands;
 using GrpcV1 = global::Hase.Runtime.Remote.Grpc.V1;
 
 namespace Hase.Runtime.Remote.Grpc.Adapter;
@@ -51,6 +51,49 @@ public sealed class CommandDescriptorMapper
             result.Argument =
                 MapArgument(
                     descriptor.Argument);
+        }
+
+        if (descriptor.Presentation is not null)
+        {
+            result.Presentation =
+                MapPresentation(
+                    descriptor.Presentation);
+        }
+
+        result.RequiresExplicitConfirmation =
+            descriptor.RequiresExplicitConfirmation;
+
+        return result;
+    }
+
+    private static GrpcV1.CommandPresentation MapPresentation(
+        DomainCommands.CommandPresentation presentation)
+    {
+        var result =
+            new GrpcV1.CommandPresentation();
+
+        if (presentation.ShortLabel is not null)
+        {
+            result.ShortLabel =
+                presentation.ShortLabel;
+        }
+
+        if (presentation.SelectionGroupId is not null)
+        {
+            result.SelectionGroupId =
+                presentation.SelectionGroupId;
+        }
+
+        if (presentation.SelectionStatePath is not null)
+        {
+            result.SelectionStatePathSegments.Add(
+                presentation.SelectionStatePath.Segments);
+        }
+
+        if (presentation.SelectionValue is not null)
+        {
+            result.SelectionValue =
+                presentation.SelectionValue;
         }
 
         return result;

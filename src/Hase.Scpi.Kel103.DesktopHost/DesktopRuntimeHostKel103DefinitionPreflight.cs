@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
@@ -46,7 +46,8 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
         if (profile.DefinitionReference != Kel103ReadOnlyMeasurementDefinition.Reference
             && profile.DefinitionReference != Kel103OperatingStateDefinition.Reference
             && profile.DefinitionReference != Kel103ControlledSetpointDefinition.Reference
-            && profile.DefinitionReference != Kel103ControlledInputDefinition.Reference)
+            && profile.DefinitionReference != Kel103ControlledInputDefinition.Reference
+            && profile.DefinitionReference != Kel103DeclaredControlDefinition.Reference)
         {
             throw new InvalidDataException(
                 "The configured KEL-103 definition is not supported.");
@@ -69,7 +70,9 @@ public static class DesktopRuntimeHostKel103DefinitionPreflight
                     ? Kel103OperatingStateDefinition.EndpointDefinition
                     : profile.DefinitionReference == Kel103ControlledSetpointDefinition.Reference
                         ? Kel103ControlledSetpointDefinition.EndpointDefinition
-                        : Kel103ControlledInputDefinition.EndpointDefinition;
+                        : profile.DefinitionReference == Kel103ControlledInputDefinition.Reference
+                            ? Kel103ControlledInputDefinition.EndpointDefinition
+                            : Kel103DeclaredControlDefinition.EndpointDefinition;
         if (!ReferenceEquals(definition, expectedDefinition))
         {
             throw new InvalidDataException(

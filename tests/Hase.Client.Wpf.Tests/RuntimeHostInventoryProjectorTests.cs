@@ -1,4 +1,4 @@
-using Hase.Client.Wpf.Services;
+﻿using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Endpoints;
@@ -464,19 +464,14 @@ public sealed class RuntimeHostInventoryProjectorTests
     {
         var commands = new[]
         {
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantCurrent"), "Select CC"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT"),
-            new CommandDescriptor(DescriptorPath.Parse("Input.Activate"), "Activate input"),
-            new CommandDescriptor(DescriptorPath.Parse("Input.Deactivate"), "Deactivate input"),
-            new CommandDescriptor(
-                DescriptorPath.Parse("ShortCircuit.Activate"),
-                "Activate short circuit",
-                new CommandArgumentDescriptor(
-                    "Confirmation",
-                    new BooleanDataDescriptor()))
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantCurrent", "Select CC", "CC"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantVoltage", "Select CV", "CV"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantResistance", "Select CR", "CR"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantPower", "Select CW", "CW"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectShortCircuit", "Select SHORT", "SHORT"),
+            DeclaredCommandDescriptors.Input("Input.Activate", "Activate input"),
+            DeclaredCommandDescriptors.Input("Input.Deactivate", "Deactivate input"),
+            DeclaredCommandDescriptors.Confirmed(DescriptorPath.Parse("ShortCircuit.Activate"), "Activate short circuit")
         };
         var instrument = new InstrumentDescriptor(
             new InstrumentId("electronic-load-01"),

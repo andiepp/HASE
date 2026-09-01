@@ -1,4 +1,4 @@
-using Hase.Client.Wpf.Services;
+﻿using Hase.Client.Wpf.Services;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
@@ -1247,12 +1247,7 @@ public sealed class MainWindowViewModelTests
             true)
         {
             Descriptor =
-                new CommandDescriptor(
-                    path,
-                    "Activate short circuit",
-                    new CommandArgumentDescriptor(
-                        "Confirmation",
-                        new BooleanDataDescriptor())),
+                DeclaredCommandDescriptors.Confirmed(path, "Activate short circuit"),
             RequestedBooleanArgument = requestedConfirmation
         };
     }

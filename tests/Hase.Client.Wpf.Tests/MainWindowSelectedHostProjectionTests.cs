@@ -1,4 +1,4 @@
-using Hase.Client.Configuration;
+﻿using Hase.Client.Configuration;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
@@ -153,13 +153,13 @@ public sealed class MainWindowSelectedHostProjectionTests
             profile,
             Session(profile, RuntimeHostClientSessionState.Connected, firstState));
         viewModel.SelectRuntimeHost(profile.ProfileId);
-        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+        ShortCircuitCommand(viewModel).IsExplicitlyConfirmed = true;
 
         viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
             Session(profile, RuntimeHostClientSessionState.Connected, secondState)]));
 
         Assert.True(
-            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+            ShortCircuitCommand(viewModel).IsExplicitlyConfirmed);
     }
 
     [Fact]
@@ -178,13 +178,13 @@ public sealed class MainWindowSelectedHostProjectionTests
             profile,
             Session(profile, RuntimeHostClientSessionState.Connected, firstState));
         viewModel.SelectRuntimeHost(profile.ProfileId);
-        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+        ShortCircuitCommand(viewModel).IsExplicitlyConfirmed = true;
 
         viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
             Session(profile, RuntimeHostClientSessionState.Connected, replacementState)]));
 
         Assert.False(
-            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+            ShortCircuitCommand(viewModel).IsExplicitlyConfirmed);
     }
 
     [Fact]
@@ -199,13 +199,13 @@ public sealed class MainWindowSelectedHostProjectionTests
             profile,
             Session(profile, RuntimeHostClientSessionState.Connected, state));
         viewModel.SelectRuntimeHost(profile.ProfileId);
-        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+        ShortCircuitCommand(viewModel).IsExplicitlyConfirmed = true;
 
         viewModel.ApplyMultiHostSnapshot(new MultiHostClientSessionSnapshot([
             Session(profile, RuntimeHostClientSessionState.Reconnecting, state)]));
 
         Assert.False(
-            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+            ShortCircuitCommand(viewModel).IsExplicitlyConfirmed);
     }
 
     [Fact]
@@ -232,12 +232,12 @@ public sealed class MainWindowSelectedHostProjectionTests
                     Guid.Parse("23d9ef89-267a-4de4-9ed1-04848635e6ab"),
                     1))]));
         viewModel.SelectRuntimeHost(first.ProfileId);
-        ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed = true;
+        ShortCircuitCommand(viewModel).IsExplicitlyConfirmed = true;
 
         viewModel.SelectRuntimeHost(second.ProfileId);
 
         Assert.False(
-            ShortCircuitCommand(viewModel).IsShortCircuitActivationConfirmed);
+            ShortCircuitCommand(viewModel).IsExplicitlyConfirmed);
     }
 
     [Fact]
@@ -728,17 +728,12 @@ public sealed class MainWindowSelectedHostProjectionTests
     {
         CommandDescriptor[] commands =
         [
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantCurrent"), "Select CC"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantVoltage"), "Select CV"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantResistance"), "Select CR"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectConstantPower"), "Select CW"),
-            new CommandDescriptor(DescriptorPath.Parse("Mode.SelectShortCircuit"), "Select SHORT"),
-            new CommandDescriptor(
-                DescriptorPath.Parse("ShortCircuit.Activate"),
-                "Activate short circuit",
-                new CommandArgumentDescriptor(
-                    "Confirmation",
-                    new BooleanDataDescriptor()))
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantCurrent", "Select CC", "CC"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantVoltage", "Select CV", "CV"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantResistance", "Select CR", "CR"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectConstantPower", "Select CW", "CW"),
+            DeclaredCommandDescriptors.Mode("Mode.SelectShortCircuit", "Select SHORT", "SHORT"),
+            DeclaredCommandDescriptors.Confirmed(DescriptorPath.Parse("ShortCircuit.Activate"), "Activate short circuit")
         ];
         var instrument = new InstrumentDescriptor(
             new InstrumentId("electronic-load-01"),

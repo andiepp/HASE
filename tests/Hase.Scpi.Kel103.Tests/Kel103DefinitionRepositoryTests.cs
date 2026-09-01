@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Descriptors;
+﻿using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 
 namespace Hase.Scpi.Kel103.Tests;
@@ -19,6 +19,8 @@ public sealed class Kel103DefinitionRepositoryTests
             await repository.FindAsync(Kel103ControlledSetpointDefinition.Reference));
         Assert.Same(Kel103ControlledInputDefinition.EndpointDefinition,
             await repository.FindAsync(Kel103ControlledInputDefinition.Reference));
+        Assert.Same(Kel103DeclaredControlDefinition.EndpointDefinition,
+            await repository.FindAsync(Kel103DeclaredControlDefinition.Reference));
     }
 
     [Fact]
@@ -26,7 +28,7 @@ public sealed class Kel103DefinitionRepositoryTests
     {
         var repository = new Kel103DefinitionRepository();
         Assert.Null(await repository.FindAsync(
-            new DescriptorReference(Kel103IdentityDefinition.Reference.Id, 6)));
+            new DescriptorReference(Kel103IdentityDefinition.Reference.Id, 7)));
         Assert.Null(await repository.FindAsync(
             new DescriptorReference(new DescriptorId("other"), 2)));
     }

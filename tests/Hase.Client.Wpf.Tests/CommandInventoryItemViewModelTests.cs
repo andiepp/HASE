@@ -1,4 +1,4 @@
-using Hase.Client.Wpf.ViewModels;
+﻿using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Identity;
@@ -204,7 +204,7 @@ public sealed class CommandInventoryItemViewModelTests
 
         Assert.True(instrument.HasModeSelectionSelector);
         Assert.Equal(
-            ["CC", "CV", "CR", "CW", "SHORT"],
+            ["SHORT", "CW", "CR", "CV", "CC"],
             instrument.ModeSelectionCommands
                 .Select(command => command.ModeSelectionLabel)
                 .ToArray());
@@ -234,24 +234,26 @@ public sealed class CommandInventoryItemViewModelTests
     }
 
     [Theory]
-    [InlineData("Mode.SelectConstantCurrent", "CC", true)]
-    [InlineData("Mode.SelectConstantVoltage", "CV", true)]
-    [InlineData("Mode.SelectConstantResistance", "CR", true)]
-    [InlineData("Mode.SelectConstantPower", "CW", true)]
-    [InlineData("Mode.SelectShortCircuit", "SHORt", true)]
-    [InlineData("Mode.SelectShortCircuit", "SHORT", true)]
-    [InlineData("Mode.SelectConstantCurrent", "CV", false)]
-    [InlineData("Mode.SelectConstantCurrent", "unsupported", false)]
-    [InlineData("Mode.SelectConstantCurrent", null, false)]
-    public void ModeSelectionCommand_ShouldIndicateOnlyAuthoritativeActiveMode(
-        string path,
-        string? operatingMode,
+    [InlineData("CC", "CC", true)]
+    [InlineData("CV", "CV", true)]
+    [InlineData("CR", "CR", true)]
+    [InlineData("CW", "CW", true)]
+    [InlineData("SHORT", "SHORt", true)]
+    [InlineData("SHORT", "SHORT", true)]
+    [InlineData("CC", "CV", false)]
+    [InlineData("CC", "unsupported", false)]
+    [InlineData("CC", null, false)]
+    public void DeclaredSelectionMember_IsInEffectOnlyForItsDeclaredValue(
+        string declaredValue,
+        string? reportedValue,
         bool expected)
     {
         CommandInventoryItemViewModel command =
-            CreateModeCommand(path, "Select mode") with
+            CreateModeCommand(
+                "Mode.Select" + declaredValue,
+                "Select " + declaredValue) with
             {
-                AuthoritativeOperatingMode = operatingMode
+                AuthoritativeSelectionState = reportedValue
             };
 
         Assert.Equal(expected, command.IsActiveModeSelection);
@@ -266,14 +268,14 @@ public sealed class CommandInventoryItemViewModelTests
                 "Select CC",
                 endpointReady: false) with
             {
-                AuthoritativeOperatingMode = "CC"
+                AuthoritativeSelectionState = "CC"
             };
 
         Assert.False(command.IsActiveModeSelection);
     }
 
     [Fact]
-    public void IncompleteModeCommandSet_ShouldRemainGeneric()
+    public void PartiallyDeclaredSelection_IsStillOffered()
     {
         var instrument = new InstrumentInventoryItemViewModel(
             "electronic-load-01",
@@ -282,9 +284,31 @@ public sealed class CommandInventoryItemViewModelTests
             [],
             CreateCompleteModeCommandSet().Take(4).ToArray());
 
+        Assert.True(instrument.HasModeSelectionSelector);
+        Assert.Equal(4, instrument.ModeSelectionCommands.Count);
+        Assert.Empty(instrument.GeneralCommands);
+    }
+
+    [Fact]
+    public void UndeclaredCommands_ShouldRemainGeneric()
+    {
+        var instrument = new InstrumentInventoryItemViewModel(
+            "electronic-load-01",
+            "Electronic Load",
+            "ElectronicLoad",
+            [],
+            [
+                CreateCommand(new CommandDescriptor(
+                    DescriptorPath.Parse("Mode.SelectConstantCurrent"),
+                    "Select CC")),
+                CreateCommand(new CommandDescriptor(
+                    DescriptorPath.Parse("Mode.SelectConstantVoltage"),
+                    "Select CV"))
+            ]);
+
         Assert.False(instrument.HasModeSelectionSelector);
         Assert.Empty(instrument.ModeSelectionCommands);
-        Assert.Equal(4, instrument.GeneralCommands.Count);
+        Assert.Equal(2, instrument.GeneralCommands.Count);
     }
 
     [Fact]
@@ -305,8 +329,13 @@ public sealed class CommandInventoryItemViewModelTests
             [],
             commands);
 
-        Assert.False(instrument.HasModeSelectionSelector);
-        Assert.Equal(5, instrument.GeneralCommands.Count);
+        Assert.True(instrument.HasModeSelectionSelector);
+        Assert.Equal(4, instrument.ModeSelectionCommands.Count);
+        Assert.Equal(
+            ["Mode.SelectConstantVoltage"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
     }
 
     [Fact]
@@ -350,7 +379,7 @@ public sealed class CommandInventoryItemViewModelTests
 
         Assert.True(instrument.HasInputControls);
         Assert.Equal(
-            ["Activate input", "Deactivate input"],
+            ["Deactivate input", "Activate input"],
             instrument.InputControlCommands
                 .Select(command => command.InputControlLabel)
                 .ToArray());
@@ -365,7 +394,7 @@ public sealed class CommandInventoryItemViewModelTests
     }
 
     [Fact]
-    public void IncompleteInputCommandSet_ShouldRemainGeneric()
+    public void SingleDeclaredControl_IsStillOffered()
     {
         var instrument = new InstrumentInventoryItemViewModel(
             "electronic-load-01",
@@ -374,9 +403,9 @@ public sealed class CommandInventoryItemViewModelTests
             [],
             [CreateInputCommand("Input.Activate", "Activate input")]);
 
-        Assert.False(instrument.HasInputControls);
-        Assert.Empty(instrument.InputControlCommands);
-        Assert.Single(instrument.GeneralCommands);
+        Assert.True(instrument.HasInputControls);
+        Assert.Single(instrument.InputControlCommands);
+        Assert.Empty(instrument.GeneralCommands);
     }
 
     [Fact]
@@ -398,8 +427,13 @@ public sealed class CommandInventoryItemViewModelTests
                 CreateInputCommand("Input.Deactivate", "Deactivate input")
             ]);
 
-        Assert.False(instrument.HasInputControls);
-        Assert.Equal(2, instrument.GeneralCommands.Count);
+        Assert.True(instrument.HasInputControls);
+        Assert.Single(instrument.InputControlCommands);
+        Assert.Equal(
+            ["Input.Activate"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
     }
 
     [Fact]
@@ -414,10 +448,10 @@ public sealed class CommandInventoryItemViewModelTests
             [],
             [command]);
 
-        Assert.True(command.IsConfirmedShortCircuitActivation);
+        Assert.True(command.RequiresExplicitConfirmation);
         Assert.False(command.CanExecute);
         Assert.Equal(
-            "SHORT activation requires explicit Boolean confirmation true.",
+            "This command requires explicit Boolean confirmation true.",
             command.ValidationMessage);
         Assert.True(instrument.HasConfirmedShortCircuitActivation);
         Assert.Same(command, instrument.ConfirmedShortCircuitActivationCommand);
@@ -435,17 +469,17 @@ public sealed class CommandInventoryItemViewModelTests
         CommandInventoryItemViewModel command =
             CreateConfirmedShortCircuitActivation();
 
-        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.False(command.IsExplicitlyConfirmed);
         Assert.Null(command.RequestedBooleanArgument);
 
-        command.IsShortCircuitActivationConfirmed = true;
+        command.IsExplicitlyConfirmed = true;
 
-        Assert.True(command.IsShortCircuitActivationConfirmed);
+        Assert.True(command.IsExplicitlyConfirmed);
         Assert.True(command.RequestedBooleanArgument);
 
-        command.IsShortCircuitActivationConfirmed = false;
+        command.IsExplicitlyConfirmed = false;
 
-        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.False(command.IsExplicitlyConfirmed);
         Assert.Null(command.RequestedBooleanArgument);
     }
 
@@ -457,14 +491,14 @@ public sealed class CommandInventoryItemViewModelTests
         var changedProperties = new List<string?>();
         command.PropertyChanged += (_, eventArgs) =>
             changedProperties.Add(eventArgs.PropertyName);
-        command.IsShortCircuitActivationConfirmed = true;
+        command.IsExplicitlyConfirmed = true;
         changedProperties.Clear();
 
         command.RequestedBooleanArgument = null;
 
-        Assert.False(command.IsShortCircuitActivationConfirmed);
+        Assert.False(command.IsExplicitlyConfirmed);
         Assert.Contains(
-            nameof(CommandInventoryItemViewModel.IsShortCircuitActivationConfirmed),
+            nameof(CommandInventoryItemViewModel.IsExplicitlyConfirmed),
             changedProperties);
         Assert.Contains(
             nameof(CommandInventoryItemViewModel.CanExecute),
@@ -489,7 +523,7 @@ public sealed class CommandInventoryItemViewModelTests
             [],
             [command]);
 
-        Assert.False(command.IsConfirmedShortCircuitActivation);
+        Assert.False(command.RequiresExplicitConfirmation);
         Assert.False(instrument.HasConfirmedShortCircuitActivation);
         Assert.Same(command, Assert.Single(instrument.GeneralCommands));
     }
@@ -541,16 +575,41 @@ public sealed class CommandInventoryItemViewModelTests
         };
     }
 
+    /// <summary>
+    /// Builds a mode command as an instrument now publishes one: declaring
+    /// its own short label, the selection it belongs to, and the property
+    /// that reports which member is in effect. The short label is the last
+    /// word of the display name, so "Select CC" declares "CC".
+    /// </summary>
     private static CommandInventoryItemViewModel CreateModeCommand(
         string path,
         string displayName,
-        bool endpointReady = true) =>
-        CreateCommand(
+        bool endpointReady = true)
+    {
+        string shortLabel =
+            displayName.Split(' ')[^1];
+
+        return CreateCommand(
             new CommandDescriptor(
                 DescriptorPath.Parse(path),
-                displayName),
+                displayName)
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = shortLabel,
+                    SelectionGroupId = "operating-mode",
+                    SelectionStatePath =
+                        DescriptorPath.Parse("Operating.Mode"),
+                    SelectionValue = shortLabel
+                }
+            },
             endpointReady);
+    }
 
+    /// <summary>
+    /// Builds an input command declaring its own label and no selection, so
+    /// it is offered as a control rather than as one of a set of choices.
+    /// </summary>
     private static CommandInventoryItemViewModel CreateInputCommand(
         string path,
         string displayName,
@@ -558,17 +617,20 @@ public sealed class CommandInventoryItemViewModelTests
         CreateCommand(
             new CommandDescriptor(
                 DescriptorPath.Parse(path),
-                displayName),
+                displayName)
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = displayName
+                }
+            },
             endpointReady);
 
     private static CommandInventoryItemViewModel CreateConfirmedShortCircuitActivation() =>
         CreateCommand(
-            new CommandDescriptor(
+            DeclaredCommandDescriptors.Confirmed(
                 DescriptorPath.Parse("ShortCircuit.Activate"),
-                "Activate short circuit",
-                new CommandArgumentDescriptor(
-                    "Confirmation",
-                    new BooleanDataDescriptor())));
+                "Activate short circuit"));
 
     private static CommandInventoryItemViewModel[] CreateCompleteModeCommandSet() =>
     [

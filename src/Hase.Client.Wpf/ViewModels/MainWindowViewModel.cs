@@ -495,7 +495,7 @@ public sealed class MainWindowViewModel
             .Select(instrument =>
                 instrument.ConfirmedShortCircuitActivationCommand!)
             .Where(command =>
-                command.IsShortCircuitActivationConfirmed)
+                command.IsExplicitlyConfirmed)
             .ToDictionary(
                 command => command.Target,
                 _ => bool.TrueString);
@@ -517,7 +517,7 @@ public sealed class MainWindowViewModel
                 .SelectMany(instrument => instrument.Commands)
                 .Where(command =>
                     command.EndpointReady
-                    && command.IsConfirmedShortCircuitActivation)
+                    && command.RequiresExplicitConfirmation)
                 .Select(command => command.Target)
                 .ToHashSet();
 
@@ -624,13 +624,28 @@ public sealed class MainWindowViewModel
                     && !instrument.ModeSelectionCommands.Any(
                         command => command.IsActiveModeSelection)))
         {
+            // The instrument names the property that reports its selection;
+            // this view model does not know which property that is.
+            string? selectionStatePath =
+                instrument.ModeSelectionCommands
+                    .Select(command =>
+                        command.Descriptor
+                            ?.Presentation
+                            ?.SelectionStatePath
+                            ?.ToString())
+                    .FirstOrDefault(path => path is not null);
+            if (selectionStatePath is null)
+            {
+                continue;
+            }
+
             PropertyInventoryItemViewModel? operatingMode =
                 instrument.Properties.SingleOrDefault(
                     property =>
                         property.CanRead
                         && string.Equals(
                             property.Path,
-                            "Operating.Mode",
+                            selectionStatePath,
                             StringComparison.Ordinal));
             if (operatingMode is null)
             {
@@ -1392,7 +1407,7 @@ public sealed class MainWindowViewModel
 
         if (command.RequiresArgument)
         {
-            if (command.IsConfirmedShortCircuitActivation)
+            if (command.RequiresExplicitConfirmation)
             {
                 if (command.RequestedBooleanArgument is not true)
                 {
@@ -1474,7 +1489,7 @@ public sealed class MainWindowViewModel
     private void ClearSingleUseCommandConfirmation(
         CommandInventoryItemViewModel command)
     {
-        if (!command.IsConfirmedShortCircuitActivation)
+        if (!command.RequiresExplicitConfirmation)
         {
             return;
         }
@@ -1490,7 +1505,7 @@ public sealed class MainWindowViewModel
                 .SelectMany(instrument => instrument.Commands)
                 .Where(current =>
                     current.Target == command.Target
-                    && current.IsConfirmedShortCircuitActivation))
+                    && current.RequiresExplicitConfirmation))
         {
             current.RequestedBooleanArgument =
                 null;

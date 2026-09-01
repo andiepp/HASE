@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
@@ -14,25 +14,6 @@ public sealed record CommandInventoryItemViewModel(
     bool EndpointReady)
     : INotifyPropertyChanged
 {
-    private static readonly IReadOnlyDictionary<string, string>
-        Kel103ModeSelectionLabels =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["Mode.SelectConstantCurrent"] = "CC",
-                ["Mode.SelectConstantVoltage"] = "CV",
-                ["Mode.SelectConstantResistance"] = "CR",
-                ["Mode.SelectConstantPower"] = "CW",
-                ["Mode.SelectShortCircuit"] = "SHORT"
-            };
-
-    private static readonly IReadOnlyDictionary<string, string>
-        Kel103InputControlLabels =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["Input.Activate"] = "Activate input",
-                ["Input.Deactivate"] = "Deactivate input"
-            };
-
     private string requestedArgumentText =
         string.Empty;
 
@@ -46,26 +27,36 @@ public sealed record CommandInventoryItemViewModel(
         Descriptor?.Argument is not null;
 
     public string? ModeSelectionLabel =>
-        Descriptor is not null
-        && !RequiresArgument
-        && string.Equals(
-            Path,
-            Descriptor.Path.ToString(),
-            StringComparison.Ordinal)
-        && string.Equals(
-            Path,
-            Target.CommandPath.ToString(),
-            StringComparison.Ordinal)
-        && Kel103ModeSelectionLabels.TryGetValue(
-            Path,
-            out string? label)
-                ? label
-                : null;
+        DeclaredPresentation is CommandPresentation presentation
+        && presentation.DeclaresResolvableSelection
+            ? presentation.ShortLabel
+            : null;
+
+    /// <summary>
+    /// Gets the selection this command declares membership of, if any.
+    /// </summary>
+    public string? SelectionGroupId =>
+        DeclaredPresentation?.SelectionGroupId;
 
     public bool IsModeSelectionCandidate =>
         ModeSelectionLabel is not null;
 
     public string? InputControlLabel =>
+        DeclaredPresentation is CommandPresentation presentation
+        && !presentation.DeclaresResolvableSelection
+            ? presentation.ShortLabel
+            : null;
+
+    /// <summary>
+    /// Gets the declaration this command carries, when the descriptor agrees
+    /// with the target this item was projected for.
+    /// </summary>
+    /// <remarks>
+    /// The path checks are the same agreement the previous device-specific
+    /// lookups required: an item only presents a declaration that belongs to
+    /// the command it actually addresses.
+    /// </remarks>
+    private CommandPresentation? DeclaredPresentation =>
         Descriptor is not null
         && !RequiresArgument
         && string.Equals(
@@ -76,21 +67,15 @@ public sealed record CommandInventoryItemViewModel(
             Path,
             Target.CommandPath.ToString(),
             StringComparison.Ordinal)
-        && Kel103InputControlLabels.TryGetValue(
-            Path,
-            out string? label)
-                ? label
-                : null;
+            ? Descriptor.Presentation
+            : null;
 
     public bool IsInputControlCandidate =>
         InputControlLabel is not null;
 
-    public bool IsConfirmedShortCircuitActivation =>
-        string.Equals(
-            Path,
-            "ShortCircuit.Activate",
-            StringComparison.Ordinal)
-        && Descriptor is not null
+    public bool RequiresExplicitConfirmation =>
+        Descriptor is not null
+        && Descriptor.RequiresExplicitConfirmation
         && string.Equals(
             Path,
             Descriptor.Path.ToString(),
@@ -102,7 +87,7 @@ public sealed record CommandInventoryItemViewModel(
         && Descriptor.Argument?.Data
             is BooleanDataDescriptor;
 
-    public string? AuthoritativeOperatingMode
+    public string? AuthoritativeSelectionState
     {
         get;
         init;
@@ -110,13 +95,10 @@ public sealed record CommandInventoryItemViewModel(
 
     public bool IsActiveModeSelection =>
         EndpointReady
-        && ModeSelectionLabel is string label
-        && NormalizeOperatingMode(
-            AuthoritativeOperatingMode) is string authoritativeMode
-        && string.Equals(
-            label,
-            authoritativeMode,
-            StringComparison.Ordinal);
+        && DeclaredPresentation is CommandPresentation presentation
+        && presentation.DeclaresResolvableSelection
+        && presentation.IsInEffect(
+            AuthoritativeSelectionState);
 
     public string? ArgumentDisplayName =>
         Descriptor?.Argument?.DisplayName;
@@ -192,12 +174,12 @@ public sealed record CommandInventoryItemViewModel(
             OnPropertyChanged(
                 nameof(RequestedArgumentText));
             OnPropertyChanged(
-                nameof(IsShortCircuitActivationConfirmed));
+                nameof(IsExplicitlyConfirmed));
             RaiseInputStateChanged();
         }
     }
 
-    public bool IsShortCircuitActivationConfirmed
+    public bool IsExplicitlyConfirmed
     {
         get =>
             RequestedBooleanArgument is true;
@@ -228,7 +210,7 @@ public sealed record CommandInventoryItemViewModel(
             OnPropertyChanged(
                 nameof(RequestedBooleanArgument));
             OnPropertyChanged(
-                nameof(IsShortCircuitActivationConfirmed));
+                nameof(IsExplicitlyConfirmed));
             RaiseInputStateChanged();
         }
     }
@@ -251,13 +233,13 @@ public sealed record CommandInventoryItemViewModel(
     public bool HasValidArgument =>
         HasArgumentEditor
         && InputResult.IsSuccess
-        && (!IsConfirmedShortCircuitActivation
+        && (!RequiresExplicitConfirmation
             || RequestedBooleanArgument is true);
 
     public string ValidationMessage =>
-        IsConfirmedShortCircuitActivation
+        RequiresExplicitConfirmation
         && RequestedBooleanArgument is not true
-            ? "SHORT activation requires explicit Boolean confirmation true."
+            ? "This command requires explicit Boolean confirmation true."
             : RequiresArgument
               && !InputResult.IsSuccess
                 ? InputResult.Message
@@ -280,19 +262,6 @@ public sealed record CommandInventoryItemViewModel(
         OnPropertyChanged(
             nameof(CanExecute));
     }
-
-    private static string? NormalizeOperatingMode(
-        string? operatingMode) =>
-        operatingMode switch
-        {
-            "CC" => "CC",
-            "CV" => "CV",
-            "CR" => "CR",
-            "CW" => "CW",
-            "SHORt" => "SHORT",
-            "SHORT" => "SHORT",
-            _ => null
-        };
 
     private void OnPropertyChanged(
         [CallerMemberName] string? propertyName = null)

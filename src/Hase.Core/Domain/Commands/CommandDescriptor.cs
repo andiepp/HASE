@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Properties;
+﻿using Hase.Core.Domain.Properties;
 
 namespace Hase.Core.Domain.Commands;
 
@@ -58,4 +58,21 @@ public sealed record CommandDescriptor
     /// Describes the one required argument, or null for a parameterless command.
     /// </summary>
     public CommandArgumentDescriptor? Argument { get; }
+
+    /// <summary>
+    /// Optional declaration of how this command relates to the other commands
+    /// of its instrument.
+    /// </summary>
+    public CommandPresentation? Presentation { get; init; }
+
+    /// <summary>
+    /// Indicates whether this command's argument must be confirmed explicitly
+    /// before it may be executed.
+    /// </summary>
+    /// <remarks>
+    /// An instrument declares this for a command whose effect is severe
+    /// enough that a default-valued argument must not be accepted. It states
+    /// that a confirmation is required, not how to ask for one.
+    /// </remarks>
+    public bool RequiresExplicitConfirmation { get; init; }
 }

@@ -1,4 +1,4 @@
-namespace Hase.Client.Wpf.ViewModels;
+﻿namespace Hase.Client.Wpf.ViewModels;
 
 public sealed record InstrumentInventoryItemViewModel(
     string InstrumentId,
@@ -7,102 +7,56 @@ public sealed record InstrumentInventoryItemViewModel(
     IReadOnlyList<PropertyInventoryItemViewModel> Properties,
     IReadOnlyList<CommandInventoryItemViewModel> Commands)
 {
-    private static readonly string[] ModeSelectionOrder =
-    [
-        "CC",
-        "CV",
-        "CR",
-        "CW",
-        "SHORT"
-    ];
-
-    private static readonly string[] InputControlOrder =
-    [
-        "Activate input",
-        "Deactivate input"
-    ];
-
+    /// <summary>
+    /// Gets the commands of this instrument's first declared selection, in
+    /// the order the instrument declares them.
+    /// </summary>
+    /// <remarks>
+    /// Which commands form a selection, what they are called, and in which
+    /// order they are offered are all the instrument's declarations. This
+    /// view model holds no list of expected members.
+    /// </remarks>
     public IReadOnlyList<CommandInventoryItemViewModel> ModeSelectionCommands
     {
         get
         {
             CommandInventoryItemViewModel[] candidates =
                 Commands
-                    .Where(
-                        command =>
-                            command.IsModeSelectionCandidate)
+                    .Where(command => command.IsModeSelectionCandidate)
                     .ToArray();
-            bool hasCompleteSelector =
-                candidates.Length == ModeSelectionOrder.Length
-                && ModeSelectionOrder.All(
-                    label =>
-                        candidates.Count(
-                            command =>
-                                string.Equals(
-                                    command.ModeSelectionLabel,
-                                    label,
-                                    StringComparison.Ordinal))
-                        == 1);
 
-            return hasCompleteSelector
-                ? ModeSelectionOrder
-                    .Select(
-                        label =>
-                            candidates.Single(
-                                command =>
-                                    string.Equals(
-                                        command.ModeSelectionLabel,
-                                        label,
-                                        StringComparison.Ordinal)))
-                    .ToArray()
-                : [];
+            if (candidates.Length == 0)
+            {
+                return [];
+            }
+
+            string? firstGroupId =
+                candidates[0].SelectionGroupId;
+
+            return candidates
+                .Where(command =>
+                    string.Equals(
+                        command.SelectionGroupId,
+                        firstGroupId,
+                        StringComparison.Ordinal))
+                .ToArray();
         }
     }
 
     public bool HasModeSelectionSelector =>
-        ModeSelectionCommands.Count
-        == ModeSelectionOrder.Length;
+        ModeSelectionCommands.Count > 1;
 
-    public IReadOnlyList<CommandInventoryItemViewModel> InputControlCommands
-    {
-        get
-        {
-            CommandInventoryItemViewModel[] candidates =
-                Commands
-                    .Where(
-                        command =>
-                            command.IsInputControlCandidate)
-                    .ToArray();
-            bool hasCompleteControls =
-                candidates.Length == InputControlOrder.Length
-                && InputControlOrder.All(
-                    label =>
-                        candidates.Count(
-                            command =>
-                                string.Equals(
-                                    command.InputControlLabel,
-                                    label,
-                                    StringComparison.Ordinal))
-                        == 1);
-
-            return hasCompleteControls
-                ? InputControlOrder
-                    .Select(
-                        label =>
-                            candidates.Single(
-                                command =>
-                                    string.Equals(
-                                        command.InputControlLabel,
-                                        label,
-                                        StringComparison.Ordinal)))
-                    .ToArray()
-                : [];
-        }
-    }
+    /// <summary>
+    /// Gets the commands this instrument declares a label for without
+    /// declaring a selection, in the order the instrument declares them.
+    /// </summary>
+    public IReadOnlyList<CommandInventoryItemViewModel> InputControlCommands =>
+        Commands
+            .Where(command => command.IsInputControlCandidate)
+            .ToArray();
 
     public bool HasInputControls =>
-        InputControlCommands.Count
-        == InputControlOrder.Length;
+        InputControlCommands.Count > 0;
 
     public CommandInventoryItemViewModel? ConfirmedShortCircuitActivationCommand
     {
@@ -111,7 +65,7 @@ public sealed record InstrumentInventoryItemViewModel(
             CommandInventoryItemViewModel[] candidates =
                 Commands
                     .Where(command =>
-                        command.IsConfirmedShortCircuitActivation)
+                        command.RequiresExplicitConfirmation)
                     .ToArray();
 
             return candidates.Length == 1
@@ -135,7 +89,7 @@ public sealed record InstrumentInventoryItemViewModel(
                         && (!HasInputControls
                             || !command.IsInputControlCandidate)
                         && (!HasConfirmedShortCircuitActivation
-                            || !command.IsConfirmedShortCircuitActivation))
+                            || !command.RequiresExplicitConfirmation))
                 .ToArray()
             : Commands;
 

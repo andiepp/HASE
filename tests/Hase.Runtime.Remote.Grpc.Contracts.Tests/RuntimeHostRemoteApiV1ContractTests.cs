@@ -1,4 +1,4 @@
-using Google.Protobuf;
+﻿using Google.Protobuf;
 using Google.Protobuf.Reflection;
 using Google.Protobuf.WellKnownTypes;
 using Hase.Runtime.Remote.Grpc.V1;
@@ -1221,6 +1221,50 @@ public sealed class RuntimeHostRemoteApiV1ContractTests
                 "argument",
                 4,
                 CommandArgumentDescriptor.Descriptor,
+                false),
+            field => AssertMessageField(
+                field,
+                "presentation",
+                5,
+                CommandPresentation.Descriptor,
+                false),
+            field => AssertField(
+                field,
+                "requires_explicit_confirmation",
+                6,
+                FieldType.Bool,
+                false,
+                false));
+
+        Assert.Collection(
+            CommandPresentation.Descriptor.Fields.InDeclarationOrder(),
+            field => AssertField(
+                field,
+                "short_label",
+                1,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "selection_group_id",
+                2,
+                FieldType.String,
+                true,
+                false),
+            field => AssertField(
+                field,
+                "selection_state_path_segments",
+                3,
+                FieldType.String,
+                false,
+                true),
+            field => AssertField(
+                field,
+                "selection_value",
+                4,
+                FieldType.String,
+                true,
                 false));
 
         Assert.Collection(

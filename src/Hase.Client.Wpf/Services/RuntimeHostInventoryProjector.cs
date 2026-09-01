@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Hase.Client.Wpf.ViewModels;
 using Hase.Core.Domain.Data;
 
@@ -159,12 +159,13 @@ public static class RuntimeHostInventoryProjector
         {
             Descriptor =
                 command,
-            AuthoritativeOperatingMode =
-                FindAuthoritativeOperatingMode(
+            AuthoritativeSelectionState =
+                FindDeclaredSelectionState(
                     state,
                     attachment,
                     instrumentId,
                     properties,
+                    command,
                     confirmedReads),
             RequestedArgumentText =
                 requestedText,
@@ -179,11 +180,20 @@ public static class RuntimeHostInventoryProjector
         };
     }
 
-    private static string? FindAuthoritativeOperatingMode(
+    /// <summary>
+    /// Reads the property a command declares as reporting which member of its
+    /// selection is in effect.
+    /// </summary>
+    /// <remarks>
+    /// The command names the property; this projector does not know which
+    /// property that is for any instrument.
+    /// </remarks>
+    private static string? FindDeclaredSelectionState(
         RemoteObservationState state,
         RemoteEndpointAttachmentSnapshot attachment,
         Hase.Core.Domain.Identity.InstrumentId instrumentId,
         IReadOnlyList<Hase.Core.Domain.Properties.PropertyDescriptor> properties,
+        Hase.Core.Domain.Commands.CommandDescriptor command,
         IReadOnlyDictionary<
             RemotePropertyTarget,
             RemotePropertyValue>? confirmedReads)
@@ -194,12 +204,18 @@ public static class RuntimeHostInventoryProjector
             return null;
         }
 
+        if (command.Presentation?.SelectionStatePath is not
+            Hase.Core.Domain.Properties.DescriptorPath selectionStatePath)
+        {
+            return null;
+        }
+
         Hase.Core.Domain.Properties.PropertyDescriptor? operatingMode =
             properties.SingleOrDefault(
                 property =>
                     string.Equals(
                         property.Path.ToString(),
-                        "Operating.Mode",
+                        selectionStatePath.ToString(),
                         StringComparison.Ordinal));
         if (operatingMode is null)
         {

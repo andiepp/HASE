@@ -108,7 +108,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
 
     [Theory]
     [InlineData("unknown-definition", 2)]
-    [InlineData("kel103-identity", 6)]
+    [InlineData("kel103-identity", 7)]
     public async Task ResolveAsync_UnsupportedReference_ShouldReject(
         string definitionId,
         ushort definitionVersion)

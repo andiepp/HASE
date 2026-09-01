@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Descriptors;
+﻿using Hase.Core.Domain.Descriptors;
 
 namespace Hase.Scpi.Kel103;
 
@@ -20,7 +20,10 @@ public sealed class Kel103DefinitionRepository : IEndpointDescriptorRepository
             Kel103ControlledSetpointDefinition.EndpointDefinition),
         new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
             Kel103ControlledInputDefinition.Reference,
-            Kel103ControlledInputDefinition.EndpointDefinition)
+            Kel103ControlledInputDefinition.EndpointDefinition),
+        new KeyValuePair<DescriptorReference, EndpointDescriptorDefinition>(
+            Kel103DeclaredControlDefinition.Reference,
+            Kel103DeclaredControlDefinition.EndpointDefinition)
     ]);
 
     public ValueTask<EndpointDescriptorDefinition?> FindAsync(
