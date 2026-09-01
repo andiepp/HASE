@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
@@ -112,7 +112,16 @@ public sealed class DesktopRuntimeHostKel103EndpointProvider
         cancellationToken.ThrowIfCancellationRequested();
 
         IReadOnlyList<DesktopRuntimeHostKel103SerialEndpointProfile> profiles =
-            context.EndpointComposition.Kel103SerialEndpoints;
+            context.EndpointComposition
+                .ForProvider(Id)
+                .Select(entry =>
+                    new DesktopRuntimeHostKel103SerialEndpointProfile(
+                        entry.ExpectedEndpointId,
+                        entry.RequireString("definitionId"),
+                        entry.RequireUInt16("definitionVersion"),
+                        entry.RequireString("serialPort"),
+                        entry.RequireInt32("baudRate")))
+                .ToArray();
         IReadOnlyList<DesktopRuntimeHostKel103EndpointPlan> plans =
             await DesktopRuntimeHostKel103DefinitionPreflight.ResolveAllAsync(
                 profiles,

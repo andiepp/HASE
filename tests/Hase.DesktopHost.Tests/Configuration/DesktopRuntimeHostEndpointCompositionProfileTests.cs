@@ -1,4 +1,4 @@
-using Hase.DesktopHost.Configuration;
+﻿using Hase.DesktopHost.Configuration;
 
 namespace Hase.DesktopHost.Tests.Configuration;
 
@@ -13,8 +13,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
 
         var profile = new DesktopRuntimeHostEndpointCompositionProfile([native], [compact]);
 
-        Assert.Same(native, Assert.Single(profile.NativeNetworkEndpoints));
-        Assert.Same(compact, Assert.Single(profile.CompactSerialEndpoints));
+        Assert.Equal(native, Assert.Single(profile.NativeNetworkEndpoints));
+        Assert.Equal(compact, Assert.Single(profile.CompactSerialEndpoints));
         Assert.Empty(profile.Kel103SerialEndpoints);
     }
 
@@ -26,7 +26,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
 
         var profile = new DesktopRuntimeHostEndpointCompositionProfile([], [], [kel103]);
 
-        Assert.Same(kel103, Assert.Single(profile.Kel103SerialEndpoints));
+        Assert.Equal(kel103, Assert.Single(profile.Kel103SerialEndpoints));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileTests
 
         var profile = new DesktopRuntimeHostEndpointCompositionProfile([], [], [], [rfLab]);
 
-        Assert.Same(rfLab, Assert.Single(profile.RfLabSerialEndpoints));
+        Assert.Equal(rfLab, Assert.Single(profile.RfLabSerialEndpoints));
         Assert.Empty(profile.Kel103SerialEndpoints);
     }
 

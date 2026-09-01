@@ -1,3 +1,4 @@
+﻿using System.IO;
 using System.Text.Json;
 using Hase.Core.Domain.Descriptors;
 
@@ -46,14 +47,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 replacementDefinition.Version,
                 existing.SerialPort,
                 existing.BaudRate);
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints.Select(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId
-                        ? migrated
-                        : endpoint),
-                profile.RfLabSerialEndpoints);
+            return Replace(
+                profile,
+                DesktopRuntimeHostEndpointCompositionProfile.Kel103SerialProviderId,
+                expectedEndpointId,
+                DesktopRuntimeHostEndpointCompositionProfile
+                    .CreateKel103SerialEntry(migrated));
         }, cancellationToken);
     }
 
@@ -62,30 +61,21 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile =>
-            new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints.Concat([endpoint]),
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints), cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Add(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile
+                .CreateCompactSerialEntry(endpoint)), cancellationToken);
     }
 
     public Task RemoveCompactAsync(string profilePath, string backupPath,
         string expectedEndpointId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile =>
-        {
-            if (!profile.CompactSerialEndpoints.Any(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId))
-                throw new KeyNotFoundException("The compact-serial endpoint profile is not registered.");
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints.Where(endpoint =>
-                    endpoint.ExpectedEndpointId != expectedEndpointId),
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints);
-        }, cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Remove(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile.CompactSerialProviderId,
+            expectedEndpointId,
+            "The compact-serial endpoint profile is not registered."), cancellationToken);
     }
 
     public Task AddNativeAsync(string profilePath, string backupPath,
@@ -93,30 +83,21 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile =>
-            new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints.Concat([endpoint]),
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints), cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Add(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile
+                .CreateNativeNetworkEntry(endpoint)), cancellationToken);
     }
 
     public Task RemoveNativeAsync(string profilePath, string backupPath,
         string expectedEndpointId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile =>
-        {
-            if (!profile.NativeNetworkEndpoints.Any(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId))
-                throw new KeyNotFoundException("The native-network endpoint profile is not registered.");
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints.Where(endpoint =>
-                    endpoint.ExpectedEndpointId != expectedEndpointId),
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints);
-        }, cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Remove(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile.NativeNetworkProviderId,
+            expectedEndpointId,
+            "The native-network endpoint profile is not registered."), cancellationToken);
     }
 
     public Task AddKel103Async(string profilePath, string backupPath,
@@ -124,30 +105,21 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile =>
-            new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints.Concat([endpoint]),
-                profile.RfLabSerialEndpoints), cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Add(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile
+                .CreateKel103SerialEntry(endpoint)), cancellationToken);
     }
 
     public Task RemoveKel103Async(string profilePath, string backupPath,
         string expectedEndpointId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile =>
-        {
-            if (!profile.Kel103SerialEndpoints.Any(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId))
-                throw new KeyNotFoundException("The KEL-103 serial endpoint profile is not registered.");
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints.Where(endpoint =>
-                    endpoint.ExpectedEndpointId != expectedEndpointId),
-                profile.RfLabSerialEndpoints);
-        }, cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Remove(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile.Kel103SerialProviderId,
+            expectedEndpointId,
+            "The KEL-103 serial endpoint profile is not registered."), cancellationToken);
     }
 
     public Task AddRfLabAsync(string profilePath, string backupPath,
@@ -155,31 +127,82 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile =>
-            new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints.Concat([endpoint])), cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Add(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile
+                .CreateRfLabSerialEntry(endpoint)), cancellationToken);
     }
 
     public Task RemoveRfLabAsync(string profilePath, string backupPath,
         string expectedEndpointId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile =>
-        {
-            if (!profile.RfLabSerialEndpoints.Any(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId))
-                throw new KeyNotFoundException("The RF-Lab serial endpoint profile is not registered.");
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                profile.NativeNetworkEndpoints,
-                profile.CompactSerialEndpoints,
-                profile.Kel103SerialEndpoints,
-                profile.RfLabSerialEndpoints.Where(endpoint =>
-                    endpoint.ExpectedEndpointId != expectedEndpointId));
-        }, cancellationToken);
+        return EditAsync(profilePath, backupPath, profile => Remove(
+            profile,
+            DesktopRuntimeHostEndpointCompositionProfile.RfLabSerialProviderId,
+            expectedEndpointId,
+            "The RF-Lab serial endpoint profile is not registered."), cancellationToken);
     }
+
+    /// <summary>
+    /// Adds one endpoint after the last endpoint of the same provider, so an
+    /// existing composition keeps its grouping.
+    /// </summary>
+    /// <remarks>
+    /// Every edit rebuilds the composition from its entries rather than from
+    /// the typed views, so an endpoint supplied by a provider this library
+    /// does not know survives the edit instead of being quietly dropped.
+    /// </remarks>
+    private static DesktopRuntimeHostEndpointCompositionProfile Add(
+        DesktopRuntimeHostEndpointCompositionProfile profile,
+        DesktopRuntimeHostEndpointEntry addition)
+    {
+        var endpoints = profile.Endpoints.ToList();
+        int lastOfProvider = endpoints.FindLastIndex(endpoint =>
+            StringComparer.Ordinal.Equals(endpoint.ProviderId, addition.ProviderId));
+
+        endpoints.Insert(
+            lastOfProvider < 0 ? endpoints.Count : lastOfProvider + 1,
+            addition);
+
+        return new DesktopRuntimeHostEndpointCompositionProfile(endpoints);
+    }
+
+    private static DesktopRuntimeHostEndpointCompositionProfile Remove(
+        DesktopRuntimeHostEndpointCompositionProfile profile,
+        string providerId,
+        string expectedEndpointId,
+        string absentMessage)
+    {
+        if (!profile.Endpoints.Any(endpoint =>
+                Matches(endpoint, providerId, expectedEndpointId)))
+        {
+            throw new KeyNotFoundException(absentMessage);
+        }
+
+        return new DesktopRuntimeHostEndpointCompositionProfile(
+            profile.Endpoints.Where(endpoint =>
+                !Matches(endpoint, providerId, expectedEndpointId)));
+    }
+
+    private static DesktopRuntimeHostEndpointCompositionProfile Replace(
+        DesktopRuntimeHostEndpointCompositionProfile profile,
+        string providerId,
+        string expectedEndpointId,
+        DesktopRuntimeHostEndpointEntry replacement) =>
+        new(profile.Endpoints.Select(endpoint =>
+            Matches(endpoint, providerId, expectedEndpointId)
+                ? replacement
+                : endpoint));
+
+    private static bool Matches(
+        DesktopRuntimeHostEndpointEntry endpoint,
+        string providerId,
+        string expectedEndpointId) =>
+        StringComparer.Ordinal.Equals(endpoint.ProviderId, providerId)
+        && StringComparer.Ordinal.Equals(
+            endpoint.ExpectedEndpointId,
+            expectedEndpointId);
 
     private static async Task EditAsync(string profileFilePath, string backupFilePath,
         Func<DesktopRuntimeHostEndpointCompositionProfile,
@@ -213,33 +236,38 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         }
     }
 
+    /// <summary>
+    /// Writes the composition in the version 1 shape, which is still what
+    /// every installed host reads.
+    /// </summary>
+    /// <remarks>
+    /// The endpoints are written from the open collection rather than from
+    /// the typed views, so nothing an edit preserved can be dropped on the
+    /// way out. A provider the closed format cannot name is refused rather
+    /// than silently omitted; editing such a composition waits for the
+    /// migration that lets the open shape be written.
+    /// </remarks>
     private static async Task WriteAsync(string path,
         DesktopRuntimeHostEndpointCompositionProfile profile,
         CancellationToken cancellationToken)
     {
-        IEnumerable<object> endpoints = profile.NativeNetworkEndpoints.Select(endpoint => (object)new
+        var endpoints = new List<object>();
+
+        foreach (DesktopRuntimeHostEndpointEntry endpoint in profile.Endpoints)
         {
-            kind = "NativeNetwork", expectedEndpointId = endpoint.ExpectedEndpointId,
-            host = endpoint.Host, port = endpoint.Port
-        }).Concat(profile.CompactSerialEndpoints.Select(endpoint => (object)new
-        {
-            kind = "CompactSerial", expectedEndpointId = endpoint.ExpectedEndpointId,
-            vendorId = endpoint.VendorId, productId = endpoint.ProductId,
-            baudRate = endpoint.BaudRate,
-            verificationTimeoutMilliseconds = (int)endpoint.VerificationTimeout.TotalMilliseconds
-        })).Concat(profile.Kel103SerialEndpoints.Select(endpoint => (object)new
-        {
-            kind = "Kel103Serial", expectedEndpointId = endpoint.ExpectedEndpointId,
-            definitionId = endpoint.DefinitionReference.Id.Value,
-            definitionVersion = endpoint.DefinitionReference.Version,
-            serialPort = endpoint.SerialPort, baudRate = endpoint.BaudRate
-        })).Concat(profile.RfLabSerialEndpoints.Select(endpoint => (object)new
-        {
-            kind = "RfLabSerial", expectedEndpointId = endpoint.ExpectedEndpointId,
-            definitionId = endpoint.DefinitionReference.Id.Value,
-            definitionVersion = endpoint.DefinitionReference.Version,
-            serialPort = endpoint.SerialPort, baudRate = endpoint.BaudRate
-        }));
+            if (!DesktopRuntimeHostLegacyEndpointKinds.TryGetKind(
+                    endpoint.ProviderId,
+                    out string kind))
+            {
+                throw new InvalidDataException(
+                    $"Endpoint '{endpoint.ExpectedEndpointId}' is supplied by "
+                    + $"provider '{endpoint.ProviderId}', which the version 1 "
+                    + "composition format cannot express.");
+            }
+
+            endpoints.Add(CreateLegacyEndpoint(kind, endpoint));
+        }
+
         await using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write,
             FileShare.None, 4096, FileOptions.Asynchronous);
         await JsonSerializer.SerializeAsync(stream,
@@ -248,6 +276,39 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             .ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    private static object CreateLegacyEndpoint(
+        string kind,
+        DesktopRuntimeHostEndpointEntry endpoint) =>
+        kind switch
+        {
+            "NativeNetwork" => new
+            {
+                kind,
+                expectedEndpointId = endpoint.ExpectedEndpointId,
+                host = endpoint.RequireString("host"),
+                port = endpoint.RequireInt32("port")
+            },
+            "CompactSerial" => new
+            {
+                kind,
+                expectedEndpointId = endpoint.ExpectedEndpointId,
+                vendorId = endpoint.RequireUInt16("vendorId"),
+                productId = endpoint.RequireUInt16("productId"),
+                baudRate = endpoint.RequireInt32("baudRate"),
+                verificationTimeoutMilliseconds =
+                    endpoint.RequireInt32("verificationTimeoutMilliseconds")
+            },
+            _ => new
+            {
+                kind,
+                expectedEndpointId = endpoint.ExpectedEndpointId,
+                definitionId = endpoint.RequireString("definitionId"),
+                definitionVersion = endpoint.RequireUInt16("definitionVersion"),
+                serialPort = endpoint.RequireString("serialPort"),
+                baudRate = endpoint.RequireInt32("baudRate")
+            }
+        };
 
     private static string Normalize(string path)
     {

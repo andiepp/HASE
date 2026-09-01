@@ -6,7 +6,17 @@ namespace Hase.DesktopHost.Configuration;
 
 public static class DesktopRuntimeHostEndpointCompositionProfileFile
 {
-    private const int CurrentFormatVersion = 1;
+    /// <summary>
+    /// The closed-kind format every installed composition is still written
+    /// in.
+    /// </summary>
+    private const int LegacyFormatVersion = 1;
+
+    /// <summary>
+    /// The provider-keyed format the reader accepts but nothing writes yet.
+    /// </summary>
+    private const int OpenFormatVersion = 2;
+
     private const int MaximumDocumentByteCount = 64 * 1024;
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
@@ -82,32 +92,13 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
                 document = document[3..];
             }
 
-            CompositionDocument? parsed = JsonSerializer.Deserialize<CompositionDocument>(document, SerializerOptions);
-
-            if (parsed is null)
+            return ReadFormatVersion(document) switch
             {
-                throw new InvalidDataException("The endpoint-composition profile must contain a JSON object.");
-            }
-
-            if (parsed.FormatVersion != CurrentFormatVersion)
-            {
-                throw new InvalidDataException("The endpoint-composition profile format version is not supported.");
-            }
-
-            EndpointDocument[] endpoints = parsed.Endpoints
-                ?? throw new InvalidDataException("The endpoints collection is required.");
-
-            if (endpoints.Any(endpoint =>
-                    endpoint.Kind is not ("NativeNetwork" or "CompactSerial" or "Kel103Serial" or "RfLabSerial")))
-            {
-                throw new InvalidDataException("An endpoint kind is missing or unsupported.");
-            }
-
-            return new DesktopRuntimeHostEndpointCompositionProfile(
-                endpoints.Where(endpoint => endpoint.Kind == "NativeNetwork").Select(CreateNativeEndpoint),
-                endpoints.Where(endpoint => endpoint.Kind == "CompactSerial").Select(CreateCompactEndpoint),
-                endpoints.Where(endpoint => endpoint.Kind == "Kel103Serial").Select(CreateKel103Endpoint),
-                endpoints.Where(endpoint => endpoint.Kind == "RfLabSerial").Select(CreateRfLabEndpoint));
+                LegacyFormatVersion => ParseLegacy(document),
+                OpenFormatVersion => ParseOpen(document),
+                _ => throw new InvalidDataException(
+                    "The endpoint-composition profile format version is not supported.")
+            };
         }
         catch (JsonException exception)
         {
@@ -118,6 +109,119 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
             throw new InvalidDataException("The endpoint-composition profile contains invalid configuration.", exception);
         }
     }
+
+    /// <summary>
+    /// Reads only the declared version, so that each shape is then parsed by
+    /// the reader written for it.
+    /// </summary>
+    private static int ReadFormatVersion(ReadOnlySpan<byte> document)
+    {
+        var reader = new Utf8JsonReader(document, new JsonReaderOptions { MaxDepth = 12 });
+        using JsonDocument parsed = JsonDocument.ParseValue(ref reader);
+
+        if (parsed.RootElement.ValueKind is not JsonValueKind.Object)
+        {
+            throw new InvalidDataException("The endpoint-composition profile must contain a JSON object.");
+        }
+
+        if (!parsed.RootElement.TryGetProperty("formatVersion", out JsonElement version)
+            || version.ValueKind is not JsonValueKind.Number
+            || !version.TryGetInt32(out int formatVersion))
+        {
+            throw new InvalidDataException("The endpoint-composition profile requires a numeric formatVersion.");
+        }
+
+        return formatVersion;
+    }
+
+    private static DesktopRuntimeHostEndpointCompositionProfile ParseLegacy(
+        ReadOnlySpan<byte> document)
+    {
+        CompositionDocument? parsed = JsonSerializer.Deserialize<CompositionDocument>(document, SerializerOptions);
+
+        if (parsed is null)
+        {
+            throw new InvalidDataException("The endpoint-composition profile must contain a JSON object.");
+        }
+
+        EndpointDocument[] endpoints = parsed.Endpoints
+            ?? throw new InvalidDataException("The endpoints collection is required.");
+
+        if (endpoints.Any(endpoint =>
+                endpoint.Kind is not ("NativeNetwork" or "CompactSerial" or "Kel103Serial" or "RfLabSerial")))
+        {
+            throw new InvalidDataException("An endpoint kind is missing or unsupported.");
+        }
+
+        return new DesktopRuntimeHostEndpointCompositionProfile(
+            endpoints.Where(endpoint => endpoint.Kind == "NativeNetwork").Select(CreateNativeEndpoint),
+            endpoints.Where(endpoint => endpoint.Kind == "CompactSerial").Select(CreateCompactEndpoint),
+            endpoints.Where(endpoint => endpoint.Kind == "Kel103Serial").Select(CreateKel103Endpoint),
+            endpoints.Where(endpoint => endpoint.Kind == "RfLabSerial").Select(CreateRfLabEndpoint));
+    }
+
+    /// <summary>
+    /// Reads the provider-keyed shape. No provider identifier is checked
+    /// against a list here: the composition names what supplies an endpoint,
+    /// and only that provider knows what its settings mean.
+    /// </summary>
+    private static DesktopRuntimeHostEndpointCompositionProfile ParseOpen(
+        ReadOnlySpan<byte> document)
+    {
+        OpenCompositionDocument? parsed =
+            JsonSerializer.Deserialize<OpenCompositionDocument>(document, SerializerOptions);
+
+        if (parsed is null)
+        {
+            throw new InvalidDataException("The endpoint-composition profile must contain a JSON object.");
+        }
+
+        OpenEndpointDocument[] endpoints = parsed.Endpoints
+            ?? throw new InvalidDataException("The endpoints collection is required.");
+
+        return new DesktopRuntimeHostEndpointCompositionProfile(
+            endpoints.Select(CreateProviderEndpoint));
+    }
+
+    private static DesktopRuntimeHostEndpointEntry CreateProviderEndpoint(
+        OpenEndpointDocument endpoint)
+    {
+        string providerId = Required(endpoint.ProviderId, "providerId");
+        string expectedEndpointId = Required(endpoint.ExpectedEndpointId, "expectedEndpointId");
+        var settings = new List<KeyValuePair<string, string>>();
+
+        foreach (KeyValuePair<string, JsonElement> setting in endpoint.Settings ?? [])
+        {
+            settings.Add(
+                new KeyValuePair<string, string>(
+                    setting.Key,
+                    ReadSettingText(expectedEndpointId, setting.Key, setting.Value)));
+        }
+
+        return new DesktopRuntimeHostEndpointEntry(
+            providerId,
+            expectedEndpointId,
+            settings);
+    }
+
+    private static string ReadSettingText(
+        string expectedEndpointId,
+        string name,
+        JsonElement value) =>
+        value.ValueKind switch
+        {
+            JsonValueKind.String =>
+                value.GetString() ?? string.Empty,
+            JsonValueKind.Number =>
+                value.GetRawText(),
+            JsonValueKind.True =>
+                bool.TrueString,
+            JsonValueKind.False =>
+                bool.FalseString,
+            _ => throw new InvalidDataException(
+                $"Endpoint '{expectedEndpointId}' setting '{name}' must be "
+                + "text, a number, or a boolean.")
+        };
 
     private static DesktopRuntimeHostNativeNetworkEndpointProfile CreateNativeEndpoint(EndpointDocument endpoint)
     {
@@ -229,5 +333,26 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
         public ushort? DefinitionVersion { get; set; }
         [JsonPropertyName("serialPort")]
         public string? SerialPort { get; set; }
+    }
+
+    private sealed class OpenCompositionDocument
+    {
+        [JsonPropertyName("formatVersion")]
+        public int FormatVersion { get; set; }
+
+        [JsonPropertyName("endpoints")]
+        public OpenEndpointDocument[]? Endpoints { get; set; }
+    }
+
+    private sealed class OpenEndpointDocument
+    {
+        [JsonPropertyName("providerId")]
+        public string? ProviderId { get; set; }
+
+        [JsonPropertyName("expectedEndpointId")]
+        public string? ExpectedEndpointId { get; set; }
+
+        [JsonPropertyName("settings")]
+        public Dictionary<string, JsonElement>? Settings { get; set; }
     }
 }

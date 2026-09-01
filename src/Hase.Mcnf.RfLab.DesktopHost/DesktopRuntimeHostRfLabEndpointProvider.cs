@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
@@ -112,7 +112,16 @@ public sealed class DesktopRuntimeHostRfLabEndpointProvider
         cancellationToken.ThrowIfCancellationRequested();
 
         IReadOnlyList<DesktopRuntimeHostRfLabSerialEndpointProfile> profiles =
-            context.EndpointComposition.RfLabSerialEndpoints;
+            context.EndpointComposition
+                .ForProvider(Id)
+                .Select(entry =>
+                    new DesktopRuntimeHostRfLabSerialEndpointProfile(
+                        entry.ExpectedEndpointId,
+                        entry.RequireString("definitionId"),
+                        entry.RequireUInt16("definitionVersion"),
+                        entry.RequireString("serialPort"),
+                        entry.RequireInt32("baudRate")))
+                .ToArray();
         IReadOnlyList<DesktopRuntimeHostRfLabEndpointPlan> plans =
             await DesktopRuntimeHostRfLabDefinitionPreflight.ResolveAllAsync(
                 profiles,

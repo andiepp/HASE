@@ -1,4 +1,4 @@
-using Hase.Core.Domain.Identity;
+﻿using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.DesktopHost.Hosting;
 using Hase.Runtime.Runtime;
@@ -63,9 +63,14 @@ public sealed class DesktopRuntimeHostNativeNetworkEndpointProvider
 
         var attachments = new List<DesktopRuntimeHostEndpointAttachment>();
 
-        foreach (DesktopRuntimeHostNativeNetworkEndpointProfile endpoint
-            in context.EndpointComposition.NativeNetworkEndpoints)
+        foreach (DesktopRuntimeHostEndpointEntry entry
+            in context.EndpointComposition.ForProvider(Id))
         {
+            var endpoint = new DesktopRuntimeHostNativeNetworkEndpointProfile(
+                entry.ExpectedEndpointId,
+                entry.RequireString("host"),
+                entry.RequireInt32("port"));
+
             attachments.Add(
                 new DesktopRuntimeHostEndpointAttachment(
                     endpoint.ExpectedEndpointId,

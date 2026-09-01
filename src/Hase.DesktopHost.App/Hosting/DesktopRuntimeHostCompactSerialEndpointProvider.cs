@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.CompactProtocol;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
@@ -68,9 +68,17 @@ public sealed class DesktopRuntimeHostCompactSerialEndpointProvider
             context.CompactDefinitionRepository;
         var attachments = new List<DesktopRuntimeHostEndpointAttachment>();
 
-        foreach (DesktopRuntimeHostCompactSerialEndpointProfile endpoint
-            in context.EndpointComposition.CompactSerialEndpoints)
+        foreach (DesktopRuntimeHostEndpointEntry entry
+            in context.EndpointComposition.ForProvider(Id))
         {
+            var endpoint = new DesktopRuntimeHostCompactSerialEndpointProfile(
+                entry.ExpectedEndpointId,
+                entry.RequireUInt16("vendorId"),
+                entry.RequireUInt16("productId"),
+                entry.RequireInt32("baudRate"),
+                TimeSpan.FromMilliseconds(
+                    entry.RequireInt32("verificationTimeoutMilliseconds")));
+
             attachments.Add(
                 new DesktopRuntimeHostEndpointAttachment(
                     endpoint.ExpectedEndpointId,
