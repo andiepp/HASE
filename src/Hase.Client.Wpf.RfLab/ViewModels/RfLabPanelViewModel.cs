@@ -73,6 +73,9 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
     private int frequencyDeviation = 10_000;
     private int sweepStartFrequency = 10_000_000;
     private int sweepStopFrequency = 30_000_000;
+    private int sweepTime = 2_000;
+    private int measurementInterval = 1_000;
+    private int measurementCount = 200;
     private bool isClockGeneratorPresent;
     private int clockFrequency0 = 1_000_000;
     private int clockFrequency1 = 2_000_000;
@@ -200,11 +203,27 @@ public sealed class RfLabPanelViewModel : BindableBase, IDisposable
         }
     }
 
-    public int SweepTime { get; set; } = 2_000;
+    // Staged rather than live: these take effect when a sweep or a
+    // measurement starts. They still announce a change, because the window
+    // pushes values into the ported controls and cannot see what is never
+    // announced.
+    public int SweepTime
+    {
+        get => sweepTime;
+        set => SetProperty(ref sweepTime, value);
+    }
 
-    public int MeasurementInterval { get; set; } = 1_000;
+    public int MeasurementInterval
+    {
+        get => measurementInterval;
+        set => SetProperty(ref measurementInterval, value);
+    }
 
-    public int MeasurementCount { get; set; } = 200;
+    public int MeasurementCount
+    {
+        get => measurementCount;
+        set => SetProperty(ref measurementCount, value);
+    }
 
     public int DDS_ModMode
     {
