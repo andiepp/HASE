@@ -56,6 +56,37 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// Rewrites one composition in the provider-keyed shape, retaining the
+    /// previous file as the supplied backup.
+    /// </summary>
+    /// <remarks>
+    /// This is the only operation that changes a composition's format
+    /// version. It refuses a composition already in the open shape rather
+    /// than rewriting it, so re-running the migration on a migrated host is
+    /// a no-op that reports why.
+    /// </remarks>
+    public Task MigrateToOpenFormatAsync(
+        string profilePath,
+        string backupPath,
+        CancellationToken cancellationToken = default) =>
+        EditAsync(profilePath, backupPath, profile =>
+        {
+            if (profile.FormatVersion
+                == DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion)
+            {
+                throw new InvalidOperationException(
+                    "The endpoint composition is already in the "
+                    + "provider-keyed format.");
+            }
+
+            return profile with
+            {
+                FormatVersion =
+                    DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion
+            };
+        }, cancellationToken);
+
     public Task AddCompactAsync(string profilePath, string backupPath,
         DesktopRuntimeHostCompactSerialEndpointProfile endpoint,
         CancellationToken cancellationToken = default)
@@ -165,7 +196,10 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             lastOfProvider < 0 ? endpoints.Count : lastOfProvider + 1,
             addition);
 
-        return new DesktopRuntimeHostEndpointCompositionProfile(endpoints);
+        return new DesktopRuntimeHostEndpointCompositionProfile(endpoints)
+        {
+            FormatVersion = profile.FormatVersion
+        };
     }
 
     private static DesktopRuntimeHostEndpointCompositionProfile Remove(
@@ -182,7 +216,10 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
 
         return new DesktopRuntimeHostEndpointCompositionProfile(
             profile.Endpoints.Where(endpoint =>
-                !Matches(endpoint, providerId, expectedEndpointId)));
+                !Matches(endpoint, providerId, expectedEndpointId)))
+        {
+            FormatVersion = profile.FormatVersion
+        };
     }
 
     private static DesktopRuntimeHostEndpointCompositionProfile Replace(
@@ -193,7 +230,10 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         new(profile.Endpoints.Select(endpoint =>
             Matches(endpoint, providerId, expectedEndpointId)
                 ? replacement
-                : endpoint));
+                : endpoint))
+        {
+            FormatVersion = profile.FormatVersion
+        };
 
     private static bool Matches(
         DesktopRuntimeHostEndpointEntry endpoint,
@@ -255,6 +295,13 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
 
         foreach (DesktopRuntimeHostEndpointEntry endpoint in profile.Endpoints)
         {
+            if (profile.FormatVersion
+                == DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion)
+            {
+                endpoints.Add(CreateProviderEndpoint(endpoint));
+                continue;
+            }
+
             if (!DesktopRuntimeHostLegacyEndpointKinds.TryGetKind(
                     endpoint.ProviderId,
                     out string kind))
@@ -271,11 +318,28 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
         await using FileStream stream = new(path, FileMode.CreateNew, FileAccess.Write,
             FileShare.None, 4096, FileOptions.Asynchronous);
         await JsonSerializer.SerializeAsync(stream,
-            new { formatVersion = 1, endpoints },
+            new { formatVersion = profile.FormatVersion, endpoints },
             new JsonSerializerOptions { WriteIndented = true }, cancellationToken)
             .ConfigureAwait(false);
         await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Writes one endpoint in the provider-keyed shape. Settings are written
+    /// as the text the model carries, which the reader accepts alongside JSON
+    /// numbers and booleans, so a migrated composition round-trips exactly.
+    /// </summary>
+    private static object CreateProviderEndpoint(
+        DesktopRuntimeHostEndpointEntry endpoint) =>
+        new
+        {
+            providerId = endpoint.ProviderId,
+            expectedEndpointId = endpoint.ExpectedEndpointId,
+            settings = endpoint.Settings.ToDictionary(
+                setting => setting.Key,
+                setting => setting.Value,
+                StringComparer.Ordinal)
+        };
 
     private static object CreateLegacyEndpoint(
         string kind,

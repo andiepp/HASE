@@ -1,9 +1,64 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Hase.DesktopHost.Configuration;
 using Hase.Scpi.Kel103;
 
+if (args.Length >= 1 && args[0] == "preflight-open-format")
+{
+    // Reads and reports; creates nothing, writes nothing, takes no backup.
+    if (args.Length != 2) return Usage();
+    DesktopRuntimeHostEndpointCompositionFormatAssessment assessment;
+    try
+    {
+        assessment = await DesktopRuntimeHostEndpointCompositionFormatPreflight
+            .InspectAsync(Path.GetFullPath(args[1]));
+    }
+    catch (Exception exception)
+    {
+        return Fail(exception.Message);
+    }
+
+    Console.WriteLine("Endpoint composition preflight succeeded: preflight-open-format");
+    Console.WriteLine($"Format version: {assessment.FormatVersion}");
+    Console.WriteLine($"Endpoint count: {assessment.EndpointCount}");
+    Console.WriteLine($"Migration required: {assessment.MigrationRequired}");
+    Console.WriteLine($"Expressible in closed format: {assessment.ExpressibleInLegacyFormat}");
+    foreach (DesktopRuntimeHostEndpointCompositionFormatEndpoint endpoint in assessment.Endpoints)
+    {
+        Console.WriteLine(
+            $"Endpoint: {endpoint.ExpectedEndpointId} "
+            + $"provider={endpoint.ProviderId} settings={endpoint.SettingCount}");
+    }
+
+    return 0;
+}
+
 if (Process.GetProcessesByName("Hase.DesktopHost.App").Length > 0)
     return Fail("HASE Desktop Runtime Host is running. Close it before editing endpoint composition.");
+
+if (args.Length >= 1 && args[0] == "migrate-open-format")
+{
+    if (args.Length != 3 || args[2] != args[1]) return Usage();
+    string formatProfilePath = Path.GetFullPath(args[1]);
+    string formatBackupPath = formatProfilePath + "."
+        + DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfffffff") + ".backup";
+    try
+    {
+        await new DesktopRuntimeHostEndpointCompositionProfileEditor()
+            .MigrateToOpenFormatAsync(formatProfilePath, formatBackupPath);
+    }
+    catch (Exception exception)
+    {
+        return Fail(FormatMigrationFailure(exception));
+    }
+
+    Console.WriteLine("Endpoint profile operation succeeded: migrate-open-format");
+    Console.WriteLine(
+        "Format version: "
+        + DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion);
+    Console.WriteLine($"Previous composition backup: {formatBackupPath}");
+    return 0;
+}
+
 if (args.Length < 3) return Usage();
 
 string operation = args[0];
@@ -116,9 +171,20 @@ static int Usage()
     Console.Error.WriteLine("  remove-kel103 <composition> <endpoint-id> <same-id-confirmation>");
     Console.Error.WriteLine("  migrate-kel103-v4 <composition> <endpoint-id> <same-endpoint-id-confirmation>");
     Console.Error.WriteLine("  migrate-kel103-v5 <composition> <endpoint-id> <same-endpoint-id-confirmation>");
+    Console.Error.WriteLine("  preflight-open-format <composition>");
+    Console.Error.WriteLine("  migrate-open-format <composition> <same-composition-path-confirmation>");
     return 2;
 }
 static int Fail(string message) { Console.Error.WriteLine(message); return 1; }
+static string FormatMigrationFailure(Exception exception) => exception switch
+{
+    InvalidOperationException =>
+        "The endpoint composition is already in the provider-keyed format.",
+    InvalidDataException => "The endpoint composition is not valid for migration.",
+    IOException => "A retained backup already exists for this composition.",
+    OperationCanceledException => "The composition format migration was cancelled.",
+    _ => "The composition format migration failed. Inspect the active profile and retained backups before retrying."
+};
 static bool IsKel103Migration(string operation) =>
     operation is "migrate-kel103-v4" or "migrate-kel103-v5";
 static string MigrationFailure(

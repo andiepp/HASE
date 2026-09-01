@@ -15,6 +15,16 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
     private const int MaximumEndpointCount = 64;
 
     /// <summary>
+    /// The closed-kind format every installed composition was written in.
+    /// </summary>
+    public const int LegacyFormatVersion = 1;
+
+    /// <summary>
+    /// The provider-keyed format a migrated composition is written in.
+    /// </summary>
+    public const int OpenFormatVersion = 2;
+
+    /// <summary>
     /// The provider identifiers whose settings this library can still project
     /// into typed views.
     /// </summary>
@@ -117,6 +127,17 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
     /// Gets the composed endpoints, in composition order.
     /// </summary>
     public IReadOnlyList<DesktopRuntimeHostEndpointEntry> Endpoints { get; }
+
+    /// <summary>
+    /// Gets the format version this composition was read in, and will be
+    /// written back in.
+    /// </summary>
+    /// <remarks>
+    /// An edit preserves the version of the file it edited. Migration is
+    /// the one operation that changes it, so a host that has not been
+    /// migrated never has the open shape written underneath it.
+    /// </remarks>
+    public int FormatVersion { get; init; } = LegacyFormatVersion;
 
     public IReadOnlyList<DesktopRuntimeHostNativeNetworkEndpointProfile> NativeNetworkEndpoints { get; }
     public IReadOnlyList<DesktopRuntimeHostCompactSerialEndpointProfile> CompactSerialEndpoints { get; }

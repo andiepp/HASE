@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
@@ -9,8 +9,9 @@ namespace Hase.DesktopHost.Tests.Configuration;
 
 /// <summary>
 /// Covers the endpoint composition as an open collection keyed by provider:
-/// the entry model, the reader that accepts both shapes, and the writer that
-/// still emits only the closed one.
+/// the entry model and the reader that accepts both shapes. Which shape is
+/// written, and the migration between them, is covered by
+/// <see cref="DesktopRuntimeHostEndpointCompositionFormatMigrationTests"/>.
 /// </summary>
 public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
 {
@@ -234,58 +235,6 @@ public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
                 """
                 { "endpoints": [] }
                 """));
-    }
-
-    [Fact]
-    public async Task WriteAsync_RefusesAProviderTheClosedFormatCannotName()
-    {
-        string directory = Path.Combine(
-            Path.GetTempPath(),
-            $"hase-68c-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        string profilePath = Path.Combine(directory, "endpoints.json");
-        string backupPath = Path.Combine(directory, "endpoints.backup.json");
-
-        try
-        {
-            await File.WriteAllTextAsync(
-                profilePath,
-                """
-                {
-                  "formatVersion": 2,
-                  "endpoints": [
-                    {
-                      "providerId": "someone-elses-instrument",
-                      "expectedEndpointId": "foreign-01",
-                      "settings": { "serialPort": "external-target" }
-                    }
-                  ]
-                }
-                """,
-                new UTF8Encoding(false));
-
-            var editor = new DesktopRuntimeHostEndpointCompositionProfileEditor();
-
-            InvalidDataException error =
-                await Assert.ThrowsAsync<InvalidDataException>(
-                    () => editor.AddNativeAsync(
-                        profilePath,
-                        backupPath,
-                        new DesktopRuntimeHostNativeNetworkEndpointProfile(
-                            "native-01",
-                            "device.local",
-                            5000)));
-
-            Assert.Contains(
-                "someone-elses-instrument",
-                error.Message,
-                StringComparison.Ordinal);
-            Assert.False(File.Exists(backupPath));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
     }
 
     private static DesktopRuntimeHostEndpointEntry Native(string endpointId) =>

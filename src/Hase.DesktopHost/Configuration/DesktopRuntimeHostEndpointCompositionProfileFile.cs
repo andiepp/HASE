@@ -6,16 +6,11 @@ namespace Hase.DesktopHost.Configuration;
 
 public static class DesktopRuntimeHostEndpointCompositionProfileFile
 {
-    /// <summary>
-    /// The closed-kind format every installed composition is still written
-    /// in.
-    /// </summary>
-    private const int LegacyFormatVersion = 1;
+    private const int LegacyFormatVersion =
+        DesktopRuntimeHostEndpointCompositionProfile.LegacyFormatVersion;
 
-    /// <summary>
-    /// The provider-keyed format the reader accepts but nothing writes yet.
-    /// </summary>
-    private const int OpenFormatVersion = 2;
+    private const int OpenFormatVersion =
+        DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion;
 
     private const int MaximumDocumentByteCount = 64 * 1024;
 
@@ -157,7 +152,10 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
             endpoints.Where(endpoint => endpoint.Kind == "NativeNetwork").Select(CreateNativeEndpoint),
             endpoints.Where(endpoint => endpoint.Kind == "CompactSerial").Select(CreateCompactEndpoint),
             endpoints.Where(endpoint => endpoint.Kind == "Kel103Serial").Select(CreateKel103Endpoint),
-            endpoints.Where(endpoint => endpoint.Kind == "RfLabSerial").Select(CreateRfLabEndpoint));
+            endpoints.Where(endpoint => endpoint.Kind == "RfLabSerial").Select(CreateRfLabEndpoint))
+        {
+            FormatVersion = LegacyFormatVersion
+        };
     }
 
     /// <summary>
@@ -180,7 +178,10 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
             ?? throw new InvalidDataException("The endpoints collection is required.");
 
         return new DesktopRuntimeHostEndpointCompositionProfile(
-            endpoints.Select(CreateProviderEndpoint));
+            endpoints.Select(CreateProviderEndpoint))
+        {
+            FormatVersion = OpenFormatVersion
+        };
     }
 
     private static DesktopRuntimeHostEndpointEntry CreateProviderEndpoint(
