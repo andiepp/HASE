@@ -1,5 +1,54 @@
 # Project Status
 
+## Active architectural objective — ADR-0068
+
+**ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A,
+68B, 68C and 68D1 complete and pushed, at 6,996 passing tests from
+starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
+
+- HASE is to be published without three parts of it: the RF-Lab MCNF
+  family, the KEL-103 electronic load, and the Arduino Uno Light endpoint
+  firmware. They are the operator's own laboratory, and publishing them
+  would publish a bench rather than a framework.
+- Most of the split was already built. Of 75 projects no library
+  referenced an instrument; exactly four non-instrument projects did, and
+  every one was a composition root or a tool. What was missing was the
+  seam on the host that the Client already had.
+- The Runtime Host now has that seam. `Hase.DesktopHost` owns an
+  endpoint-provider registry and ships no provider; the application
+  composes the providers it ships. The instrument families are supplied
+  through two new projects, `Hase.Scpi.Kel103.DesktopHost` and
+  `Hase.Mcnf.RfLab.DesktopHost`, which are what the add-on repository will
+  take. The per-instrument branch in the attachment router is gone,
+  replaced by registration.
+- The endpoint composition is an open collection keyed by provider. A
+  composition names what supplies an endpoint, and only that provider
+  interprets its settings, so a profile may name a provider this
+  repository has never heard of. The reader accepts both shapes; the
+  writer emits the shape the file it read was written in.
+- A composition carries its format version and an edit writes that
+  version back, with migration the single operation that changes it. That
+  is what lets the version 2 writer ship ahead of the migration: an
+  unmigrated host cannot have the open shape written underneath it.
+- Nothing physical has happened. No installed composition has been
+  touched, and no host has been republished from any of these commits.
+- Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
+  instruments behind it (`8a0bdb4`), 68C the composition profile opens
+  (`6b4ffd8`), 68D1 the migration the physical step will run
+  (`10e993f`). 68D1 was not in the original plan; 68C left nothing able
+  to write the new shape, so the migration had to be built before there
+  was a migration to run.
+
+### Next
+
+68D, the physical migration, separately approved and one installation at
+a time. It is preceded by a read-only discovery phase, because how many
+installations exist and where their compositions live is not assumed. All
+three computers are synchronized to `8a0bdb4` and are behind the current
+head.
+
+---
+
 ## Completed architectural objective — ADR-0067
 
 **ADR-0067 — Client-Hosted Instrument Panels — implemented, physically

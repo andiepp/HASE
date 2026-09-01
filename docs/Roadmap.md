@@ -2459,3 +2459,64 @@ Increments:
 ADR-0067 begins at exact commit
 `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96` with 6,828 complete Release
 tests and stands at 6,955 across 34 test projects.
+
+## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
+
+**Status:** [Active] 68A, 68B, 68C and 68D1 complete; 68D proposed
+
+ADR-0068 cuts HASE so that the published part is a framework someone can
+run and the unpublished part is the operator's own laboratory: the RF-Lab
+MCNF family, the KEL-103 electronic load, and the Uno Light endpoint
+firmware. Most of the cut was already built by ADR-0065, ADR-0066 and
+ADR-0067, each argued on its own merits. What was missing was the seam on
+the host that the Client already had, and a composition format that does
+not name every endpoint kind that might exist.
+
+Increments:
+
+1. 68A — The endpoint-provider registry — complete as `3972e7b`; the
+   provider contract and registry in the host library, which ships no
+   provider, and the two generic endpoint kinds moved behind it. The
+   instrument families stayed composed directly and the attachment router
+   kept working, so the seam appeared beneath unchanged behaviour. The
+   byte-buffer simulation deliberately did not move.
+2. 68B — The instruments move behind the registry — complete as
+   `8a0bdb4`; RF-Lab and KEL-103 supplied through the registry, the
+   per-instrument branch in the attachment router gone. The five
+   instrument files could not go into the instrument hosting libraries,
+   which pin an assertion that they reference no `Hase.DesktopHost`, no
+   Grpc and no Wpf; the complete suite caught that in four failures. They
+   landed in two new projects, `Hase.Scpi.Kel103.DesktopHost` and
+   `Hase.Mcnf.RfLab.DesktopHost`, which are what 68H will move.
+3. 68C — The composition profile opens — complete as `6b4ffd8`; an
+   endpoint is an entry naming its provider, with settings carried as
+   text that only that provider interprets. The reader accepts both
+   shapes and the writer still emits the closed one. The first attempt
+   guarded the writer and not the edits, so an endpoint from an unknown
+   provider was dropped before the writer saw it; the edits now rebuild
+   from entries.
+4. 68D1 — The migration the physical step will run — complete as
+   `10e993f`; a composition carries the format version it was read in, an
+   edit writes that version back, and one migrate operation changes it.
+   That rule is what makes a version 2 writer safe to deploy ahead of the
+   migration. A read-only preflight reports what a migration would
+   change, naming providers and counting settings but never reporting
+   their values.
+5. 68D — Migration — proposed. Physical, one installation at a time,
+   preceded by read-only discovery because the number of installations
+   and the location of their compositions are not assumed. A host built
+   before 68D1 cannot read a migrated composition, so within an
+   installation the host is republished first and its composition
+   migrated second.
+
+Increments 68E through 68I remain as recorded in the ADR: device
+knowledge leaves the client library, the protocol explorer splits, the
+base is proven device-free by building and running it without the
+instrument projects, the add-on repository is created, and publication is
+separately approved as the only irreversible step.
+
+ADR-0068 begins at exact commit
+`e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
+tests and stands at 6,996 across 34 test projects. Nothing physical has
+happened: no installed composition has been migrated and no host has been
+republished from any of these commits.

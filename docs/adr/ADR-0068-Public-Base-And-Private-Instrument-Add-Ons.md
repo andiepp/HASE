@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Proposed
+- Status: Accepted; 68A, 68B, 68C and 68D1 complete; 68D proposed
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -160,7 +160,10 @@ characterization scenarios move to the add-on.
 
 ## Increment plan
 
-Proposed, not approved. Each is a separate stop point.
+Each is a separate stop point. The first four are complete and pushed.
+68D1 was not in the original plan: 68C deliberately left nothing able to
+write the new shape, so the migration had to be built before there was a
+migration to run.
 
 ### Increment 68A — The endpoint-provider registry
 
@@ -168,22 +171,91 @@ Introduce the registry and move the base's own endpoint kinds behind it,
 with the instrument families still composed directly. No behaviour
 changes; the router keeps working while the seam appears beneath it.
 
+Result: complete as `3972e7b`; 6,971 passed, 0 failed, 0 skipped across 34
+test projects. The contract and registry live in the `Hase.DesktopHost`
+library, which registers no provider; the native-network and
+compact-serial providers live in the application, mirroring ADR-0067. The
+byte-buffer simulation deliberately did not move: it attaches even when no
+composition is configured, it is not a refresh target, and routing it
+through the startup coordinator would have turned a failed simulation
+attach from a startup failure into a tolerated one.
+
 ### Increment 68B — The instruments move behind the registry
 
 RF-Lab and KEL-103 are composed as providers rather than named in the
 Runtime Host application. The five instrument-named files leave the
 application. Still one repository, still one solution.
 
+Result: complete as `8a0bdb4`; 6,976 passed, 0 failed, 0 skipped across 34
+test projects. The five files could not go into the instrument hosting
+libraries: those pin an assertion that they reference no
+`Hase.DesktopHost`, no Grpc and no Wpf, and the complete suite caught the
+attempt in four failures. They landed in two new projects,
+`Hase.Scpi.Kel103.DesktopHost` and `Hase.Mcnf.RfLab.DesktopHost`, which
+are what 68H moves to the add-on repository.
+
+Two seams from 68A changed under the weight of real providers. Resolution
+now runs before the attachment host exists, so an attachment receives the
+inventory as a parameter rather than capturing it, which keeps a
+definition preflight failing before any runtime resource is created. And a
+provider is asked for its attachment service only when it resolved at
+least one endpoint, preserving the existing assertion that no KEL-103
+service is constructed when no KEL-103 endpoint is configured.
+
 ### Increment 68C — The composition profile opens
 
 The profile becomes an open collection keyed by provider. The reader
 accepts both shapes. Nothing is written in the new shape yet.
 
+Result: complete as `6b4ffd8`; 6,988 passed, 0 failed, 0 skipped across 34
+test projects. An endpoint is an entry: a provider identifier, an expected
+identity, and settings carried as text. The four typed views remain as a
+transitional convenience, projected back out of the entries. The writer
+still emits version 1, but from the entries rather than the typed views,
+and refuses a provider the closed format cannot name.
+
+That refusal was only half the guard. Every edit had rebuilt the
+composition from the typed views, so an endpoint from an unknown provider
+was already gone before the writer saw it, and the test written to prove
+the refusal passed because the edit had silently succeeded. The edits now
+rebuild from entries and preserve what they do not understand.
+
+### Increment 68D1 — The migration the physical step will run
+
+The capability 68D needs: the composition carries the format version it
+was read in, an edit writes that version back, and one migrate operation
+changes it. That rule is what makes a version 2 writer safe to deploy
+ahead of the migration, because an ordinary edit cannot rewrite an
+unmigrated host's composition into a shape its own host cannot read. A
+read-only preflight reports what a migration would change, and the profile
+tool gains both operations.
+
+Result: complete as `10e993f`; 6,996 passed, 0 failed, 0 skipped across 34
+test projects. No installed file was touched. The preflight reports
+provider identifiers and a count of settings, never their values, because
+a composition names serial targets and a preflight exists to be pasted
+into a handoff.
+
+One test was removed rather than repaired: 68C's assertion that a foreign
+provider blocks an edit is the rule this increment lifts. Three tests
+replace it.
+
 ### Increment 68D — Migration
 
 The existing composition files are migrated on each computer, with
 backups, and each is verified to publish the same endpoints as before.
-Physical, separately approved, one computer at a time.
+Physical, separately approved, one installation at a time.
+
+The order within an installation is fixed by an asymmetry. A host built
+before 68D1 cannot read a version 2 composition; a host built from it
+reads both. So the host is republished first and its composition migrated
+second, and a rollback of the host alone after migrating is unsafe — the
+pair comes back together, composition first.
+
+How many installations exist is not assumed. The composition path comes
+from `endpointCompositionFilePath` in each installation profile, and a
+read-only discovery phase enumerates them and runs the preflight against
+each before anything is written.
 
 ### Increment 68E — Device knowledge leaves the client library
 
