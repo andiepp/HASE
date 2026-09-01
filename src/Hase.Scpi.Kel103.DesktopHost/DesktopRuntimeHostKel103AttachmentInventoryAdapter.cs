@@ -1,10 +1,12 @@
 using Hase.Core.Domain.Descriptors;
+using Hase.DesktopHost.Hosting;
 using Hase.Core.Domain.Identity;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
 using Hase.Transport.Serial;
+using Hase.Scpi.Kel103.Hosting;
 
-namespace Hase.DesktopHost.App.Hosting;
+namespace Hase.Scpi.Kel103.DesktopHost;
 
 public sealed class DesktopRuntimeHostKel103ConnectionDefinition
     : IEndpointConnectionDefinition
@@ -129,7 +131,7 @@ public sealed class DesktopRuntimeHostKel103AttachmentService
                     "KEL-103 attachment was cancelled.",
                     cancellationToken);
             }
-            else if (DesktopRuntimeHostEndpointStartupCoordinator
+            else if (DesktopRuntimeHostEndpointFailureClassification
                 .TryClassifyUnavailableFailure(
                     primaryFailure,
                     out string failureCategory))

@@ -1,6 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using Hase.DesktopHost.Hosting;
 using Hase.Runtime.Diagnostics;
 
 namespace Hase.DesktopHost.App.Hosting;
@@ -103,7 +104,7 @@ internal sealed class DesktopRuntimeHostEndpointRefreshCoordinator
                     throw;
                 }
                 catch (Exception exception)
-                    when (DesktopRuntimeHostEndpointStartupCoordinator
+                    when (DesktopRuntimeHostEndpointFailureClassification
                         .TryClassifyUnavailableFailure(
                             exception,
                             out string failureCategory))

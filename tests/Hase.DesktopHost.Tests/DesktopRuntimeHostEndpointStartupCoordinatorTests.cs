@@ -1,7 +1,8 @@
-using System.IO;
+﻿using System.IO;
 using System.Net.Sockets;
 using Hase.DesktopHost.App.Hosting;
 using Hase.Runtime.Diagnostics;
+using Hase.DesktopHost.Hosting;
 
 namespace Hase.DesktopHost.Tests;
 

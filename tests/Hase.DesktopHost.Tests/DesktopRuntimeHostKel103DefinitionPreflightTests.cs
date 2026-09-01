@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
@@ -7,7 +7,10 @@ using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
+using Hase.Scpi.Kel103.DesktopHost;
 using Hase.Transport.Serial;
+using Hase.DesktopHost.Hosting;
+using Hase.Mcnf.RfLab.DesktopHost;
 
 namespace Hase.DesktopHost.Tests;
 
@@ -252,7 +255,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
                 [Profile("kel-01", serialTarget)])
         };
         int providerCalls = 0;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             runtimeContext =>
             {
@@ -288,7 +291,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
                 [Profile("kel-01", "external-target")])
         };
         PublishingAttachmentFactory? factory = null;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             runtimeContext =>
             {
@@ -324,7 +327,7 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
                 [])
         };
         int providerCalls = 0;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             _ =>
             {
@@ -340,6 +343,24 @@ public sealed class DesktopRuntimeHostKel103DefinitionPreflightTests
         Assert.Empty(backend.Capture());
         await backend.StopAsync(CancellationToken.None);
     }
+
+    /// <summary>
+    /// Composes the backend over the shipped generic providers plus a
+    /// KEL-103 provider whose attachment service this test supplies.
+    /// </summary>
+    private static ProductionPrivateNetworkRuntimeHostBackend CreateBackend(
+        DesktopRuntimeHostStartupConfiguration configuration,
+        Func<RuntimeContext, IEndpointAttachmentService> kel103ServiceFactory) =>
+        new(
+            configuration,
+            new DesktopRuntimeHostEndpointProviderRegistry(
+                [
+                    new DesktopRuntimeHostNativeNetworkEndpointProvider(),
+                    new DesktopRuntimeHostCompactSerialEndpointProvider(),
+                    new DesktopRuntimeHostKel103EndpointProvider(
+                        kel103ServiceFactory),
+                    new DesktopRuntimeHostRfLabEndpointProvider()
+                ]));
 
     private static DesktopRuntimeHostKel103SerialEndpointProfile Profile(
         string endpointId,

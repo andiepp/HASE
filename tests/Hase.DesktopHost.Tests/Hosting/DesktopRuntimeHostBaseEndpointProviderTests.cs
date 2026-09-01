@@ -1,4 +1,4 @@
-using Hase.CompactProtocol;
+﻿using Hase.CompactProtocol;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
@@ -128,9 +128,7 @@ public sealed class DesktopRuntimeHostBaseEndpointProviderTests
             null) =>
         new(
             endpointComposition ?? CreateComposition(),
-            new InMemoryCompactEndpointDefinitionRepository([]),
-            new DesktopRuntimeHostEndpointProviderRegistryTests
-                .StubAttachmentInventory());
+            new InMemoryCompactEndpointDefinitionRepository([]));
 
     private static DesktopRuntimeHostEndpointCompositionProfile
         CreateComposition() =>

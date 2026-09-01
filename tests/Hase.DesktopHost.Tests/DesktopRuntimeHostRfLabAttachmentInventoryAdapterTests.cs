@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
@@ -8,6 +8,8 @@ using Hase.Runtime.Northbound;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Transport.Serial;
+using Hase.DesktopHost.Hosting;
+using Hase.Mcnf.RfLab.DesktopHost;
 
 namespace Hase.DesktopHost.Tests;
 

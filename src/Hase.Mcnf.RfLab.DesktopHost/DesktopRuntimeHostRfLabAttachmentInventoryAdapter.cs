@@ -1,12 +1,13 @@
 using Hase.Core.Domain.Descriptors;
+using Hase.DesktopHost.Hosting;
 using Hase.Core.Domain.Identity;
 using Hase.Mcnf.RfLab;
-using Hase.Mcnf.RfLab.Hosting;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Transport.Serial;
+using Hase.Mcnf.RfLab.Hosting;
 
-namespace Hase.DesktopHost.App.Hosting;
+namespace Hase.Mcnf.RfLab.DesktopHost;
 
 public sealed class DesktopRuntimeHostRfLabConnectionDefinition
     : IEndpointConnectionDefinition
@@ -193,7 +194,7 @@ public sealed class DesktopRuntimeHostRfLabAttachmentService
                     "RF-Lab attachment was cancelled.",
                     cancellationToken);
             }
-            else if (DesktopRuntimeHostEndpointStartupCoordinator
+            else if (DesktopRuntimeHostEndpointFailureClassification
                 .TryClassifyUnavailableFailure(
                     primaryFailure,
                     out string failureCategory))

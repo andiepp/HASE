@@ -6,9 +6,15 @@ using Hase.Runtime.Transport.Attachment;
 namespace Hase.DesktopHost.Hosting;
 
 /// <summary>
-/// Supplies an endpoint provider with the configured composition and the
-/// host-owned inventory its attachments run against.
+/// Supplies an endpoint provider with the configured composition it resolves
+/// its own endpoints from.
 /// </summary>
+/// <remarks>
+/// The context carries no attachment inventory. Resolution runs before the
+/// host owns one, so that a provider's preflight fails before any runtime
+/// resource has been created, and so that the host knows which providers
+/// contributed endpoints before it asks any of them for a service.
+/// </remarks>
 public sealed class DesktopRuntimeHostEndpointProviderContext
 {
     /// <summary>
@@ -17,8 +23,7 @@ public sealed class DesktopRuntimeHostEndpointProviderContext
     /// </summary>
     public DesktopRuntimeHostEndpointProviderContext(
         DesktopRuntimeHostEndpointCompositionProfile endpointComposition,
-        ICompactEndpointDefinitionRepository compactDefinitionRepository,
-        IRuntimeEndpointAttachmentInventory attachmentInventory)
+        ICompactEndpointDefinitionRepository compactDefinitionRepository)
     {
         EndpointComposition =
             endpointComposition
@@ -27,9 +32,6 @@ public sealed class DesktopRuntimeHostEndpointProviderContext
             compactDefinitionRepository
             ?? throw new ArgumentNullException(
                 nameof(compactDefinitionRepository));
-        AttachmentInventory =
-            attachmentInventory
-            ?? throw new ArgumentNullException(nameof(attachmentInventory));
     }
 
     /// <summary>
@@ -50,15 +52,6 @@ public sealed class DesktopRuntimeHostEndpointProviderContext
     /// from a repository of its own.
     /// </remarks>
     public ICompactEndpointDefinitionRepository CompactDefinitionRepository
-    {
-        get;
-    }
-
-    /// <summary>
-    /// Gets the host-owned attachment inventory the contributed attachments
-    /// run against.
-    /// </summary>
-    public IRuntimeEndpointAttachmentInventory AttachmentInventory
     {
         get;
     }
@@ -93,6 +86,10 @@ public interface IDesktopRuntimeHostEndpointProvider
     /// definitions, or <see langword="null"/> when the runtime attachment
     /// host already routes them.
     /// </summary>
+    /// <remarks>
+    /// This is called only for a provider that resolved at least one
+    /// endpoint, so a family that is configured nowhere constructs nothing.
+    /// </remarks>
     IEndpointAttachmentService? CreateAttachmentService(
         RuntimeContext runtimeContext);
 

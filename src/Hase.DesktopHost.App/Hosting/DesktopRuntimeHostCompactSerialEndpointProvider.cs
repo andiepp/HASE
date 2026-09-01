@@ -64,6 +64,8 @@ public sealed class DesktopRuntimeHostCompactSerialEndpointProvider
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
 
+        ICompactEndpointDefinitionRepository definitionRepository =
+            context.CompactDefinitionRepository;
         var attachments = new List<DesktopRuntimeHostEndpointAttachment>();
 
         foreach (DesktopRuntimeHostCompactSerialEndpointProfile endpoint
@@ -73,9 +75,9 @@ public sealed class DesktopRuntimeHostCompactSerialEndpointProvider
                 new DesktopRuntimeHostEndpointAttachment(
                     endpoint.ExpectedEndpointId,
                     EndpointKind,
-                    token => AttachAsync(
-                        context.AttachmentInventory,
-                        context.CompactDefinitionRepository,
+                    (inventory, token) => AttachAsync(
+                        inventory,
+                        definitionRepository,
                         endpoint,
                         token)));
         }

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Commands;
 using Hase.Core.Domain.Data;
 using Hase.Core.Domain.Descriptors;
@@ -11,6 +11,8 @@ using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
 using Hase.Transport.Serial;
+using Hase.DesktopHost.Hosting;
+using Hase.Scpi.Kel103.DesktopHost;
 
 namespace Hase.DesktopHost.Tests;
 

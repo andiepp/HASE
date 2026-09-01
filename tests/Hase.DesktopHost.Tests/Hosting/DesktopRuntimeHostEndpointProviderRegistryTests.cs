@@ -57,7 +57,7 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
     }
 
     [Fact]
-    public async Task ResolveAttachmentsAsync_PreservesRegistrationOrder()
+    public async Task ResolveAsync_PreservesRegistrationOrder()
     {
         var registry = new DesktopRuntimeHostEndpointProviderRegistry(
             [
@@ -65,16 +65,33 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
                 new StubProvider("second", "endpoint-c")
             ]);
 
-        IReadOnlyList<DesktopRuntimeHostEndpointAttachment> attachments =
-            await registry.ResolveAttachmentsAsync(CreateContext());
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
 
         Assert.Equal(
             ["endpoint-a", "endpoint-b", "endpoint-c"],
-            attachments.Select(attachment => attachment.EndpointId));
+            resolution.Attachments.Select(attachment => attachment.EndpointId));
     }
 
     [Fact]
-    public async Task ResolveAttachmentsAsync_RejectsDuplicateEndpointIdentities()
+    public async Task ResolveAsync_NamesOnlyTheProvidersThatContributed()
+    {
+        var registry = new DesktopRuntimeHostEndpointProviderRegistry(
+            [
+                new StubProvider("configured", "endpoint-a"),
+                new StubProvider("unconfigured")
+            ]);
+
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
+
+        Assert.Equal(
+            new HashSet<string>(StringComparer.Ordinal) { "configured" },
+            resolution.ContributingProviderIds);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_RejectsDuplicateEndpointIdentities()
     {
         var registry = new DesktopRuntimeHostEndpointProviderRegistry(
             [
@@ -84,26 +101,43 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
 
         InvalidOperationException error =
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => registry.ResolveAttachmentsAsync(CreateContext()));
+                () => registry.ResolveAsync(CreateContext()));
 
         Assert.Contains("endpoint-a", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ResolveAttachmentsAsync_WithoutProviders_ResolvesNothing()
+    public async Task ResolveAsync_WithoutProviders_ResolvesNothing()
     {
         var registry = new DesktopRuntimeHostEndpointProviderRegistry();
 
-        Assert.Empty(await registry.ResolveAttachmentsAsync(CreateContext()));
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
+
+        Assert.Empty(resolution.Attachments);
+        Assert.Empty(resolution.ContributingProviderIds);
     }
 
     [Fact]
-    public void CreateAttachmentService_IsNullWhenNoProviderContributesOne()
+    public async Task CreateAttachmentService_NeverAsksAnUncontributingProvider()
     {
+        var unconfigured = new StubProvider("unconfigured")
+        {
+            AttachmentService = new RecordingService(),
+            SupportedDefinition = typeof(NetworkEndpointConnectionDefinition)
+        };
         var registry = new DesktopRuntimeHostEndpointProviderRegistry(
-            [new StubProvider("first"), new StubProvider("second")]);
+            [unconfigured]);
 
-        Assert.Null(registry.CreateAttachmentService(CreateRuntimeContext()));
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
+        IEndpointAttachmentService service = registry.CreateAttachmentService(
+            CreateRuntimeContext(),
+            resolution);
+
+        Assert.Equal(0, unconfigured.AttachmentServiceRequests);
+        await Assert.ThrowsAsync<NotSupportedException>(
+            () => service.AttachAsync(NetworkRequest()));
     }
 
     [Fact]
@@ -113,13 +147,13 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
         var serialService = new RecordingService();
         var registry = new DesktopRuntimeHostEndpointProviderRegistry(
             [
-                new StubProvider("network")
+                new StubProvider("network", "endpoint-a")
                 {
                     AttachmentService = networkService,
                     SupportedDefinition =
                         typeof(NetworkEndpointConnectionDefinition)
                 },
-                new StubProvider("serial")
+                new StubProvider("serial", "endpoint-b")
                 {
                     AttachmentService = serialService,
                     SupportedDefinition =
@@ -127,10 +161,11 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
                 }
             ]);
 
-        IEndpointAttachmentService service =
-            registry.CreateAttachmentService(CreateRuntimeContext())
-            ?? throw new InvalidOperationException(
-                "The registry contributed no attachment service.");
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
+        IEndpointAttachmentService service = registry.CreateAttachmentService(
+            CreateRuntimeContext(),
+            resolution);
 
         await Assert.ThrowsAsync<ExpectedServiceException>(
             () => service.AttachAsync(NetworkRequest()));
@@ -150,7 +185,7 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
     {
         var registry = new DesktopRuntimeHostEndpointProviderRegistry(
             [
-                new StubProvider("network")
+                new StubProvider("network", "endpoint-a")
                 {
                     AttachmentService = new RecordingService(),
                     SupportedDefinition =
@@ -158,10 +193,11 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
                 }
             ]);
 
-        IEndpointAttachmentService service =
-            registry.CreateAttachmentService(CreateRuntimeContext())
-            ?? throw new InvalidOperationException(
-                "The registry contributed no attachment service.");
+        DesktopRuntimeHostEndpointResolution resolution =
+            await registry.ResolveAsync(CreateContext());
+        IEndpointAttachmentService service = registry.CreateAttachmentService(
+            CreateRuntimeContext(),
+            resolution);
 
         await Assert.ThrowsAsync<NotSupportedException>(
             () => service.AttachAsync(SerialRequest()));
@@ -171,8 +207,7 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
         DesktopRuntimeHostEndpointCompositionProfile? endpointComposition = null) =>
         new(
             endpointComposition ?? CreateComposition(),
-            new InMemoryCompactEndpointDefinitionRepository([]),
-            new StubAttachmentInventory());
+            new InMemoryCompactEndpointDefinitionRepository([]));
 
     internal static DesktopRuntimeHostEndpointCompositionProfile
         CreateComposition() =>
@@ -217,13 +252,18 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
 
         public Type? SupportedDefinition { get; init; }
 
+        public int AttachmentServiceRequests { get; private set; }
+
         public bool Supports(IEndpointConnectionDefinition connectionDefinition) =>
             SupportedDefinition is not null
             && SupportedDefinition.IsInstanceOfType(connectionDefinition);
 
         public IEndpointAttachmentService? CreateAttachmentService(
-            RuntimeContext runtimeContext) =>
-            AttachmentService;
+            RuntimeContext runtimeContext)
+        {
+            AttachmentServiceRequests++;
+            return AttachmentService;
+        }
 
         public Task<IReadOnlyList<DesktopRuntimeHostEndpointAttachment>>
             ResolveAttachmentsAsync(
@@ -235,7 +275,7 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistryTests
                         new DesktopRuntimeHostEndpointAttachment(
                             endpointId,
                             "Stub",
-                            _ => Task.CompletedTask))
+                            (_, _) => Task.CompletedTask))
                     .ToArray());
     }
 

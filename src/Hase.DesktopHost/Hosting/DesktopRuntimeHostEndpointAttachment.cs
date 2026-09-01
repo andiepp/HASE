@@ -1,3 +1,5 @@
+using Hase.Runtime.Transport.Attachment;
+
 namespace Hase.DesktopHost.Hosting;
 
 /// <summary>
@@ -6,8 +8,10 @@ namespace Hase.DesktopHost.Hosting;
 /// </summary>
 /// <remarks>
 /// An attachment describes what would be attached and how; constructing one
-/// connects, verifies, or attaches nothing. The host decides when, and in
-/// which order, the contributed attachments run.
+/// connects, verifies, or attaches nothing. It is resolved before the host
+/// owns an attachment inventory, so the inventory is supplied when the
+/// attachment runs rather than captured when it is described. The host
+/// decides when, and in which order, the contributed attachments run.
 /// </remarks>
 public sealed class DesktopRuntimeHostEndpointAttachment
 {
@@ -21,12 +25,13 @@ public sealed class DesktopRuntimeHostEndpointAttachment
     /// The endpoint kind reported in host diagnostics.
     /// </param>
     /// <param name="attachAsync">
-    /// The attachment performed against the host attachment inventory.
+    /// The attachment performed against the supplied attachment inventory.
     /// </param>
     public DesktopRuntimeHostEndpointAttachment(
         string endpointId,
         string endpointKind,
-        Func<CancellationToken, Task> attachAsync)
+        Func<IRuntimeEndpointAttachmentInventory, CancellationToken, Task>
+            attachAsync)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(endpointId);
         ArgumentException.ThrowIfNullOrWhiteSpace(endpointKind);
@@ -48,9 +53,12 @@ public sealed class DesktopRuntimeHostEndpointAttachment
     public string EndpointKind { get; }
 
     /// <summary>
-    /// Gets the attachment performed against the host attachment inventory.
+    /// Gets the attachment performed against the supplied attachment
+    /// inventory.
     /// </summary>
-    public Func<CancellationToken, Task> AttachAsync { get; }
+    public Func<IRuntimeEndpointAttachmentInventory, CancellationToken, Task>
+        AttachAsync
+    { get; }
 
     public override string ToString() =>
         $"{EndpointKind} endpoint attachment for '{EndpointId}'";

@@ -70,8 +70,8 @@ public sealed class DesktopRuntimeHostNativeNetworkEndpointProvider
                 new DesktopRuntimeHostEndpointAttachment(
                     endpoint.ExpectedEndpointId,
                     EndpointKind,
-                    token => AttachAsync(
-                        context.AttachmentInventory,
+                    (inventory, token) => AttachAsync(
+                        inventory,
                         endpoint,
                         token)));
         }

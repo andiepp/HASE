@@ -4,10 +4,10 @@ using Hase.DesktopHost.Configuration;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Scpi.Kel103;
-using Hase.Scpi.Kel103.Hosting;
 using Hase.Transport.Serial;
+using Hase.Scpi.Kel103.Hosting;
 
-namespace Hase.DesktopHost.App.Hosting;
+namespace Hase.Scpi.Kel103.DesktopHost;
 
 public interface IDesktopRuntimeHostKel103AttachmentFactory
 {

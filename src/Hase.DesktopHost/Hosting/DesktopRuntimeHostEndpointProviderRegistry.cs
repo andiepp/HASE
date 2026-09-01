@@ -88,52 +88,27 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistry
     }
 
     /// <summary>
-    /// Creates the attachment service routing every connection definition the
-    /// registered providers contribute a service for, or
-    /// <see langword="null"/> when no provider contributes one.
-    /// </summary>
-    public IEndpointAttachmentService? CreateAttachmentService(
-        RuntimeContext runtimeContext)
-    {
-        ArgumentNullException.ThrowIfNull(runtimeContext);
-
-        var routes =
-            new List<DesktopRuntimeHostEndpointProviderAttachmentRoute>();
-
-        foreach (IDesktopRuntimeHostEndpointProvider provider in providers)
-        {
-            if (provider.CreateAttachmentService(runtimeContext)
-                is IEndpointAttachmentService service)
-            {
-                routes.Add(
-                    new DesktopRuntimeHostEndpointProviderAttachmentRoute(
-                        provider,
-                        service));
-            }
-        }
-
-        return routes.Count == 0
-            ? null
-            : new DesktopRuntimeHostEndpointProviderAttachmentRouter(routes);
-    }
-
-    /// <summary>
     /// Resolves the configured endpoints of every registered provider, in
     /// registration order.
     /// </summary>
+    /// <remarks>
+    /// This runs before the host owns an attachment inventory, so a
+    /// provider's preflight fails before any runtime resource exists.
+    /// </remarks>
     /// <exception cref="InvalidOperationException">
     /// A provider resolved no list, or two providers contributed the same
     /// endpoint identity.
     /// </exception>
-    public async Task<IReadOnlyList<DesktopRuntimeHostEndpointAttachment>>
-        ResolveAttachmentsAsync(
-            DesktopRuntimeHostEndpointProviderContext context,
-            CancellationToken cancellationToken = default)
+    public async Task<DesktopRuntimeHostEndpointResolution> ResolveAsync(
+        DesktopRuntimeHostEndpointProviderContext context,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
 
         var attachments = new List<DesktopRuntimeHostEndpointAttachment>();
         var endpointIds = new HashSet<string>(StringComparer.Ordinal);
+        var contributingProviderIds =
+            new HashSet<string>(StringComparer.Ordinal);
 
         foreach (IDesktopRuntimeHostEndpointProvider provider in providers)
         {
@@ -166,21 +141,69 @@ public sealed class DesktopRuntimeHostEndpointProviderRegistry
 
                 attachments.Add(attachment);
             }
+
+            if (resolved.Count > 0)
+            {
+                contributingProviderIds.Add(provider.ProviderId.Trim());
+            }
         }
 
-        return attachments;
+        return new DesktopRuntimeHostEndpointResolution(
+            attachments,
+            contributingProviderIds);
+    }
+
+    /// <summary>
+    /// Creates the attachment service routing every connection definition
+    /// contributed by the providers that resolved at least one endpoint.
+    /// </summary>
+    /// <remarks>
+    /// A provider that resolved nothing is never asked for a service, so a
+    /// family configured nowhere constructs nothing. When no contributing
+    /// provider supplies a service, the returned router rejects every request
+    /// exactly as an unrouted connection definition is rejected.
+    /// </remarks>
+    public IEndpointAttachmentService CreateAttachmentService(
+        RuntimeContext runtimeContext,
+        DesktopRuntimeHostEndpointResolution resolution)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeContext);
+        ArgumentNullException.ThrowIfNull(resolution);
+
+        var routes =
+            new List<DesktopRuntimeHostEndpointProviderAttachmentRoute>();
+
+        foreach (IDesktopRuntimeHostEndpointProvider provider in providers)
+        {
+            if (!resolution.ContributingProviderIds.Contains(
+                    provider.ProviderId.Trim()))
+            {
+                continue;
+            }
+
+            if (provider.CreateAttachmentService(runtimeContext)
+                is IEndpointAttachmentService service)
+            {
+                routes.Add(
+                    new DesktopRuntimeHostEndpointProviderAttachmentRoute(
+                        provider,
+                        service));
+            }
+        }
+
+        return new DesktopRuntimeHostEndpointProviderAttachmentRouter(routes);
     }
 }
 
 /// <summary>
-/// One registered provider and the attachment service it contributed.
+/// One contributing provider and the attachment service it created.
 /// </summary>
 internal sealed record DesktopRuntimeHostEndpointProviderAttachmentRoute(
     IDesktopRuntimeHostEndpointProvider Provider,
     IEndpointAttachmentService Service);
 
 /// <summary>
-/// Routes attachment requests to the registered provider that supports the
+/// Routes attachment requests to the contributing provider that supports the
 /// requested connection definition.
 /// </summary>
 internal sealed class DesktopRuntimeHostEndpointProviderAttachmentRouter

@@ -3,8 +3,9 @@ using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.Scpi.Kel103;
+using Hase.Scpi.Kel103.Hosting;
 
-namespace Hase.DesktopHost.App.Hosting;
+namespace Hase.Scpi.Kel103.DesktopHost;
 
 public static class DesktopRuntimeHostKel103DefinitionPreflight
 {

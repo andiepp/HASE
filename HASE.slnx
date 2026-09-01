@@ -20,6 +20,7 @@
   <Project Path="src/Hase.Mcnf/Hase.Mcnf.csproj" />
   <Project Path="src/Hase.Mcnf.RfLab/Hase.Mcnf.RfLab.csproj" />
   <Project Path="src/Hase.Mcnf.RfLab.Hosting/Hase.Mcnf.RfLab.Hosting.csproj" />
+  <Project Path="src/Hase.Mcnf.RfLab.DesktopHost/Hase.Mcnf.RfLab.DesktopHost.csproj" />
   <Project Path="src/Hase.Mcnf.RfLab.Runtime/Hase.Mcnf.RfLab.Runtime.csproj" />
   <Project Path="src/Hase.Mcnf.Serial/Hase.Mcnf.Serial.csproj" />
   <Project Path="src/Hase.Operator.Input/Hase.Operator.Input.csproj" />
@@ -38,6 +39,7 @@
   <Project Path="src/Hase.Scpi/Hase.Scpi.csproj" />
   <Project Path="src/Hase.Scpi.Kel103/Hase.Scpi.Kel103.csproj" />
   <Project Path="src/Hase.Scpi.Kel103.Hosting/Hase.Scpi.Kel103.Hosting.csproj" />
+  <Project Path="src/Hase.Scpi.Kel103.DesktopHost/Hase.Scpi.Kel103.DesktopHost.csproj" />
   <Project Path="src/Hase.Scpi.Kel103.Runtime/Hase.Scpi.Kel103.Runtime.csproj" />
   <Project Path="src/Hase.Scpi.Serial/Hase.Scpi.Serial.csproj" />
   <Project Path="src/Hase.Simulation.Runtime/Hase.Simulation.Runtime.csproj" Id="2237039f-536a-47bf-af87-6204a42facf9" />

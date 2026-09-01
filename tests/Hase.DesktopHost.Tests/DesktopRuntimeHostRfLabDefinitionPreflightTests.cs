@@ -1,13 +1,16 @@
-using System.IO;
+﻿using System.IO;
 using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Properties;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
 using Hase.Mcnf.RfLab;
+using Hase.Mcnf.RfLab.DesktopHost;
+using Hase.Scpi.Kel103.DesktopHost;
 using Hase.Runtime.Runtime;
 using Hase.Runtime.Transport.Attachment;
 using Hase.Transport.Serial;
+using Hase.DesktopHost.Hosting;
 
 namespace Hase.DesktopHost.Tests;
 
@@ -229,7 +232,7 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
                 [Profile("rflab-01", serialTarget)])
         };
         int providerCalls = 0;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             _ => throw new InvalidOperationException("KEL-103 service was not expected."),
             runtimeContext =>
@@ -267,7 +270,7 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
                 [Profile("rflab-01", "external-target")])
         };
         PublishingAttachmentFactory? factory = null;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             _ => throw new InvalidOperationException("KEL-103 service was not expected."),
             runtimeContext =>
@@ -304,7 +307,7 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
                 [])
         };
         int providerCalls = 0;
-        var backend = new ProductionPrivateNetworkRuntimeHostBackend(
+        var backend = CreateBackend(
             configuration,
             _ => throw new InvalidOperationException("KEL-103 service was not expected."),
             _ =>
@@ -321,6 +324,26 @@ public sealed class DesktopRuntimeHostRfLabDefinitionPreflightTests
         Assert.Empty(backend.Capture());
         await backend.StopAsync(CancellationToken.None);
     }
+
+    /// <summary>
+    /// Composes the backend over the shipped generic providers plus
+    /// instrument providers whose attachment services this test supplies.
+    /// </summary>
+    private static ProductionPrivateNetworkRuntimeHostBackend CreateBackend(
+        DesktopRuntimeHostStartupConfiguration configuration,
+        Func<RuntimeContext, IEndpointAttachmentService> kel103ServiceFactory,
+        Func<RuntimeContext, IEndpointAttachmentService> rfLabServiceFactory) =>
+        new(
+            configuration,
+            new DesktopRuntimeHostEndpointProviderRegistry(
+                [
+                    new DesktopRuntimeHostNativeNetworkEndpointProvider(),
+                    new DesktopRuntimeHostCompactSerialEndpointProvider(),
+                    new DesktopRuntimeHostKel103EndpointProvider(
+                        kel103ServiceFactory),
+                    new DesktopRuntimeHostRfLabEndpointProvider(
+                        rfLabServiceFactory)
+                ]));
 
     private static DesktopRuntimeHostRfLabSerialEndpointProfile Profile(
         string endpointId,

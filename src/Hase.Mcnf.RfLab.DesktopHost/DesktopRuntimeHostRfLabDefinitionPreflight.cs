@@ -3,8 +3,9 @@ using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.Configuration;
 using Hase.Mcnf.RfLab;
+using Hase.Mcnf.RfLab.Hosting;
 
-namespace Hase.DesktopHost.App.Hosting;
+namespace Hase.Mcnf.RfLab.DesktopHost;
 
 public static class DesktopRuntimeHostRfLabDefinitionPreflight
 {

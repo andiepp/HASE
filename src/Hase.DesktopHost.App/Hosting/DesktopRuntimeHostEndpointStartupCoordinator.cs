@@ -1,7 +1,5 @@
-using System.IO;
-using System.Net.Sockets;
+﻿using Hase.DesktopHost.Hosting;
 using Hase.Runtime.Diagnostics;
-using Hase.Transport.Serial;
 
 namespace Hase.DesktopHost.App.Hosting;
 
@@ -40,7 +38,8 @@ internal sealed class DesktopRuntimeHostEndpointStartupCoordinator
             throw;
         }
         catch (Exception exception)
-            when (TryClassifyUnavailableFailure(
+            when (DesktopRuntimeHostEndpointFailureClassification
+                .TryClassifyUnavailableFailure(
                 exception,
                 out string failureCategory))
         {
@@ -75,70 +74,4 @@ internal sealed class DesktopRuntimeHostEndpointStartupCoordinator
                             ["FailureCategory"] = failureCategory
                         }));
     }
-
-    internal static bool TryClassifyUnavailableFailure(
-        Exception exception,
-        out string failureCategory)
-    {
-        if (exception is DesktopRuntimeHostEndpointUnavailableException
-            unavailable)
-        {
-            failureCategory = unavailable.FailureCategory;
-            return true;
-        }
-
-        if (exception is AggregateException aggregate)
-        {
-            Exception[] failures = aggregate.Flatten().InnerExceptions.ToArray();
-            if (failures.Length > 0
-                && failures.All(
-                    failure =>
-                        TryClassifyUnavailableFailure(
-                            failure,
-                            out _)))
-            {
-                failureCategory = "MultipleAvailabilityFailures";
-                return true;
-            }
-        }
-
-        failureCategory = exception switch
-        {
-            SerialPortOpenException serialPortFailure =>
-                serialPortFailure.Failure switch
-                {
-                    SerialPortOpenFailure.Busy => "SerialPortBusy",
-                    SerialPortOpenFailure.Unavailable =>
-                        "SerialPortUnavailable",
-                    SerialPortOpenFailure.AccessDenied =>
-                        "SerialPortAccessDenied",
-                    SerialPortOpenFailure.Failed =>
-                        "SerialPortOpenFailed",
-                    _ => string.Empty
-                },
-            TimeoutException => "TimedOut",
-            OperationCanceledException => "TimedOut",
-            SocketException => "NetworkUnavailable",
-            UnauthorizedAccessException => "AccessUnavailable",
-            IOException when exception is not InvalidDataException =>
-                "IoUnavailable",
-            _ => string.Empty
-        };
-
-        return failureCategory.Length > 0;
-    }
-}
-
-internal sealed class DesktopRuntimeHostEndpointUnavailableException
-    : Exception
-{
-    public DesktopRuntimeHostEndpointUnavailableException(
-        string failureCategory)
-        : base("The configured endpoint is unavailable.")
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(failureCategory);
-        FailureCategory = failureCategory;
-    }
-
-    public string FailureCategory { get; }
 }
