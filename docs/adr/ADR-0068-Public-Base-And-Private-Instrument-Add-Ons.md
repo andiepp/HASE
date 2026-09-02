@@ -1,7 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68G4a complete; the physical run of 68G,
-  then 68H and 68I, remain
+- Status: Accepted; 68A through 68G complete; 68H and 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -487,28 +486,58 @@ The cold build reports 64 warnings rather than the 66 baseline, because two
 of the baseline's warnings were nullable-assertion warnings inside the test
 block this increment replaced and were not reintroduced.
 
-#### What remains of 68G
-
-The physical run: a Runtime Host publishing its simulated endpoint and a
-Client operating it, from the base alone. It is a separate, approved
-physical step.
-
-One consequence is waiting for it. Definition version 5 is in service and
-declares no presentation; version 6 declares all of it and exists unused.
-Until version 6 is in service the KEL-103 modes, input controls and SHORT
-panel are offered as ordinary command entries rather than as dedicated
-controls. Every command remains executable and the confirmation checkbox
-still has to be ticked to transmit true.
-
-The publish scripts remain unable to produce the `.Lab` variants, so a
-republish today would install a host with no instruments and a Client with
-no panel.
-
 #### Increment 68G5 — Documentation closure before the base is run
 
-Result: complete. Records 68G1 through 68G4a across this ADR, Project
-Status and the Roadmap, before the physical run, as 68D2 did before the
-migration.
+Result: complete as `c1c9ab9`. Records 68G1 through 68G4a across this ADR,
+Project Status and the Roadmap, before the physical run, as 68D2 did before
+the migration.
+
+#### Increment 68G6 — The base is run
+
+Result: complete. A Runtime Host and a Client, both built from
+`HASE.Base.slnx`, ran on AEPRAKETE against each other on loopback. The host
+published one endpoint, `simulation-byte-buffer-validation`, and reported
+itself as the certificate-free development composition. The Client
+connected to it, read a property and executed a command, and offered no
+instrument panel while connected.
+
+The proof is in what was built rather than in what was used. The two
+application output directories carried 40 and 39 assemblies and not one
+matching `Kel103`, `RfLab` or `Mcnf`, so the instrument code was not merely
+unexercised; it was never compiled. The build went to an isolated artifacts
+directory, leaving the repository output trees and every installed
+application untouched.
+
+No hardware, certificate or existing configuration took part. The
+development profile is loopback-only and certificate-free, and it accepts
+the byte-buffer simulation without an endpoint composition, so the base
+published a real endpoint with no instrument and no device attached. The
+run used its own configuration directory and referenced the existing
+development identity read-only; minting one would have been a credential
+operation and was out of scope.
+
+The Client refused the host on the first attempt, and was right to. Its
+registry named an expected runtime-host identity taken from a constant that
+the shell only displays, rather than the authoritative one in the identity
+file, and the Client reported an identity mismatch instead of attaching.
+The check earned its place: a profile pointing at an unintended host fails
+closed and says why. The missing panel counts as evidence only from the
+second attempt, because a Client that never connects shows no panel either
+way.
+
+#### Increment 68G7 — Documentation closure for the run
+
+Result: complete. Records the run and closes 68G, which is now built,
+tested and run as this increment defined it.
+
+Two things 68G leaves for 68H. The publish scripts build fixed projects and
+cannot produce the `.Lab` variants, so republishing an installed
+application today would install a host with no instruments and a Client
+with no panel. And definition version 5 remains in service while version 6,
+which declares the presentation the Runtime Host now reads, exists unused;
+until it is in service the KEL-103 modes, input controls and SHORT
+activation are offered as ordinary command entries rather than as dedicated
+controls, with every command still executable.
 
 ### Increment 68H — The add-on repository
 

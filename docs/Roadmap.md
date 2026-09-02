@@ -2462,8 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68G4a complete; the physical run of 68G,
-then 68H and 68I, remain
+**Status:** [Active] 68A through 68G complete; 68H and 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2570,11 +2569,22 @@ Increments:
     the descriptor, mirroring the Client. A sixth guard reads source rather
     than references, because the five before it all passed while a KEL-103
     warning sat in the shipped user interface.
-15. 68G5 — Documentation closure before the base is run — complete.
+15. 68G5 — Documentation closure before the base is run — complete as
+    `c1c9ab9`.
+16. 68G6 — The base is run — complete. A Runtime Host and a Client, both
+    built from `HASE.Base.slnx`, ran against each other on loopback on
+    AEPRAKETE. The host published one endpoint, the Client connected, read
+    a property, executed a command, and offered no instrument panel while
+    connected. The two application output directories carried no assembly
+    matching an instrument, so the proof is in what was built rather than
+    in what was used. No hardware, certificate or existing configuration
+    took part, and the build went to an isolated artifacts directory. The
+    Client refused the host on the first attempt over an identity mismatch
+    and was right to; the missing panel counts only from the second, since
+    a Client that never connects shows no panel either way.
+17. 68G7 — Documentation closure for the run — complete.
 
-The physical run of 68G remains, with 68H and 68I after it: a Runtime Host
-publishing its simulated endpoint and a Client operating it from the base
-alone, then the add-on repository, then publication as the only
+68H and 68I remain: the add-on repository, then publication as the only
 irreversible step.
 
 ADR-0068 begins at exact commit

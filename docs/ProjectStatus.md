@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68G4a complete, the estate migrated, at 7,020 passing tests from
+through 68G complete, the estate migrated, at 7,020 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -70,6 +70,13 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   offers a selection, labelled controls and a confirmation because a
   descriptor declares them, not because it recognises a KEL-103, using the
   mechanism 68E built and the Client already consumes.
+- The base was run, not only built. A Runtime Host and a Client built from
+  `HASE.Base.slnx` ran against each other on loopback: the host published
+  its simulated endpoint, the Client connected, read a property, executed a
+  command, and offered no instrument panel while connected. The two
+  application output directories carried no assembly matching an
+  instrument, so the instrument code was never compiled rather than merely
+  unused.
 - A sixth guard reads source rather than references. The five before it
   compare assembly references, and every one passed while a KEL-103 safety
   warning sat in the shipped user interface, because a reference guard
@@ -84,19 +91,19 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   the Runtime Host application (`2b72f87`), 68G2 the Client application
   (`a7b318d`), 68G3 the composition tool (`2966996`), 68G4 the base
   solution (`24474b1`), 68G4a the published Runtime Host user interface
-  (`3fd2e8e`). 68D1 was not in the original plan;
+  (`3fd2e8e`), 68G5 documentation closure before the run (`c1c9ab9`), 68G6
+  the base is run, 68G7 its closure. 68D1 was not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-The physical run that completes 68G: a Runtime Host publishing its
-simulated endpoint and a Client operating it, from the base alone. Then 68H
-the add-on repository, and 68I publication, which is separately approved
-and the only irreversible step.
+68H the add-on repository, and 68I publication, which is separately
+approved and the only irreversible step.
 
-68G's prediction held. The Runtime Host application did still hold the
-KEL-103 command block the Client library shed in 68E, and building the base
+68G is complete: the base is built, tested and run. Its prediction held on
+the way through. The Runtime Host application did still hold the KEL-103
+command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
 Four matters remain open outside that sequence.
