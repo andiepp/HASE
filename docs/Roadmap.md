@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68G complete; 68H and 68I remain
+**Status:** [Active] 68A through 68H1 complete; 68H and 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2582,14 +2582,34 @@ Increments:
     Client refused the host on the first attempt over an identity mismatch
     and was right to; the missing panel counts only from the second, since
     a Client that never connects shows no panel either way.
-17. 68G7 — Documentation closure for the run — complete.
+17. 68G7 — Documentation closure for the run — complete as `398c9f6`.
+18. 68H1a — Publication names the application it publishes — complete as
+    `beb4248`. Both publish scripts take the application project, derive
+    every executable name from it, and record which application the
+    installation holds. The cheap answer, giving the `.Lab` projects the
+    base assembly name, was checked and rejected because a `.Lab` project
+    references the base application project. Proven by five throwaway
+    publications: the add-on host carried all eight instrument assemblies,
+    the base installations none, and none left a backup behind.
+19. 68H1b — An update updates the application that is installed — complete
+    as `ea6efcd`. Both updaters read the record and fall back to the
+    shipped application; publication records the project too, because an
+    update republishes it and the executable alone cannot say what to
+    rebuild. The Client updater's running-process guard was hard-coded and
+    would have updated underneath a running add-on client; it now follows
+    the record. Scoping left the C# installation plans untouched, four of
+    six having no production caller.
+20. 68H1c — Documentation closure — complete.
 
 68H and 68I remain: the add-on repository, then publication as the only
-irreversible step.
+irreversible step. 68H inherits one gap 68H1 did not take: an add-on
+application can be published and updated, but the guided installers still
+create base installations only, and an add-on installation needs its own
+configuration and identity.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 7,020 across 37 test projects. The physical work of
+tests and stands at 7,040 across 37 test projects. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
 republished from `6823cea` before their compositions were touched.

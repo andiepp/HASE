@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68G complete, the estate migrated, at 7,020 passing tests from
+through 68H1 complete, the estate migrated, at 7,040 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -81,6 +81,12 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   compare assembly references, and every one passed while a KEL-103 safety
   warning sat in the shipped user interface, because a reference guard
   cannot see a string.
+- An add-on application can be published and updated. Publication takes
+  the application project and records which application an installation
+  holds; an update reads that record, rebuilds that project rather than
+  the shipped one, and refuses to run under whichever client is actually
+  installed. Existing installations, which record nothing, behave exactly
+  as before. Proven by seven throwaway publications, not by reading.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
@@ -92,7 +98,10 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   (`a7b318d`), 68G3 the composition tool (`2966996`), 68G4 the base
   solution (`24474b1`), 68G4a the published Runtime Host user interface
   (`3fd2e8e`), 68G5 documentation closure before the run (`c1c9ab9`), 68G6
-  the base is run, 68G7 its closure. 68D1 was not in the original plan;
+  the base is run, 68G7 its closure (`398c9f6`), 68H1a publication names
+  the application it publishes (`beb4248`), 68H1b an update updates the
+  application that is installed (`ea6efcd`), 68H1c their closure. 68D1 and
+  68H1 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
@@ -106,7 +115,7 @@ the way through. The Runtime Host application did still hold the KEL-103
 command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
-Four matters remain open outside that sequence.
+Three matters remain open outside that sequence.
 
 KEL-103 definition version 6 exists without being in service, and this now
 has a visible effect: until it is, the Runtime Host offers the modes, input
@@ -114,10 +123,6 @@ controls and SHORT activation as ordinary command entries rather than as
 dedicated controls. Nothing is unreachable and the confirmation still has
 to be ticked, but the dedicated surface is absent. Changing it needs a tool
 operation, a republish and a composition edit.
-
-The publish scripts build fixed projects and cannot produce the `.Lab`
-variants, so republishing an installed application today would install a
-host with no instruments and a Client with no panel.
 
 The base library still names both instruments in its legacy typed
 projections, 62 occurrences across four files. That is a composition-format

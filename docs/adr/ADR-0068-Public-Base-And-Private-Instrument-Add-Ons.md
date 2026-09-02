@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68G complete; 68H and 68I remain
+- Status: Accepted; 68A through 68H1 complete; 68H and 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -530,14 +530,88 @@ way.
 Result: complete. Records the run and closes 68G, which is now built,
 tested and run as this increment defined it.
 
-Two things 68G leaves for 68H. The publish scripts build fixed projects and
-cannot produce the `.Lab` variants, so republishing an installed
-application today would install a host with no instruments and a Client
-with no panel. And definition version 5 remains in service while version 6,
-which declares the presentation the Runtime Host now reads, exists unused;
-until it is in service the KEL-103 modes, input controls and SHORT
-activation are offered as ordinary command entries rather than as dedicated
-controls, with every command still executable.
+Two things 68G left for 68H. The publish scripts built fixed projects and
+could not produce the `.Lab` variants, so republishing an installed
+application would have installed a host with no instruments and a Client
+with no panel; 68H1 closed that. And definition version 5 remains in
+service while version 6, which declares the presentation the Runtime Host
+now reads, exists unused; until it is in service the KEL-103 modes, input
+controls and SHORT activation are offered as ordinary command entries
+rather than as dedicated controls, with every command still executable.
+
+### Increment 68H1 — The publish path can install an add-on application
+
+Not in the original plan. 68G left an add-on that could be built and run
+but not installed, and 68H would have produced a repository whose
+applications the tooling could not deploy. Scoping found the debt wider
+than the two publish scripts: the installed application's identity was the
+base executable name across the deployment surface, 46 occurrences in 28
+files with no abstraction anywhere. The cheap answer, giving the `.Lab`
+projects the base assembly name so every script kept working, was checked
+and rejected: a `.Lab` project references the base application project, so
+both assemblies would carry one name in one output directory. The add-on
+applications keep their own names, and the tooling learns to read them.
+
+#### Increment 68H1a — Publication names the application it publishes
+
+Result: complete as `beb4248`; 7,030 passed, 0 failed, 0 skipped across 37
+test projects. Both publish scripts take the application project and
+derive every executable name from it, defaulting to the project this
+repository ships, and the installation records which application it holds
+in `installed-application.json`. The base ships the generic default; a
+composition root that ships instruments names its own project. That is
+the seam this objective has now used six times.
+
+The record is written after the installed executable is verified and
+before the previous application is discarded, so it can never outlive what
+it describes. All four callers invoke the publishers with a named
+installation directory, so the optional parameter cannot shift a
+positional binding, and the base project's derived legacy WebView2 path
+resolves to the identical string.
+
+Validated by publishing. Five publications into throwaway directories,
+base host, base host again, add-on host, base client, add-on client: every
+recorded executable existed in its installation, the base installations
+carried no instrument assembly, the add-on host carried all four KEL-103
+and all four RF-Lab assemblies, the second host publication took the update
+path, and none left a backup behind. The resolver was extracted from the
+script's syntax tree and exercised: the default, a relative add-on project,
+a project outside the repository, and a file of the wrong kind.
+
+#### Increment 68H1b — An update updates the application that is installed
+
+Result: complete as `ea6efcd`; 7,040 passed, 0 failed, 0 skipped across 37
+test projects. Both updaters read the record and fall back to the shipped
+application, which is what every installation predating the record holds.
+Publication records the project as well as the executable, and an update
+republishes that project.
+
+The project had to be recorded, and the reason is the point. The updaters
+call the publisher: with only the executable recorded, updating an add-on
+installation would have verified the add-on executable and then
+republished the base into it. It also closed the defect 68G3 found, again:
+the Client updater refused to run while `Hase.Client.Wpf.App` was up, so on
+an add-on installation the guard protected nothing and the update would
+have proceeded underneath a running client. The guard now follows the
+record.
+
+Scoping narrowed it. The plan said the C# installation plans would read the
+record; four of the six have no production caller and the two that do
+belong to the onboarding audit and the guided installer, outside this
+scope. The C# is untouched.
+
+The reader was extracted and exercised on four inputs, two throwaway
+publications showed the record upgraded in place and written identically
+from both scripts, and a real record fed back through the reader named an
+executable and a project that both exist. The updaters themselves were not
+run: each hard-codes its installation directory, so exercising them end to
+end would mutate a live installation. The first real exercise is a
+separately approved update.
+
+#### Increment 68H1c — Documentation closure
+
+Result: complete. Records 68H1a and 68H1b across this ADR, Project Status
+and the Roadmap.
 
 ### Increment 68H — The add-on repository
 
