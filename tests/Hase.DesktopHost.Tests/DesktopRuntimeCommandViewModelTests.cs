@@ -282,25 +282,23 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Fact]
-    public void CompleteModeCommandSet_ShouldExposeOrderedSelectorAndUnrelatedCommands()
+    public void DeclaredSelection_ShouldExposeSelectorAndLeaveOthersGeneral()
     {
         var instrument = new DesktopRuntimeInstrumentViewModel(
             CreateInstrument(
             [
-                CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT"),
-                CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
+                CreateSelectionCommand("Selection.Gamma", "Choose gamma", "Gamma"),
                 CreateCommand(CreateParameterlessDescriptor("System.Reset", "Reset")),
-                CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
-                CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
-                CreateModeCommand("Mode.SelectConstantCurrent", "Select CC")
+                CreateSelectionCommand("Selection.Alpha", "Choose alpha", "Alpha"),
+                CreateSelectionCommand("Selection.Beta", "Choose beta", "Beta")
             ]));
 
         Assert.True(instrument.HasModeSelectionSelector);
         Assert.Null(instrument.SelectedModeCommand);
         Assert.Equal(
-            ["CC", "CV", "CR", "CW", "SHORT"],
+            ["Gamma", "Alpha", "Beta"],
             instrument.ModeSelectionCommands
-                .Select(command => command.ModeSelectionLabel)
+                .Select(command => command.ModeSelectionLabel!)
                 .ToArray());
         Assert.Equal(
             ["System.Reset"],
@@ -313,7 +311,7 @@ public sealed class DesktopRuntimeCommandViewModelTests
     public void ModeSelection_ShouldNotBeginExecutionAndShouldSurviveRefresh()
     {
         DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
-            CreateCompleteModeCommandSet());
+            CreateDeclaredSelectionSet());
         var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
         DesktopRuntimeCommandViewModel selected = instrument.ModeSelectionCommands[1];
 
@@ -329,7 +327,7 @@ public sealed class DesktopRuntimeCommandViewModelTests
     public void SelectedModeCommand_ExplicitExecutionShouldUseExistingCommandTarget()
     {
         var instrument = new DesktopRuntimeInstrumentViewModel(
-            CreateInstrument(CreateCompleteModeCommandSet()));
+            CreateInstrument(CreateDeclaredSelectionSet()));
         DesktopRuntimeCommandViewModel selected = instrument.ModeSelectionCommands[2];
         instrument.SelectedModeCommand = selected;
 
@@ -337,80 +335,136 @@ public sealed class DesktopRuntimeCommandViewModelTests
             instrument.SelectedModeCommand.TryBeginExecution();
 
         Assert.Same(selected.Target, target);
-        Assert.Equal(
-            "Mode.SelectConstantResistance",
-            target!.CommandPath.ToString());
+        Assert.Equal("Selection.Gamma", target!.CommandPath.ToString());
         Assert.Equal(
             DesktopRuntimeCommandExecutionState.Executing,
             selected.ExecutionState);
     }
 
     [Fact]
-    public void IncompleteModeCommandSet_ShouldRetainGenericPresentation()
+    public void UndeclaredCommands_ShouldRetainGenericPresentation()
     {
-        var commands = CreateCompleteModeCommandSet().Take(4).ToArray();
         var instrument = new DesktopRuntimeInstrumentViewModel(
-            CreateInstrument(commands));
+            CreateInstrument(
+            [
+                CreateCommand(CreateParameterlessDescriptor("System.Reset", "Reset")),
+                CreateCommand(CreateParameterlessDescriptor("System.Clear", "Clear"))
+            ]));
 
         Assert.False(instrument.HasModeSelectionSelector);
         Assert.Empty(instrument.ModeSelectionCommands);
+        Assert.False(instrument.HasInputControlControls);
         Assert.Null(instrument.SelectedModeCommand);
-        Assert.Equal(4, instrument.GeneralCommands.Count);
+        Assert.Equal(2, instrument.GeneralCommands.Count);
     }
 
     [Fact]
-    public void ModeSelectionCandidate_WithArgument_ShouldRemainGeneric()
+    public void ASingleDeclaredChoice_IsNotOfferedAsASelector()
     {
-        DesktopRuntimeCommandSnapshot[] commands = CreateCompleteModeCommandSet();
+        // A selection worth one control takes at least two choices.
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(
+            [
+                CreateSelectionCommand("Selection.Alpha", "Choose alpha", "Alpha")
+            ]));
+
+        Assert.False(instrument.HasModeSelectionSelector);
+        Assert.Equal(
+            ["Selection.Alpha"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void OnlyOneDeclaredSelectionIsOffered()
+    {
+        // An instrument may declare several selections; the presentation
+        // offers one control rather than merging unrelated choices.
+        var instrument = new DesktopRuntimeInstrumentViewModel(
+            CreateInstrument(
+            [
+                CreateSelectionCommand("Selection.Alpha", "Choose alpha", "Alpha"),
+                CreateSelectionCommand("Selection.Beta", "Choose beta", "Beta"),
+                CreateSelectionCommand(
+                    "Range.Low", "Choose low", "Low", "measurement-range"),
+                CreateSelectionCommand(
+                    "Range.High", "Choose high", "High", "measurement-range")
+            ]));
+
+        Assert.Equal(
+            ["Alpha", "Beta"],
+            instrument.ModeSelectionCommands
+                .Select(command => command.ModeSelectionLabel!)
+                .ToArray());
+        Assert.Equal(
+            ["Range.Low", "Range.High"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
+    }
+
+    [Fact]
+    public void SelectionCandidate_WithArgument_ShouldRemainGeneric()
+    {
+        DesktopRuntimeCommandSnapshot[] commands = CreateDeclaredSelectionSet();
         commands[1] = CreateCommand(
             new CommandDescriptor(
-                DescriptorPath.Parse("Mode.SelectConstantVoltage"),
-                "Select CV",
+                DescriptorPath.Parse("Selection.Beta"),
+                "Choose beta",
                 new CommandArgumentDescriptor(
                     "Unexpected",
-                    new BooleanDataDescriptor())));
+                    new BooleanDataDescriptor()))
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = "Beta",
+                    SelectionGroupId = SelectionGroup,
+                    SelectionStatePath = DescriptorPath.Parse("Selection.State"),
+                    SelectionValue = "Beta"
+                }
+            });
         var instrument = new DesktopRuntimeInstrumentViewModel(
             CreateInstrument(commands));
 
-        Assert.False(instrument.HasModeSelectionSelector);
-        Assert.Equal(5, instrument.GeneralCommands.Count);
+        Assert.Equal(
+            ["Alpha", "Gamma"],
+            instrument.ModeSelectionCommands
+                .Select(command => command.ModeSelectionLabel!)
+                .ToArray());
+        Assert.Equal(
+            ["Selection.Beta"],
+            instrument.GeneralCommands
+                .Select(command => command.Path)
+                .ToArray());
     }
 
     [Fact]
-    public void CompleteInputControlSet_ShouldExposeDedicatedStableCommands()
+    public void DeclaredLabelsWithoutASelection_ShouldBeOfferedAsInputControls()
     {
         DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
         [
-            CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
-            CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
-            CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
-            CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
-            CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT"),
-            CreateInputCommand("Input.Deactivate", "Deactivate input"),
+            CreateSelectionCommand("Selection.Alpha", "Choose alpha", "Alpha"),
+            CreateSelectionCommand("Selection.Beta", "Choose beta", "Beta"),
+            CreateLabelledCommand("Control.Stop", "Stop the output", "Stop"),
             CreateCommand(CreateParameterlessDescriptor("System.Reset", "Reset")),
-            CreateInputCommand("Input.Activate", "Activate input"),
-            CreateCommand(
-                new CommandDescriptor(
-                    DescriptorPath.Parse("ShortCircuit.Activate"),
-                    "Activate SHORT",
-                    new CommandArgumentDescriptor(
-                        "Confirmation",
-                        new BooleanDataDescriptor())))
+            CreateLabelledCommand("Control.Start", "Start the output", "Start"),
+            CreateConfirmationCommandSnapshot()
         ]);
         var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
 
         Assert.True(instrument.HasInputControlControls);
         Assert.True(instrument.HasModeSelectionSelector);
-        Assert.Equal("Input.Activate", instrument.ActivateInputCommand!.Path);
-        Assert.Equal("Input.Deactivate", instrument.DeactivateInputCommand!.Path);
-        Assert.True(instrument.HasShortCircuitActivationControl);
+        Assert.True(instrument.HasConfirmationCommands);
         Assert.Equal(
-            "ShortCircuit.Activate",
-            instrument.ShortCircuitActivationCommand!.Path);
-        Assert.Equal(
-            ["Activate", "Deactivate"],
+            ["Stop", "Start"],
             instrument.InputControlCommands
-                .Select(command => command.InputControlLabel)
+                .Select(command => command.InputControlLabel!)
+                .ToArray());
+        Assert.Equal(
+            ["Guarded.Transmit"],
+            instrument.ConfirmationCommands
+                .Select(command => command.Path)
                 .ToArray());
         Assert.Equal(
             ["System.Reset"],
@@ -423,28 +477,28 @@ public sealed class DesktopRuntimeCommandViewModelTests
     public void InputControlCommands_ShouldSurviveUnchangedRefresh()
     {
         DesktopRuntimeInstrumentSnapshot snapshot = CreateInstrument(
-            CreateCompleteInputControlCommandSet());
+            CreateDeclaredLabelSet());
         var instrument = new DesktopRuntimeInstrumentViewModel(snapshot);
-        DesktopRuntimeCommandViewModel activate = instrument.ActivateInputCommand!;
-        DesktopRuntimeCommandViewModel deactivate = instrument.DeactivateInputCommand!;
+        DesktopRuntimeCommandViewModel start = instrument.InputControlCommands[0];
+        DesktopRuntimeCommandViewModel stop = instrument.InputControlCommands[1];
 
         instrument.Update(snapshot);
 
-        Assert.Same(activate, instrument.ActivateInputCommand);
-        Assert.Same(deactivate, instrument.DeactivateInputCommand);
-        Assert.True(instrument.ActivateInputCommand!.CanExecute);
-        Assert.True(instrument.DeactivateInputCommand!.CanExecute);
+        Assert.Same(start, instrument.InputControlCommands[0]);
+        Assert.Same(stop, instrument.InputControlCommands[1]);
+        Assert.True(start.CanExecute);
+        Assert.True(stop.CanExecute);
     }
 
     [Theory]
-    [InlineData(0, "Input.Activate")]
-    [InlineData(1, "Input.Deactivate")]
+    [InlineData(0, "Control.Start")]
+    [InlineData(1, "Control.Stop")]
     public void InputControlCommand_ExplicitExecutionUsesOwnTarget(
         int commandIndex,
         string expectedPath)
     {
         var instrument = new DesktopRuntimeInstrumentViewModel(
-            CreateInstrument(CreateCompleteInputControlCommandSet()));
+            CreateInstrument(CreateDeclaredLabelSet()));
         DesktopRuntimeCommandViewModel command =
             instrument.InputControlCommands[commandIndex];
 
@@ -458,38 +512,27 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Fact]
-    public void IncompleteInputControlSet_ShouldRetainGenericPresentation()
+    public void AConfirmationCommand_IsOfferedWithoutAnyInputControl()
     {
+        // The confirmation surface no longer depends on the instrument also
+        // declaring input controls.
         var instrument = new DesktopRuntimeInstrumentViewModel(
-            CreateInstrument(
-            [
-                CreateInputCommand("Input.Activate", "Activate input"),
-                CreateCommand(
-                    new CommandDescriptor(
-                        DescriptorPath.Parse("ShortCircuit.Activate"),
-                        "Activate SHORT",
-                        new CommandArgumentDescriptor(
-                            "Confirmation",
-                            new BooleanDataDescriptor())))
-            ]));
+            CreateInstrument([CreateConfirmationCommandSnapshot()]));
 
         Assert.False(instrument.HasInputControlControls);
-        Assert.Empty(instrument.InputControlCommands);
-        Assert.Null(instrument.ActivateInputCommand);
-        Assert.Null(instrument.DeactivateInputCommand);
-        Assert.Null(instrument.ShortCircuitActivationCommand);
-        Assert.False(instrument.HasShortCircuitActivationControl);
-        Assert.Equal(["Input.Activate", "ShortCircuit.Activate"], instrument.GeneralCommands
-            .Select(command => command.Path)
-            .ToArray());
+        Assert.True(instrument.HasConfirmationCommands);
+        Assert.Equal(
+            "Guarded.Transmit",
+            Assert.Single(instrument.ConfirmationCommands).Path);
+        Assert.Empty(instrument.GeneralCommands);
     }
 
     [Fact]
-    public void ConfirmedShortCircuitActivation_RequiresExactlyTrue()
+    public void DeclaredConfirmation_RequiresExactlyTrue()
     {
-        DesktopRuntimeCommandViewModel command = CreateConfirmedShortActivation();
+        DesktopRuntimeCommandViewModel command = CreateConfirmationCommand();
 
-        Assert.True(command.IsConfirmedShortCircuitActivation);
+        Assert.True(command.RequiresExplicitConfirmation);
         Assert.False(command.HasValidArgument);
         Assert.False(command.CanExecute);
         Assert.Contains("explicit", command.ValidationMessage, StringComparison.OrdinalIgnoreCase);
@@ -511,10 +554,10 @@ public sealed class DesktopRuntimeCommandViewModelTests
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void ConfirmedShortCircuitActivation_ConsumesConfirmationAfterAttempt(
+    public void DeclaredConfirmation_ConsumesConfirmationAfterAttempt(
         int outcome)
     {
-        DesktopRuntimeCommandViewModel command = CreateConfirmedShortActivation();
+        DesktopRuntimeCommandViewModel command = CreateConfirmationCommand();
         command.RequestedBooleanArgument = true;
         Assert.NotNull(command.TryBeginExecution());
 
@@ -541,23 +584,28 @@ public sealed class DesktopRuntimeCommandViewModelTests
     }
 
     [Theory]
-    [InlineData("ShortCircuit.Activate", false)]
-    [InlineData("ShortCircuit.Other", true)]
-    public void NonExactShortCircuitContract_RemainsGeneric(
-        string path,
-        bool parameterless)
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    public void ConfirmationIsDeclaredRatherThanInferred(
+        bool declared,
+        bool booleanArgument,
+        bool expected)
     {
-        CommandDescriptor descriptor = parameterless
-            ? CreateParameterlessDescriptor(path, "Similar Command")
-            : new CommandDescriptor(
-                DescriptorPath.Parse(path),
-                "Similar Command",
-                new CommandArgumentDescriptor(
-                    "Value",
-                    new StringDataDescriptor()));
+        var descriptor = new CommandDescriptor(
+            DescriptorPath.Parse("Guarded.Transmit"),
+            "Transmit guarded Command",
+            new CommandArgumentDescriptor(
+                "Confirmation",
+                booleanArgument
+                    ? new BooleanDataDescriptor()
+                    : new StringDataDescriptor()))
+        {
+            RequiresExplicitConfirmation = declared
+        };
         var command = new DesktopRuntimeCommandViewModel(CreateCommand(descriptor));
 
-        Assert.False(command.IsConfirmedShortCircuitActivation);
+        Assert.Equal(expected, command.RequiresExplicitConfirmation);
     }
 
     [Fact]
@@ -608,42 +656,73 @@ public sealed class DesktopRuntimeCommandViewModelTests
                 path),
             displayName);
 
-    private static DesktopRuntimeCommandSnapshot CreateModeCommand(
-        string path,
-        string displayName) =>
-        CreateCommand(
-            CreateParameterlessDescriptor(path, displayName));
+    private const string SelectionGroup = "operating-selection";
 
-    private static DesktopRuntimeCommandSnapshot CreateInputCommand(
+    private static DesktopRuntimeCommandSnapshot CreateSelectionCommand(
         string path,
-        string displayName) =>
+        string displayName,
+        string shortLabel,
+        string selectionGroupId = SelectionGroup) =>
         CreateCommand(
-            CreateParameterlessDescriptor(path, displayName));
+            new CommandDescriptor(
+                DescriptorPath.Parse(path),
+                displayName)
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = shortLabel,
+                    SelectionGroupId = selectionGroupId,
+                    SelectionStatePath = DescriptorPath.Parse("Selection.State"),
+                    SelectionValue = shortLabel
+                }
+            });
 
-    private static DesktopRuntimeCommandSnapshot[] CreateCompleteModeCommandSet() =>
+    private static DesktopRuntimeCommandSnapshot CreateLabelledCommand(
+        string path,
+        string displayName,
+        string shortLabel) =>
+        CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse(path),
+                displayName)
+            {
+                Presentation = new CommandPresentation
+                {
+                    ShortLabel = shortLabel
+                }
+            });
+
+    private static DesktopRuntimeCommandSnapshot[] CreateDeclaredSelectionSet() =>
     [
-        CreateModeCommand("Mode.SelectConstantCurrent", "Select CC"),
-        CreateModeCommand("Mode.SelectConstantVoltage", "Select CV"),
-        CreateModeCommand("Mode.SelectConstantResistance", "Select CR"),
-        CreateModeCommand("Mode.SelectConstantPower", "Select CW"),
-        CreateModeCommand("Mode.SelectShortCircuit", "Select SHORT")
+        CreateSelectionCommand("Selection.Alpha", "Choose alpha", "Alpha"),
+        CreateSelectionCommand("Selection.Beta", "Choose beta", "Beta"),
+        CreateSelectionCommand("Selection.Gamma", "Choose gamma", "Gamma")
     ];
 
-    private static DesktopRuntimeCommandSnapshot[] CreateCompleteInputControlCommandSet() =>
+    private static DesktopRuntimeCommandSnapshot[] CreateDeclaredLabelSet() =>
     [
-        CreateInputCommand("Input.Activate", "Activate input"),
-        CreateInputCommand("Input.Deactivate", "Deactivate input")
+        CreateLabelledCommand("Control.Start", "Start the output", "Start"),
+        CreateLabelledCommand("Control.Stop", "Stop the output", "Stop")
     ];
 
-    private static DesktopRuntimeCommandViewModel CreateConfirmedShortActivation() =>
-        new(
-            CreateCommand(
-                new CommandDescriptor(
-                    DescriptorPath.Parse("ShortCircuit.Activate"),
-                    "Activate SHORT",
-                    new CommandArgumentDescriptor(
-                        "Confirmation",
-                        new BooleanDataDescriptor()))));
+    private static DesktopRuntimeCommandSnapshot CreateConfirmationCommandSnapshot() =>
+        CreateCommand(
+            new CommandDescriptor(
+                DescriptorPath.Parse("Guarded.Transmit"),
+                "Transmit guarded Command",
+                new CommandArgumentDescriptor(
+                    "Confirmation",
+                    new BooleanDataDescriptor())
+                {
+                    Description =
+                        "The value true explicitly confirms this transmission."
+                })
+            {
+                RequiresExplicitConfirmation = true
+            });
+
+    private static DesktopRuntimeCommandViewModel CreateConfirmationCommand() =>
+        new(CreateConfirmationCommandSnapshot());
 
     private static DesktopRuntimeCommandSnapshot CreateCommand(
         CommandDescriptor descriptor,

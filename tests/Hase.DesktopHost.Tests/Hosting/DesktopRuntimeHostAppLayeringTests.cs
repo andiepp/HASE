@@ -1,3 +1,5 @@
+using System.IO;
+
 using Hase.DesktopHost.App.Hosting;
 
 namespace Hase.DesktopHost.Tests.Hosting;
@@ -32,5 +34,67 @@ public sealed class DesktopRuntimeHostAppLayeringTests
         Assert.DoesNotContain(
             references,
             name => name.Contains("Mcnf", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Source_NamesNoInstrumentAnywhere()
+    {
+        // A reference guard cannot see a string. The KEL-103 operating
+        // surface reached the published Runtime Host as hard-coded labels, a
+        // hard-coded command path and a safety warning naming the device,
+        // and every assembly-level guard passed while it did.
+        string application = Path.Combine(
+            GetRepositoryRoot(),
+            "src",
+            "Hase.DesktopHost.App");
+        string[] offenders =
+            Directory
+                .EnumerateFiles(application, "*.*", SearchOption.AllDirectories)
+                .Where(path =>
+                    path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+                .Where(path => !IsBuildOutput(path, application))
+                .Where(path => NamesAnInstrument(File.ReadAllText(path)))
+                .Select(path => Path.GetRelativePath(application, path))
+                .Order()
+                .ToArray();
+
+        Assert.Empty(offenders);
+    }
+
+    private static readonly string[] InstrumentNames =
+        ["Kel103", "KEL-103", "RfLab", "RF-Lab", "Mcnf"];
+
+    private static bool NamesAnInstrument(string content) =>
+        InstrumentNames.Any(name =>
+            content.Contains(name, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsBuildOutput(string path, string application)
+    {
+        string relative =
+            Path.GetRelativePath(application, path);
+
+        return relative.StartsWith(
+                "obj" + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal)
+            || relative.StartsWith(
+                "bin" + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal);
+    }
+
+    private static string GetRepositoryRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "HASE.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Repository root not found.");
     }
 }

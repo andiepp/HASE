@@ -7,21 +7,6 @@ namespace Hase.DesktopHost.App.ViewModels;
 public sealed class DesktopRuntimeInstrumentViewModel
     : INotifyPropertyChanged
 {
-    private static readonly string[] ModeSelectionOrder =
-    [
-        "CC",
-        "CV",
-        "CR",
-        "CW",
-        "SHORT"
-    ];
-
-    private static readonly string[] InputControlOrder =
-    [
-        "Activate",
-        "Deactivate"
-    ];
-
     private string name;
     private string kind;
     private string manufacturer;
@@ -190,9 +175,12 @@ public sealed class DesktopRuntimeInstrumentViewModel
     } =
         [];
 
+    /// <summary>
+    /// Indicates whether the declared selection is worth offering as one
+    /// control, which takes at least two mutually exclusive choices.
+    /// </summary>
     public bool HasModeSelectionSelector =>
-        ModeSelectionCommands.Count
-        == ModeSelectionOrder.Length;
+        ModeSelectionCommands.Count > 1;
 
     public DesktopRuntimeCommandViewModel? SelectedModeCommand
     {
@@ -229,34 +217,21 @@ public sealed class DesktopRuntimeInstrumentViewModel
         [];
 
     public bool HasInputControlControls =>
-        InputControlCommands.Count
-        == InputControlOrder.Length;
+        InputControlCommands.Count > 0;
 
-    public DesktopRuntimeCommandViewModel? ActivateInputCommand =>
-        InputControlCommands.SingleOrDefault(
-            command =>
-                string.Equals(
-                    command.InputControlLabel,
-                    "Activate",
-                    StringComparison.Ordinal));
+    /// <summary>
+    /// Gets the Commands this instrument declares are transmitted only on an
+    /// explicit confirmation, in the order the instrument declares them.
+    /// </summary>
+    public ObservableCollection<DesktopRuntimeCommandViewModel>
+        ConfirmationCommands
+    {
+        get;
+    } =
+        [];
 
-    public DesktopRuntimeCommandViewModel? DeactivateInputCommand =>
-        InputControlCommands.SingleOrDefault(
-            command =>
-                string.Equals(
-                    command.InputControlLabel,
-                    "Deactivate",
-                    StringComparison.Ordinal));
-
-    public DesktopRuntimeCommandViewModel? ShortCircuitActivationCommand =>
-        HasInputControlControls
-            ? Commands.SingleOrDefault(
-                command =>
-                    command.IsConfirmedShortCircuitActivation)
-            : null;
-
-    public bool HasShortCircuitActivationControl =>
-        ShortCircuitActivationCommand is not null;
+    public bool HasConfirmationCommands =>
+        ConfirmationCommands.Count > 0;
 
     public ObservableCollection<DesktopRuntimeEventViewModel> Events
     {
@@ -494,78 +469,55 @@ public sealed class DesktopRuntimeInstrumentViewModel
                     command =>
                         command.IsModeSelectionCandidate)
                 .ToArray();
-        bool hasCompleteSelector =
-            candidates.Length == ModeSelectionOrder.Length
-            && ModeSelectionOrder.All(
-                label =>
-                    candidates.Count(
-                        command =>
-                            string.Equals(
-                                command.ModeSelectionLabel,
-                                label,
-                                StringComparison.Ordinal))
-                    == 1);
-        DesktopRuntimeCommandViewModel[] inputCandidates =
+
+        // Commands declaring a selection are offered together only when they
+        // declare the same one, because an instrument may declare several.
+        string? selectionGroupId =
+            candidates.FirstOrDefault()?.SelectionGroupId;
+        DesktopRuntimeCommandViewModel[] selection =
+            candidates
+                .Where(
+                    command =>
+                        string.Equals(
+                            command.SelectionGroupId,
+                            selectionGroupId,
+                            StringComparison.Ordinal))
+                .ToArray();
+        bool hasSelector =
+            selection.Length > 1;
+
+        DesktopRuntimeCommandViewModel[] inputControls =
             Commands
                 .Where(
                     command =>
                         command.IsInputControlCandidate)
                 .ToArray();
-        bool hasCompleteInputControls =
-            inputCandidates.Length == InputControlOrder.Length
-            && InputControlOrder.All(
-                label =>
-                    inputCandidates.Count(
-                        command =>
-                            string.Equals(
-                                command.InputControlLabel,
-                                label,
-                                StringComparison.Ordinal))
-                    == 1);
-        DesktopRuntimeCommandViewModel? shortCircuitActivation =
-            Commands.SingleOrDefault(
-                command =>
-                    command.IsConfirmedShortCircuitActivation);
-        bool hasShortCircuitActivationControl =
-            hasCompleteInputControls
-            && shortCircuitActivation is not null;
+        DesktopRuntimeCommandViewModel[] confirmationCommands =
+            Commands
+                .Where(
+                    command =>
+                        command.RequiresExplicitConfirmation)
+                .ToArray();
 
         ReplaceContents(
             ModeSelectionCommands,
-            hasCompleteSelector
-                ? ModeSelectionOrder.Select(
-                    label =>
-                        candidates.Single(
-                            command =>
-                                string.Equals(
-                                    command.ModeSelectionLabel,
-                                    label,
-                                    StringComparison.Ordinal)))
+            hasSelector
+                ? selection
                 : []);
         ReplaceContents(
             InputControlCommands,
-            hasCompleteInputControls
-                ? InputControlOrder.Select(
-                    label =>
-                        inputCandidates.Single(
-                            command =>
-                                string.Equals(
-                                    command.InputControlLabel,
-                                    label,
-                                    StringComparison.Ordinal)))
-                : []);
+            inputControls);
+        ReplaceContents(
+            ConfirmationCommands,
+            confirmationCommands);
         ReplaceContents(
             GeneralCommands,
             Commands.Where(
                 command =>
-                    (!hasCompleteSelector
-                        || !command.IsModeSelectionCandidate)
-                    && (!hasCompleteInputControls
-                        || !command.IsInputControlCandidate)
-                    && (!hasShortCircuitActivationControl
-                        || !ReferenceEquals(
-                            command,
-                            shortCircuitActivation))));
+                    (!hasSelector
+                        || !ModeSelectionCommands.Contains(command))
+                    && !InputControlCommands.Contains(command)
+                    && !ConfirmationCommands.Contains(command)));
 
         SelectedModeCommand =
             selectedPath is null
@@ -581,13 +533,7 @@ public sealed class DesktopRuntimeInstrumentViewModel
         OnPropertyChanged(
             nameof(HasInputControlControls));
         OnPropertyChanged(
-            nameof(ActivateInputCommand));
-        OnPropertyChanged(
-            nameof(DeactivateInputCommand));
-        OnPropertyChanged(
-            nameof(ShortCircuitActivationCommand));
-        OnPropertyChanged(
-            nameof(HasShortCircuitActivationControl));
+            nameof(HasConfirmationCommands));
     }
 
     private static void ReplaceContents<T>(

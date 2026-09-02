@@ -81,16 +81,16 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
     }
 
     [Theory]
-    [InlineData("Input.Activate")]
-    [InlineData("Input.Deactivate")]
-    public async Task ExecuteAsync_Kel103InputControlUsesExactTargetOnceWithNullArgument(
+    [InlineData("Control.Start")]
+    [InlineData("Control.Stop")]
+    public async Task ExecuteAsync_ParameterlessCommandUsesExactTargetOnceWithNullArgument(
         string commandPath)
     {
         var target = new RuntimeHostCommandTarget(
-            new EndpointId("kel-103-01"),
+            new EndpointId("endpoint-01"),
             new RuntimeEndpointAttachmentGeneration(
                 Guid.Parse("9679ae0f-7c95-4d97-8815-cf719bda24cc")),
-            new InstrumentId("electronic-load-01"),
+            new InstrumentId("instrument-01"),
             DescriptorPath.Parse(commandPath));
         var command = CreateCommandViewModel(target);
         var runtimeOperator = new RecordingOperator
@@ -116,11 +116,14 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_ConfirmedShortActivationPassesTrueOnceAndClearsConfirmation()
+    public async Task ExecuteAsync_ConfirmedCommandPassesTrueOnceAndClearsConfirmation()
     {
-        RuntimeHostCommandTarget target = CreateShortActivationTarget();
+        RuntimeHostCommandTarget target = CreateConfirmationTarget();
         var command = new DesktopRuntimeCommandViewModel(
-            CreateTypedCommandSnapshot(target, new BooleanDataDescriptor()));
+            CreateTypedCommandSnapshot(
+                target,
+                new BooleanDataDescriptor(),
+                requiresExplicitConfirmation: true));
         command.RequestedBooleanArgument = true;
         var runtimeOperator = new RecordingOperator
         {
@@ -147,12 +150,13 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
     [Theory]
     [InlineData(null)]
     [InlineData(false)]
-    public async Task ExecuteAsync_UnconfirmedShortActivationRemainsLocal(bool? confirmation)
+    public async Task ExecuteAsync_UnconfirmedCommandRemainsLocal(bool? confirmation)
     {
         var command = new DesktopRuntimeCommandViewModel(
             CreateTypedCommandSnapshot(
-                CreateShortActivationTarget(),
-                new BooleanDataDescriptor()));
+                CreateConfirmationTarget(),
+                new BooleanDataDescriptor(),
+                requiresExplicitConfirmation: true));
         command.RequestedBooleanArgument = confirmation;
         var runtimeOperator = new RecordingOperator();
         using MainWindowViewModel viewModel = CreateMainWindowViewModel(runtimeOperator);
@@ -635,7 +639,8 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
 
     private static DesktopRuntimeCommandSnapshot CreateTypedCommandSnapshot(
         RuntimeHostCommandTarget target,
-        DataDescriptor data) =>
+        DataDescriptor data,
+        bool requiresExplicitConfirmation = false) =>
         new(
             target,
             target.CommandPath.ToString(),
@@ -650,7 +655,8 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
                     data))
             {
                 Description =
-                    "Executes a typed Command."
+                    "Executes a typed Command.",
+                RequiresExplicitConfirmation = requiresExplicitConfirmation
             });
 
     private static RuntimeHostCommandTarget CreateTarget(
@@ -665,13 +671,13 @@ public sealed class DesktopRuntimeParameterlessCommandExecutionTests
                 "Controller",
                 "Toggle"));
 
-    private static RuntimeHostCommandTarget CreateShortActivationTarget() =>
+    private static RuntimeHostCommandTarget CreateConfirmationTarget() =>
         new(
-            new EndpointId("kel-103-01"),
+            new EndpointId("endpoint-01"),
             new RuntimeEndpointAttachmentGeneration(
                 Guid.Parse("92b73fe3-e20e-4d31-8737-8410555769cd")),
-            new InstrumentId("electronic-load-01"),
-            DescriptorPath.Parse("ShortCircuit.Activate"));
+            new InstrumentId("instrument-01"),
+            DescriptorPath.Parse("Guarded.Transmit"));
 
     private static RuntimeHostPropertyTarget CreatePropertyTarget(
         RuntimeHostCommandTarget commandTarget) =>

@@ -18,25 +18,6 @@ public enum CommandArgumentEditorKind
 public sealed class DesktopRuntimeCommandViewModel
     : INotifyPropertyChanged
 {
-    private static readonly IReadOnlyDictionary<string, string>
-        Kel103ModeSelectionLabels =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["Mode.SelectConstantCurrent"] = "CC",
-                ["Mode.SelectConstantVoltage"] = "CV",
-                ["Mode.SelectConstantResistance"] = "CR",
-                ["Mode.SelectConstantPower"] = "CW",
-                ["Mode.SelectShortCircuit"] = "SHORT"
-            };
-
-    private static readonly IReadOnlyDictionary<string, string>
-        Kel103InputControlLabels =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["Input.Activate"] = "Activate",
-                ["Input.Deactivate"] = "Deactivate"
-            };
-
     private RuntimeHostCommandTarget target;
     private bool isEndpointReady;
     private string requestedArgumentText =
@@ -123,41 +104,54 @@ public sealed class DesktopRuntimeCommandViewModel
     public bool RequiresArgument =>
         Descriptor.Argument is not null;
 
-    public string? ModeSelectionLabel =>
+    /// <summary>
+    /// Gets the declaration this Command carries, when the descriptor agrees
+    /// with the Command this view model addresses.
+    /// </summary>
+    /// <remarks>
+    /// The path check is the same agreement the previous device-specific
+    /// lookups required: a view model only presents a declaration belonging
+    /// to the Command it actually addresses.
+    /// </remarks>
+    private CommandPresentation? DeclaredPresentation =>
         !RequiresArgument
         && string.Equals(
             Path,
             Descriptor.Path.ToString(),
             StringComparison.Ordinal)
-        && Kel103ModeSelectionLabels.TryGetValue(
-            Path,
-            out string? label)
-                ? label
-                : null;
+            ? Descriptor.Presentation
+            : null;
+
+    public string? ModeSelectionLabel =>
+        DeclaredPresentation is CommandPresentation presentation
+        && presentation.DeclaresResolvableSelection
+            ? presentation.ShortLabel
+            : null;
+
+    /// <summary>
+    /// Gets the selection this Command declares membership of, if any.
+    /// </summary>
+    public string? SelectionGroupId =>
+        DeclaredPresentation?.SelectionGroupId;
 
     public bool IsModeSelectionCandidate =>
         ModeSelectionLabel is not null;
 
     public string? InputControlLabel =>
-        !RequiresArgument
-        && string.Equals(
-            Path,
-            Descriptor.Path.ToString(),
-            StringComparison.Ordinal)
-        && Kel103InputControlLabels.TryGetValue(
-            Path,
-            out string? label)
-                ? label
-                : null;
+        DeclaredPresentation is CommandPresentation presentation
+        && !presentation.DeclaresResolvableSelection
+            ? presentation.ShortLabel
+            : null;
 
     public bool IsInputControlCandidate =>
         InputControlLabel is not null;
 
-    public bool IsConfirmedShortCircuitActivation =>
-        string.Equals(
-            Path,
-            "ShortCircuit.Activate",
-            StringComparison.Ordinal)
+    /// <summary>
+    /// Indicates whether this Command declares that it is transmitted only
+    /// on an explicit Boolean confirmation.
+    /// </summary>
+    public bool RequiresExplicitConfirmation =>
+        Descriptor.RequiresExplicitConfirmation
         && string.Equals(
             Path,
             Descriptor.Path.ToString(),
@@ -274,13 +268,13 @@ public sealed class DesktopRuntimeCommandViewModel
     public bool HasValidArgument =>
         HasArgumentEditor
         && InputResult.IsSuccess
-        && (!IsConfirmedShortCircuitActivation
+        && (!RequiresExplicitConfirmation
             || RequestedBooleanArgument is true);
 
     public string ValidationMessage =>
-        IsConfirmedShortCircuitActivation
+        RequiresExplicitConfirmation
         && RequestedBooleanArgument is not true
-            ? "SHORT activation requires explicit Boolean confirmation true."
+            ? "This Command requires explicit Boolean confirmation true."
             : RequiresArgument
               && !InputResult.IsSuccess
                 ? InputResult.Message
@@ -521,7 +515,7 @@ public sealed class DesktopRuntimeCommandViewModel
 
     private void ClearSingleUseConfirmation()
     {
-        if (IsConfirmedShortCircuitActivation)
+        if (RequiresExplicitConfirmation)
         {
             RequestedBooleanArgument =
                 null;

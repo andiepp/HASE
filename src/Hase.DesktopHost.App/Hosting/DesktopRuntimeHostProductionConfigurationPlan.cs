@@ -16,8 +16,8 @@ public sealed record DesktopRuntimeHostProductionConfigurationPlan
         ConfiguredRuntimeHostId = configuredRuntimeHostId;
         EndpointComposition = endpointComposition;
         // Every configured endpoint counts, whoever supplies it. The
-        // previous per-family sum omitted RF-Lab, which nothing in
-        // production consumed.
+        // previous per-family sum omitted one configured family, which
+        // nothing in production consumed.
         ExpectedPublishedEndpointCount =
             (endpointComposition?.Endpoints.Count ?? 0)
             + (includeByteBufferSimulation ? 1 : 0);
