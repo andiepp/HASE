@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H1 complete; 68H and 68I remain
+- Status: Accepted; 68A through 68H2 complete; 68H and 68I remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -56,7 +56,10 @@ assemblies.
 The two generic endpoint kinds stay, because they carry no instrument
 knowledge: native-protocol endpoints over the network and
 compact-protocol endpoints over serial. The Uno Light *firmware* leaves;
-the compact-serial endpoint type it speaks to remains.
+the compact-serial endpoint type it speaks to remains. So does the generic
+Arduino Uno definition that type is exercised with; the host-side
+definition of the Uno Light board itself is the laboratory's and leaves
+with the firmware, which 68H2 found had not yet happened.
 
 ### An add-on supplies its own entry point
 
@@ -610,8 +613,71 @@ separately approved update.
 
 #### Increment 68H1c — Documentation closure
 
-Result: complete. Records 68H1a and 68H1b across this ADR, Project Status
-and the Roadmap.
+Result: complete as `fb0d88c`. Records 68H1a and 68H1b across this ADR,
+Project Status and the Roadmap.
+
+### Increment 68H2 — Uno Light leaves the base host
+
+Not in the original plan. Scoping 68H found that the published Runtime
+Host built its compact-definition repository inline from three factories,
+one of which was the Uno Light sensor board, an Arduino Uno carrying an
+AS7331 UV sensor and an AS7343 spectral sensor, and registered it
+unconditionally. This ADR names the Uno Light firmware as private; the
+host-side definition of that board is device knowledge of the same
+laboratory, and 68H could not claim the base composes the instruments as
+before while the base still owned one of them.
+
+Result: complete as `b26ea55`; 7,042 passed, 0 failed, 0 skipped across 37
+test projects. The base solution builds with 0 errors and its suite passes
+5,854 tests across 28 projects, and neither log mentions any instrument or
+the board.
+
+The seam is the shape of 68G1 exactly: a `CreateCompactDefinitions`
+virtual on the base application, a static default of the generic Arduino
+Uno definition in both versions, a three-argument backend constructor, and
+`LabApp` overriding to add the board. The backend composes its definition
+repository rather than enumerating it. The factory and its test moved to
+the Lab projects, recorded as renames at 99 percent similarity; the move
+diff is the namespace and using lines and nothing else.
+
+The guard learned the device it was blind to. Every base assembly guard
+passed while the board's definition sat in the published host, as they had
+passed over the KEL-103 warning in 68G4a, because a reference guard cannot
+see a name and the source guard sees only the names it is given. It now
+refuses `UnoLight`, `Uno Light`, `AS7331` and `AS7343`, verified by
+planting a comment naming the board in `App.xaml.cs` and confirming the
+guard fails naming that file. The list of names is only as complete as the
+last inventory, which is a thing for 68I to remember.
+
+Two composition assertions mirror 68G1's and look definitions up through
+the real repository by reference rather than matching strings: the base
+resolves `arduino-uno-validation` in both versions and does not resolve
+`arduino-uno-light`; the Lab resolves all three.
+
+Two things went wrong on the way and are recorded because they will recur.
+The moved test compares the board against the generic Uno definition,
+which stays internal to the base, so the base had to grant the Lab tests
+`InternalsVisibleTo`, the mechanism it already grants its own tests. That
+alone did not compile: the namespace rewrite had also dropped a using, and
+the compiler said the name was not found rather than inaccessible, which
+is what pointed at the using.
+
+Consequence for AEPRAKETE, stated before it bites. Its Development
+composition contains `arduino-uno-light`, so from this commit only the Lab
+host publishes that endpoint; a base host started against that
+composition reports it unresolved. Nothing changes on disk until a
+republish, and 68H1's record means an update rebuilds whichever
+application is installed, but the Development host is now the one place
+where which host is running matters.
+
+The base solution's cold warning count was not re-measured; its build
+ran incrementally after the cold full build. The 65 measured at 68G4
+stands as the base's cold figure until it is.
+
+#### Increment 68H2a — Documentation closure
+
+Result: complete. Records 68H2 across this ADR, Project Status and the
+Roadmap.
 
 ### Increment 68H — The add-on repository
 

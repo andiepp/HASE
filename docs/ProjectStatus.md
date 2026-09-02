@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H1 complete, the estate migrated, at 7,040 passing tests from
+through 68H2 complete, the estate migrated, at 7,042 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -87,6 +87,14 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   the shipped one, and refuses to run under whichever client is actually
   installed. Existing installations, which record nothing, behave exactly
   as before. Proven by seven throwaway publications, not by reading.
+- The published Runtime Host names no device either. Scoping 68H found it
+  still hard-coded the Uno Light sensor board's definition, which the ADR
+  names as private; the board is now supplied by the Lab application
+  through the same seam as the instruments, the source guard refuses its
+  names, and the base solution's build and test logs mention neither an
+  instrument nor the board. AEPRAKETE's Development composition contains
+  that endpoint, so only the Lab host publishes it from here on; nothing
+  changes on disk until a republish.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
@@ -100,8 +108,9 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   (`3fd2e8e`), 68G5 documentation closure before the run (`c1c9ab9`), 68G6
   the base is run, 68G7 its closure (`398c9f6`), 68H1a publication names
   the application it publishes (`beb4248`), 68H1b an update updates the
-  application that is installed (`ea6efcd`), 68H1c their closure. 68D1 and
-  68H1 were not in the original plan;
+  application that is installed (`ea6efcd`), 68H1c their closure
+  (`fb0d88c`), 68H2 Uno Light leaves the base host (`b26ea55`), 68H2a its
+  closure. 68D1, 68H1 and 68H2 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 

@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H1 complete; 68H and 68I remain
+**Status:** [Active] 68A through 68H2 complete; 68H and 68I remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2599,7 +2599,18 @@ Increments:
     would have updated underneath a running add-on client; it now follows
     the record. Scoping left the C# installation plans untouched, four of
     six having no production caller.
-20. 68H1c — Documentation closure — complete.
+20. 68H1c — Documentation closure — complete as `fb0d88c`.
+21. 68H2 — Uno Light leaves the base host — complete as `b26ea55`. Scoping
+    68H found the published Runtime Host still hard-coded the Uno Light
+    sensor board's definition and registered it unconditionally, a device
+    the ADR names as private and that every reference guard was blind to.
+    The base now composes its compact definitions through a seam of 68G1's
+    shape and ships only the generic Arduino Uno; the Lab application
+    supplies the board. The source guard refuses its names, proven by
+    planting one. Base solution 5,854 tests, no instrument or board in
+    either log. AEPRAKETE's Development composition contains the endpoint,
+    so only the Lab host publishes it from this commit.
+22. 68H2a — Documentation closure — complete.
 
 68H and 68I remain: the add-on repository, then publication as the only
 irreversible step. 68H inherits one gap 68H1 did not take: an add-on
@@ -2609,7 +2620,7 @@ configuration and identity.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 7,040 across 37 test projects. The physical work of
+tests and stands at 7,042 across 37 test projects. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
 republished from `6823cea` before their compositions were touched.
