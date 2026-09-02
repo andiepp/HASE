@@ -4,15 +4,16 @@ using System.Text.RegularExpressions;
 namespace Hase.DesktopHost.Tests;
 
 /// <summary>
-/// Pins that the base solution is the full solution without the private
-/// laboratory, and nothing else.
+/// Pins that the solution names no project of the private laboratory.
 /// </summary>
 /// <remarks>
-/// Two solution files maintained by hand drift: a project added to
-/// <c>HASE.slnx</c> and forgotten in <c>HASE.Base.slnx</c> would leave the
-/// base silently unable to prove anything about itself. The base is therefore
-/// defined here as a subtraction rather than as a second list, so the drift
-/// breaks a build instead of going unnoticed.
+/// While the laboratory lived in this repository the base was defined as a
+/// subtraction from the full solution and a second solution file carried
+/// it. The laboratory now lives in its own repository, which consumes this
+/// one as a submodule, so there is one solution and it must be the base: a
+/// project of the laboratory reappearing here would put a private bench
+/// back into a published repository, and this breaks a build rather than
+/// merely offending a principle.
 ///
 /// An instrument is an add-on; the protocol it speaks is not. <c>Hase.Scpi</c>
 /// and <c>Hase.Mcnf</c> are published, exactly as <c>Hase.Scpi.Kel103</c> and
@@ -24,31 +25,18 @@ public sealed class BaseSolutionCompositionTests
         new(@"Kel103|RfLab|\.Lab(\.|/)", RegexOptions.Compiled);
 
     [Fact]
-    public void TheBaseSolutionNamesNoInstrument()
+    public void TheSolutionNamesNoProjectOfTheLaboratory()
     {
         Assert.DoesNotContain(
-            ReadProjects("HASE.Base.slnx"),
-            path => AddOnProject.IsMatch(path));
-    }
-
-    [Fact]
-    public void TheBaseSolutionIsTheFullSolutionWithoutThePrivateLaboratory()
-    {
-        IReadOnlyList<string> full = ReadProjects("HASE.slnx");
-
-        Assert.Equal(
-            full.Where(path => !AddOnProject.IsMatch(path)).Order(),
-            ReadProjects("HASE.Base.slnx").Order());
-    }
-
-    [Fact]
-    public void TheFullSolutionStillCarriesThePrivateLaboratory()
-    {
-        // The subtraction above is only meaningful while there is something
-        // to subtract.
-        Assert.Contains(
             ReadProjects("HASE.slnx"),
             path => AddOnProject.IsMatch(path));
+    }
+
+    [Fact]
+    public void TheSolutionIsNotEmpty()
+    {
+        // The guard above is only meaningful over a real project list.
+        Assert.NotEmpty(ReadProjects("HASE.slnx"));
     }
 
     private static IReadOnlyList<string> ReadProjects(string solutionFileName)
