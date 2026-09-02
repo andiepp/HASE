@@ -35,6 +35,54 @@ function Assert-EqualPath {
     }
 }
 
+function Get-InstalledApplication {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InstallationDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultExecutableName,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultProject
+    )
+
+    $recordPath = Join-Path $InstallationDirectory "installed-application.json"
+
+    # An installation published before the record existed holds the
+    # application this repository ships, which is what every installation
+    # predating this increment holds.
+    if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) {
+        return [pscustomobject]@{
+            ExecutableName = $DefaultExecutableName
+            Project = $DefaultProject
+        }
+    }
+
+    $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
+    $recordedNames = @($record.PSObject.Properties.Name)
+
+    if (-not ($recordedNames -contains "applicationExecutable")) {
+        throw "The installed-application record names no executable."
+    }
+
+    $executableName = $record.applicationExecutable
+    if ([string]::IsNullOrWhiteSpace($executableName)) {
+        throw "The installed-application record names no executable."
+    }
+
+    $project = $DefaultProject
+    if ($recordedNames -contains "applicationProject") {
+        $recordedProject = $record.applicationProject
+        if (-not [string]::IsNullOrWhiteSpace($recordedProject)) {
+            $project = $recordedProject
+        }
+    }
+
+    return [pscustomobject]@{
+        ExecutableName = $executableName
+        Project = $project
+    }
+}
+
 $publisherPath = Join-Path $PSScriptRoot "Publish-HaseDesktopRuntimeHost.ps1"
 if (-not (Test-Path -LiteralPath $publisherPath -PathType Leaf)) {
     throw "The lower-level Desktop Runtime Host publisher was not found."
@@ -45,10 +93,15 @@ $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
 $identityDirectory = Join-Path $installationDirectory "Identity"
 $webView2DataDirectory = Join-Path $installationDirectory "WebView2"
-$executableFilePath = Join-Path $applicationDirectory "Hase.DesktopHost.App.exe"
+$installedApplication = Get-InstalledApplication `
+    -InstallationDirectory $installationDirectory `
+    -DefaultExecutableName "Hase.DesktopHost.App.exe" `
+    -DefaultProject "src\Hase.DesktopHost.App\Hase.DesktopHost.App.csproj"
+$executableName = $installedApplication.ExecutableName
+$executableFilePath = Join-Path $applicationDirectory $executableName
 $legacyWebView2DataDirectory = Join-Path `
     $applicationDirectory `
-    "Hase.DesktopHost.App.exe.WebView2"
+    "$executableName.WebView2"
 $applicationProfilePath = Join-Path $configurationDirectory "desktop-runtime-host.json"
 $endpointCompositionPath = Join-Path $configurationDirectory "desktop-runtime-endpoints.json"
 $privateNetworkConfigurationPath = Join-Path $configurationDirectory "desktop-private-network.json"
@@ -168,7 +221,9 @@ if ($applicationProfilePropertyNames -contains "mediaConfigurationFilePath") {
     $mediaConfigurationHash = Get-OptionalFileHash -Path $mediaConfigurationPath
 }
 
-& $publisherPath -InstallationDirectory $installationDirectory
+& $publisherPath `
+    -InstallationDirectory $installationDirectory `
+    -ApplicationProject $installedApplication.Project
 
 if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The updated Desktop Runtime Host executable was not found."

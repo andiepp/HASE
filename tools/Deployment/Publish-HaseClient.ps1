@@ -131,6 +131,13 @@ if (-not (Test-Path -LiteralPath $projectFile -PathType Leaf)) {
 $applicationName = [System.IO.Path]::GetFileNameWithoutExtension($projectFile)
 $executableName = "$applicationName.exe"
 
+# Recorded relative to the repository, so an update republishes the
+# application the installation actually holds rather than the shipped one.
+$applicationProjectRelative = $projectFile.Substring($repositoryRoot.Length).TrimStart(
+    [char[]]@(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar))
+
 $applicationDirectory = Join-Path $installationRoot "Application"
 $configurationDirectory = Join-Path $installationRoot "Configuration"
 $executableFile = Join-Path $applicationDirectory $executableName
@@ -182,6 +189,7 @@ try {
     $installedApplication = [ordered]@{
         formatVersion = 1
         applicationExecutable = $executableName
+        applicationProject = $applicationProjectRelative
     }
     $installedApplication |
         ConvertTo-Json |

@@ -37,6 +37,54 @@ function Assert-EqualPath {
     }
 }
 
+function Get-InstalledApplication {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InstallationDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultExecutableName,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultProject
+    )
+
+    $recordPath = Join-Path $InstallationDirectory "installed-application.json"
+
+    # An installation published before the record existed holds the
+    # application this repository ships, which is what every installation
+    # predating this increment holds.
+    if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) {
+        return [pscustomobject]@{
+            ExecutableName = $DefaultExecutableName
+            Project = $DefaultProject
+        }
+    }
+
+    $record = Get-Content -LiteralPath $recordPath -Raw | ConvertFrom-Json
+    $recordedNames = @($record.PSObject.Properties.Name)
+
+    if (-not ($recordedNames -contains "applicationExecutable")) {
+        throw "The installed-application record names no executable."
+    }
+
+    $executableName = $record.applicationExecutable
+    if ([string]::IsNullOrWhiteSpace($executableName)) {
+        throw "The installed-application record names no executable."
+    }
+
+    $project = $DefaultProject
+    if ($recordedNames -contains "applicationProject") {
+        $recordedProject = $record.applicationProject
+        if (-not [string]::IsNullOrWhiteSpace($recordedProject)) {
+            $project = $recordedProject
+        }
+    }
+
+    return [pscustomobject]@{
+        ExecutableName = $executableName
+        Project = $project
+    }
+}
+
 $publisherPath = Join-Path $PSScriptRoot "Publish-HaseClient.ps1"
 if (-not (Test-Path -LiteralPath $publisherPath -PathType Leaf)) {
     throw "The lower-level HASE Client publisher was not found."
@@ -45,14 +93,21 @@ if (-not (Test-Path -LiteralPath $publisherPath -PathType Leaf)) {
 $installationDirectory = Join-Path $env:LOCALAPPDATA "HASE\Client"
 $applicationDirectory = Join-Path $installationDirectory "Application"
 $configurationDirectory = Join-Path $installationDirectory "Configuration"
-$executableFilePath = Join-Path $applicationDirectory "Hase.Client.Wpf.App.exe"
+$installedApplication = Get-InstalledApplication `
+    -InstallationDirectory $installationDirectory `
+    -DefaultExecutableName "Hase.Client.Wpf.App.exe" `
+    -DefaultProject "src\Hase.Client.Wpf.App\Hase.Client.Wpf.App.csproj"
+$executableName = $installedApplication.ExecutableName
+$executableFilePath = Join-Path $applicationDirectory $executableName
 $runtimeHostRegistryFilePath = Join-Path $configurationDirectory "client-runtime-hosts.json"
 $desktopDirectory = [Environment]::GetFolderPath(
     [Environment+SpecialFolder]::Desktop)
 $shortcutPath = Join-Path $desktopDirectory "HASE Client.lnk"
 
+# The guard follows the installed application. A fixed name would stop
+# protecting anything the moment the installation holds an add-on client.
 $runningClient = Get-Process `
-    -Name "Hase.Client.Wpf.App" `
+    -Name ([System.IO.Path]::GetFileNameWithoutExtension($executableName)) `
     -ErrorAction SilentlyContinue
 if ($null -ne $runningClient) {
     throw "HASE Client is running. Close it before updating the application."
@@ -88,7 +143,9 @@ if (-not [string]::Equals(
     throw "The installed HASE Client shortcut arguments do not contain exactly one Runtime Host registry path."
 }
 
-& $publisherPath -InstallationDirectory $installationDirectory
+& $publisherPath `
+    -InstallationDirectory $installationDirectory `
+    -ApplicationProject $installedApplication.Project
 
 if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
     throw "The updated HASE Client executable was not found."
