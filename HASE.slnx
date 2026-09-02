@@ -14,6 +14,7 @@
   <Project Path="src/Hase.DesktopHost/Hase.DesktopHost.csproj" />
   <Project Path="src/Hase.DesktopHost.Preflight/Hase.DesktopHost.Preflight.csproj" />
   <Project Path="src/Hase.DesktopHost.EndpointProfileTool/Hase.DesktopHost.EndpointProfileTool.csproj" />
+  <Project Path="src/Hase.DesktopHost.EndpointProfileTool.Lab/Hase.DesktopHost.EndpointProfileTool.Lab.csproj" />
   <Project Path="src/Hase.DesktopHost.OnboardingAudit/Hase.DesktopHost.OnboardingAudit.csproj" />
   <Project Path="src/Hase.DesktopHost.App/Hase.DesktopHost.App.csproj" />
   <Project Path="src/Hase.DesktopHost.App.Lab/Hase.DesktopHost.App.Lab.csproj" />
@@ -55,6 +56,7 @@
   <Project Path="tests/Hase.CompactProtocol.Tests/Hase.CompactProtocol.Tests.csproj" Id="475ee51a-1128-400d-b652-18a4b53ec395" />
   <Project Path="tests/Hase.Core.Tests/Hase.Core.Tests.csproj" />
   <Project Path="tests/Hase.DesktopHost.Tests/Hase.DesktopHost.Tests.csproj" />
+  <Project Path="tests/Hase.DesktopHost.EndpointProfileTool.Tests/Hase.DesktopHost.EndpointProfileTool.Tests.csproj" />
   <Project Path="tests/Hase.DesktopHost.App.Lab.Tests/Hase.DesktopHost.App.Lab.Tests.csproj" />
   <Project Path="tests/Hase.Diagnostics.Export.Tests/Hase.Diagnostics.Export.Tests.csproj" />
   <Project Path="tests/Hase.Diagnostics.Offline.Tests/Hase.Diagnostics.Offline.Tests.csproj" />
