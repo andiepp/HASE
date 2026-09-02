@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using Hase.Client.Diagnostics;
 using Hase.Client.Wpf.AppHost.Hosting;
@@ -162,13 +162,21 @@ public partial class App
         // not exist on another and a panel carries no machine knowledge.
         containerRegistry.RegisterInstance<IClientInstrumentPanelRegistry>(
             new ClientInstrumentPanelRegistry(
-                [
-                    new Hase.Client.Wpf.RfLab.RfLabInstrumentPanel(
-                        new Hase.Client.Wpf.RfLab.Presets.RfLabPresetDirectoryStore(
-                            Hase.Client.Wpf.RfLab.Presets
-                                .RfLabPresetDirectoryStore.DefaultDirectoryPath))
-                ]));
+                CreateInstrumentPanels()));
     }
+
+    /// <summary>
+    /// Composes the instrument panels this application ships.
+    /// </summary>
+    /// <remarks>
+    /// This application ships none, exactly as the Client library ships
+    /// none. A composition root that ships panels overrides this, and an
+    /// instrument is offered one only when it declares an identifier the
+    /// registry resolves.
+    /// </remarks>
+    protected virtual IEnumerable<IClientInstrumentPanel>
+        CreateInstrumentPanels() =>
+        [];
 
     protected override void OnExit(
         ExitEventArgs eventArgs)

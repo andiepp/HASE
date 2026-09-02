@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Hase.Client.Wpf.AppHost.Lab</RootNamespace>
+    <StartupObject>Hase.Client.Wpf.AppHost.Lab.LabApp</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hase.Client.Wpf.App\Hase.Client.Wpf.App.csproj" />
+    <ProjectReference Include="..\Hase.Client.Wpf.RfLab\Hase.Client.Wpf.RfLab.csproj" />
+  </ItemGroup>
+
+</Project>

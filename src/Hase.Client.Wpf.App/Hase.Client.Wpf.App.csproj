@@ -23,7 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Hase.Client.Grpc\Hase.Client.Grpc.csproj" />
     <ProjectReference Include="..\Hase.Client.Wpf\Hase.Client.Wpf.csproj" />
-    <ProjectReference Include="..\Hase.Client.Wpf.RfLab\Hase.Client.Wpf.RfLab.csproj" />
   </ItemGroup>
 
   <ItemGroup>
