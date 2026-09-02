@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H2 complete; 68H and 68I remain
+**Status:** [Active] 68A through 68H complete; 68I remains
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2610,17 +2610,33 @@ Increments:
     planting one. Base solution 5,854 tests, no instrument or board in
     either log. AEPRAKETE's Development composition contains the endpoint,
     so only the Lab host publishes it from this commit.
-22. 68H2a — Documentation closure — complete.
+22. 68H2a — Documentation closure — complete as `e7185f8`.
+23. 68H — The add-on repository — complete as `6b120cd` in
+    `andiepp/HASE-Lab` and `e7345c7` here, in that order. The add-on
+    consumes the base as a submodule pinned to an exact commit; 41
+    project references in 13 files were rewritten to reach the base
+    through it, and nothing else in 284 files changed. A fresh clone with
+    its submodule built with 0 errors and passed 1,190 tests across 9
+    projects, which with the base's suite partitions the original exactly.
+    The base then shed the laboratory: 22 project directories and the
+    firmware removed, the solution reduced to 62 projects, the base
+    solution file removed as redundant, the subtraction guard inverted,
+    and `CLAUDE.md` corrected to measured figures. Base suite 5,853 across
+    28 projects, cold build 63 warnings. The first construction run
+    reported success while three of five steps had failed; the second
+    gated every step on a measured count.
+24. 68H3 — Documentation closure for the add-on repository — complete.
 
-68H and 68I remain: the add-on repository, then publication as the only
-irreversible step. 68H inherits one gap 68H1 did not take: an add-on
-application can be published and updated, but the guided installers still
-create base installations only, and an add-on installation needs its own
-configuration and identity.
+68H4 and 68I remain: an add-on installation, the gap 68H1 left because the
+guided installers create base installations only, then publication as the
+only irreversible step. The add-on's submodule pin is one commit behind
+the base, and its GPL-3 licence against an MIT base is GitHub's form
+default rather than a decision.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 7,042 across 37 test projects. The physical work of
+tests and stands at 5,853 across 28 test projects in the base, with 1,190
+across 9 in the add-on repository. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
 republished from `6823cea` before their compositions were touched.

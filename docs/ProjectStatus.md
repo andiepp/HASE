@@ -3,8 +3,9 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H2 complete, the estate migrated, at 7,042 passing tests from
-starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
+through 68H complete, the laboratory in its own repository, at 5,853
+passing tests in the base and 1,190 in the add-on, from starting baseline
+`e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
   family, the KEL-103 electronic load, and the Arduino Uno Light endpoint
@@ -95,6 +96,15 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   instrument nor the board. AEPRAKETE's Development composition contains
   that endpoint, so only the Lab host publishes it from here on; nothing
   changes on disk until a republish.
+- The laboratory is its own repository. `andiepp/HASE-Lab` holds the 22
+  add-on projects and the Uno Light firmware and consumes this repository
+  as a submodule pinned to an exact commit; this repository holds 62
+  projects and no instrument, device or laboratory firmware. The two
+  suites, 5,853 and 1,190, partition the original exactly, each proven
+  from a clean build, the add-on's from a fresh clone. The base solution
+  file is gone because with nothing to subtract the solution is the base,
+  and the subtraction guard inverted into one that refuses any laboratory
+  project reappearing here.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
@@ -110,21 +120,32 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   the application it publishes (`beb4248`), 68H1b an update updates the
   application that is installed (`ea6efcd`), 68H1c their closure
   (`fb0d88c`), 68H2 Uno Light leaves the base host (`b26ea55`), 68H2a its
-  closure. 68D1, 68H1 and 68H2 were not in the original plan;
+  closure (`e7185f8`), 68H the add-on repository (`6b120cd` in HASE-Lab,
+  `e7345c7` here), 68H3 its closure. 68D1, 68H1, 68H2 and 68H4 were not in
+  the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68H the add-on repository, and 68I publication, which is separately
+68H4 an add-on installation, then 68I publication, which is separately
 approved and the only irreversible step.
+
+68H is complete: the laboratory lives in `andiepp/HASE-Lab` and the base
+contains none of it. 68H4 is the gap 68H1 left: an add-on application can
+be published and updated but not yet installed, because the guided
+installers create base installations only.
 
 68G is complete: the base is built, tested and run. Its prediction held on
 the way through. The Runtime Host application did still hold the KEL-103
 command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
-Three matters remain open outside that sequence.
+Three matters remain open in the base outside that sequence, and three
+in the add-on: its submodule pin is one commit behind the base, it carries
+GPL-3 against an MIT base by GitHub's form default rather than by
+decision, and the first real update of a live installation with the
+record-reading update path has not yet run.
 
 KEL-103 definition version 6 exists without being in service, and this now
 has a visible effect: until it is, the Runtime Host offers the modes, input

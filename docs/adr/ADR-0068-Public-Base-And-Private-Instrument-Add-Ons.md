@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H2 complete; 68H and 68I remain
+- Status: Accepted; 68A through 68H complete; 68I remains
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -676,13 +676,86 @@ stands as the base's cold figure until it is.
 
 #### Increment 68H2a — Documentation closure
 
-Result: complete. Records 68H2 across this ADR, Project Status and the
-Roadmap.
+Result: complete as `e7185f8`. Records 68H2 across this ADR, Project
+Status and the Roadmap.
 
 ### Increment 68H — The add-on repository
 
 The private repository is created with its own entry point, consuming the
 base, and is proven to compose and operate the instruments as before.
+
+Result: complete as two commits, `6b120cd` in `andiepp/HASE-Lab` and
+`e7345c7` in this repository, in that order, so that at no moment did the
+laboratory exist in neither.
+
+The add-on consumes the base as a Git submodule at `base/`, pinned to an
+exact commit, which was chosen over a sibling checkout by convention and
+over NuGet packages. A sibling checkout pins nothing and fails with
+twenty-two confusing errors from a wrong parent directory; packaging is
+the proper long-term shape and the largest build-out, because the base has
+no packaging, versioning or feed at all. The submodule pins the exact base
+commit the add-on was proven against, which is what §1 asks of any
+starting state.
+
+The move was a copy with one mechanical rewrite. Twenty-two projects and
+the Uno Light firmware, 284 files, arrived byte-identical except for 41
+project references in 13 project files, each changed from a sibling path
+in the base to the same path through the submodule. Add-on projects
+referencing add-on projects were untouched, and no reference of any other
+kind climbed out of a project, which was checked rather than assumed. The
+add-on solution lists its 22 projects and nothing of the base, which is
+reached through the references.
+
+Proven from nothing local. A fresh clone of the add-on with its submodule
+resolved the base at the pinned commit, built with 0 errors, and passed
+1,190 tests across 9 projects: the 1,188 that partition the full suite
+exactly against the base's 5,854 at the time, plus two mirror-image
+guards pinning that the Lab host references both instrument families and
+derives from the published application rather than copying it. The
+add-on's 12 warnings are all base warnings seen through the submodule; the
+add-on projects compile with none.
+
+The base then shed the laboratory: 22 project directories and the
+firmware removed, `HASE.slnx` reduced to the 62 projects that remain, and
+`HASE.Base.slnx` removed as redundant, because with nothing to subtract
+the base solution is the solution. The subtraction guard inverted rather
+than died; it now pins that the solution names no project of the
+laboratory. `CLAUDE.md` is true again, six stale figures corrected to
+measured ones, among them an expected suite total from before this
+objective began. The base keeps its `InternalsVisibleTo` grant to the
+add-on's host tests, which compile against this base through the
+submodule and need it. Complete suite 5,853 passed, 0 failed, 0 skipped
+across 28 projects; cold build 63 warnings, the baseline from here.
+
+The first construction run reported success while three of its five steps
+had failed, because a failure inside a redirected brace group does not
+propagate. The second run gated each step on a measured count, and the
+clone-proof exists because a push and a working clean machine are
+different claims.
+
+What 68H leaves open, in the add-on. The submodule pin is one commit
+behind the base; advancing it is a small add-on commit the add-on's README
+documents, validated by building and testing against the new pin. The
+add-on repository carries GPL-3, GitHub's form default, against an MIT
+base; a private repository makes it legally unremarkable, but it was a
+form choice rather than a decision. And an add-on application can be
+published and updated but not yet installed: the guided installers create
+base installations only, and an add-on installation needs its own
+configuration and identity. That is 68H4.
+
+#### Increment 68H3 — Documentation closure for the add-on repository
+
+Result: complete. Records 68H across this ADR, Project Status and the
+Roadmap, and renumbers the installation increment proposed as 68H3 to
+68H4, since the closure takes the number.
+
+### Increment 68H4 — An add-on installation
+
+Not in the original plan; the gap 68H1 left. The guided installers create
+a base installation only. An add-on installation needs its own
+configuration and identity, and the first real update of a live
+installation with the record-reading update path has not yet run. Scoped
+after 68H, before 68I.
 
 ### Increment 68I — Publication
 
