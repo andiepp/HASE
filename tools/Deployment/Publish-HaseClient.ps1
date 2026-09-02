@@ -2,7 +2,14 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$InstallationDirectory
+    [string]$InstallationDirectory,
+
+    # The application project to publish. This tool publishes the application
+    # this repository ships; a composition root that ships instruments names
+    # its own project here. The project must live inside this repository.
+    [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [string]$ApplicationProject
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,6 +64,40 @@ function Test-SameOrChildDirectory {
     return $Candidate.StartsWith($Parent + $separator, $comparison)
 }
 
+function Resolve-ApplicationProject {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultProjectFile,
+        [Parameter(Mandatory = $false)]
+        [string]$RequestedProject
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RequestedProject)) {
+        return $DefaultProjectFile
+    }
+
+    $candidate = $RequestedProject
+    if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+        $candidate = Join-Path $RepositoryRoot $candidate
+    }
+
+    $resolved = [System.IO.Path]::GetFullPath($candidate)
+
+    if (-not (Test-SameOrChildDirectory `
+            -Candidate $resolved `
+            -Parent $RepositoryRoot)) {
+        throw "The application project must be inside this repository."
+    }
+
+    if ([System.IO.Path]::GetExtension($resolved) -ne ".csproj") {
+        throw "The application project must be a .csproj file."
+    }
+
+    return $resolved
+}
+
 $repositoryRoot = Get-NormalizedDirectory `
     -Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) `
     -Role "repository root"
@@ -76,14 +117,24 @@ if (Test-SameOrChildDirectory -Candidate $installationRoot -Parent $repositoryRo
     throw "The installation directory must not be the repository or a directory inside it."
 }
 
-$projectFile = Join-Path $repositoryRoot "src\Hase.Client.Wpf.App\Hase.Client.Wpf.App.csproj"
+$defaultProjectFile = Join-Path $repositoryRoot "src\Hase.Client.Wpf.App\Hase.Client.Wpf.App.csproj"
+$projectFile = Resolve-ApplicationProject `
+    -RepositoryRoot $repositoryRoot `
+    -DefaultProjectFile $defaultProjectFile `
+    -RequestedProject $ApplicationProject
 if (-not (Test-Path -LiteralPath $projectFile -PathType Leaf)) {
     throw "The HASE Client WPF application project was not found."
 }
 
+# The published executable takes its name from the project, so an add-on
+# application publishes under its own name rather than the base one.
+$applicationName = [System.IO.Path]::GetFileNameWithoutExtension($projectFile)
+$executableName = "$applicationName.exe"
+
 $applicationDirectory = Join-Path $installationRoot "Application"
 $configurationDirectory = Join-Path $installationRoot "Configuration"
-$executableFile = Join-Path $applicationDirectory "Hase.Client.Wpf.App.exe"
+$executableFile = Join-Path $applicationDirectory $executableName
+$installedApplicationFile = Join-Path $installationRoot "installed-application.json"
 $installationWasUpdate = Test-Path -LiteralPath $applicationDirectory -PathType Container
 $operationId = [Guid]::NewGuid().ToString("N")
 $stagingDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "hase-client-publish-$operationId"
@@ -105,7 +156,7 @@ try {
         throw "HASE Client Release publication failed with exit code $LASTEXITCODE."
     }
 
-    $stagedExecutable = Join-Path $stagingDirectory "Hase.Client.Wpf.App.exe"
+    $stagedExecutable = Join-Path $stagingDirectory $executableName
     if (-not (Test-Path -LiteralPath $stagedExecutable -PathType Leaf)) {
         throw "Publication completed without the expected HASE Client executable."
     }
@@ -124,6 +175,17 @@ try {
     if (-not (Test-Path -LiteralPath $executableFile -PathType Leaf)) {
         throw "The installed HASE Client executable could not be verified."
     }
+
+    # Recorded only once the application is installed and verified, so the
+    # record always describes the application actually present. A failure
+    # restores the previous application and leaves the previous record.
+    $installedApplication = [ordered]@{
+        formatVersion = 1
+        applicationExecutable = $executableName
+    }
+    $installedApplication |
+        ConvertTo-Json |
+        Set-Content -LiteralPath $installedApplicationFile -Encoding utf8
 
     if ($applicationMovedToBackup) {
         Remove-Item -LiteralPath $backupDirectory -Recurse -Force
