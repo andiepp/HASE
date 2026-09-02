@@ -65,10 +65,34 @@ function Test-SameOrChildDirectory {
     return $Candidate.StartsWith($parentPrefix, $comparison)
 }
 
+function Get-OutermostRepositoryRoot {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    # This repository may be consumed as a submodule of another. An add-on
+    # repository that does so publishes its own applications with this
+    # tooling, and those projects live in the containing repository rather
+    # than in this one. The boundary this tool will publish from is therefore
+    # the outermost repository that contains this one. When there is none, or
+    # Git cannot say, the boundary is this repository, exactly as before.
+    $superproject = & git -C $RepositoryRoot rev-parse --show-superproject-working-tree 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($superproject)) {
+        return $RepositoryRoot
+    }
+
+    return Get-NormalizedDirectory `
+        -Path ([System.IO.Path]::GetFullPath($superproject.Trim())) `
+        -Role "containing repository root"
+}
+
 function Resolve-ApplicationProject {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepositoryRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$OutermostRoot,
         [Parameter(Mandatory = $true)]
         [string]$DefaultProjectFile,
         [Parameter(Mandatory = $false)]
@@ -81,15 +105,23 @@ function Resolve-ApplicationProject {
 
     $candidate = $RequestedProject
     if (-not [System.IO.Path]::IsPathRooted($candidate)) {
-        $candidate = Join-Path $RepositoryRoot $candidate
+        # A relative project is looked for in this repository first and in
+        # the containing repository second, so the shipped default and an
+        # add-on's own project both resolve by the same rule.
+        $inRepository = Join-Path $RepositoryRoot $candidate
+        $candidate = if (Test-Path -LiteralPath $inRepository -PathType Leaf) {
+            $inRepository
+        } else {
+            Join-Path $OutermostRoot $candidate
+        }
     }
 
     $resolved = [System.IO.Path]::GetFullPath($candidate)
 
     if (-not (Test-SameOrChildDirectory `
             -Candidate $resolved `
-            -Parent $RepositoryRoot)) {
-        throw "The application project must be inside this repository."
+            -Parent $OutermostRoot)) {
+        throw "The application project must be inside this repository or the repository that contains it."
     }
 
     if ([System.IO.Path]::GetExtension($resolved) -ne ".csproj") {
@@ -119,8 +151,10 @@ if (Test-SameOrChildDirectory -Candidate $installationRoot -Parent $repositoryRo
 }
 
 $defaultProjectFile = Join-Path $repositoryRoot "src\Hase.DesktopHost.App\Hase.DesktopHost.App.csproj"
+$outermostRoot = Get-OutermostRepositoryRoot -RepositoryRoot $repositoryRoot
 $projectFile = Resolve-ApplicationProject `
     -RepositoryRoot $repositoryRoot `
+    -OutermostRoot $outermostRoot `
     -DefaultProjectFile $defaultProjectFile `
     -RequestedProject $ApplicationProject
 if (-not (Test-Path -LiteralPath $projectFile -PathType Leaf)) {
@@ -132,9 +166,23 @@ if (-not (Test-Path -LiteralPath $projectFile -PathType Leaf)) {
 $applicationName = [System.IO.Path]::GetFileNameWithoutExtension($projectFile)
 $executableName = "$applicationName.exe"
 
-# Recorded relative to the repository, so an update republishes the
-# application the installation actually holds rather than the shipped one.
-$applicationProjectRelative = $projectFile.Substring($repositoryRoot.Length).TrimStart(
+# Recorded relative to the root it was found under, and which root that
+# was, so an update republishes the application the installation actually
+# holds rather than the shipped one, whether it is this repository's own
+# application or an add-on's.
+$applicationProjectRoot = if (Test-SameOrChildDirectory `
+        -Candidate $projectFile `
+        -Parent $repositoryRoot) {
+    "repository"
+} else {
+    "superproject"
+}
+$applicationProjectRootPath = if ($applicationProjectRoot -eq "repository") {
+    $repositoryRoot
+} else {
+    $outermostRoot
+}
+$applicationProjectRelative = $projectFile.Substring($applicationProjectRootPath.Length).TrimStart(
     [char[]]@(
         [System.IO.Path]::DirectorySeparatorChar,
         [System.IO.Path]::AltDirectorySeparatorChar))
@@ -220,6 +268,7 @@ try {
         formatVersion = 1
         applicationExecutable = $executableName
         applicationProject = $applicationProjectRelative
+        applicationProjectRoot = $applicationProjectRoot
     }
     $installedApplication |
         ConvertTo-Json |

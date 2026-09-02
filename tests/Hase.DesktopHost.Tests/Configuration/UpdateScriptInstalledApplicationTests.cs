@@ -54,8 +54,9 @@ public sealed class UpdateScriptInstalledApplicationTests
         string script = ReadScript(scriptFileName);
 
         Assert.Contains("applicationProject = $applicationProjectRelative", script);
+        Assert.Contains("applicationProjectRoot = $applicationProjectRoot", script);
         Assert.Contains(
-            "$applicationProjectRelative = $projectFile.Substring($repositoryRoot.Length)",
+            "$applicationProjectRelative = $projectFile.Substring($applicationProjectRootPath.Length)",
             script);
     }
 

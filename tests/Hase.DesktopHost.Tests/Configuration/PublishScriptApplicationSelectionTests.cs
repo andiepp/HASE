@@ -65,11 +65,48 @@ public sealed class PublishScriptApplicationSelectionTests
         string script = ReadScript(scriptFileName);
 
         Assert.Contains(
-            "The application project must be inside this repository.",
+            "The application project must be inside this repository or the repository that contains it.",
             script);
         Assert.Contains(
             "The application project must be a .csproj file.",
             script);
+    }
+
+    [Theory]
+    [MemberData(nameof(Publishers))]
+    public void Publisher_PublishesFromTheOutermostRepositoryThatContainsThisOne(
+        string scriptFileName)
+    {
+        // An add-on repository consumes this one as a submodule and publishes
+        // its own applications with this tooling. Their projects live in the
+        // containing repository, so the boundary is the outermost repository,
+        // found through Git; with no containing repository it is this one.
+        string script = ReadScript(scriptFileName);
+
+        Assert.Contains("Get-OutermostRepositoryRoot", script);
+        Assert.Contains("rev-parse --show-superproject-working-tree", script);
+        Assert.Contains("-OutermostRoot $outermostRoot", script);
+        Assert.Contains("-Parent $OutermostRoot", script);
+    }
+
+    [Theory]
+    [MemberData(nameof(Publishers))]
+    public void Publisher_LooksInThisRepositoryBeforeTheContainingOne(
+        string scriptFileName)
+    {
+        // The shipped default and an add-on's project resolve by one rule:
+        // this repository first, the containing repository second.
+        string script = ReadScript(scriptFileName);
+
+        int inRepository = script.IndexOf(
+            "$inRepository = Join-Path $RepositoryRoot $candidate",
+            StringComparison.Ordinal);
+        int inOutermost = script.IndexOf(
+            "Join-Path $OutermostRoot $candidate",
+            StringComparison.Ordinal);
+
+        Assert.True(inRepository > 0);
+        Assert.True(inOutermost > inRepository);
     }
 
     [Theory]
