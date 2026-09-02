@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Hase.CompactProtocol;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -46,6 +47,20 @@ public partial class App : PrismApplication
         CreateEndpointProviders() =>
         ProductionPrivateNetworkRuntimeHostBackend
             .CreateDefaultEndpointProviders();
+
+    /// <summary>
+    /// Composes the compact endpoint definitions this application ships.
+    /// </summary>
+    /// <remarks>
+    /// This application ships the generic Arduino Uno definitions and names
+    /// no device of the laboratory. A composition root that ships a device
+    /// overrides this and supplies its definition alongside, exactly as it
+    /// supplies its endpoint providers.
+    /// </remarks>
+    protected virtual IReadOnlyList<CompactEndpointDefinition>
+        CreateCompactDefinitions() =>
+        ProductionPrivateNetworkRuntimeHostBackend
+            .CreateDefaultCompactDefinitions();
 
     protected override void OnStartup(
         StartupEventArgs eventArgs)
@@ -153,7 +168,8 @@ public partial class App : PrismApplication
         productionBackend =
             new ProductionPrivateNetworkRuntimeHostBackend(
                 startupConfiguration,
-                CreateEndpointProviders());
+                CreateEndpointProviders(),
+                CreateCompactDefinitions());
 
         containerRegistry.RegisterInstance<
             IDesktopRuntimeHostBackend>(

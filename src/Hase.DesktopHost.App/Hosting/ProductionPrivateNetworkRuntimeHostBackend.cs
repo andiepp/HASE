@@ -38,6 +38,8 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     private readonly DesktopRuntimeHostStartupConfiguration configuration;
     private readonly DesktopRuntimeHostEndpointProviderRegistry
         endpointProviders;
+    private readonly IReadOnlyList<CompactEndpointDefinition>
+        compactDefinitions;
 
     private RuntimeEndpointAttachmentHost? attachmentHost;
     private RuntimeHostNorthboundSnapshotComposition? composition;
@@ -76,6 +78,25 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
     public ProductionPrivateNetworkRuntimeHostBackend(
         DesktopRuntimeHostStartupConfiguration configuration,
         DesktopRuntimeHostEndpointProviderRegistry endpointProviders)
+        : this(
+            configuration,
+            endpointProviders,
+            CreateDefaultCompactDefinitions())
+    {
+    }
+
+    /// <summary>
+    /// Composes the host over an explicitly supplied provider registry and
+    /// explicitly supplied compact endpoint definitions.
+    /// </summary>
+    /// <remarks>
+    /// A composition root that ships a device of its own supplies its
+    /// definition here; this backend names no device of the laboratory.
+    /// </remarks>
+    public ProductionPrivateNetworkRuntimeHostBackend(
+        DesktopRuntimeHostStartupConfiguration configuration,
+        DesktopRuntimeHostEndpointProviderRegistry endpointProviders,
+        IReadOnlyList<CompactEndpointDefinition> compactDefinitions)
     {
         this.configuration =
             configuration
@@ -83,6 +104,9 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
         this.endpointProviders =
             endpointProviders
             ?? throw new ArgumentNullException(nameof(endpointProviders));
+        this.compactDefinitions =
+            compactDefinitions
+            ?? throw new ArgumentNullException(nameof(compactDefinitions));
     }
 
     /// <summary>
@@ -100,6 +124,21 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 new DesktopRuntimeHostNativeNetworkEndpointProvider(),
                 new DesktopRuntimeHostCompactSerialEndpointProvider()
             ]);
+
+    /// <summary>
+    /// Composes the compact endpoint definitions this application ships:
+    /// the generic Arduino Uno endpoint in both of its versions.
+    /// </summary>
+    /// <remarks>
+    /// This application names no device of the laboratory. A composition
+    /// root that ships one supplies its definition alongside these.
+    /// </remarks>
+    public static IReadOnlyList<CompactEndpointDefinition>
+        CreateDefaultCompactDefinitions() =>
+        [
+            ArduinoUnoCompactDefinitionFactory.CreateLegacy(),
+            ArduinoUnoCompactDefinitionFactory.Create()
+        ];
 
     public void ConfigureMediaBoundary(
         IRuntimeHostMediaWebBoundary boundary)
@@ -381,19 +420,11 @@ public sealed class ProductionPrivateNetworkRuntimeHostBackend
                 RuntimeHostId);
         DesktopRuntimeHostEndpointCompositionProfile? endpointComposition =
             productionPlan.EndpointComposition;
-        CompactEndpointDefinition compactDefinition =
-            ArduinoUnoCompactDefinitionFactory.Create();
-        CompactEndpointDefinition legacyCompactDefinition =
-            ArduinoUnoCompactDefinitionFactory.CreateLegacy();
-        CompactEndpointDefinition lightCompactDefinition =
-            ArduinoUnoLightCompactDefinitionFactory.Create();
+        // The definitions are composed, not enumerated here: this backend
+        // names no device of the laboratory.
         var definitionRepository =
             new InMemoryCompactEndpointDefinitionRepository(
-                [
-                    legacyCompactDefinition,
-                    compactDefinition,
-                    lightCompactDefinition
-                ]);
+                compactDefinitions);
 
         // Resolution runs before any runtime resource exists, so a
         // provider's preflight fails exactly where it failed before the

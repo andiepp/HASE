@@ -4,9 +4,10 @@ using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
+using Hase.DesktopHost.App.Lab.Physical;
 using Hase.DesktopHost.App.Physical;
 
-namespace Hase.DesktopHost.Tests;
+namespace Hase.DesktopHost.App.Lab.Tests;
 
 public sealed class ArduinoUnoLightCompactDefinitionFactoryTests
 {

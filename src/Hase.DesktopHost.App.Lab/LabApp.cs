@@ -1,4 +1,6 @@
+using Hase.CompactProtocol;
 using Hase.DesktopHost.App.Hosting;
+using Hase.DesktopHost.App.Lab.Physical;
 using Hase.DesktopHost.Hosting;
 using Hase.Mcnf.RfLab.DesktopHost;
 using Hase.Scpi.Kel103.DesktopHost;
@@ -33,6 +35,22 @@ public sealed class LabApp : global::Hase.DesktopHost.App.App
     protected override DesktopRuntimeHostEndpointProviderRegistry
         CreateEndpointProviders() =>
         CreateLabEndpointProviders();
+
+    /// <summary>
+    /// Composes the compact endpoint definitions this laboratory's Runtime
+    /// Host ships: the generic ones alongside the Uno Light sensor board.
+    /// </summary>
+    public static IReadOnlyList<CompactEndpointDefinition>
+        CreateLabCompactDefinitions() =>
+        [
+            .. ProductionPrivateNetworkRuntimeHostBackend
+                .CreateDefaultCompactDefinitions(),
+            ArduinoUnoLightCompactDefinitionFactory.Create()
+        ];
+
+    protected override IReadOnlyList<CompactEndpointDefinition>
+        CreateCompactDefinitions() =>
+        CreateLabCompactDefinitions();
 
     /// <summary>
     /// This application's entry point, deliberately replacing the one the

@@ -63,7 +63,12 @@ public sealed class DesktopRuntimeHostAppLayeringTests
     }
 
     private static readonly string[] InstrumentNames =
-        ["Kel103", "KEL-103", "RfLab", "RF-Lab", "Mcnf"];
+        [
+            "Kel103", "KEL-103",
+            "RfLab", "RF-Lab",
+            "Mcnf",
+            "UnoLight", "Uno Light", "AS7331", "AS7343"
+        ];
 
     private static bool NamesAnInstrument(string content) =>
         InstrumentNames.Any(name =>

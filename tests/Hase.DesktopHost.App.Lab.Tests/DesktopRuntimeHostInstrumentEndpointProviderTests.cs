@@ -1,4 +1,5 @@
 ﻿using Hase.CompactProtocol;
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.App.Lab;
@@ -164,6 +165,23 @@ public sealed class DesktopRuntimeHostInstrumentEndpointProviderTests
                 "rf-lab-serial"
             },
             registry.RegisteredProviderIds);
+    }
+
+    [Fact]
+    public async Task TheLabCompositionShipsTheUnoLightDefinitionAlongsideTheGenericOnes()
+    {
+        var repository = new InMemoryCompactEndpointDefinitionRepository(
+            LabApp.CreateLabCompactDefinitions());
+
+        Assert.NotNull(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-validation"), 1)));
+        Assert.NotNull(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-validation"), 2)));
+        Assert.NotNull(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-light"), 1)));
     }
 
     [Fact]

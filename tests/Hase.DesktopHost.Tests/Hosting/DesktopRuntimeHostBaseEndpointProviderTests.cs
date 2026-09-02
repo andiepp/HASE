@@ -1,4 +1,5 @@
 ﻿using Hase.CompactProtocol;
+using Hase.Core.Domain.Descriptors;
 using Hase.Core.Domain.Identity;
 using Hase.DesktopHost.App.Hosting;
 using Hase.DesktopHost.Configuration;
@@ -137,6 +138,26 @@ public sealed class DesktopRuntimeHostBaseEndpointProviderTests
                 "compact-serial"
             },
             registry.RegisteredProviderIds);
+    }
+
+    [Fact]
+    public async Task ThePublishedCompositionShipsNoDeviceOfTheLaboratory()
+    {
+        // The generic Arduino Uno endpoint ships in both versions; the Uno
+        // Light sensor board is the laboratory's and does not.
+        var repository = new InMemoryCompactEndpointDefinitionRepository(
+            ProductionPrivateNetworkRuntimeHostBackend
+                .CreateDefaultCompactDefinitions());
+
+        Assert.NotNull(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-validation"), 1)));
+        Assert.NotNull(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-validation"), 2)));
+        Assert.Null(
+            await repository.FindAsync(
+                new DescriptorReference(new DescriptorId("arduino-uno-light"), 1)));
     }
 
     private static DesktopRuntimeHostEndpointProviderContext CreateContext(

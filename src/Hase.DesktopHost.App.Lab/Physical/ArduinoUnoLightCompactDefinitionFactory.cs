@@ -8,7 +8,7 @@ using Hase.Core.Domain.Identity;
 using Hase.Core.Domain.Instruments;
 using Hase.Core.Domain.Properties;
 
-namespace Hase.DesktopHost.App.Physical;
+namespace Hase.DesktopHost.App.Lab.Physical;
 
 /// <summary>
 /// Creates the host-side compact definition of the Arduino Uno Light
