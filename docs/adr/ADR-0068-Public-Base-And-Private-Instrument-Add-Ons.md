@@ -1,6 +1,7 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68F complete; 68G to 68I remain
+- Status: Accepted; 68A through 68G4a complete; the physical run of 68G,
+  then 68H and 68I, remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -380,6 +381,134 @@ The instrument projects are removed from the base solution and the base
 is built, tested and run: a Runtime Host publishing its simulated
 endpoint, a Client operating it. This is the increment that proves the
 claim rather than asserting it.
+
+The three composition roots split first, one at a time. Each ships a
+different thing, and none could be assumed to behave like the one before
+it.
+
+#### Increment 68G1 — The Runtime Host application ships no instrument
+
+Result: complete as `2b72f87`; 7,010 passed, 0 failed, 0 skipped across 36
+test projects. The published application composes the two endpoint kinds
+that carry no device knowledge; `Hase.DesktopHost.App.Lab` derives from it
+and registers the KEL-103 and RF-Lab providers alongside them.
+
+The seam was chosen by experiment. Deriving from a Prism WPF application
+across assemblies works, and because the base declares no XAML resources
+there is nothing to initialise, so the add-on entry point is an override
+and a `Main`. Extracting the WPF shell into a library proved unnecessary.
+
+Removing the six instrument references broke 88 compilations in
+`Hase.DesktopHost.Tests`, which is the point of the increment: the base
+test project was reaching instrument types transitively through the
+application. Six test files moved to the add-on; two used instruments only
+as example data and became generic instead of moving.
+
+A latent defect fell out. `ExpectedPublishedEndpointCount` summed native,
+compact and KEL-103 and silently omitted RF-Lab. It now counts every
+configured endpoint whoever supplies it.
+
+#### Increment 68G2 — The Client application ships no panel
+
+Result: complete as `a7b318d`; 7,011 passed, 0 failed, 0 skipped across 36
+test projects. The lightest of the three, because ADR-0067 had already
+built the seam: the library owns the panel registry and ships no panel, so
+the application only needed its composition made overridable and its single
+RF-Lab reference removed. The published Client composes an empty registry
+and behaves as one with no panel concept at all.
+
+#### Increment 68G3 — The composition tool edits no instrument
+
+Result: complete as `2966996`; 7,013 passed, 0 failed, 0 skipped across 37
+test projects. This root needed a contract rather than an override, because
+its operations are commands with different argument shapes and different
+reporting. The tool takes `IEndpointProfileOperation` implementations an
+entry point supplies.
+
+It surfaced a defect that mattered operationally. The tool refuses to edit
+a composition while the Runtime Host is running, but it looked for a
+process named `Hase.DesktopHost.App`. Since 68G1 this laboratory's host
+runs as `Hase.DesktopHost.App.Lab`, so the guard had quietly stopped
+protecting anything. An entry point now contributes the process names its
+own host runs under.
+
+#### Increment 68G4 — The base builds and tests without instruments
+
+Result: complete as `24474b1`; the base solution builds with 0 errors and
+its own suite passes 5,842 tests across 28 test projects. `HASE.Base.slnx`
+is the full solution minus the private laboratory, 62 projects rather than
+84, and neither its cold build log nor its test run mentions `Kel103` or
+`RfLab` once. The five layering guards prove device-freedom one assembly at
+a time; this proves it for the whole base at once.
+
+An instrument is an add-on; the protocol it speaks is not. `Hase.Scpi` and
+`Hase.Mcnf` stay in the base exactly as `Hase.Scpi.Kel103` and
+`Hase.Mcnf.RfLab` leave it, which is the distinction the project names
+already draw.
+
+The base is defined as a subtraction rather than as a second hand-written
+list, and a test pins it that way, verified by injecting a project into
+`HASE.slnx` alone and confirming it fails. Generating the list caught its
+own error first: the exclusion pattern matched `.Lab/` but not
+`.Lab.Tests/`, and asserting that no add-on entry remained caught what
+counting removals did not.
+
+The base carries a warning baseline of 65 rather than 66; the missing one
+belongs to an excluded project.
+
+#### Increment 68G4a — The published Runtime Host names no instrument
+
+Result: complete as `3fd2e8e`; 7,020 passed, 0 failed, 0 skipped across 37
+test projects. 68G4 found this by inventory rather than by failure, and it
+was structural rather than the two strings it first appeared to be. The
+command view model held the mode and input label tables, the command path
+`ShortCircuit.Activate` and a SHORT-specific validation sentence; the
+instrument view model held the order CC, CV, CR, CW, SHORT and offered the
+selector only to a device matching those five labels exactly; the view held
+a safety warning naming the device. Two of those carry no instrument name,
+so the first count understated what was there.
+
+No design was invented. 68E built `CommandPresentation` for exactly this
+and the Client already consumes it, so this mirrors the Client: the label
+comes from `ShortLabel`, the grouping from `SelectionGroupId`, and the
+confirmation from `RequiresExplicitConfirmation`. Three couplings were
+dropped as device assumptions rather than reproduced: a selection is
+offered when it has at least two choices instead of exactly five, commands
+declaring different selections are no longer merged, and a confirmation no
+longer requires the instrument to also declare input controls.
+
+The guard is a new kind, because the existing five could not have caught
+this. They compare assembly references, and every one of them passed while
+a KEL-103 safety warning sat in the shipped user interface: a reference
+guard cannot see a string. The sixth reads the published application's own
+source and fails on any instrument name, verified by planting one.
+
+The cold build reports 64 warnings rather than the 66 baseline, because two
+of the baseline's warnings were nullable-assertion warnings inside the test
+block this increment replaced and were not reintroduced.
+
+#### What remains of 68G
+
+The physical run: a Runtime Host publishing its simulated endpoint and a
+Client operating it, from the base alone. It is a separate, approved
+physical step.
+
+One consequence is waiting for it. Definition version 5 is in service and
+declares no presentation; version 6 declares all of it and exists unused.
+Until version 6 is in service the KEL-103 modes, input controls and SHORT
+panel are offered as ordinary command entries rather than as dedicated
+controls. Every command remains executable and the confirmation checkbox
+still has to be ticked to transmit true.
+
+The publish scripts remain unable to produce the `.Lab` variants, so a
+republish today would install a host with no instruments and a Client with
+no panel.
+
+#### Increment 68G5 — Documentation closure before the base is run
+
+Result: complete. Records 68G1 through 68G4a across this ADR, Project
+Status and the Roadmap, before the physical run, as 68D2 did before the
+migration.
 
 ### Increment 68H — The add-on repository
 

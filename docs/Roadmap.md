@@ -2462,7 +2462,8 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68F complete; 68G to 68I remain
+**Status:** [Active] 68A through 68G4a complete; the physical run of 68G,
+then 68H and 68I, remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2542,15 +2543,47 @@ Increments:
     trace generator for no benefit. A layering test pins that the
     published assembly names no instrument.
 
-Increments 68G through 68I remain as recorded in the ADR: the base is
-proven device-free by building and running it without the instrument
-projects, the add-on repository is created, and publication is separately
-approved as the only irreversible step.
+11. 68F1 — Documentation closure for the protocol explorer — complete as
+    `03ae4c1`.
+12. 68G1 to 68G3 — The three composition roots split — complete as
+    `2b72f87`, `a7b318d` and `2966996`. The Runtime Host application
+    composes the two generic endpoint kinds, the Client application
+    composes an empty panel registry, and the composition tool edits only
+    the endpoint kinds carrying no device knowledge. 68G1 broke 88
+    compilations in a test project that was reaching instruments
+    transitively, which is what the increment existed to find, and 68G3
+    surfaced a running-host guard that had quietly stopped protecting
+    anything once the host was renamed.
+13. 68G4 — The base builds and tests without instruments — complete as
+    `24474b1`. `HASE.Base.slnx` is 62 projects rather than 84, builds with
+    no errors, passes 5,842 tests across 28 projects, and mentions no
+    instrument in either its build log or its test run. Protocols stay in
+    the base and instruments leave it, so `Hase.Scpi` and `Hase.Mcnf` are
+    published where `Hase.Scpi.Kel103` and `Hase.Mcnf.RfLab` are not. The
+    base is a subtraction pinned by a test, so the two solution files
+    cannot drift apart unnoticed.
+14. 68G4a — The published Runtime Host names no instrument — complete as
+    `3fd2e8e`. The leak 68G4 found was structural rather than two strings:
+    hard-coded labels, a hard-coded command path, a device-specific
+    validation sentence, a five-label ordering that gated the selector, and
+    a safety warning naming the device. The presentation is now declared by
+    the descriptor, mirroring the Client. A sixth guard reads source rather
+    than references, because the five before it all passed while a KEL-103
+    warning sat in the shipped user interface.
+15. 68G5 — Documentation closure before the base is run — complete.
+
+The physical run of 68G remains, with 68H and 68I after it: a Runtime Host
+publishing its simulated endpoint and a Client operating it from the base
+alone, then the add-on repository, then publication as the only
+irreversible step.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 7,008 across 35 test projects. The physical work of
+tests and stands at 7,020 across 37 test projects. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
 republished from `6823cea` before their compositions were touched.
-KEL-103 definition version 6 exists but is not yet in service.
+KEL-103 definition version 6 exists but is not yet in service, which since
+68G4a has a visible effect: until it is, the Runtime Host offers the
+KEL-103 modes, input controls and SHORT activation as ordinary command
+entries rather than as dedicated controls.

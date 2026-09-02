@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68F complete, the estate migrated, at 7,008 passing tests from
+through 68G4a complete, the estate migrated, at 7,020 passing tests from
 starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
@@ -55,32 +55,70 @@ starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   with its own entry point, and a layering test pins that the published
   explorer references no instrument and declares no scenario named for
   one.
+- All three composition roots ship nothing of the laboratory. The Runtime
+  Host application composes the two generic endpoint kinds, the Client
+  application composes an empty panel registry, and the composition tool
+  edits only the endpoint kinds that carry no device knowledge. Each has an
+  add-on entry point that derives from or contributes to it.
+- The base solution is proven, not asserted. `HASE.Base.slnx` is the full
+  solution minus the private laboratory, 62 projects rather than 84; it
+  builds with no errors and passes 5,842 tests, and neither its build log
+  nor its test run mentions an instrument once. It is defined as a
+  subtraction and a test pins it, so the two solution files cannot drift
+  apart unnoticed.
+- The published Runtime Host user interface is descriptor-declared. It
+  offers a selection, labelled controls and a confirmation because a
+  descriptor declares them, not because it recognises a KEL-103, using the
+  mechanism 68E built and the Client already consumes.
+- A sixth guard reads source rather than references. The five before it
+  compare assembly references, and every one passed while a KEL-103 safety
+  warning sat in the shipped user interface, because a reference guard
+  cannot see a string.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
   (`10e993f`), 68D2 documentation closure (`6823cea`), 68D the migration
   itself, 68D3 its closure (`1fe2eba`), 68E device knowledge leaves the
   client library (`753ba0d`), 68E1 its closure (`ca4cbfb`), 68F the
-  protocol explorer splits (`60bce77`). 68D1 was not in the original plan;
+  protocol explorer splits (`60bce77`), 68F1 its closure (`03ae4c1`), 68G1
+  the Runtime Host application (`2b72f87`), 68G2 the Client application
+  (`a7b318d`), 68G3 the composition tool (`2966996`), 68G4 the base
+  solution (`24474b1`), 68G4a the published Runtime Host user interface
+  (`3fd2e8e`). 68D1 was not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68G proving the base device-free by building and running it without the
-instrument projects, 68H the add-on repository, and 68I publication, which
-is separately approved and the only irreversible step.
+The physical run that completes 68G: a Runtime Host publishing its
+simulated endpoint and a Client operating it, from the base alone. Then 68H
+the add-on repository, and 68I publication, which is separately approved
+and the only irreversible step.
 
-68G is the increment that tests the claim rather than asserting it, and the
-Runtime Host application is the most likely thing it surfaces: it still
-holds the KEL-103 command block the Client library shed in 68E.
+68G's prediction held. The Runtime Host application did still hold the
+KEL-103 command block the Client library shed in 68E, and building the base
+solution is what surfaced it.
 
-Two matters remain open outside that sequence. The Runtime Host
-application still holds the KEL-103 command block the Client library shed
-in 68E; it is a composition root, which this objective accepts, but it is
-device naming that would be published. And KEL-103 definition version 6
-exists without being in service, which needs a tool operation, a
-republish and a composition edit to change.
+Four matters remain open outside that sequence.
+
+KEL-103 definition version 6 exists without being in service, and this now
+has a visible effect: until it is, the Runtime Host offers the modes, input
+controls and SHORT activation as ordinary command entries rather than as
+dedicated controls. Nothing is unreachable and the confirmation still has
+to be ticked, but the dedicated surface is absent. Changing it needs a tool
+operation, a republish and a composition edit.
+
+The publish scripts build fixed projects and cannot produce the `.Lab`
+variants, so republishing an installed application today would install a
+host with no instruments and a Client with no panel.
+
+The base library still names both instruments in its legacy typed
+projections, 62 occurrences across four files. That is a composition-format
+decision rather than a presentation one, and it touches migrated
+compositions across the estate.
+
+The Client exposes `ConfirmedShortCircuitActivationCommand` as a name over
+logic that 68E already made generic; a rename rather than a change.
 
 ---
 
