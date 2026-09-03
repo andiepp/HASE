@@ -39,7 +39,7 @@ execution for this session:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 
-$hostIp = "192.168.0.60"
+$hostIp = "192.0.2.20"
 
 & ".\tools\Setup\Start-HaseSetup.ps1" `
     -ListenerAddress $hostIp `

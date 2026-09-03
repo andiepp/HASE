@@ -61,7 +61,7 @@ configuration:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
 
-$hostIp = "192.168.0.50"
+$hostIp = "192.0.2.10"
 
 & ".\tools\Setup\Start-HaseSetup.ps1" `
     -ListenerAddress $hostIp `
@@ -200,7 +200,7 @@ lists those causes.
 For the stuck-`Connecting` case, diagnose from the **client PC**:
 
 ```powershell
-Test-NetConnection 192.168.0.50 -Port 52210
+Test-NetConnection 192.0.2.10 -Port 52210
 ```
 
 (with your host address). Interpret the result:

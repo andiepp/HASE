@@ -31,7 +31,7 @@ remain separate, per ADR-0031.
 | --- | --- | --- |
 | `HOST-PC` | The computer running the Runtime Host | your desktop |
 | `CLIENT-PC` | The computer running the Client | your laptop |
-| `<HOST-IP>` | The `HOST-PC` address on your network | `192.168.0.50` |
+| `<HOST-IP>` | The `HOST-PC` address on your network | `192.0.2.10` |
 | `<PORT>` | One fixed TCP port for the secured API | `52210` |
 
 Give `HOST-PC` a stable address (a DHCP reservation in your router). The
@@ -56,7 +56,7 @@ repository root:
 ```powershell
 $ErrorActionPreference = "Stop"
 & ".\tools\Setup\Start-HaseSetup.ps1" `
-    -ListenerAddress "192.168.0.50" `
+    -ListenerAddress "192.0.2.10" `
     -Port 52210 `
     -OutputDirectory (Join-Path $env:LocalAppData "HASE\Secured")
 ```
@@ -87,7 +87,7 @@ run the repository's provisioning script:
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$hostIp = "192.168.0.50"
+$hostIp = "192.0.2.10"
 $port = 52210
 $secured = Join-Path $env:LocalAppData "HASE\Secured"
 

@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory=$true)][string]$DesktopServerCertificatePath,
     [Parameter(Mandatory=$true)][string]$MiniPcServerCertificatePath,
     [Parameter(Mandatory=$true)][string]$RollbackEvidencePath,
-    [Parameter(Mandatory=$true)][string]$ExpectedComputer
+    [Parameter(Mandatory=$true)][string]$ExpectedComputer,
+    [Parameter(Mandatory=$true)][string]$StaleUserRoot
 )
 $ErrorActionPreference="Stop"; Set-StrictMode -Version Latest
 $profile=$null;$original=$null;$originalSddl=$null;$stage=$null;$published=$false
@@ -19,7 +20,7 @@ try{
  foreach($p in @($profile,$cert,$key,$server,$mini)){if(-not(Test-Path -LiteralPath $p -PathType Leaf)){throw"input"}}
  if(-not(Test-Path -LiteralPath (Split-Path -Parent $rollback) -PathType Container)){throw"rollback"}
  $original=[IO.File]::ReadAllBytes($profile);$doc=Get-Content -LiteralPath $profile -Raw|ConvertFrom-Json
- $oldCert="C:\Users\aeppi\AppData\Local\HASE\PythonAutomation\Security\python-client-chain.pem";$oldKey="C:\Users\aeppi\AppData\Local\HASE\PythonAutomation\Security\python-client-key.pem";$oldServer="C:\Users\aeppi\AppData\Local\HASE\PrivateNetworkValidation\runtime-host-server.cer"
+ $staleRoot=Full $StaleUserRoot;$oldCert=Join-Path $staleRoot "AppData\Local\HASE\PythonAutomation\Security\python-client-chain.pem";$oldKey=Join-Path $staleRoot "AppData\Local\HASE\PythonAutomation\Security\python-client-key.pem";$oldServer=Join-Path $staleRoot "AppData\Local\HASE\PrivateNetworkValidation\runtime-host-server.cer"
  if(-not[string]::Equals([string]$doc.clientCertificate.certificateChainPath,$oldCert,[StringComparison]::OrdinalIgnoreCase)-or-not[string]::Equals([string]$doc.clientCertificate.privateKeyPath,$oldKey,[StringComparison]::OrdinalIgnoreCase)-or-not[string]::Equals([string]$doc.trustedServerCertificate.certificatePath,$oldServer,[StringComparison]::OrdinalIgnoreCase)){throw"stale-shape"}
  $python=Join-Path $pkg ".venv\Scripts\python.exe";&$python -c "import ssl,sys;c=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT);c.load_cert_chain(sys.argv[1],sys.argv[2])" $cert $key;if($LASTEXITCODE-ne0){throw"credential"}
  if((Get-FileHash -LiteralPath $server -Algorithm SHA256).Hash-eq(Get-FileHash -LiteralPath $mini -Algorithm SHA256).Hash){throw"server-certificates"}

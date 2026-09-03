@@ -90,7 +90,7 @@ a certificate or key itself:
 ```json
 {
   "formatVersion": 1,
-  "address": "https://192.168.1.20:52210",
+  "address": "https://192.0.2.10:52210",
   "clientCertificate": {
     "certificateChainPath": "C:\\HasePython\\client-certificate.pem",
     "privateKeyPath": "C:\\HasePython\\client-private-key.pem"
