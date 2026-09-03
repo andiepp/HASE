@@ -18,7 +18,7 @@ def record(sequence=1, source_sequence=10, level=contract.RUNTIME_DIAGNOSTIC_LEV
     item.source_sequence=source_sequence; item.timestamp_utc.FromJsonString("2026-08-09T12:00:00Z")
     item.level=level; item.category=contract.RUNTIME_DIAGNOSTIC_CATEGORY_TRANSPORT_BYTES
     item.event_name="TransportBytesReceived"; item.severity=contract.RUNTIME_DIAGNOSTIC_SEVERITY_TRACE
-    item.endpoint_id="kel-103-01"; item.attachment_generation="generation-1"
+    item.endpoint_id="endpoint-01"; item.attachment_generation="generation-1"
     item.direction=contract.RUNTIME_DIAGNOSTIC_DIRECTION_INBOUND; item.operation_id="operation-1"
     item.details["correlationId"]="42"; item.byte_snapshot.original_byte_count=2
     item.byte_snapshot.captured_bytes=b"\x31\x0a"; item.byte_snapshot.is_truncated=False
@@ -48,7 +48,7 @@ def test_projection_rejects_invalid_shapes(change,code):
 def test_projection_allows_endpoint_scope_without_generation():
     source=record();source.record.ClearField("attachment_generation")
     value=project_diagnostic_observation(source)
-    assert value.record.endpoint_id=="kel-103-01"
+    assert value.record.endpoint_id=="endpoint-01"
     assert value.record.attachment_generation is None
 
 class Channel:

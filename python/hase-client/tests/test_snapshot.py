@@ -39,11 +39,11 @@ def _response() -> contract.GetSnapshotResponse:
     response.api_version.minor = 2
 
     endpoint = response.endpoints.add(
-        endpoint_id="kel-103",
+        endpoint_id="endpoint-01",
         attachment_generation="attachment-7",
     )
-    endpoint.descriptor.endpoint_id = "kel-103"
-    endpoint.descriptor.display_name = "KEL-103"
+    endpoint.descriptor.endpoint_id = "endpoint-01"
+    endpoint.descriptor.display_name = "Example endpoint"
     endpoint.descriptor.description = "Electronic load"
     endpoint.connection_status.state = contract.ENDPOINT_CONNECTION_STATE_READY
     endpoint.connection_status.changed_at_utc.FromDatetime(
@@ -54,7 +54,7 @@ def _response() -> contract.GetSnapshotResponse:
     instrument = endpoint.descriptor.instruments.add(
         instrument_id="load",
         name="Electronic Load",
-        kind="electronic-load",
+        kind="example-load",
     )
     instrument.manufacturer = "Maynuo"
     instrument.model = "M9711"
@@ -96,9 +96,9 @@ def test_projection_preserves_complete_ordered_snapshot() -> None:
     assert (projected.api_version.major, projected.api_version.minor) == (1, 2)
     assert len(projected.endpoints) == 1
     endpoint = projected.endpoints[0]
-    assert endpoint.endpoint_id == "kel-103"
+    assert endpoint.endpoint_id == "endpoint-01"
     assert endpoint.attachment_generation == "attachment-7"
-    assert endpoint.descriptor.display_name == "KEL-103"
+    assert endpoint.descriptor.display_name == "Example endpoint"
     assert endpoint.descriptor.description == "Electronic load"
     assert endpoint.connection_status.state is EndpointConnectionState.READY
     assert endpoint.connection_status.changed_at_utc == datetime(
@@ -257,7 +257,7 @@ def test_projection_rejects_malformed_contract_values(mutate, code: str) -> None
     with pytest.raises(SnapshotProjectionError) as failure:
         project_runtime_host_snapshot(response)
     assert failure.value.code == code
-    assert "kel-103" not in str(failure.value)
+    assert "endpoint-01" not in str(failure.value)
 
 
 def test_projection_rejects_wrong_transport_type_without_details() -> None:

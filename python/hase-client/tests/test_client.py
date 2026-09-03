@@ -95,7 +95,7 @@ def _property_response() -> contract.PropertyOperationResult:
 
 def _target() -> PropertyTarget:
     return PropertyTarget(
-        "kel-103",
+        "endpoint-01",
         "attachment-7",
         "load",
         "measured-current",
@@ -262,7 +262,7 @@ async def test_read_authoritative_property_encodes_exact_target_and_projects_onc
     request, timeout = property_rpc.calls[0]
     assert isinstance(request, contract.ReadAuthoritativePropertyRequest)
     assert request.target == contract.PropertyTarget(
-        endpoint_id="kel-103",
+        endpoint_id="endpoint-01",
         attachment_generation="attachment-7",
         instrument_id="load",
         property_id="measured-current",

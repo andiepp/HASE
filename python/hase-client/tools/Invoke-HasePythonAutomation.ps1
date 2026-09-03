@@ -9,14 +9,8 @@ param(
 
     [ValidateSet(
         "Health",
-        "Kel103SameValuePropertyWrite",
-        "Kel103SameStateCcCommand",
         "MiniPcAuthoritativePropertyRead")]
-    [string] $Workflow = "Health",
-
-    [switch] $ConfirmSameValueWrite,
-
-    [switch] $ConfirmSameStateCommand
+    [string] $Workflow = "Health"
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,30 +45,6 @@ if (-not (Test-Path -LiteralPath $automationPython -PathType Leaf) `
     -or -not (Test-Path -LiteralPath $manifestPath -PathType Leaf))
 {
     Write-Error "HASE automation failed: installation-invalid."
-    exit 1
-}
-if ($Workflow -ne "Kel103SameValuePropertyWrite" `
-    -and $ConfirmSameValueWrite.IsPresent)
-{
-    Write-Error "HASE automation failed: confirmation-not-applicable."
-    exit 1
-}
-if ($Workflow -ne "Kel103SameStateCcCommand" `
-    -and $ConfirmSameStateCommand.IsPresent)
-{
-    Write-Error "HASE automation failed: confirmation-not-applicable."
-    exit 1
-}
-if ($Workflow -eq "Kel103SameValuePropertyWrite" `
-    -and -not $ConfirmSameValueWrite.IsPresent)
-{
-    Write-Error "HASE automation failed: same-value-write-confirmation-required."
-    exit 1
-}
-if ($Workflow -eq "Kel103SameStateCcCommand" `
-    -and -not $ConfirmSameStateCommand.IsPresent)
-{
-    Write-Error "HASE automation failed: same-state-command-confirmation-required."
     exit 1
 }
 $profileSupplied = -not [string]::IsNullOrWhiteSpace($ProfilePath)
@@ -137,20 +107,6 @@ try
     if ($Workflow -eq "Health")
     {
         & $automationPython -m hase._automation_health $selectedProfilePath
-    }
-    elseif ($Workflow -eq "Kel103SameValuePropertyWrite")
-    {
-        & $automationPython `
-            -m hase._automation_same_value_property_write `
-            $selectedProfilePath `
-            "confirm-same-value-write"
-    }
-    elseif ($Workflow -eq "Kel103SameStateCcCommand")
-    {
-        & $automationPython `
-            -m hase._automation_same_state_cc_command `
-            $selectedProfilePath `
-            "confirm-same-state-cc-command"
     }
     else
     {

@@ -2,7 +2,7 @@ import hase
 
 
 def test_package_exposes_the_approved_profile_surface() -> None:
-    assert hase.__version__ == "0.6.0"
+    assert hase.__version__ == "0.7.0"
     assert hase.__all__ == [
         "BooleanDataDescriptor",
         "AutomationTarget",

@@ -143,8 +143,8 @@ sorted package-content and SHA-256 records. The wheel remains local; the tool
 does not upload it or install it globally.
 
 With the Runtime Host initially stopped, create the wheel first. Then keep the
-KEL-103 connected and `Ready` in CC/OFF state with the external laboratory
-supply output OFF, start only the Desktop Runtime Host, and run:
+laboratory's instruments connected and `Ready` in their safe state, start only
+the Desktop Runtime Host, and run:
 
 ```powershell
 .\tools\Test-HasePythonInstalledPackage.ps1 `
@@ -179,9 +179,9 @@ non-sensitive manifest record the schema, package version and SHA-256, CPython
 version, and UTC installation time. Credentials, profiles, source paths, and
 deployment identifiers are neither copied nor recorded.
 
-With the KEL-103 in CC/OFF state, the laboratory supply output OFF, the
-installed HASE Client stopped, and remote diagnostics disabled, start only the
-Desktop Runtime Host and invoke the installed read-only health workflow:
+With the laboratory's instruments in their safe state, the installed HASE
+Client stopped, and remote diagnostics disabled, start only the Desktop
+Runtime Host and invoke the installed read-only health workflow:
 
 ```powershell
 & "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
@@ -196,62 +196,10 @@ writes a Property, executes a Command, observes events or diagnostics, changes
 authorization, copies credentials, or changes instrument state. Stop the
 Runtime Host immediately afterward.
 
-### Guarded same-value KEL-103 Property workflow
-
-Version 0.3.0 adds one explicitly confirmed mutation workflow to a newly
-installed persistent automation environment:
-
-```powershell
-& "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
-    -Workflow Kel103SameValuePropertyWrite `
-    -ProfilePath "<absolute-published-python-profile-path>" `
-    -ConfirmSameValueWrite
-```
-
-The launcher rejects the workflow unless the dedicated confirmation switch is
-present, and passes a second fixed confirmation token to the package-internal
-module. The workflow obtains one current snapshot, resolves exactly one ready
-`electronic-load-01`, authoritatively verifies CC mode and input OFF, reads
-`target-current`, writes that exact numeric value once, requires the returned
-confirmation to match, and performs one authoritative reconciliation read.
-Values, identities, generations, addresses, paths, and raw diagnostics are
-withheld.
-
-No failure path retries, replays, reconnects, falls back to cached data, or
-issues a second write. An uncertain outcome stops immediately and requires
-operator reconciliation outside the workflow. The workflow never changes a
-setpoint, selects a mode, activates the input, or executes a Command. The
-retained ADR-0050 authorization already includes `property.write`; physical use
-must not modify the authorization policy or application profile.
-
-### Guarded same-state KEL-103 Command workflow
-
-Version 0.4.0 adds one explicitly confirmed parameterless Command workflow to
-a newly installed persistent automation environment:
-
-```powershell
-& "<absolute-automation-directory>\Invoke-HasePythonAutomation.ps1" `
-    -Workflow Kel103SameStateCcCommand `
-    -ProfilePath "<absolute-published-python-profile-path>" `
-    -ConfirmSameStateCommand
-```
-
-The launcher rejects missing, unrelated, or crossed confirmation switches
-before inspecting the profile and passes a second fixed confirmation token to
-the package-internal module. The workflow obtains one current snapshot,
-resolves exactly one ready `electronic-load-01`, requires exactly one
-parameterless `Mode/SelectConstantCurrent` descriptor, authoritatively verifies
-CC mode and input OFF, executes that Command once, and authoritatively requires
-the resulting state to remain exactly CC/OFF.
-
-No failure path retries, replays, reconnects, writes a Property, or issues a
-second Command. An uncertain outcome stops immediately; because the initial and
-intended state are identical, a later CC/OFF read cannot prove whether an
-uncertain Command executed. Values, identities, generations, addresses, paths,
-and raw diagnostics are withheld. The workflow never selects CV, CR, CW, or
-SHORT and never activates or deactivates the input. The retained ADR-0050
-authorization already includes `command.execute`; physical use must not modify
-the authorization policy or application profile.
+Version 0.7.0 moves the laboratory's confirmed instrument workflows and
+physical validations to the laboratory's own package, `hase-lab`, under
+ADR-0068 68I2d; this package names no instrument and offers the read-only
+workflows above.
 
 ## Independent multi-host security readiness
 
@@ -590,8 +538,7 @@ credential transfer archive, and the duplicate MiniPC staging custody were
 removed. The installed environment, target registry, Laptop credential
 custody, rollback evidence, MiniPC preparation evidence, and MiniPC profile
 template remain. Runtime Hosts, WPF Client, and installed automation were
-stopped; the KEL-103 remained CC/OFF and the laboratory supply output remained
-OFF.
+stopped; the laboratory's instruments remained in their safe state.
 
 ## Generated Runtime Host contract
 
@@ -714,25 +661,9 @@ reconnects, closes the caller-owned channel, or falls back to cached data.
 Increment 50D4B1 validates this behavior only with isolated fakes and performs
 no physical read or hardware interaction.
 
-After all automated validation succeeds with the Runtime Host stopped, one
-authoritative measured-voltage read can be physically validated on the Desktop:
-
-```powershell
-.\tools\Test-HasePythonPhysicalAuthoritativeProperty.ps1 `
-    -ProfilePath "<absolute-published-python-profile-path>"
-```
-
-Keep the KEL-103 connected and `Ready` in CC/OFF state with the external
-laboratory supply output OFF. Start only the Desktop Runtime Host immediately
-before the check and stop it immediately afterward; the Laptop and installed
-HASE Client remain uninvolved. The tool gets one snapshot, resolves exactly one
-current `electronic-load-01`/`measured-voltage` target with readable access,
-performs exactly one authoritative read, requires a finite `GOOD` numeric result
-with a UTC timestamp, and closes exactly once including failure paths. It prints
-only seven fixed Boolean outcomes and withholds all identities, generations,
-measurement values, timestamps, paths, addresses, and credential information.
-It never retries, reconnects, reads cached data, writes, executes a Command, or
-changes KEL-103 state.
+The physical validation of one authoritative read against a real instrument
+lives with the laboratory's package since ADR-0068 68I2d; this package
+validates the operation with isolated fakes only.
 
 ## Mutation safety foundation
 
@@ -792,12 +723,8 @@ published last, file security is preserved, and exact rollback files are
 retained for both inputs. It never changes credential or enrollment files and
 cannot grant Command, observation, or diagnostic permissions.
 
-`Test-HasePythonPhysicalPropertyWrite.ps1` requires exactly one ready KEL-103,
-authoritatively verifies CC/OFF, reads `target-current`, writes
-that same numeric value exactly once, verifies the returned confirmation, and
-performs one authoritative reconciliation read. It never changes the setpoint,
-activates the load, selects a mode, executes a Command, retries, reconnects, or
-replays a mutation. Any uncertain outcome stops the run without another write.
+The physical validation of one same-value write against a real instrument
+lives with the laboratory's package since ADR-0068 68I2d.
 
 ## Credential-provisioning readiness
 

@@ -63,7 +63,7 @@ from hase.targets import AutomationTargetRegistryError
 from hase.targets import load_automation_target_registry
 
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "BooleanDataDescriptor",

@@ -39,7 +39,7 @@ def _success(kind: str = "numeric_value") -> contract.PropertyOperationResult:
 
 def test_target_projection_and_public_construction_are_immutable() -> None:
     source = contract.PropertyTarget(
-        endpoint_id="kel-103",
+        endpoint_id="endpoint-01",
         attachment_generation="attachment-7",
         instrument_id="load",
         property_id="measured-current",
@@ -49,7 +49,7 @@ def test_target_projection_and_public_construction_are_immutable() -> None:
     source.endpoint_id = "substituted"
 
     assert target == PropertyTarget(
-        "kel-103",
+        "endpoint-01",
         "attachment-7",
         "load",
         "measured-current",
@@ -214,7 +214,7 @@ def test_success_projection_rejects_malformed_shape(mutate, code: str) -> None:
     with pytest.raises(PropertyProjectionError) as failure:
         project_property_operation_result(source)
     assert failure.value.code == code
-    assert "kel-103" not in str(failure.value)
+    assert "endpoint-01" not in str(failure.value)
 
 
 def test_failure_projection_rejects_confirmed_value() -> None:

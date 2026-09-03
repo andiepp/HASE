@@ -53,8 +53,6 @@ def test_launcher_uses_only_installed_environment() -> None:
     assert '$PSScriptRoot ".venv\\Scripts\\python.exe"' in source
     assert "$env:PYTHONPATH = $null" in source
     assert "hase._automation_health" in source
-    assert "hase._automation_same_value_property_write" in source
-    assert "hase._automation_same_state_cc_command" in source
     assert "hase._automation_minipc_authoritative_property_read" in source
 
 
@@ -84,27 +82,6 @@ def test_launcher_isolates_registry_resolution_from_source_path() -> None:
     assert "$env:PYTHONPATH = $null" in selection
     assert "Push-Location $PSScriptRoot" in selection
     assert "$env:PYTHONPATH = $selectionPythonPath" in selection
-
-
-def test_launcher_requires_explicit_confirmation_only_for_write() -> None:
-    source = _source("Invoke-HasePythonAutomation.ps1")
-    assert '"Kel103SameValuePropertyWrite",' in source
-    assert "same-value-write-confirmation-required" in source
-    assert "confirmation-not-applicable" in source
-    assert '"confirm-same-value-write"' in source
-    assert source.index("same-value-write-confirmation-required") < source.index(
-        "profile-path-invalid"
-    )
-
-
-def test_launcher_requires_command_specific_confirmation() -> None:
-    source = _source("Invoke-HasePythonAutomation.ps1")
-    assert '"Kel103SameStateCcCommand",' in source
-    assert "same-state-command-confirmation-required" in source
-    assert '"confirm-same-state-cc-command"' in source
-    assert source.index("same-state-command-confirmation-required") < source.index(
-        "profile-path-invalid"
-    )
 
 
 def test_launcher_exposes_read_only_minipc_workflow_without_confirmation() -> None:

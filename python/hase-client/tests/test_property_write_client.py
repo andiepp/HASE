@@ -90,10 +90,10 @@ def _client(
 
 def _target() -> PropertyTarget:
     return PropertyTarget(
-        "kel-103",
+        "endpoint-01",
         "attachment-7",
-        "electronic-load-01",
-        "target-current",
+        "instrument-01",
+        "setpoint",
     )
 
 
@@ -137,10 +137,10 @@ async def test_write_property_encodes_exact_request_and_invokes_once(
     request, timeout = write.calls[0]
     assert isinstance(request, contract.WritePropertyRequest)
     assert request.target == contract.PropertyTarget(
-        endpoint_id="kel-103",
+        endpoint_id="endpoint-01",
         attachment_generation="attachment-7",
-        instrument_id="electronic-load-01",
-        property_id="target-current",
+        instrument_id="instrument-01",
+        property_id="setpoint",
     )
     assert request.requested_value.WhichOneof("kind") == kind
     assert getattr(request.requested_value, kind) == wire_value

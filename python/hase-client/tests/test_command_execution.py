@@ -44,7 +44,7 @@ def client(monkeypatch, call):
 
 
 def target():
-    return CommandTarget("kel-103", "generation-1", "electronic-load-01",
+    return CommandTarget("endpoint-01", "generation-1", "instrument-01",
         ("Mode", "SelectCc"))
 
 
@@ -64,7 +64,7 @@ async def test_execute_command_sends_exact_request_once(monkeypatch):
     assert result.return_value == "CC"
     assert len(call.calls) == 1
     request, timeout = call.calls[0]
-    assert request.target.endpoint_id == "kel-103"
+    assert request.target.endpoint_id == "endpoint-01"
     assert tuple(request.target.command_path_segments) == ("Mode", "SelectCc")
     assert request.argument.boolean_value is True
     assert timeout == 3.5

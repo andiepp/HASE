@@ -22,13 +22,13 @@ def client(monkeypatch, call):
     monkeypatch.setattr(client_module.services, "RuntimeHostRemoteApiStub",
         lambda channel: Stub(call))
     return RuntimeHostClient(RuntimeHostChannel(Channel()))  # type: ignore[arg-type]
-def target(): return PropertyTarget("kel-103", "generation-1",
-    "electronic-load-01", "target-current")
+def target(): return PropertyTarget("endpoint-01", "generation-1",
+    "instrument-01", "setpoint")
 def success():
     result=contract.CachedPropertyResult(status=contract.PROPERTY_OPERATION_STATUS_SUCCESS)
-    item=result.snapshot; item.target.endpoint_id="kel-103"; item.target.attachment_generation="generation-1"
-    item.target.instrument_id="electronic-load-01"; item.target.property_id="target-current"
-    item.descriptor.property_id="target-current"; item.descriptor.path_segments.extend(["Target","Current"])
+    item=result.snapshot; item.target.endpoint_id="endpoint-01"; item.target.attachment_generation="generation-1"
+    item.target.instrument_id="instrument-01"; item.target.property_id="setpoint"
+    item.descriptor.property_id="setpoint"; item.descriptor.path_segments.extend(["Target","Current"])
     item.descriptor.display_name="Target current"; item.descriptor.access_mode=contract.PROPERTY_ACCESS_MODE_READ_WRITE
     item.descriptor.data.numeric.quantity.id="electric-current"; item.descriptor.data.numeric.quantity.display_name="Current"
     item.descriptor.data.numeric.native_unit.id="ampere"; item.descriptor.data.numeric.native_unit.display_name="Ampere"
