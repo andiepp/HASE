@@ -45,119 +45,15 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileFileTests
         Assert.Equal(TimeSpan.FromSeconds(3), compact.VerificationTimeout);
     }
 
-    [Fact]
-    public async Task LoadAsync_Kel103OnlyComposition_ShouldLoadStrictProfile()
-    {
-        DesktopRuntimeHostEndpointCompositionProfile profile = await LoadDocumentAsync(
-            """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                {
-                  "kind": "Kel103Serial",
-                  "expectedEndpointId": "kel-01",
-                  "definitionId": "korad-kel103",
-                  "definitionVersion": 2,
-                  "serialPort": "external-target",
-                  "baudRate": 115200
-                }
-              ]
-            }
-            """);
-
-        DesktopRuntimeHostKel103SerialEndpointProfile endpoint =
-            Assert.Single(profile.Kel103SerialEndpoints);
-        Assert.Equal("kel-01", endpoint.ExpectedEndpointId);
-        Assert.Equal("korad-kel103", endpoint.DefinitionReference.Id.Value);
-        Assert.Equal((ushort)2, endpoint.DefinitionReference.Version);
-        Assert.Equal("external-target", endpoint.SerialPort);
-        Assert.Equal(115200, endpoint.BaudRate);
-        Assert.Empty(profile.NativeNetworkEndpoints);
-        Assert.Empty(profile.CompactSerialEndpoints);
-    }
-
-    [Fact]
-    public async Task LoadAsync_ThreeFamilyComposition_ShouldKeepEndpointsGloballyScoped()
-    {
-        DesktopRuntimeHostEndpointCompositionProfile profile = await LoadDocumentAsync(
-            """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                { "kind": "NativeNetwork", "expectedEndpointId": "native-01", "host": "device.local", "port": 5000 },
-                { "kind": "CompactSerial", "expectedEndpointId": "compact-01", "vendorId": 9025, "productId": 67, "baudRate": 115200, "verificationTimeoutMilliseconds": 3000 },
-                { "kind": "Kel103Serial", "expectedEndpointId": "kel-01", "definitionId": "korad-kel103", "definitionVersion": 2, "serialPort": "external-target", "baudRate": 115200 }
-              ]
-            }
-            """);
-
-        Assert.Equal("native-01", Assert.Single(profile.NativeNetworkEndpoints).ExpectedEndpointId);
-        Assert.Equal("compact-01", Assert.Single(profile.CompactSerialEndpoints).ExpectedEndpointId);
-        Assert.Equal("kel-01", Assert.Single(profile.Kel103SerialEndpoints).ExpectedEndpointId);
-    }
-
-    [Theory]
-    [InlineData("definitionId")]
-    [InlineData("definitionVersion")]
-    [InlineData("serialPort")]
-    [InlineData("baudRate")]
-    public async Task LoadAsync_Kel103MissingRequiredProperty_ShouldReject(string omittedProperty)
-    {
-        string document = """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                {
-                  "kind": "Kel103Serial",
-                  "expectedEndpointId": "kel-01",
-                  "definitionId": "korad-kel103",
-                  "definitionVersion": 2,
-                  "serialPort": "external-target",
-                  "baudRate": 115200
-                }
-              ]
-            }
-            """;
-        document = RemoveProperty(document, omittedProperty);
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => LoadDocumentAsync(document));
-    }
-
-    [Fact]
-    public async Task LoadAsync_Kel103UnsupportedBaudRate_ShouldRejectWithoutLeakingSerialTarget()
-    {
-        InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(
-            () => LoadDocumentAsync(
-                """
-                {
-                  "formatVersion": 1,
-                  "endpoints": [
-                    {
-                      "kind": "Kel103Serial",
-                      "expectedEndpointId": "kel-01",
-                      "definitionId": "korad-kel103",
-                      "definitionVersion": 2,
-                      "serialPort": "sensitive-external-target",
-                      "baudRate": 9600
-                    }
-                  ]
-                }
-                """));
-
-        Assert.DoesNotContain("sensitive-external-target", exception.ToString(), StringComparison.Ordinal);
-    }
-
     [Theory]
     [InlineData("NativeNetwork", "\"definitionId\": \"korad-kel103\",")]
     [InlineData("CompactSerial", "\"serialPort\": \"external-target\",")]
-    [InlineData("Kel103Serial", "\"host\": \"device.local\",")]
     public async Task LoadAsync_CrossFamilyProperty_ShouldReject(string kind, string foreignProperty)
     {
         string familyProperties = kind switch
         {
             "NativeNetwork" => "\"host\": \"device.local\", \"port\": 5000",
-            "CompactSerial" => "\"vendorId\": 9025, \"productId\": 67, \"baudRate\": 115200, \"verificationTimeoutMilliseconds\": 3000",
-            _ => "\"definitionId\": \"korad-kel103\", \"definitionVersion\": 2, \"serialPort\": \"external-target\", \"baudRate\": 115200"
+            _ => "\"vendorId\": 9025, \"productId\": 67, \"baudRate\": 115200, \"verificationTimeoutMilliseconds\": 3000",
         };
 
         await Assert.ThrowsAsync<InvalidDataException>(
@@ -261,89 +157,11 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileFileTests
     }
 
     [Fact]
-    public async Task LoadAsync_RfLabOnlyComposition_ShouldLoadStrictProfile()
+    public async Task LoadAsync_Version1KindOfAFamilyThisLibraryDoesNotShip_IsRejectedNamingFormat2()
     {
-        DesktopRuntimeHostEndpointCompositionProfile profile = await LoadDocumentAsync(
-            """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                {
-                  "kind": "RfLabSerial",
-                  "expectedEndpointId": "rflab-01",
-                  "definitionId": "rflab-signal-lab",
-                  "definitionVersion": 2,
-                  "serialPort": "external-target",
-                  "baudRate": 115200
-                }
-              ]
-            }
-            """);
-
-        DesktopRuntimeHostRfLabSerialEndpointProfile endpoint =
-            Assert.Single(profile.RfLabSerialEndpoints);
-        Assert.Equal("rflab-01", endpoint.ExpectedEndpointId);
-        Assert.Equal("rflab-signal-lab", endpoint.DefinitionReference.Id.Value);
-        Assert.Equal((ushort)2, endpoint.DefinitionReference.Version);
-        Assert.Equal("external-target", endpoint.SerialPort);
-        Assert.Equal(115200, endpoint.BaudRate);
-        Assert.Empty(profile.NativeNetworkEndpoints);
-        Assert.Empty(profile.CompactSerialEndpoints);
-        Assert.Empty(profile.Kel103SerialEndpoints);
-    }
-
-    [Fact]
-    public async Task LoadAsync_FourFamilyComposition_ShouldKeepEndpointsGloballyScoped()
-    {
-        DesktopRuntimeHostEndpointCompositionProfile profile = await LoadDocumentAsync(
-            """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                { "kind": "NativeNetwork", "expectedEndpointId": "native-01", "host": "device.local", "port": 5000 },
-                { "kind": "CompactSerial", "expectedEndpointId": "compact-01", "vendorId": 9025, "productId": 67, "baudRate": 115200, "verificationTimeoutMilliseconds": 3000 },
-                { "kind": "Kel103Serial", "expectedEndpointId": "kel-01", "definitionId": "korad-kel103", "definitionVersion": 2, "serialPort": "kel-target", "baudRate": 115200 },
-                { "kind": "RfLabSerial", "expectedEndpointId": "rflab-01", "definitionId": "rflab-signal-lab", "definitionVersion": 1, "serialPort": "rflab-target", "baudRate": 115200 }
-              ]
-            }
-            """);
-
-        Assert.Equal("native-01", Assert.Single(profile.NativeNetworkEndpoints).ExpectedEndpointId);
-        Assert.Equal("compact-01", Assert.Single(profile.CompactSerialEndpoints).ExpectedEndpointId);
-        Assert.Equal("kel-01", Assert.Single(profile.Kel103SerialEndpoints).ExpectedEndpointId);
-        Assert.Equal("rflab-01", Assert.Single(profile.RfLabSerialEndpoints).ExpectedEndpointId);
-    }
-
-    [Theory]
-    [InlineData("definitionId")]
-    [InlineData("definitionVersion")]
-    [InlineData("serialPort")]
-    [InlineData("baudRate")]
-    public async Task LoadAsync_RfLabMissingRequiredProperty_ShouldReject(string omittedProperty)
-    {
-        string document = """
-            {
-              "formatVersion": 1,
-              "endpoints": [
-                {
-                  "kind": "RfLabSerial",
-                  "expectedEndpointId": "rflab-01",
-                  "definitionId": "rflab-signal-lab",
-                  "definitionVersion": 1,
-                  "serialPort": "external-target",
-                  "baudRate": 115200
-                }
-              ]
-            }
-            """;
-        document = RemoveProperty(document, omittedProperty);
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => LoadDocumentAsync(document));
-    }
-
-    [Fact]
-    public async Task LoadAsync_RfLabUnsupportedBaudRate_ShouldRejectWithoutLeakingSerialTarget()
-    {
+        // Version 1 named every kind it could carry. A family this library
+        // does not ship cannot be read from a version 1 file; the way
+        // forward is the provider-keyed format, and the rejection says so.
         InvalidDataException exception = await Assert.ThrowsAsync<InvalidDataException>(
             () => LoadDocumentAsync(
                 """
@@ -351,53 +169,14 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileFileTests
                   "formatVersion": 1,
                   "endpoints": [
                     {
-                      "kind": "RfLabSerial",
-                      "expectedEndpointId": "rflab-01",
-                      "definitionId": "rflab-signal-lab",
-                      "definitionVersion": 1,
-                      "serialPort": "sensitive-external-target",
-                      "baudRate": 9600
+                      "kind": "SomeoneElsesSerial",
+                      "expectedEndpointId": "foreign-01"
                     }
                   ]
                 }
                 """));
 
-        Assert.DoesNotContain("sensitive-external-target", exception.ToString(), StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("\"host\": \"device.local\",")]
-    [InlineData("\"port\": 5000,")]
-    [InlineData("\"vendorId\": 9025,")]
-    [InlineData("\"verificationTimeoutMilliseconds\": 3000,")]
-    public async Task LoadAsync_RfLabCrossFamilyProperty_ShouldReject(string foreignProperty)
-    {
-        await Assert.ThrowsAsync<InvalidDataException>(
-            () => LoadDocumentAsync(
-                $$"""
-                {
-                  "formatVersion": 1,
-                  "endpoints": [
-                    { "kind": "RfLabSerial", "expectedEndpointId": "rflab-01", {{foreignProperty}} "definitionId": "rflab-signal-lab", "definitionVersion": 1, "serialPort": "external-target", "baudRate": 115200 }
-                  ]
-                }
-                """));
-    }
-
-    [Fact]
-    public async Task LoadAsync_DuplicateIdentityAcrossSerialInstrumentFamilies_ShouldReject()
-    {
-        await Assert.ThrowsAsync<InvalidDataException>(
-            () => LoadDocumentAsync(
-                """
-                {
-                  "formatVersion": 1,
-                  "endpoints": [
-                    { "kind": "Kel103Serial", "expectedEndpointId": "same-01", "definitionId": "korad-kel103", "definitionVersion": 2, "serialPort": "kel-target", "baudRate": 115200 },
-                    { "kind": "RfLabSerial", "expectedEndpointId": "same-01", "definitionId": "rflab-signal-lab", "definitionVersion": 1, "serialPort": "rflab-target", "baudRate": 115200 }
-                  ]
-                }
-                """));
+        Assert.Contains("format version 2", exception.Message, StringComparison.Ordinal);
     }
 
     private static async Task<DesktopRuntimeHostEndpointCompositionProfile> LoadDocumentAsync(string document)

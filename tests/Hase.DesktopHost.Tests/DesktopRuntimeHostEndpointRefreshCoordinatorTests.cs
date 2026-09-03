@@ -78,7 +78,7 @@ public sealed class DesktopRuntimeHostEndpointRefreshCoordinatorTests
         DesktopRuntimeHostEndpointRefreshTarget available =
             context.CreateTarget(
                 "available",
-                "Kel103Serial",
+                "OtherSerial",
                 _ =>
                 {
                     context.Published.Add("available");

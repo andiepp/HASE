@@ -1,61 +1,10 @@
 ﻿using System.IO;
 using System.Text.Json;
-using Hase.Core.Domain.Descriptors;
 
 namespace Hase.DesktopHost.Configuration;
 
 public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
 {
-    public Task MigrateKel103DefinitionAsync(
-        string profilePath,
-        string backupPath,
-        string expectedEndpointId,
-        DescriptorReference expectedCurrentDefinition,
-        DescriptorReference replacementDefinition,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        ArgumentNullException.ThrowIfNull(expectedCurrentDefinition);
-        ArgumentNullException.ThrowIfNull(replacementDefinition);
-        if (expectedCurrentDefinition == replacementDefinition)
-        {
-            throw new ArgumentException(
-                "Current and replacement definitions must be distinct.",
-                nameof(replacementDefinition));
-        }
-
-        return EditAsync(profilePath, backupPath, profile =>
-        {
-            DesktopRuntimeHostKel103SerialEndpointProfile? existing =
-                profile.Kel103SerialEndpoints.SingleOrDefault(endpoint =>
-                    endpoint.ExpectedEndpointId == expectedEndpointId);
-            if (existing is null)
-            {
-                throw new KeyNotFoundException(
-                    "The KEL-103 serial endpoint profile is not registered.");
-            }
-
-            if (existing.DefinitionReference != expectedCurrentDefinition)
-            {
-                throw new InvalidOperationException(
-                    "The KEL-103 serial endpoint does not use the required current definition.");
-            }
-
-            var migrated = new DesktopRuntimeHostKel103SerialEndpointProfile(
-                existing.ExpectedEndpointId,
-                replacementDefinition.Id.Value,
-                replacementDefinition.Version,
-                existing.SerialPort,
-                existing.BaudRate);
-            return Replace(
-                profile,
-                DesktopRuntimeHostEndpointCompositionProfile.Kel103SerialProviderId,
-                expectedEndpointId,
-                DesktopRuntimeHostEndpointCompositionProfile
-                    .CreateKel103SerialEntry(migrated));
-        }, cancellationToken);
-    }
-
     /// <summary>
     /// Rewrites one composition in the provider-keyed shape, retaining the
     /// previous file as the supplied backup.
@@ -129,50 +78,6 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
             DesktopRuntimeHostEndpointCompositionProfile.NativeNetworkProviderId,
             expectedEndpointId,
             "The native-network endpoint profile is not registered."), cancellationToken);
-    }
-
-    public Task AddKel103Async(string profilePath, string backupPath,
-        DesktopRuntimeHostKel103SerialEndpointProfile endpoint,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile => Add(
-            profile,
-            DesktopRuntimeHostEndpointCompositionProfile
-                .CreateKel103SerialEntry(endpoint)), cancellationToken);
-    }
-
-    public Task RemoveKel103Async(string profilePath, string backupPath,
-        string expectedEndpointId, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile => Remove(
-            profile,
-            DesktopRuntimeHostEndpointCompositionProfile.Kel103SerialProviderId,
-            expectedEndpointId,
-            "The KEL-103 serial endpoint profile is not registered."), cancellationToken);
-    }
-
-    public Task AddRfLabAsync(string profilePath, string backupPath,
-        DesktopRuntimeHostRfLabSerialEndpointProfile endpoint,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(endpoint);
-        return EditAsync(profilePath, backupPath, profile => Add(
-            profile,
-            DesktopRuntimeHostEndpointCompositionProfile
-                .CreateRfLabSerialEntry(endpoint)), cancellationToken);
-    }
-
-    public Task RemoveRfLabAsync(string profilePath, string backupPath,
-        string expectedEndpointId, CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
-        return EditAsync(profilePath, backupPath, profile => Remove(
-            profile,
-            DesktopRuntimeHostEndpointCompositionProfile.RfLabSerialProviderId,
-            expectedEndpointId,
-            "The RF-Lab serial endpoint profile is not registered."), cancellationToken);
     }
 
     /// <summary>
@@ -441,15 +346,9 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
                 verificationTimeoutMilliseconds =
                     endpoint.RequireInt32("verificationTimeoutMilliseconds")
             },
-            _ => new
-            {
-                kind,
-                expectedEndpointId = endpoint.ExpectedEndpointId,
-                definitionId = endpoint.RequireString("definitionId"),
-                definitionVersion = endpoint.RequireUInt16("definitionVersion"),
-                serialPort = endpoint.RequireString("serialPort"),
-                baudRate = endpoint.RequireInt32("baudRate")
-            }
+            _ => throw new InvalidDataException(
+                $"Endpoint kind '{kind}' cannot be written in the version 1 "
+                + "composition format.")
         };
 
     private static string Normalize(string path)

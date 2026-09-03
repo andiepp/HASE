@@ -23,12 +23,12 @@ public sealed class DesktopRuntimeHostEndpointCompositionFormatMigrationTests
               "port": 5000
             },
             {
-              "kind": "Kel103Serial",
-              "expectedEndpointId": "kel-01",
-              "definitionId": "korad-kel103",
-              "definitionVersion": 2,
-              "serialPort": "sensitive-external-target",
-              "baudRate": 115200
+              "kind": "CompactSerial",
+              "expectedEndpointId": "compact-01",
+              "vendorId": 9025,
+              "productId": 67,
+              "baudRate": 115200,
+              "verificationTimeoutMilliseconds": 3000
             }
           ]
         }
@@ -62,10 +62,10 @@ public sealed class DesktopRuntimeHostEndpointCompositionFormatMigrationTests
         Assert.True(assessment.ExpressibleInLegacyFormat);
         Assert.Equal(2, assessment.EndpointCount);
         Assert.Equal(
-            ["native-network", "kel-103-serial"],
+            ["native-network", "compact-serial"],
             assessment.Endpoints.Select(endpoint => endpoint.ProviderId));
         Assert.Equal(
-            ["native-01", "kel-01"],
+            ["native-01", "compact-01"],
             assessment.Endpoints.Select(endpoint => endpoint.ExpectedEndpointId));
         Assert.Equal([2, 4], assessment.Endpoints.Select(endpoint => endpoint.SettingCount));
     }
@@ -153,8 +153,8 @@ public sealed class DesktopRuntimeHostEndpointCompositionFormatMigrationTests
         }
 
         Assert.Equal(
-            before.Kel103SerialEndpoints,
-            after.Kel103SerialEndpoints);
+            before.CompactSerialEndpoints,
+            after.CompactSerialEndpoints);
         Assert.Equal(
             before.NativeNetworkEndpoints,
             after.NativeNetworkEndpoints);
@@ -220,7 +220,7 @@ public sealed class DesktopRuntimeHostEndpointCompositionFormatMigrationTests
             DesktopRuntimeHostEndpointCompositionProfile.OpenFormatVersion,
             edited.FormatVersion);
         Assert.Equal(
-            ["native-01", "native-02", "kel-01"],
+            ["native-01", "native-02", "compact-01"],
             edited.Endpoints.Select(endpoint => endpoint.ExpectedEndpointId));
     }
 

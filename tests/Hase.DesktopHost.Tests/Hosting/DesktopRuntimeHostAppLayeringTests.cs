@@ -42,22 +42,32 @@ public sealed class DesktopRuntimeHostAppLayeringTests
         // A reference guard cannot see a string. The KEL-103 operating
         // surface reached the published Runtime Host as hard-coded labels, a
         // hard-coded command path and a safety warning naming the device,
-        // and every assembly-level guard passed while it did.
-        string application = Path.Combine(
-            GetRepositoryRoot(),
-            "src",
-            "Hase.DesktopHost.App");
-        string[] offenders =
-            Directory
-                .EnumerateFiles(application, "*.*", SearchOption.AllDirectories)
-                .Where(path =>
-                    path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-                    || path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
-                .Where(path => !IsBuildOutput(path, application))
-                .Where(path => NamesAnInstrument(File.ReadAllText(path)))
-                .Select(path => Path.GetRelativePath(application, path))
-                .Order()
-                .ToArray();
+        // and every assembly-level guard passed while it did. Since 68I2 the
+        // library and the profile tool are held to the same rule as the
+        // application: the composition names a provider, and only that
+        // provider knows what its settings mean.
+        string source = Path.Combine(GetRepositoryRoot(), "src");
+        string[] projects =
+            [
+                "Hase.DesktopHost.App",
+                "Hase.DesktopHost",
+                "Hase.DesktopHost.EndpointProfileTool"
+            ];
+        string[] offenders = projects
+            .SelectMany(project =>
+            {
+                string root = Path.Combine(source, project);
+                return Directory
+                    .EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
+                    .Where(path =>
+                        path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                        || path.EndsWith(".xaml", StringComparison.OrdinalIgnoreCase))
+                    .Where(path => !IsBuildOutput(path, root))
+                    .Where(path => NamesAnInstrument(File.ReadAllText(path)))
+                    .Select(path => Path.GetRelativePath(source, path));
+            })
+            .Order()
+            .ToArray();
 
         Assert.Empty(offenders);
     }

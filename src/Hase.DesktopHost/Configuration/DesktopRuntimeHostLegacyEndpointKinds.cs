@@ -17,11 +17,7 @@ internal static class DesktopRuntimeHostLegacyEndpointKinds
         ("NativeNetwork",
             DesktopRuntimeHostEndpointCompositionProfile.NativeNetworkProviderId),
         ("CompactSerial",
-            DesktopRuntimeHostEndpointCompositionProfile.CompactSerialProviderId),
-        ("Kel103Serial",
-            DesktopRuntimeHostEndpointCompositionProfile.Kel103SerialProviderId),
-        ("RfLabSerial",
-            DesktopRuntimeHostEndpointCompositionProfile.RfLabSerialProviderId)
+            DesktopRuntimeHostEndpointCompositionProfile.CompactSerialProviderId)
     ];
 
     /// <summary>

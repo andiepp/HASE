@@ -76,8 +76,6 @@ public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
         Assert.Equal("42", entry.RequireString("whateverItNeeds"));
         Assert.Empty(profile.NativeNetworkEndpoints);
         Assert.Empty(profile.CompactSerialEndpoints);
-        Assert.Empty(profile.Kel103SerialEndpoints);
-        Assert.Empty(profile.RfLabSerialEndpoints);
     }
 
     [Fact]
@@ -119,22 +117,12 @@ public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
             [
                 new DesktopRuntimeHostCompactSerialEndpointProfile(
                     "compact-01", 0x2341, 0x0043, 115200, TimeSpan.FromSeconds(3))
-            ],
-            [
-                new DesktopRuntimeHostKel103SerialEndpointProfile(
-                    "kel-01", "korad-kel103", 2, "external-target", 115200)
-            ],
-            [
-                new DesktopRuntimeHostRfLabSerialEndpointProfile(
-                    "rflab-01", "rflab-signal-lab", 1, "external-target", 115200)
             ]);
 
         Assert.Equal(
             [
                 DesktopRuntimeHostNativeNetworkEndpointProvider.Id,
-                DesktopRuntimeHostCompactSerialEndpointProvider.Id,
-                "kel-103-serial",
-                "rf-lab-serial"
+                DesktopRuntimeHostCompactSerialEndpointProvider.Id
             ],
             profile.Endpoints.Select(endpoint => endpoint.ProviderId));
     }
@@ -169,36 +157,6 @@ public sealed class DesktopRuntimeHostOpenEndpointCompositionTests
         Assert.Equal(
             bool.TrueString,
             entry.RequireString("assertDataTerminalReady"));
-    }
-
-    [Fact]
-    public async Task LoadAsync_OpenShape_ReachesTheSameProvidersAsTheClosedShape()
-    {
-        DesktopRuntimeHostEndpointCompositionProfile profile = await LoadDocumentAsync(
-            """
-            {
-              "formatVersion": 2,
-              "endpoints": [
-                {
-                  "providerId": "kel-103-serial",
-                  "expectedEndpointId": "kel-01",
-                  "settings": {
-                    "definitionId": "korad-kel103",
-                    "definitionVersion": 2,
-                    "serialPort": "external-target",
-                    "baudRate": 115200
-                  }
-                }
-              ]
-            }
-            """);
-
-        DesktopRuntimeHostKel103SerialEndpointProfile kel103 =
-            Assert.Single(profile.Kel103SerialEndpoints);
-
-        Assert.Equal("kel-01", kel103.ExpectedEndpointId);
-        Assert.Equal("external-target", kel103.SerialPort);
-        Assert.Equal(115200, kel103.BaudRate);
     }
 
     [Fact]

@@ -30,8 +30,6 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
     /// </summary>
     internal const string NativeNetworkProviderId = "native-network";
     internal const string CompactSerialProviderId = "compact-serial";
-    internal const string Kel103SerialProviderId = "kel-103-serial";
-    internal const string RfLabSerialProviderId = "rf-lab-serial";
 
     /// <summary>
     /// Composes a profile from provider-named endpoints.
@@ -79,47 +77,12 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
         CompactSerialEndpoints = ForProvider(CompactSerialProviderId)
             .Select(CreateCompactSerialProfile)
             .ToArray();
-        Kel103SerialEndpoints = ForProvider(Kel103SerialProviderId)
-            .Select(CreateKel103SerialProfile)
-            .ToArray();
-        RfLabSerialEndpoints = ForProvider(RfLabSerialProviderId)
-            .Select(CreateRfLabSerialProfile)
-            .ToArray();
     }
 
     public DesktopRuntimeHostEndpointCompositionProfile(
         IEnumerable<DesktopRuntimeHostNativeNetworkEndpointProfile> nativeNetworkEndpoints,
         IEnumerable<DesktopRuntimeHostCompactSerialEndpointProfile> compactSerialEndpoints)
-        : this(
-            nativeNetworkEndpoints,
-            compactSerialEndpoints,
-            Array.Empty<DesktopRuntimeHostKel103SerialEndpointProfile>())
-    {
-    }
-
-    public DesktopRuntimeHostEndpointCompositionProfile(
-        IEnumerable<DesktopRuntimeHostNativeNetworkEndpointProfile> nativeNetworkEndpoints,
-        IEnumerable<DesktopRuntimeHostCompactSerialEndpointProfile> compactSerialEndpoints,
-        IEnumerable<DesktopRuntimeHostKel103SerialEndpointProfile> kel103SerialEndpoints)
-        : this(
-            nativeNetworkEndpoints,
-            compactSerialEndpoints,
-            kel103SerialEndpoints,
-            Array.Empty<DesktopRuntimeHostRfLabSerialEndpointProfile>())
-    {
-    }
-
-    public DesktopRuntimeHostEndpointCompositionProfile(
-        IEnumerable<DesktopRuntimeHostNativeNetworkEndpointProfile> nativeNetworkEndpoints,
-        IEnumerable<DesktopRuntimeHostCompactSerialEndpointProfile> compactSerialEndpoints,
-        IEnumerable<DesktopRuntimeHostKel103SerialEndpointProfile> kel103SerialEndpoints,
-        IEnumerable<DesktopRuntimeHostRfLabSerialEndpointProfile> rfLabSerialEndpoints)
-        : this(
-            CreateEntries(
-                nativeNetworkEndpoints,
-                compactSerialEndpoints,
-                kel103SerialEndpoints,
-                rfLabSerialEndpoints))
+        : this(CreateEntries(nativeNetworkEndpoints, compactSerialEndpoints))
     {
     }
 
@@ -141,9 +104,6 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
 
     public IReadOnlyList<DesktopRuntimeHostNativeNetworkEndpointProfile> NativeNetworkEndpoints { get; }
     public IReadOnlyList<DesktopRuntimeHostCompactSerialEndpointProfile> CompactSerialEndpoints { get; }
-    public IReadOnlyList<DesktopRuntimeHostKel103SerialEndpointProfile> Kel103SerialEndpoints { get; }
-    public IReadOnlyList<DesktopRuntimeHostRfLabSerialEndpointProfile> RfLabSerialEndpoints { get; }
-
     /// <summary>
     /// Returns the endpoints supplied by one provider, in composition order.
     /// </summary>
@@ -162,19 +122,13 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
 
     private static IEnumerable<DesktopRuntimeHostEndpointEntry> CreateEntries(
         IEnumerable<DesktopRuntimeHostNativeNetworkEndpointProfile> nativeNetworkEndpoints,
-        IEnumerable<DesktopRuntimeHostCompactSerialEndpointProfile> compactSerialEndpoints,
-        IEnumerable<DesktopRuntimeHostKel103SerialEndpointProfile> kel103SerialEndpoints,
-        IEnumerable<DesktopRuntimeHostRfLabSerialEndpointProfile> rfLabSerialEndpoints)
+        IEnumerable<DesktopRuntimeHostCompactSerialEndpointProfile> compactSerialEndpoints)
     {
         ArgumentNullException.ThrowIfNull(nativeNetworkEndpoints);
         ArgumentNullException.ThrowIfNull(compactSerialEndpoints);
-        ArgumentNullException.ThrowIfNull(kel103SerialEndpoints);
-        ArgumentNullException.ThrowIfNull(rfLabSerialEndpoints);
 
         return nativeNetworkEndpoints.Select(CreateNativeNetworkEntry)
-            .Concat(compactSerialEndpoints.Select(CreateCompactSerialEntry))
-            .Concat(kel103SerialEndpoints.Select(CreateKel103SerialEntry))
-            .Concat(rfLabSerialEndpoints.Select(CreateRfLabSerialEntry));
+            .Concat(compactSerialEndpoints.Select(CreateCompactSerialEntry));
     }
 
     internal static DesktopRuntimeHostEndpointEntry CreateNativeNetworkEntry(
@@ -201,40 +155,6 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
                     Text((int)endpoint.VerificationTimeout.TotalMilliseconds))
             ]);
 
-    internal static DesktopRuntimeHostEndpointEntry CreateKel103SerialEntry(
-        DesktopRuntimeHostKel103SerialEndpointProfile endpoint) =>
-        new(
-            Kel103SerialProviderId,
-            endpoint.ExpectedEndpointId,
-            SerialInstrumentSettings(
-                endpoint.DefinitionReference.Id.Value,
-                endpoint.DefinitionReference.Version,
-                endpoint.SerialPort,
-                endpoint.BaudRate));
-
-    internal static DesktopRuntimeHostEndpointEntry CreateRfLabSerialEntry(
-        DesktopRuntimeHostRfLabSerialEndpointProfile endpoint) =>
-        new(
-            RfLabSerialProviderId,
-            endpoint.ExpectedEndpointId,
-            SerialInstrumentSettings(
-                endpoint.DefinitionReference.Id.Value,
-                endpoint.DefinitionReference.Version,
-                endpoint.SerialPort,
-                endpoint.BaudRate));
-
-    private static KeyValuePair<string, string>[] SerialInstrumentSettings(
-        string definitionId,
-        ushort definitionVersion,
-        string serialPort,
-        int baudRate) =>
-        [
-            new("definitionId", definitionId),
-            new("definitionVersion", Text(definitionVersion)),
-            new("serialPort", serialPort),
-            new("baudRate", Text(baudRate))
-        ];
-
     private static DesktopRuntimeHostNativeNetworkEndpointProfile
         CreateNativeNetworkProfile(DesktopRuntimeHostEndpointEntry endpoint) =>
         new(
@@ -252,27 +172,7 @@ public sealed record DesktopRuntimeHostEndpointCompositionProfile
             TimeSpan.FromMilliseconds(
                 endpoint.RequireInt32("verificationTimeoutMilliseconds")));
 
-    private static DesktopRuntimeHostKel103SerialEndpointProfile
-        CreateKel103SerialProfile(DesktopRuntimeHostEndpointEntry endpoint) =>
-        new(
-            endpoint.ExpectedEndpointId,
-            endpoint.RequireString("definitionId"),
-            endpoint.RequireUInt16("definitionVersion"),
-            endpoint.RequireString("serialPort"),
-            endpoint.RequireInt32("baudRate"));
-
-    private static DesktopRuntimeHostRfLabSerialEndpointProfile
-        CreateRfLabSerialProfile(DesktopRuntimeHostEndpointEntry endpoint) =>
-        new(
-            endpoint.ExpectedEndpointId,
-            endpoint.RequireString("definitionId"),
-            endpoint.RequireUInt16("definitionVersion"),
-            endpoint.RequireString("serialPort"),
-            endpoint.RequireInt32("baudRate"));
-
     private static string Text(int value) =>
         value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string Text(ushort value) =>
-        value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }

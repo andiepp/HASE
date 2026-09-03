@@ -86,7 +86,7 @@ public sealed class DesktopRuntimeHostEndpointStartupCoordinatorTests
             });
         bool third = await context.Coordinator.TryAttachAsync(
             "third",
-            "Kel103Serial",
+            "OtherSerial",
             _ => Task.FromException(new IOException()));
 
         Assert.False(first);

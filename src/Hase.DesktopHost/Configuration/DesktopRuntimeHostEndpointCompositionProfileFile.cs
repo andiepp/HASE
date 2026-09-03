@@ -143,16 +143,16 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
             ?? throw new InvalidDataException("The endpoints collection is required.");
 
         if (endpoints.Any(endpoint =>
-                endpoint.Kind is not ("NativeNetwork" or "CompactSerial" or "Kel103Serial" or "RfLabSerial")))
+                endpoint.Kind is not ("NativeNetwork" or "CompactSerial")))
         {
-            throw new InvalidDataException("An endpoint kind is missing or unsupported.");
+            throw new InvalidDataException(
+                "An endpoint kind is missing or unsupported by the version 1 format; "
+                + "format version 2 names the endpoint's provider instead.");
         }
 
         return new DesktopRuntimeHostEndpointCompositionProfile(
             endpoints.Where(endpoint => endpoint.Kind == "NativeNetwork").Select(CreateNativeEndpoint),
-            endpoints.Where(endpoint => endpoint.Kind == "CompactSerial").Select(CreateCompactEndpoint),
-            endpoints.Where(endpoint => endpoint.Kind == "Kel103Serial").Select(CreateKel103Endpoint),
-            endpoints.Where(endpoint => endpoint.Kind == "RfLabSerial").Select(CreateRfLabEndpoint))
+            endpoints.Where(endpoint => endpoint.Kind == "CompactSerial").Select(CreateCompactEndpoint))
         {
             FormatVersion = LegacyFormatVersion
         };
@@ -227,8 +227,7 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
     private static DesktopRuntimeHostNativeNetworkEndpointProfile CreateNativeEndpoint(EndpointDocument endpoint)
     {
         if (endpoint.VendorId is not null || endpoint.ProductId is not null
-            || endpoint.BaudRate is not null || endpoint.VerificationTimeoutMilliseconds is not null
-            || HasKel103Properties(endpoint))
+            || endpoint.BaudRate is not null || endpoint.VerificationTimeoutMilliseconds is not null)
         {
             throw new InvalidDataException("A native network endpoint contains serial-endpoint properties.");
         }
@@ -241,7 +240,7 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
 
     private static DesktopRuntimeHostCompactSerialEndpointProfile CreateCompactEndpoint(EndpointDocument endpoint)
     {
-        if (endpoint.Host is not null || endpoint.Port is not null || HasKel103Properties(endpoint))
+        if (endpoint.Host is not null || endpoint.Port is not null)
         {
             throw new InvalidDataException("A compact serial endpoint contains native-network properties.");
         }
@@ -254,49 +253,6 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
             TimeSpan.FromMilliseconds(endpoint.VerificationTimeoutMilliseconds
                 ?? throw new InvalidDataException("A compact serial endpoint requires verificationTimeoutMilliseconds.")));
     }
-
-    private static DesktopRuntimeHostKel103SerialEndpointProfile CreateKel103Endpoint(EndpointDocument endpoint)
-    {
-        if (endpoint.Host is not null || endpoint.Port is not null
-            || endpoint.VendorId is not null || endpoint.ProductId is not null
-            || endpoint.VerificationTimeoutMilliseconds is not null)
-        {
-            throw new InvalidDataException("A KEL-103 serial endpoint contains properties from another endpoint family.");
-        }
-
-        return new DesktopRuntimeHostKel103SerialEndpointProfile(
-            Required(endpoint.ExpectedEndpointId, "expectedEndpointId"),
-            Required(endpoint.DefinitionId, "definitionId"),
-            endpoint.DefinitionVersion
-                ?? throw new InvalidDataException("A KEL-103 serial endpoint requires definitionVersion."),
-            Required(endpoint.SerialPort, "serialPort"),
-            endpoint.BaudRate
-                ?? throw new InvalidDataException("A KEL-103 serial endpoint requires baudRate."));
-    }
-
-    private static DesktopRuntimeHostRfLabSerialEndpointProfile CreateRfLabEndpoint(EndpointDocument endpoint)
-    {
-        if (endpoint.Host is not null || endpoint.Port is not null
-            || endpoint.VendorId is not null || endpoint.ProductId is not null
-            || endpoint.VerificationTimeoutMilliseconds is not null)
-        {
-            throw new InvalidDataException("An RF-Lab serial endpoint contains properties from another endpoint family.");
-        }
-
-        return new DesktopRuntimeHostRfLabSerialEndpointProfile(
-            Required(endpoint.ExpectedEndpointId, "expectedEndpointId"),
-            Required(endpoint.DefinitionId, "definitionId"),
-            endpoint.DefinitionVersion
-                ?? throw new InvalidDataException("An RF-Lab serial endpoint requires definitionVersion."),
-            Required(endpoint.SerialPort, "serialPort"),
-            endpoint.BaudRate
-                ?? throw new InvalidDataException("An RF-Lab serial endpoint requires baudRate."));
-    }
-
-    private static bool HasKel103Properties(EndpointDocument endpoint) =>
-        endpoint.DefinitionId is not null
-        || endpoint.DefinitionVersion is not null
-        || endpoint.SerialPort is not null;
 
     private static string Required(string? value, string propertyName) =>
         value ?? throw new InvalidDataException($"Endpoint property '{propertyName}' is required.");
@@ -328,12 +284,6 @@ public static class DesktopRuntimeHostEndpointCompositionProfileFile
         public int? BaudRate { get; set; }
         [JsonPropertyName("verificationTimeoutMilliseconds")]
         public int? VerificationTimeoutMilliseconds { get; set; }
-        [JsonPropertyName("definitionId")]
-        public string? DefinitionId { get; set; }
-        [JsonPropertyName("definitionVersion")]
-        public ushort? DefinitionVersion { get; set; }
-        [JsonPropertyName("serialPort")]
-        public string? SerialPort { get; set; }
     }
 
     private sealed class OpenCompositionDocument

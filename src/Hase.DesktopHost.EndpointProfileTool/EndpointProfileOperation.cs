@@ -40,8 +40,9 @@ public sealed record EndpointProfileOperationResult(
 /// <remarks>
 /// The published tool edits the endpoint kinds that carry no device
 /// knowledge. A composition root that ships instruments contributes their
-/// operations, which is why the KEL-103 additions and definition migrations
-/// are not in the published tool.
+/// operations, built on the editor's provider-agnostic entry operations,
+/// which is why no instrument's additions or definition migrations are in
+/// the published tool.
 /// </remarks>
 public interface IEndpointProfileOperation
 {

@@ -70,17 +70,14 @@ public sealed class DesktopRuntimeHostProductionConfigurationPlanTests
     }
 
     [Fact]
-    public void Create_Kel103Endpoint_ShouldIncludeItInExpectedCount()
+    public void Create_EndpointOfAProviderThisLibraryDoesNotShip_ShouldIncludeItInExpectedCount()
     {
         var installation = new DesktopRuntimeHostInstallationProfile(
             AbsolutePath("installation.id"),
             AbsolutePath("desktop-private-network.json"),
             AbsolutePath("desktop-runtime-endpoints.json"));
         var endpoints = new DesktopRuntimeHostEndpointCompositionProfile(
-            [],
-            [],
-            [new DesktopRuntimeHostKel103SerialEndpointProfile(
-                "kel-01", "kel103-identity", 2, "external-target", 115200)]);
+            [new DesktopRuntimeHostEndpointEntry("someone-elses-instrument", "foreign-01")]);
         var startup = new DesktopRuntimeHostStartupConfiguration(
             installation.PrivateNetworkConfigurationFilePath,
             "ignored.local",
