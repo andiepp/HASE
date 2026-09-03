@@ -995,10 +995,26 @@ new path; the three computers carried the rename as renames. Deployment
 bundles and rollback references built before the rename carry the old
 sketch name and are not interchangeable with those built after.
 
-What 68I3 leaves: 68I3b, the five documents by role, with the hardware
-note saying no attached hardware; 68I3c, the two user-profile paths and
-the example addresses moving to the documentation ranges, with the
-estate's port number as the one residual example value.
+68I3b, the documents, complete as `0db9d56`; documentation only. The
+operating notes describe synchronization as every computer of the
+operator's estate, say that the computers, their roles and each tool's
+computer are named in the operator's own operating notes, and that the
+suite needs no attached hardware; the reliability baseline's
+synchronization step and PowerShell rule speak of the operator's estate;
+the ESP32 guide sends validation to the computer holding the controlled
+toolchain; the media compatibility contract's validation record keeps its
+operating-system and browser versions and its test totals and names the
+two computers Desktop and Laptop, the role words the Python README
+already used; the Python README names the MiniPC and the Laptop for its
+three bound tools and says every such tool takes `-ExpectedComputer`.
+Six stale 0.6.0 mentions the 68I2d version bump had left in that README's
+current-state text became 0.7.0; its history records keep 0.6.0. No
+computer name remains in the base outside the ADRs, Project Status and
+the Roadmap, which are history.
+
+What 68I3 leaves: 68I3c, the two user-profile paths and the example
+addresses moving to the documentation ranges, with the estate's port
+number as the one residual example value.
 
 ## Deferred scope
 

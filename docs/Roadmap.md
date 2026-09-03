@@ -2679,10 +2679,13 @@ Increments:
     a named computer; the add-on's operating notes name the computers
     and which tool runs where. The ESP32 sketch directory became
     `HaseESP32` in the same commit.
+35. 68I3b — The operating documents speak by role — complete as
+    `0db9d56`. The five documents that named the computers as
+    instructions name roles; the operator's own operating notes hold the
+    names. No computer name remains in the base outside its history.
 
-68I3b, 68I3c and 68I4 remain: the five operating documents by role, the
-user-profile paths and example addresses, and a tagged release closing
-the ADR. Open around the add-on: its GPL-3 licence
+68I3c and 68I4 remain: the user-profile paths and example addresses, and
+a tagged release closing the ADR. Open around the add-on: its GPL-3 licence
 against an MIT base is GitHub's form default rather than a decision; the
 `HASE Dev Host` shortcut keeps targeting the base repository's build by
 decision.
