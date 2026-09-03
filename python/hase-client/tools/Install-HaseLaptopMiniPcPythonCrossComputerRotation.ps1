@@ -7,7 +7,10 @@ param(
     [string] $InstalledProfilePath,
 
     [Parameter(Mandatory = $true)]
-    [string] $CutoverDirectory
+    [string] $CutoverDirectory,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -163,9 +166,9 @@ $installationStarted = $false
 
 try
 {
-    if ($env:OS -cne "Windows_NT" -or $env:COMPUTERNAME -cne "LTAEP")
+    if ($env:OS -cne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer)
     {
-        throw "The cutover must run on LTAEP."
+        throw "The cutover must run on $ExpectedComputer."
     }
 
     $toolDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path

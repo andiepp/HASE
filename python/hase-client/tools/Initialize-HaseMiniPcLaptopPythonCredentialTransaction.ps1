@@ -12,7 +12,8 @@ param(
     [Parameter(Mandatory = $true)] [string] $ProfileTemplatePath,
     [Parameter(Mandatory = $true)] [string] $TransferArchivePath,
     [Parameter(Mandatory = $true)] [string] $RollbackDirectory,
-    [Parameter(Mandatory = $true)] [ValidateRange(1, 90)] [int] $ValidityDays
+    [Parameter(Mandatory = $true)] [ValidateRange(1, 90)] [int] $ValidityDays,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,7 +63,7 @@ function Set-PrivateFile([string] $Path)
 
 try
 {
-    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne "LABC")
+    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer)
     { throw "machine" }
     $toolDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
     $packageDirectory = Split-Path -Parent $toolDirectory

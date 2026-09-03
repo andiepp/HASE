@@ -1,12 +1,12 @@
 [CmdletBinding()]
-param([Parameter(Mandatory = $true)] [string] $RollbackDirectory)
+param([Parameter(Mandatory = $true)] [string] $RollbackDirectory, [Parameter(Mandatory = $true)] [string] $ExpectedComputer)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 try
 {
-    if ($env:COMPUTERNAME -cne "LTAEP") { throw "machine" }
+    if ($env:COMPUTERNAME -cne $ExpectedComputer) { throw "machine" }
     $rollback = [IO.Path]::GetFullPath($RollbackDirectory)
     $planPath = Join-Path $rollback "import-plan.json"
     if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) { throw "plan" }

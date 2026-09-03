@@ -2,7 +2,7 @@
 
 This guide explains how to create or adapt a Protocol Version 1 HASE endpoint
 for an ESP32 using the repository library and the application boundary defined
-by ADR-0054. The physical BME280/GPIO endpoint under `HaseEndpoint` is the
+by ADR-0054. The physical BME280/GPIO endpoint under `HaseESP32` is the
 complete reference application.
 
 The guide covers source authoring and controlled compilation. It does not
@@ -39,8 +39,8 @@ An endpoint application has five tracked source files and one ignored local
 secrets file:
 
 ```text
-HaseEndpoint/
-  HaseEndpoint.ino
+HaseESP32/
+  HaseESP32.ino
   EndpointConfiguration.h
   EndpointDefinition.cpp
   EndpointApplication.h
@@ -57,7 +57,7 @@ remain under `libraries/HaseEsp32Endpoint/src` and are not application tabs.
 
 | File | Author responsibility |
 | --- | --- |
-| `HaseEndpoint.ino` | Compose the application, definition, configuration, and runtime; pass local Wi-Fi credentials to `begin`; call `update` from `loop`. |
+| `HaseESP32.ino` | Compose the application, definition, configuration, and runtime; pass local Wi-Fi credentials to `begin`; call `update` from `loop`. |
 | `EndpointConfiguration.h` | Set TCP, mDNS, payload, read-timeout, and UTC-synchronization values. |
 | `EndpointDefinition.cpp` | Declare endpoint and instrument descriptors and register every Property, Command, and Event callback. |
 | `EndpointApplication.h` | Declare the hardware application, pins, devices, state, callbacks, and Event binding. |
@@ -66,14 +66,14 @@ remain under `libraries/HaseEsp32Endpoint/src` and are not application tabs.
 
 ## Start from the reference application
 
-For a new endpoint, copy the five tracked files from `HaseEndpoint` into a new
+For a new endpoint, copy the five tracked files from `HaseESP32` into a new
 sketch directory whose `.ino` filename matches the directory name. Then adapt
 the configuration, definition, and application files. Keep the HASE framework
 library under `libraries/HaseEsp32Endpoint`; do not copy its source files into
 the sketch root.
 
 The controlled compilation tool currently targets the repository
-`HaseEndpoint` example. A separately named application needs an equivalent
+`HaseESP32` example. A separately named application needs an equivalent
 external staging and compilation check before it can become a maintained
 repository example.
 
@@ -83,8 +83,8 @@ Copy the tracked template from outside the sketch root:
 
 ```powershell
 Copy-Item `
-    -LiteralPath ".\templates\HaseEndpoint\HaseSecrets.example.h" `
-    -Destination ".\HaseEndpoint\HaseSecrets.h"
+    -LiteralPath ".\templates\HaseESP32\HaseSecrets.example.h" `
+    -Destination ".\HaseESP32\HaseSecrets.h"
 ```
 
 Then edit only the two values in the local file:
@@ -102,7 +102,7 @@ const char* WIFI_PASSWORD =
 Confirm that Git ignores it:
 
 ```powershell
-git check-ignore --quiet -- HaseEndpoint/HaseSecrets.h
+git check-ignore --quiet -- HaseESP32/HaseSecrets.h
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -112,7 +112,7 @@ if ($LASTEXITCODE -ne 0)
 
 Do not place an example secrets file in the active sketch root: Arduino IDE
 would expose it as another ordinary tab. The tracked template belongs under
-`templates/HaseEndpoint`.
+`templates/HaseESP32`.
 
 ## Configure the endpoint
 
@@ -310,7 +310,7 @@ recovery, and local Event detection continue to make progress.
 Keep endpoint-specific libraries and includes in the application layer. For a
 repository-controlled dependency:
 
-1. add the complete Arduino library under `HaseEndpoint/Libraries/<Library>`;
+1. add the complete Arduino library under `HaseESP32/Libraries/<Library>`;
 2. retain its `library.properties` identity and version;
 3. include it only from `EndpointApplication.*`;
 4. initialize it in `beginHardware`;
@@ -324,7 +324,7 @@ of the physical application.
 
 ## Compose the sketch
 
-`HaseEndpoint.ino` should remain small. It creates the application, asks it to
+`HaseESP32.ino` should remain small. It creates the application, asks it to
 create the definition, creates `HaseEndpointRuntime`, and delegates Arduino
 startup and loop processing:
 
@@ -359,11 +359,11 @@ $expectedSourceFiles = @(
     "EndpointApplication.h",
     "EndpointConfiguration.h",
     "EndpointDefinition.cpp",
-    "HaseEndpoint.ino"
+    "HaseESP32.ino"
 ) | Sort-Object
 
 $actualSourceFiles = @(
-    Get-ChildItem -LiteralPath ".\HaseEndpoint" -File |
+    Get-ChildItem -LiteralPath ".\HaseESP32" -File |
     Where-Object {
         $_.Extension -in @(".ino", ".cpp", ".h") -and
         $_.Name -cne "HaseSecrets.h"
@@ -386,7 +386,7 @@ if ($difference.Count -ne 0)
     throw "The application source file set is invalid."
 }
 
-git check-ignore --quiet -- HaseEndpoint/HaseSecrets.h
+git check-ignore --quiet -- HaseESP32/HaseSecrets.h
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -394,7 +394,7 @@ if ($LASTEXITCODE -ne 0)
 }
 ```
 
-The five expected names are `HaseEndpoint.ino`, `EndpointConfiguration.h`,
+The five expected names are `HaseESP32.ino`, `EndpointConfiguration.h`,
 `EndpointDefinition.cpp`, `EndpointApplication.h`, and
 `EndpointApplication.cpp`.
 
@@ -412,7 +412,7 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 
 & ".\tools\Arduino\Test-HaseEsp32EndpointCompilation.ps1" `
     -RepositoryRoot (Get-Location).Path `
-    -EvidenceRoot "H:\HASE-Packages\HaseEndpoint-Compile-Evidence"
+    -EvidenceRoot "H:\HASE-Packages\HaseESP32-Compile-Evidence"
 ```
 
 Set the process execution policy if required, then run the tool. The tool:

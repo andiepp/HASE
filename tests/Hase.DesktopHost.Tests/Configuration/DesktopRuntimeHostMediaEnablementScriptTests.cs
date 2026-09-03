@@ -29,7 +29,8 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         string script = ReadScript(
             "New-HaseDesktopRuntimeHostMediaBindingCandidate.ps1");
 
-        Assert.Contains("AEPRAKETE", script);
+        Assert.Contains("$env:COMPUTERNAME -cne $ExpectedComputer", script);
+        Assert.Matches(@"\[string\]\s*\$ExpectedComputer", script);
         Assert.Contains("--prepare-media-binding", script);
         Assert.Contains("binding.html", script);
         Assert.Contains("Start-Process", script);
@@ -58,7 +59,8 @@ public sealed class DesktopRuntimeHostMediaEnablementScriptTests
         string script = ReadScript(
             "New-HaseClientRuntimeHostMediaAuthorizationRequest.ps1");
 
-        Assert.Contains("LTAEP", script);
+        Assert.Contains("$env:COMPUTERNAME -cne $ExpectedComputer", script);
+        Assert.Matches(@"\[string\]\s*\$ExpectedComputer", script);
         Assert.Contains("SHA256", script);
         Assert.Contains("x509-sha256:", script);
         Assert.Contains("Certificate values withheld", script);

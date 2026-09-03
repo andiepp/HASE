@@ -14,13 +14,15 @@ param(
     [string]$BundleRoot,
 
     [Parameter(Mandatory = $true)]
-    [string]$EvidenceRoot
+    [string]$EvidenceRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$expectedComputer = "AEPRAKETE"
 $rollbackCommit = "96db1799d410eedc82aea82cc3f5b3efa003242c"
 $expectedCliHash =
     "7c4f90d6b1f640975a0f0ed3fab8a93f969e0ce0058c99bda69f07228d50cb6b"
@@ -33,7 +35,7 @@ $expectedCurrentApplicationFiles = @(
     "EndpointApplication.h",
     "EndpointConfiguration.h",
     "EndpointDefinition.cpp",
-    "HaseEndpoint.ino"
+    "HaseESP32.ino"
 ) | Sort-Object
 
 function Invoke-GitLines
@@ -132,7 +134,7 @@ function Assert-DeployableArtifacts
     )
     $mainBinary = @(
         $Artifacts |
-            Where-Object { $_.name -ceq "HaseEndpoint.ino.bin" }
+            Where-Object { $_.name -ceq "HaseESP32.ino.bin" }
     )
 
     if ($binaryArtifacts.Count -lt 3 -or $mainBinary.Count -ne 1)
@@ -151,7 +153,7 @@ $workingRoot = $null
 
 if ($env:COMPUTERNAME -cne $expectedComputer)
 {
-    throw "The ESP32 deployment bundle must be created on AEPRAKETE."
+    throw "The ESP32 deployment bundle must be created on $expectedComputer."
 }
 
 if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container))
@@ -289,14 +291,14 @@ if ($coreResult.ExitCode -ne 0 -or
     throw "ESP32 core version validation failed."
 }
 
-$localSecretsPath = Join-Path $RepositoryRoot "HaseEndpoint\HaseSecrets.h"
+$localSecretsPath = Join-Path $RepositoryRoot "HaseESP32\HaseSecrets.h"
 
 if (-not (Test-Path -LiteralPath $localSecretsPath -PathType Leaf))
 {
     throw "The local ESP32 Wi-Fi secrets file is missing."
 }
 
-& git -C $RepositoryRoot check-ignore --quiet -- "HaseEndpoint/HaseSecrets.h"
+& git -C $RepositoryRoot check-ignore --quiet -- "HaseESP32/HaseSecrets.h"
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -304,7 +306,7 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $trackedSecrets = @(
-    Invoke-GitLines -Arguments @("ls-files", "--", "HaseEndpoint/HaseSecrets.h")
+    Invoke-GitLines -Arguments @("ls-files", "--", "HaseESP32/HaseSecrets.h")
 )
 
 if ($trackedSecrets.Count -ne 0)
@@ -323,11 +325,11 @@ $rollbackPaths = @(
     Invoke-GitLines `
         -Arguments @(
             "ls-tree", "-r", "--name-only",
-            $rollbackCommit, "--", "HaseEndpoint")
+            $rollbackCommit, "--", "HaseESP32")
 )
 
 if ($rollbackPaths.Count -ne 122 -or
-    $rollbackPaths -notcontains "HaseEndpoint/HaseEndpoint.ino")
+    $rollbackPaths -notcontains "HaseESP32/HaseESP32.ino")
 {
     throw "The approved rollback source tree changed."
 }
@@ -340,10 +342,10 @@ try
     $currentBuildRoot = Join-Path $workingRoot "CurrentBuild"
     $rollbackBuildRoot = Join-Path $workingRoot "RollbackBuild"
     $currentSourceRoot = Join-Path $workingRoot "CurrentSource"
-    $currentSketchRoot = Join-Path $currentSourceRoot "HaseEndpoint"
+    $currentSketchRoot = Join-Path $currentSourceRoot "HaseESP32"
     $rollbackArchive = Join-Path $workingRoot "RollbackSource.zip"
     $rollbackSourceRoot = Join-Path $workingRoot "RollbackSource"
-    $rollbackSketchRoot = Join-Path $rollbackSourceRoot "HaseEndpoint"
+    $rollbackSketchRoot = Join-Path $rollbackSourceRoot "HaseESP32"
 
     foreach ($directory in @(
         $workingRoot,
@@ -367,7 +369,7 @@ try
         --format=zip `
         --output=$rollbackArchive `
         $rollbackCommit `
-        HaseEndpoint
+        HaseESP32
 
     if ($LASTEXITCODE -ne 0)
     {
@@ -383,7 +385,7 @@ try
         (Join-Path $rollbackSketchRoot "HaseSecrets.h"),
         $false)
 
-    $repositorySketchRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+    $repositorySketchRoot = Join-Path $RepositoryRoot "HaseESP32"
     $actualCurrentApplicationFiles = @(
         Get-ChildItem -LiteralPath $repositorySketchRoot -File |
             Where-Object {

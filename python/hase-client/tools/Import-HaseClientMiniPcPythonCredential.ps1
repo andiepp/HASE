@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory = $true)] [string] $MiniPcProfilePath,
     [Parameter(Mandatory = $true)] [string] $MiniPcTrustedServerCertificatePath,
     [Parameter(Mandatory = $true)] [string] $TargetRegistryPath,
-    [Parameter(Mandatory = $true)] [string] $RollbackDirectory
+    [Parameter(Mandatory = $true)] [string] $RollbackDirectory,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,7 +61,7 @@ function Set-PrivateFile([string] $Path)
 
 try
 {
-    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne "LTAEP")
+    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer)
     { throw "machine" }
     $toolDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
     $packageDirectory = Split-Path -Parent $toolDirectory

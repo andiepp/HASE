@@ -6,7 +6,10 @@ param(
     [string]$TransactionId,
     [Parameter(Mandatory = $true)]
     [string]$ExpectedManifestSha256,
-    [string]$RepositoryPath = "H:\Development"
+    [string]$RepositoryPath = "H:\Development",
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,8 +17,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaEnablement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 if ($TransactionId -cnotmatch '^[0-9a-f]{64}$' -or
     $ExpectedManifestSha256 -cnotmatch '^[0-9A-Fa-f]{64}$') {
@@ -105,7 +108,7 @@ $restoredManifestHash = Get-HaseRequiredFileHash $manifestPath `
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host media enablement restored"
 Write-Host ""
-Write-Host "Computer exact            :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Computer exact            :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Transaction ID            :" $TransactionId
 Write-Host "Recovery evidence retained:" $true
 Write-Host "Restored manifest SHA-256 :" $restoredManifestHash

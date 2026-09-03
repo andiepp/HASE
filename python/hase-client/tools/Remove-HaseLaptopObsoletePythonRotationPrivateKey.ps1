@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory = $true)] [string[]] $CutoverCustodyDirectories,
     [Parameter(Mandatory = $true)] [string] $CleanupDirectory,
     [Parameter(Mandatory = $true)] [string] $ExpectedTransactionId,
-    [Parameter(Mandatory = $true)] [switch] $ReplacementOnlyConnectionProven
+    [Parameter(Mandatory = $true)] [switch] $ReplacementOnlyConnectionProven,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,7 +52,7 @@ function WriteJson([string] $Path, [object] $Document)
 $phase = "preflight"
 try
 {
-    if ($env:OS -cne "Windows_NT" -or $env:COMPUTERNAME -cne "LTAEP" -or
+    if ($env:OS -cne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer -or
         -not $ReplacementOnlyConnectionProven -or
         $ExpectedTransactionId -notmatch '^[0-9a-f]{32}$') { throw "boundary" }
     $toolDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path

@@ -41,19 +41,19 @@ Every library this example needs is part of the repository at its exact
 validated version — nothing is downloaded from the Library Manager, and
 nothing is installed on your system drive. The four Adafruit sensor
 libraries (BME280 2.3.0, BMP280 3.0.0, BusIO 1.17.4, Unified Sensor
-1.1.15) are already vendored beside the sketch in `HaseEndpoint\Libraries`.
+1.1.15) are already vendored beside the sketch in `HaseESP32\Libraries`.
 Copy the shared HASE endpoint library beside them — the copy stays local
 and is ignored by Git:
 
 ```powershell
 $ErrorActionPreference = "Stop"
-Copy-Item -Recurse -Force ".\libraries\HaseEsp32Endpoint" ".\HaseEndpoint\Libraries\"
+Copy-Item -Recurse -Force ".\libraries\HaseEsp32Endpoint" ".\HaseESP32\Libraries\"
 ```
 
 Then point the Arduino IDE at the sketch folder as its sketchbook:
 *File → Preferences → Sketchbook location* →
-`<your clone>\HaseEndpoint`, and restart the IDE. All five libraries now
-resolve from `HaseEndpoint\Libraries`, isolated from any other Arduino
+`<your clone>\HaseESP32`, and restart the IDE. All five libraries now
+resolve from `HaseESP32\Libraries`, isolated from any other Arduino
 projects and from Library Manager updates.
 
 The sketchbook location is a global IDE setting. If you use the Arduino
@@ -80,14 +80,14 @@ from `GPIO 16` to `GND` to see the status LED Property and Command.
 
 ## Create the Wi-Fi secrets
 
-The firmware reads your Wi-Fi credentials from `HaseEndpoint\HaseSecrets.h`,
+The firmware reads your Wi-Fi credentials from `HaseESP32\HaseSecrets.h`,
 which is listed in `.gitignore` and never committed. Create it from the
 tracked template, then put your real SSID and password in:
 
 ```powershell
 $ErrorActionPreference = "Stop"
-Copy-Item ".\templates\HaseEndpoint\HaseSecrets.example.h" ".\HaseEndpoint\HaseSecrets.h"
-notepad ".\HaseEndpoint\HaseSecrets.h"
+Copy-Item ".\templates\HaseESP32\HaseSecrets.example.h" ".\HaseESP32\HaseSecrets.h"
+notepad ".\HaseESP32\HaseSecrets.h"
 ```
 
 Replace `TEST_WIFI_SSID` and `TEST_WIFI_PASSWORD` with your network's
@@ -97,7 +97,7 @@ never show `HaseSecrets.h`.
 ## Flash and observe
 
 1. Connect the ESP32 over USB.
-2. In the Arduino IDE, open `HaseEndpoint\HaseEndpoint.ino` from your
+2. In the Arduino IDE, open `HaseESP32\HaseESP32.ino` from your
    clone.
 3. Select *Tools → Board → esp32 → DOIT ESP32 DEVKIT V1* and the board's
    COM port.
@@ -233,14 +233,14 @@ attaches it again.
 - **`BME280 initialization failed.`** — check the four wires and the I2C
   address; the sensor must be at `0x76`.
 - **Wi-Fi never connects (dots forever)** — verify SSID and password in
-  `HaseEndpoint\HaseSecrets.h`, and that the network is 2.4 GHz.
+  `HaseESP32\HaseSecrets.h`, and that the network is 2.4 GHz.
 - **`ping doit-esp32-devkitc-v4-01.local` fails** — some networks block or
   don't forward mDNS. Use the IP address from your router instead.
 - **The endpoint never becomes `Ready`** — confirm the serial monitor shows
   the full startup sequence; confirm the PC and the ESP32 are on the same
   network; some guest networks isolate clients from each other.
 - **`HaseEsp32Endpoint.h: No such file or directory`** — the sketchbook
-  location is not set to `<your clone>\HaseEndpoint`, or the library-copy
+  location is not set to `<your clone>\HaseESP32`, or the library-copy
   command was not run. Verify both, then restart the IDE.
 - **Upload fails with `Connecting...`** — hold the board's `BOOT` button
   until the upload starts.

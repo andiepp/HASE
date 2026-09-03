@@ -10,7 +10,8 @@ def source(name: str) -> str:
 
 def test_preparation_is_minipc_machine_and_revision_locked() -> None:
     text = source("Initialize-HaseMiniPcLaptopPythonCredentialTransaction.ps1")
-    assert 'COMPUTERNAME -cne "LABC"' in text
+    assert 'COMPUTERNAME -cne $ExpectedComputer' in text
+    assert '[string] $ExpectedComputer' in text
     assert "status --porcelain" in text
     assert "rev-parse origin/main" in text
     assert 'Get-Process -Name "Hase.DesktopHost.App"' in text

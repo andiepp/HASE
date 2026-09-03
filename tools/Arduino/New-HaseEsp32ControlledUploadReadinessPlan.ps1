@@ -37,13 +37,15 @@ param(
     [string]$VendorProduct,
 
     [Parameter(Mandatory = $true)]
-    [string]$PlanRoot
+    [string]$PlanRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$expectedComputer = "AEPRAKETE"
 $expectedCliHash =
     "7c4f90d6b1f640975a0f0ed3fab8a93f969e0ce0058c99bda69f07228d50cb6b"
 $expectedCliVersion = "1.3.1"
@@ -164,7 +166,7 @@ $VendorProduct = $VendorProduct.ToUpperInvariant()
 
 if ($env:COMPUTERNAME -cne $expectedComputer)
 {
-    throw "The controlled-upload readiness plan must be created on AEPRAKETE."
+    throw "The controlled-upload readiness plan must be created on $expectedComputer."
 }
 
 if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container))

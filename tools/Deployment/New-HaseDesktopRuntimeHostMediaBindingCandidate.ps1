@@ -6,7 +6,8 @@ param(
     [string]$MediaSourceId = "camera-01",
     [string]$DisplayName = "Runtime Host Camera",
     [string]$OutputPath = $(Join-Path $env:LOCALAPPDATA `
-        "HASE\RuntimeHost\Preparation\desktop-runtime-media.candidate.json")
+        "HASE\RuntimeHost\Preparation\desktop-runtime-media.candidate.json"),
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,8 +15,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaEnablement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 [void](Invoke-HaseGitLines $RepositoryPath @("fetch", "origin", "main"))
 Assert-HaseRepositoryState $RepositoryPath $ExpectedRepositoryCommit
@@ -117,7 +118,7 @@ $audioConfigured = @($sources | Where-Object {
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host media binding candidate prepared"
 Write-Host ""
-Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Repository commit exact    :" $true
 Write-Host "Candidate path             :" $outputFullPath
 Write-Host "Candidate SHA-256          :" $candidateHash

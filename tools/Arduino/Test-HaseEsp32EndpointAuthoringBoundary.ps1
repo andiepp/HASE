@@ -10,32 +10,32 @@ $expectedCommit =
     "afc427a633af8ff752887820761e85fc16430402"
 
 $expectedChangedPaths = @(
-    "HaseEndpoint/EndpointApplication.cpp",
-    "HaseEndpoint/EndpointApplication.h",
-    "HaseEndpoint/EndpointConfiguration.h",
-    "HaseEndpoint/EndpointDefinition.cpp",
-    "HaseEndpoint/HaseBme280Sensor.cpp",
-    "HaseEndpoint/HaseBme280Sensor.h",
-    "HaseEndpoint/HaseEndpoint.ino",
-    "HaseEndpoint/HasePhysicalEndpointDefinition.cpp",
-    "HaseEndpoint/HasePhysicalEndpointDefinition.h",
-    "HaseEndpoint/HasePhysicalEndpointDescriptor.cpp",
-    "HaseEndpoint/HasePhysicalEndpointDescriptor.h",
-    "HaseEndpoint/HasePhysicalEventPublisher.cpp",
-    "HaseEndpoint/HasePhysicalEventPublisher.h",
-    "HaseEndpoint/HasePhysicalPropertyService.cpp",
-    "HaseEndpoint/HasePhysicalPropertyService.h",
-    "HaseEndpoint/HasePushButton.cpp",
-    "HaseEndpoint/HasePushButton.h",
-    "HaseEndpoint/HaseSecrets.example.h",
-    "HaseEndpoint/HaseStatusLed.cpp",
-    "HaseEndpoint/HaseStatusLed.h",
+    "HaseESP32/EndpointApplication.cpp",
+    "HaseESP32/EndpointApplication.h",
+    "HaseESP32/EndpointConfiguration.h",
+    "HaseESP32/EndpointDefinition.cpp",
+    "HaseESP32/HaseBme280Sensor.cpp",
+    "HaseESP32/HaseBme280Sensor.h",
+    "HaseESP32/HaseESP32.ino",
+    "HaseESP32/HasePhysicalEndpointDefinition.cpp",
+    "HaseESP32/HasePhysicalEndpointDefinition.h",
+    "HaseESP32/HasePhysicalEndpointDescriptor.cpp",
+    "HaseESP32/HasePhysicalEndpointDescriptor.h",
+    "HaseESP32/HasePhysicalEventPublisher.cpp",
+    "HaseESP32/HasePhysicalEventPublisher.h",
+    "HaseESP32/HasePhysicalPropertyService.cpp",
+    "HaseESP32/HasePhysicalPropertyService.h",
+    "HaseESP32/HasePushButton.cpp",
+    "HaseESP32/HasePushButton.h",
+    "HaseESP32/HaseSecrets.example.h",
+    "HaseESP32/HaseStatusLed.cpp",
+    "HaseESP32/HaseStatusLed.h",
     "libraries/HaseEsp32Endpoint/src/HaseEndpointApplication.h",
     "libraries/HaseEsp32Endpoint/src/HaseEndpointConfiguration.h",
     "libraries/HaseEsp32Endpoint/src/HaseEndpointRuntime.cpp",
     "libraries/HaseEsp32Endpoint/src/HaseEndpointRuntime.h",
     "libraries/HaseEsp32Endpoint/src/HaseEsp32Endpoint.h",
-    "templates/HaseEndpoint/HaseSecrets.example.h",
+    "templates/HaseESP32/HaseSecrets.example.h",
     "tests/Arduino/HaseEndpointRuntimeValidation/HaseEndpointRuntimeValidation.ino",
     "tools/Arduino/Test-HaseEsp32EndpointApplicationBoundary.ps1",
     "tools/Arduino/Test-HaseEsp32EndpointAuthoringBoundary.ps1",
@@ -47,7 +47,7 @@ $expectedApplicationFiles = @(
     "EndpointApplication.h",
     "EndpointConfiguration.h",
     "EndpointDefinition.cpp",
-    "HaseEndpoint.ino"
+    "HaseESP32.ino"
 ) | Sort-Object
 
 $obsoleteApplicationFiles = @(
@@ -212,7 +212,7 @@ if ($stagedPaths.Count -ne 0)
     throw "A 54D1 file was unexpectedly staged."
 }
 
-$applicationRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+$applicationRoot = Join-Path $RepositoryRoot "HaseESP32"
 $actualApplicationFiles = @(
     Get-ChildItem -LiteralPath $applicationRoot -File |
     Where-Object {
@@ -238,7 +238,7 @@ foreach ($obsoleteFile in $obsoleteApplicationFiles)
 
 $localSecretsPath = Join-Path $applicationRoot "HaseSecrets.h"
 
-& git -C $RepositoryRoot check-ignore --quiet -- "HaseEndpoint/HaseSecrets.h"
+& git -C $RepositoryRoot check-ignore --quiet -- "HaseESP32/HaseSecrets.h"
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -246,7 +246,7 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $trackedSecrets = @(
-    Invoke-GitLines -Arguments @("ls-files", "--", "HaseEndpoint/HaseSecrets.h")
+    Invoke-GitLines -Arguments @("ls-files", "--", "HaseESP32/HaseSecrets.h")
 )
 
 if ($trackedSecrets.Count -ne 0)
@@ -255,14 +255,14 @@ if ($trackedSecrets.Count -ne 0)
 }
 
 $templatePath =
-    Join-Path $RepositoryRoot "templates\HaseEndpoint\HaseSecrets.example.h"
+    Join-Path $RepositoryRoot "templates\HaseESP32\HaseSecrets.example.h"
 
 if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf))
 {
     throw "The external secrets template is missing."
 }
 
-$inoPath = Join-Path $applicationRoot "HaseEndpoint.ino"
+$inoPath = Join-Path $applicationRoot "HaseESP32.ino"
 $configurationPath = Join-Path $applicationRoot "EndpointConfiguration.h"
 $definitionPath = Join-Path $applicationRoot "EndpointDefinition.cpp"
 $applicationHeaderPath = Join-Path $applicationRoot "EndpointApplication.h"
@@ -283,7 +283,7 @@ $runtimeSourceText = Get-Content -LiteralPath $runtimeSourcePath -Raw
 
 if ($inoLines.Count -gt 60)
 {
-    throw "HaseEndpoint.ino exceeds the approved minimal-authoring boundary."
+    throw "HaseESP32.ino exceeds the approved minimal-authoring boundary."
 }
 
 foreach ($forbiddenPattern in @(
@@ -302,7 +302,7 @@ foreach ($forbiddenPattern in @(
 {
     if ($inoText -match $forbiddenPattern)
     {
-        throw "HaseEndpoint.ino contains framework or hardware implementation."
+        throw "HaseESP32.ino contains framework or hardware implementation."
     }
 }
 

@@ -10,7 +10,10 @@ param(
     [string]$AuthorizationRequestPath,
     [Parameter(Mandatory = $true)]
     [string]$AuthorizationRequestSha256,
-    [string]$RepositoryPath = "H:\Development"
+    [string]$RepositoryPath = "H:\Development",
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,8 +21,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaEnablement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 foreach ($hash in @($CandidateSha256, $AuthorizationRequestSha256)) {
     if ($hash -cnotmatch '^[0-9A-Fa-f]{64}$') {
@@ -37,7 +40,7 @@ $plan = Get-HaseMediaEnablementPlan `
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host media enablement preflight"
 Write-Host ""
-Write-Host "Computer exact                 :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Computer exact                 :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Repository commit exact        :" $true
 Write-Host "Applications stopped           :" $true
 Write-Host "Client credential match unique :" $true

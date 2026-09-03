@@ -10,7 +10,8 @@ def source(name: str) -> str:
 
 def test_import_is_laptop_revision_locked_and_stopped() -> None:
     text = source("Import-HaseClientMiniPcPythonCredential.ps1")
-    assert 'COMPUTERNAME -cne "LTAEP"' in text
+    assert 'COMPUTERNAME -cne $ExpectedComputer' in text
+    assert '[string] $ExpectedComputer' in text
     assert "status --porcelain" in text and "rev-parse origin/main" in text
     assert 'Get-Process -Name "Hase.DesktopHost.App"' in text
 

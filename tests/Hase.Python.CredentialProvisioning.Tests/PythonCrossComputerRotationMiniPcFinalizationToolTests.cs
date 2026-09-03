@@ -8,7 +8,8 @@ public sealed class PythonCrossComputerRotationMiniPcFinalizationToolTests
         string script = ReadTool(
             "Complete-HaseMiniPcLaptopPythonCrossComputerRotation.ps1");
 
-        Assert.Contains("$env:COMPUTERNAME -cne \"LABC\"", script);
+        Assert.Contains("$env:COMPUTERNAME -cne $ExpectedComputer", script);
+        Assert.Matches(@"\[string\]\s*\$ExpectedComputer", script);
         Assert.Contains("rev-parse origin/main", script);
         Assert.Contains("status --porcelain", script);
         Assert.Contains("Hase.DesktopHost.App", script);

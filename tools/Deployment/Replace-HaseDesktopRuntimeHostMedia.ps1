@@ -16,7 +16,10 @@ param(
     [int]$ExpectedReplacementSourceCount = 2,
     [bool]$ExpectedCurrentAudioConfigured = $false,
     [bool]$ExpectedReplacementAudioConfigured = $false,
-    [string]$RepositoryPath = "H:\Development"
+    [string]$RepositoryPath = "H:\Development",
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,8 +27,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaReplacement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 if ($ExpectedTransactionId -cnotmatch '^[0-9a-f]{64}$') {
     throw "The expected transaction identity is invalid."
@@ -320,7 +323,7 @@ Write-Host ""
 Write-Host "ADR-0055 Runtime Host active-media replacement succeeded"
 Write-Host ""
 Write-Host "Computer exact               :" `
-    ($env:COMPUTERNAME -ceq "AEPRAKETE")
+    ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Transaction ID               :" $plan.TransactionId
 Write-Host "Recovery directory           :" $transactionDirectory
 Write-Host "Recovery manifest SHA-256    :" $manifestHash

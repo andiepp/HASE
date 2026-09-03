@@ -5,13 +5,14 @@ param(
     [Parameter(Mandatory=$true)][string]$PrivateKeyPath,
     [Parameter(Mandatory=$true)][string]$DesktopServerCertificatePath,
     [Parameter(Mandatory=$true)][string]$MiniPcServerCertificatePath,
-    [Parameter(Mandatory=$true)][string]$RollbackEvidencePath
+    [Parameter(Mandatory=$true)][string]$RollbackEvidencePath,
+    [Parameter(Mandatory=$true)][string]$ExpectedComputer
 )
 $ErrorActionPreference="Stop"; Set-StrictMode -Version Latest
 $profile=$null;$original=$null;$originalSddl=$null;$stage=$null;$published=$false
 function Full([string]$p){if([string]::IsNullOrWhiteSpace($p)-or-not [IO.Path]::IsPathRooted($p)){throw"path"};[IO.Path]::GetFullPath($p)}
 try{
- if($env:COMPUTERNAME -cne "LTAEP"){throw"machine"}
+ if($env:COMPUTERNAME -cne $ExpectedComputer){throw"machine"}
  $tool=Split-Path -Parent $MyInvocation.MyCommand.Path;$pkg=Split-Path -Parent $tool;$repo=[IO.Path]::GetFullPath((Join-Path $pkg "..\.."))
  if(@(& git -C $repo status --porcelain).Count-ne0){throw"repository"};$h=(& git -C $repo rev-parse HEAD).Trim();$o=(& git -C $repo rev-parse origin/main).Trim();if($h-ne$o){throw"repository"}
  $profile=Full $ProfilePath;$cert=Full $CertificatePath;$key=Full $PrivateKeyPath;$server=Full $DesktopServerCertificatePath;$mini=Full $MiniPcServerCertificatePath;$rollback=Full $RollbackEvidencePath

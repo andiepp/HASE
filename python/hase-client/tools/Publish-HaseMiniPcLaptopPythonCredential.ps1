@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory = $true)] [string] $LaptopCertificatePath,
     [Parameter(Mandatory = $true)] [string] $LaptopPrivateKeyPath,
     [Parameter(Mandatory = $true)] [string] $LaptopProfilePath,
-    [Parameter(Mandatory = $true)] [string] $LaptopTrustedServerCertificatePath
+    [Parameter(Mandatory = $true)] [string] $LaptopTrustedServerCertificatePath,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,7 +50,7 @@ function Set-PrivateFile([string] $Path)
 
 try
 {
-    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne "LABC")
+    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer)
     { throw "machine" }
     $rollback = Resolve-AbsolutePath $RollbackDirectory
     $planPath = Join-Path $rollback "transaction-plan.json"

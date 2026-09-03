@@ -14,7 +14,10 @@ param(
     [int]$ExpectedReplacementSourceCount = 2,
     [bool]$ExpectedCurrentAudioConfigured = $false,
     [bool]$ExpectedReplacementAudioConfigured = $false,
-    [string]$RepositoryPath = "H:\Development"
+    [string]$RepositoryPath = "H:\Development",
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,8 +25,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaReplacement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 [void](Invoke-HaseGitLines $RepositoryPath @("fetch", "origin", "main"))
 Assert-HaseRepositoryState $RepositoryPath $ExpectedRepositoryCommit
@@ -39,7 +42,7 @@ $plan = Get-HaseMediaReplacementPlan `
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host active-media replacement preflight"
 Write-Host ""
-Write-Host "Computer exact                 :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Computer exact                 :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Repository commit exact        :" $true
 Write-Host "Applications stopped           :" $true
 Write-Host "Current source count           :" $plan.CurrentSourceCount

@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory = $true)] [string] $TargetRegistryPath,
     [Parameter(Mandatory = $true)] [string] $RequestDirectory,
-    [Parameter(Mandatory = $true)] [string] $RequestPath
+    [Parameter(Mandatory = $true)] [string] $RequestPath,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -84,7 +85,7 @@ function Get-Sha256([string] $Path)
 try
 {
     $phase = "machine"
-    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne "LTAEP")
+    if ($env:OS -ne "Windows_NT" -or $env:COMPUTERNAME -cne $ExpectedComputer)
     { throw "machine" }
 
     $phase = "repository"

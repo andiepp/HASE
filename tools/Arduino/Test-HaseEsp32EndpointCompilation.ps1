@@ -25,7 +25,7 @@ $expectedApplicationFiles = @(
     "EndpointApplication.h",
     "EndpointConfiguration.h",
     "EndpointDefinition.cpp",
-    "HaseEndpoint.ino"
+    "HaseESP32.ino"
 ) | Sort-Object
 
 $expectedFrameworkFiles = @(
@@ -318,9 +318,9 @@ $statusBefore = @(
 )
 
 $localSecretsPath =
-    Join-Path $RepositoryRoot "HaseEndpoint\HaseSecrets.h"
+    Join-Path $RepositoryRoot "HaseESP32\HaseSecrets.h"
 
-& git -C $RepositoryRoot check-ignore --quiet -- "HaseEndpoint/HaseSecrets.h"
+& git -C $RepositoryRoot check-ignore --quiet -- "HaseESP32/HaseSecrets.h"
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -328,7 +328,7 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $trackedSecrets = @(
-    & git -C $RepositoryRoot ls-files -- "HaseEndpoint/HaseSecrets.h"
+    & git -C $RepositoryRoot ls-files -- "HaseESP32/HaseSecrets.h"
 )
 
 if ($LASTEXITCODE -ne 0)
@@ -341,7 +341,7 @@ if ($trackedSecrets.Count -ne 0)
     throw "The local HaseSecrets.h file is unexpectedly tracked."
 }
 
-$applicationRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+$applicationRoot = Join-Path $RepositoryRoot "HaseESP32"
 $frameworkLibraryRoot =
     Join-Path $RepositoryRoot "libraries\HaseEsp32Endpoint"
 $frameworkSourceRoot = Join-Path $frameworkLibraryRoot "src"
@@ -497,7 +497,7 @@ if (@($boardOutput | Where-Object {
 
 [System.IO.Directory]::CreateDirectory($EvidenceRoot) | Out-Null
 
-$sketchRoot = Join-Path $EvidenceRoot "Sketch\HaseEndpoint"
+$sketchRoot = Join-Path $EvidenceRoot "Sketch\HaseESP32"
 $runtimeFixtureRoot =
     Join-Path $EvidenceRoot "RuntimeFixture\HaseEndpointRuntimeValidation"
 $runtimeBuildRoot = Join-Path $EvidenceRoot "RuntimeBuild"

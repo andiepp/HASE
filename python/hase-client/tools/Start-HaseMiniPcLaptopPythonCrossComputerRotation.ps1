@@ -8,12 +8,13 @@ param(
     [Parameter(Mandatory=$true)][string]$RuntimeConfigurationPath,
     [Parameter(Mandatory=$true)][string]$ProvisioningDirectory,
     [Parameter(Mandatory=$true)][string]$TransferArchivePath,
-    [Parameter(Mandatory=$true)][ValidateRange(1,90)][int]$ValidityDays)
+    [Parameter(Mandatory=$true)][ValidateRange(1,90)][int]$ValidityDays,
+    [Parameter(Mandatory=$true)][string]$ExpectedComputer)
 $ErrorActionPreference="Stop";Set-StrictMode -Version Latest
 function A([string]$v){if([string]::IsNullOrWhiteSpace($v)-or $v-ne$v.Trim()-or $v-notmatch'^[A-Za-z]:[\\/]'){throw"path"};[IO.Path]::GetFullPath($v)}
 function PrivateDir([string]$p){$u=[Security.Principal.WindowsIdentity]::GetCurrent().User;$a=[Security.AccessControl.DirectorySecurity]::new();$a.SetOwner($u);$a.SetAccessRuleProtection($true,$false);$a.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($u,"FullControl","ContainerInherit,ObjectInherit","None","Allow"));Set-Acl $p $a}
 try{
- if($env:OS-ne"Windows_NT"-or$env:COMPUTERNAME-cne"LABC"){throw"machine"}
+ if($env:OS-ne"Windows_NT"-or$env:COMPUTERNAME-cne$ExpectedComputer){throw"machine"}
  $td=Split-Path -Parent $MyInvocation.MyCommand.Path;$root=[IO.Path]::GetFullPath((Join-Path $td "..\..\.."))
  if(@(& git -C $root status --porcelain).Count-ne0-or(& git -C $root rev-parse HEAD).Trim()-ne(& git -C $root rev-parse origin/main).Trim()){throw"repository"}
  if(@(Get-Process Hase.DesktopHost.App -ErrorAction SilentlyContinue).Count-ne0-or@(Get-Process Hase.Client.Wpf.App -ErrorAction SilentlyContinue).Count-ne0){throw"processes"}

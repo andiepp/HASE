@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)] [string] $ProvisioningDirectory,
-    [Parameter(Mandatory = $true)] [string] $EnrollmentPath
+    [Parameter(Mandatory = $true)] [string] $EnrollmentPath,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,7 +34,7 @@ $bytes = $null
 try
 {
     if ($env:OS -cne "Windows_NT" -or
-        $env:COMPUTERNAME -cne "LABC" -or
+        $env:COMPUTERNAME -cne $ExpectedComputer -or
         @(Get-Process -Name "Hase.DesktopHost.App","Hase.Client.Wpf.App" `
             -ErrorAction SilentlyContinue).Count -ne 0)
     {

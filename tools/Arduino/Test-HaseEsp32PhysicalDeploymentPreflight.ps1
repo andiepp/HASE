@@ -15,13 +15,15 @@ param(
     [string]$Port,
 
     [Parameter(Mandatory = $true)]
-    [string]$EvidenceRoot
+    [string]$EvidenceRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$expectedComputer = "AEPRAKETE"
 $rollbackCommit =
     "96db1799d410eedc82aea82cc3f5b3efa003242c"
 $expectedCliHash =
@@ -35,7 +37,7 @@ $expectedApplicationFiles = @(
     "EndpointApplication.h",
     "EndpointConfiguration.h",
     "EndpointDefinition.cpp",
-    "HaseEndpoint.ino"
+    "HaseESP32.ino"
 ) | Sort-Object
 
 $expectedDefinitionTokens = @(
@@ -139,7 +141,7 @@ $ExpectedCommit = $ExpectedCommit.ToLowerInvariant()
 
 if ($env:COMPUTERNAME -cne $expectedComputer)
 {
-    throw "The ESP32 deployment preflight must run on AEPRAKETE."
+    throw "The ESP32 deployment preflight must run on $expectedComputer."
 }
 
 if (-not (Test-Path -LiteralPath $RepositoryRoot -PathType Container))
@@ -293,14 +295,14 @@ if ($selectedPorts.Count -ne 1)
 }
 
 $localSecretsPath =
-    Join-Path $RepositoryRoot "HaseEndpoint\HaseSecrets.h"
+    Join-Path $RepositoryRoot "HaseESP32\HaseSecrets.h"
 
 if (-not (Test-Path -LiteralPath $localSecretsPath -PathType Leaf))
 {
     throw "The local ESP32 Wi-Fi secrets file is missing."
 }
 
-& git -C $RepositoryRoot check-ignore --quiet -- "HaseEndpoint/HaseSecrets.h"
+& git -C $RepositoryRoot check-ignore --quiet -- "HaseESP32/HaseSecrets.h"
 
 if ($LASTEXITCODE -ne 0)
 {
@@ -308,7 +310,7 @@ if ($LASTEXITCODE -ne 0)
 }
 
 $trackedSecrets = @(
-    Invoke-GitLines -Arguments @("ls-files", "--", "HaseEndpoint/HaseSecrets.h")
+    Invoke-GitLines -Arguments @("ls-files", "--", "HaseESP32/HaseSecrets.h")
 )
 
 if ($trackedSecrets.Count -ne 0)
@@ -316,7 +318,7 @@ if ($trackedSecrets.Count -ne 0)
     throw "The local ESP32 Wi-Fi secrets file is unexpectedly tracked."
 }
 
-$applicationRoot = Join-Path $RepositoryRoot "HaseEndpoint"
+$applicationRoot = Join-Path $RepositoryRoot "HaseESP32"
 $actualApplicationFiles = @(
     Get-ChildItem -LiteralPath $applicationRoot -File |
         Where-Object {
@@ -360,11 +362,11 @@ $rollbackPaths = @(
             "--name-only",
             $rollbackCommit,
             "--",
-            "HaseEndpoint")
+            "HaseESP32")
 )
 
 if ($rollbackPaths.Count -ne 122 -or
-    $rollbackPaths -notcontains "HaseEndpoint/HaseEndpoint.ino")
+    $rollbackPaths -notcontains "HaseESP32/HaseESP32.ino")
 {
     throw "The approved rollback source tree changed."
 }

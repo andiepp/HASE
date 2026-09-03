@@ -12,7 +12,10 @@ param(
     [string]$AuthorizationRequestSha256,
     [Parameter(Mandatory = $true)]
     [string]$ExpectedTransactionId,
-    [string]$RepositoryPath = "H:\Development"
+    [string]$RepositoryPath = "H:\Development",
+
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,8 +23,8 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "HaseMediaEnablement.Common.ps1")
 
-if ($env:COMPUTERNAME -cne "AEPRAKETE") {
-    throw "Run this tool only on AEPRAKETE."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 if ($ExpectedTransactionId -cnotmatch '^[0-9a-f]{64}$') {
     throw "The expected transaction identity is invalid."
@@ -293,7 +296,7 @@ $manifestHash = Get-HaseRequiredFileHash $manifestPath `
 Write-Host ""
 Write-Host "ADR-0055 Runtime Host media enablement succeeded"
 Write-Host ""
-Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq "AEPRAKETE")
+Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Transaction ID             :" $plan.TransactionId
 Write-Host "Recovery directory         :" $transactionDirectory
 Write-Host "Recovery manifest SHA-256  :" $manifestHash

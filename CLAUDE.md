@@ -34,7 +34,7 @@ Do not stage, commit, or push without explicit per-increment approval.
 - `tools/` — operational PowerShell for Arduino/ESP32, Deployment, and
   PrivateNetwork. Treat every script here as physical-mutation tooling.
 - `python/hase-client/` — asyncio Python client, pytest, setuptools.
-- `libraries/`, `templates/`, `HaseEndpoint/`, and
+- `libraries/`, `templates/`, `HaseESP32/`, and
   `HaseArduinoUno/` — endpoint firmware sources.
 
 Solution file is `HASE.slnx`. Target framework is `net10.0` throughout, except
@@ -92,7 +92,7 @@ never implies permission to commit.
   `git diff --cached --name-only --no-renames`, because rename detection
   collapses a moved file into a single entry.
 - Never print certificate contents, private keys, secrets, or remote addresses.
-  `HaseEndpoint/HaseSecrets.h` is untracked and must never be read aloud,
+  `HaseESP32/HaseSecrets.h` is untracked and must never be read aloud,
   echoed, or committed.
 - End every handoff with the exact current baseline and the single next
   authorized action.

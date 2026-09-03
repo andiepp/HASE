@@ -4,7 +4,8 @@ param(
     [string]$ExpectedRepositoryCommit,
     [string]$RepositoryPath = "H:\Development",
     [string]$OutputPath = $(Join-Path $env:LOCALAPPDATA `
-        "HASE\Client\Preparation\runtime-host-media-authorization-request.json")
+        "HASE\Client\Preparation\runtime-host-media-authorization-request.json"),
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -97,8 +98,8 @@ function Set-HaseAuthorizationRequestDirectoryAcl {
     $directoryInfo.SetAccessControl($directorySecurity)
 }
 
-if ($env:COMPUTERNAME -cne "LTAEP") {
-    throw "Run this tool only on LTAEP."
+if ($env:COMPUTERNAME -cne $ExpectedComputer) {
+    throw "Run this tool only on $ExpectedComputer."
 }
 
 [void](Invoke-HaseGitLines $RepositoryPath @("fetch", "origin", "main"))
@@ -218,7 +219,7 @@ $requestHash = Get-HaseRequiredFileHash $outputFullPath `
 Write-Host ""
 Write-Host "ADR-0055 Client media authorization request prepared"
 Write-Host ""
-Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq "LTAEP")
+Write-Host "Computer exact             :" ($env:COMPUTERNAME -ceq $ExpectedComputer)
 Write-Host "Repository commit exact    :" $true
 Write-Host "Enabled profile count      :" $requestProfiles.Count
 Write-Host "Output path                 :" $outputFullPath

@@ -5,7 +5,8 @@ param(
     [Parameter(Mandatory = $true)] [string] $AuthorizationPolicyPath,
     [Parameter(Mandatory = $true)] [string] $ProvisioningDirectory,
     [Parameter(Mandatory = $true)] [string] $ExpectedTransactionId,
-    [Parameter(Mandatory = $true)] [switch] $ReplacementConnectionProven
+    [Parameter(Mandatory = $true)] [switch] $ReplacementConnectionProven,
+    [Parameter(Mandatory = $true)] [string] $ExpectedComputer
 )
 
 $ErrorActionPreference = "Stop"
@@ -118,7 +119,7 @@ $overlapBytes = $null
 try
 {
     if ($env:OS -cne "Windows_NT" -or
-        $env:COMPUTERNAME -cne "LABC")
+        $env:COMPUTERNAME -cne $ExpectedComputer)
     {
         throw "machine"
     }
