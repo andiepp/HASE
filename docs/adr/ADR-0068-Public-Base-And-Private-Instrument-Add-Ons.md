@@ -1075,9 +1075,9 @@ estate and observed operating; the base describes its operation by role,
 its tools take their computer as a parameter, and its checked-in files
 carry no identifier of the operator or the estate. The base stands at
 5,817 passing tests across 28 test projects and 528 in its Python
-package; the add-on at 1,208 across 9 and 47 in its Python package. What
-stays open is the add-on's: its GPL-3 licence against an MIT base is
-GitHub's form default rather than a decision.
+package; the add-on at 1,208 across 9 and 47 in its Python package. The
+add-on's licence, GPL-3 by GitHub's form default at closure, became MIT,
+the base's, by decision on 2026-09-03; nothing stays open.
 
 ## Deferred scope
 

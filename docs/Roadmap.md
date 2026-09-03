@@ -2694,8 +2694,8 @@ Increments:
     tag `v0.1.0` is placed on the commit that closes the ADR; this
     document, the ADR and Project Status mark it closed.
 
-ADR-0068 is complete. Open around the add-on: its GPL-3 licence against
-an MIT base is GitHub's form default rather than a decision; the
+ADR-0068 is complete. The add-on's licence, GPL-3 by GitHub's form
+default at closure, became MIT by decision on 2026-09-03; the
 `HASE Dev Host` shortcut keeps targeting the base repository's build by
 decision.
 

@@ -151,10 +151,10 @@ repository and installed from it, at 5,817 passing tests in the base and
 ### Next
 
 No increment of ADR-0068 remains. The base is declared in its intended
-form and tagged `v0.1.0`; what stays open is the add-on's GPL-3 licence
-against an MIT base, GitHub's form default rather than a decision, and
-enabling private vulnerability reporting in the repository's settings,
-which the security policy relies on.
+form and tagged `v0.1.0`; what stays open is enabling private
+vulnerability reporting in the repository's settings, which the security
+policy relies on. The add-on's licence, GPL-3 by GitHub's form default at
+closure, became MIT by decision on 2026-09-03.
 
 68I3 is complete in three passes: the twenty-five tools that refuse to
 run on the wrong computer take that computer as a mandatory parameter
@@ -177,9 +177,9 @@ the way through. The Runtime Host application did still hold the KEL-103
 command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
-Three matters remain open in the base outside that sequence, and one
-around the add-on: it carries GPL-3 against an MIT base by GitHub's form
-default rather than by decision. The installed Lab applications have been
+Three matters remain open in the base outside that sequence, and none
+around the add-on: its licence is MIT, the base's, by decision on
+2026-09-03. The installed Lab applications have been
 started and observed: the Runtime Host on AEPRAKETE published its four
 laboratory endpoints and the Client on LTAEP operated them, reported by
 the operator. The `HASE Dev Host` shortcut keeps targeting the base
