@@ -50,7 +50,7 @@ Keep these as separate stop points unless the user explicitly combines them:
 2. repository application;
 3. focused and complete automated validation;
 4. commit and push;
-5. synchronization of AEPRAKETE, LABC, and LTAEP;
+5. synchronization of every computer of the operator's estate;
 6. controlled physical operation;
 7. independent physical validation;
 8. documentation-only closure.
@@ -79,7 +79,7 @@ without a concise update.
 ## 5. Windows PowerShell rules
 
 Operational scripts must target the actual Windows PowerShell environment used
-on the three HASE computers.
+on the operator's computers.
 
 - Start scripts with `$ErrorActionPreference = "Stop"` and
   `Set-StrictMode -Version Latest`.

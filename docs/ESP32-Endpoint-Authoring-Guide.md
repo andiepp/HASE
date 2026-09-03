@@ -346,7 +346,8 @@ does not belong in the sketch file.
 
 ## Validate before any physical operation
 
-Run validation from the repository root on the controlled AEPRAKETE toolchain.
+Run validation from the repository root on the computer that holds the
+controlled toolchain.
 
 ### 1. Check the application surface
 

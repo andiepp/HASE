@@ -33,8 +33,8 @@ Read-only 55A readiness established:
 
 | Role | Computer | Operating system | WebView2 Runtime | Relevant result |
 | --- | --- | --- | --- | --- |
-| Runtime Host | AEPRAKETE | Windows 10 Pro 10.0.19045 x64 | 151.0.4129.86 | One enabled camera-class device; two enabled microphone endpoints; privacy preflight not denied |
-| Viewing Client | LTAEP | Windows 11 Pro 10.0.26200 x64 | 151.0.4129.86 | Private-network and presentation prerequisites ready; privacy preflight not denied |
+| Runtime Host | Desktop | Windows 10 Pro 10.0.19045 x64 | 151.0.4129.86 | One enabled camera-class device; two enabled microphone endpoints; privacy preflight not denied |
+| Viewing Client | Laptop | Windows 11 Pro 10.0.26200 x64 | 151.0.4129.86 | Private-network and presentation prerequisites ready; privacy preflight not denied |
 
 Both machines have a .NET 10 SDK and Windows Desktop Runtime. The repository
 does not reference WebView2 at the accepted baseline. A later increment must
@@ -303,8 +303,8 @@ firewall rule, change a privacy setting, install a Runtime, publish
 configuration, or access a device unless that action is explicit in an
 approved increment and preceded by a read-only preflight.
 
-The first physical topology is AEPRAKETE as Runtime Host and LTAEP as Viewing
-Client. Naming those machines does not authorize application start, camera or
+The first physical topology is Desktop as Runtime Host and Laptop as Viewing
+Client. Naming those roles does not authorize application start, camera or
 microphone access, network signaling, capture, deployment, or physical change.
 
 Increment 55C pins the WPF WebView2 SDK at `1.0.4129.50` and packages only
@@ -326,7 +326,7 @@ device access, capture, signaling, firewall, privacy, credential, or physical
 effect during repository application and automated validation.
 
 The 55C focused session-owner, Desktop Host/WebView2 policy, and retained
-media-control adapter tests succeeded on AEPRAKETE. The complete Release suite
+media-control adapter tests succeeded on Desktop. The complete Release suite
 passes 6,113 tests with zero failures and zero skips; the successful build
 reports 56 warnings. Validation did not initialize WebView2 or access a media
 device. The exact 22-path implementation is committed as
@@ -359,7 +359,7 @@ validation do not initialize WebView2 or access any media device.
 
 The 55D focused media contract, multi-source session-owner, capability
 projection, Client selection, and Client WebView2 policy suites succeeded on
-AEPRAKETE. The complete Release suite passes 6,139 tests with zero failures and
+Desktop. The complete Release suite passes 6,139 tests with zero failures and
 zero skips; the successful build reports 45 warnings. The single compile-time
 validation interruption was corrected by explicitly typing an existing test
 helper constructor; it did not change production behavior. Validation did not
@@ -400,7 +400,7 @@ create `RTCPeerConnection`, enumerate or access a device, capture or render
 media, exchange live network signaling, register a service endpoint, change
 configuration, deploy, or mutate firewall, privacy, credential, firmware, or
 physical state. Focused validation and the complete Release suite succeeded on
-AEPRAKETE with 6,158 passed, zero failed, and zero skipped. The exact 16-path
+Desktop with 6,158 passed, zero failed, and zero skipped. The exact 16-path
 implementation is committed as
 `c7d509f43a34948695656614ba5131fb526a4450`.
 
@@ -462,7 +462,7 @@ Application-only updates preserve the external media configuration exactly.
 configuration, alter privacy settings, deploy applications, or perform live
 media validation.
 
-Focused 55E3 tests and the complete Release suite succeeded on AEPRAKETE. The
+Focused 55E3 tests and the complete Release suite succeeded on Desktop. The
 complete suite passes 6,202 tests with zero failures and zero skips; the
 successful build reports 39 warnings. Automated validation retained the exact
 54-path scope without starting either application, initializing WebView2,

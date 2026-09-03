@@ -19,13 +19,13 @@ hardware operation.
 ## Examples — inspect one Runtime Host
 
 ADR-0052 begins with a user-oriented read-only example that consumes only the
-public installed `hase-client 0.6.0` API. The example requires the external
+public installed `hase-client 0.7.0` API. The example requires the external
 Laptop target registry and one exact target ID; it never discovers, defaults,
 fans out, fails over, redirects, retries, reconnects, or automatically selects a
 Runtime Host.
 
 Run the example with the Python interpreter from an environment where
-`hase-client 0.6.0` is installed:
+`hase-client 0.7.0` is installed:
 
 ```powershell
 python .\examples\inspect_runtime_host.py `
@@ -42,12 +42,12 @@ addresses, credential/trust paths and contents, Runtime Host identity,
 attachment generation, and instrument serial numbers are not printed.
 ## Example — authoritative Property read
 
-`examples/read_property.py` demonstrates one explicit authoritative Property read using the installed `hase-client 0.6.0` public API. Supply the external registry and exact target, endpoint, instrument, and Property identifiers. The example obtains one snapshot to bind the current attachment generation and then performs one authoritative read. It never retries, reconnects, falls back to cached data, writes, executes a Command, or subscribes.
+`examples/read_property.py` demonstrates one explicit authoritative Property read using the installed `hase-client 0.7.0` public API. Supply the external registry and exact target, endpoint, instrument, and Property identifiers. The example obtains one snapshot to bind the current attachment generation and then performs one authoritative read. It never retries, reconnects, falls back to cached data, writes, executes a Command, or subscribes.
 
 
 ## Example — bounded repeated Property sampling
 
-`examples/sample_property.py` extends the single-read example into a bounded measurement session using only the installed `hase-client 0.6.0` public API. It requires explicit target, endpoint, instrument, Property, interval, and count; opens one channel; obtains one snapshot; reuses one attachment generation; and performs sequential authoritative reads on a monotonic schedule.
+`examples/sample_property.py` extends the single-read example into a bounded measurement session using only the installed `hase-client 0.7.0` public API. It requires explicit target, endpoint, instrument, Property, interval, and count; opens one channel; obtains one snapshot; reuses one attachment generation; and performs sequential authoritative reads on a monotonic schedule.
 
 ```powershell
 python .\examples\sample_property.py `
@@ -64,7 +64,7 @@ The example stops on the first failed sample and never retries, reconnects, refr
 
 ## Example — bounded live Runtime Host observation
 
-`examples/observe_runtime_host.py` demonstrates the public installed `hase-client 0.6.0` observation stream without polling. It requires an external target registry, one exact target, and a bounded live-observation count.
+`examples/observe_runtime_host.py` demonstrates the public installed `hase-client 0.7.0` observation stream without polling. It requires an external target registry, one exact target, and a bounded live-observation count.
 
 For example:
 
@@ -200,6 +200,14 @@ Version 0.7.0 moves the laboratory's confirmed instrument workflows and
 physical validations to the laboratory's own package, `hase-lab`, under
 ADR-0068 68I2d; this package names no instrument and offers the read-only
 workflows above.
+
+## Tools bound to one computer
+
+Every tool that must run on one computer takes that computer's name as a
+mandatory `-ExpectedComputer` parameter and refuses any other, exactly as it
+did when the name was written into it. Which computer is the Desktop, the
+MiniPC, or the Laptop is recorded in the operator's own operating notes, not
+in this package.
 
 ## Independent multi-host security readiness
 
@@ -453,7 +461,7 @@ transactional publication, transfer, and Laptop installation remain deferred.
 After both readiness checks pass, the MiniPC-only
 `Initialize-HaseMiniPcLaptopPythonCredentialTransaction.ps1` tool prepares the
 Laptop transaction without issuing or publishing a credential. It requires
-machine `LABC`, reuses the strict MiniPC readiness boundary, verifies the
+the MiniPC, reuses the strict MiniPC readiness boundary, verifies the
 dedicated non-exportable authority and active public server certificate, and
 records a Current-User-only profile template plus exact enrollment,
 authorization-policy, and application-profile originals. Its transaction plan
@@ -482,7 +490,7 @@ retains the original 51E2B1 preparation evidence. Laptop installation,
 connection, RPCs, and hardware operations remain outside publication and are
 performed only by a later explicit installed-workflow validation.
 
-On Laptop `LTAEP`, `Import-HaseClientMiniPcPythonCredential.ps1` validates the
+On the Laptop, `Import-HaseClientMiniPcPythonCredential.ps1` validates the
 transferred archive in place before extraction: exactly four root entries,
 strict manifest identity and destination paths, and SHA-256 for all credential
 payloads. It extracts only into a private rollback-owned stage, validates the
@@ -507,7 +515,7 @@ explicit Current-User-only protected ACL.
 
 If Laptop readiness finds a Desktop Python profile whose three custody paths
 still refer to the MiniPC user root, use the paired Laptop-only custody repair
-and restore tools. Repair requires machine `LTAEP`, exact stale-root evidence,
+and restore tools. Repair requires the Laptop, exact stale-root evidence,
 a locally matching certificate/key pair, distinct Desktop and MiniPC server
 certificates, a clean synchronized repository, and a new external rollback
 file. It changes only the three profile paths, preserves the address, records
@@ -818,7 +826,7 @@ be committed, copied into a source archive, or displayed.
 
 ## Current scope
 
-The package (version 0.6.0) currently provides:
+The package (version 0.7.0) currently provides:
 
 - distribution name `hase-client` and import namespace `hase`;
 - reproducible version-1 protobuf and gRPC bindings with byte-exact

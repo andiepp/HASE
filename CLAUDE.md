@@ -16,8 +16,11 @@ The public GitHub repository `andiepp/HASE` is the authoritative source.
 - Work locally. Push only after the change has proven successful: focused and
   complete tests pass, the final diff is reviewed, and the changed-path set
   matches the approved scope.
-- After pushing, synchronize AEPRAKETE, LABC, and LTAEP from `origin/main` and
-  confirm each is clean, per `AGENTS.md` §3 and §8.
+- After pushing, synchronize every computer of the operator's estate from
+  `origin/main` and confirm each is clean, per `AGENTS.md` §3 and §8. The
+  computers, their roles, and which tool runs where are named in the
+  operator's own operating notes, not here; tools that must run on one
+  computer take its name as `-ExpectedComputer`.
 - Physical validation is separate and always explicitly approved.
 
 Do not stage, commit, or push without explicit per-increment approval.
@@ -65,7 +68,7 @@ Notes:
 - 63 warnings is the accepted baseline for a successful complete build. Report
   the count and any drift from it. Warnings appear only on a cold build.
 - No test carries a `Skip` or hardware `Trait`. The complete suite is
-  self-contained and needs no attached ESP32, Arduino, or KEL-103 hardware.
+  self-contained and needs no attached hardware.
 
 ## Autonomy boundary
 
