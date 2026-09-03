@@ -177,28 +177,28 @@ the way through. The Runtime Host application did still hold the KEL-103
 command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
-Three matters remain open in the base outside that sequence, and none
+One matter remains open in the base outside that sequence, and none
 around the add-on: its licence is MIT, the base's, by decision on
-2026-09-03. The installed Lab applications have been
-started and observed: the Runtime Host on AEPRAKETE published its four
-laboratory endpoints and the Client on LTAEP operated them, reported by
-the operator. The `HASE Dev Host` shortcut keeps targeting the base
+2026-09-03. The installed Lab applications have been started and
+observed: the Runtime Host on AEPRAKETE published its four laboratory
+endpoints and the Client on LTAEP operated them, reported by the
+operator; the Lab client installed on LTAEP on 2026-09-03 was observed
+the same way. The `HASE Dev Host` shortcut keeps targeting the base
 repository's build by decision; it is the development host.
 
-KEL-103 definition version 6 exists without being in service, and this now
-has a visible effect: until it is, the Runtime Host offers the modes, input
-controls and SHORT activation as ordinary command entries rather than as
-dedicated controls. Nothing is unreachable and the confirmation still has
-to be ticked, but the dedicated surface is absent. Changing it needs a tool
-operation, a republish and a composition edit.
+The one base matter: the Client still carries the KEL-103's short-circuit
+activation as a named surface. 68E made the logic generic, an explicitly
+confirmed Command with a hold-to-invoke interaction the descriptor
+declares, but the names stayed, about sixty references across the Client,
+its window and five test files. The source guard cannot see it, because
+"short circuit" is an instrument's concept rather than its name. It is
+the candidate for the next ADR.
 
-The base library still names both instruments in its legacy typed
-projections, 62 occurrences across four files. That is a composition-format
-decision rather than a presentation one, and it touches migrated
-compositions across the estate.
-
-The Client exposes `ConfirmedShortCircuitActivationCommand` as a name over
-logic that 68E already made generic; a rename rather than a change.
+Two matters this list once carried are no longer the base's. The legacy
+typed projections left the base library in 68I2c. KEL-103 definition
+version 6 existing without being in service, with the dedicated mode,
+input and SHORT controls absent until it is, is the laboratory's, and
+lives with the add-on since 68H.
 
 ---
 
