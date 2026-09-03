@@ -958,6 +958,48 @@ in the base package, from 569; the complete .NET suite unchanged at
 workflows come from at the next installation. What 68I2 leaves: nothing
 in the base names an instrument it does not ship, in either language.
 
+#### Increment 68I3 — The operating documents become generic
+
+Scoping found that the estate shows through in four ways, not one, and
+that two of them are not documents. Five documents name the computers as
+instructions. Twenty-five tools refuse to run on the wrong computer by
+comparing its name with a literal, a deliberate safety design that five
+tests pin by name; making the documents generic while the tools still
+said "run this only on" a named computer would have made the documents
+untrue. One user-profile path appears in the application's checked-in
+launch settings and in a Python repair tool. Four documents use
+private-network example addresses. Hence three sub-increments, the tools
+first so that the documents become true only after them.
+
+68I3a, the tools, complete as `8cb811f`; 5,817 passed, 0 failed, 0
+skipped across 28 test projects, 528 in the Python package, all changed
+scripts parsed under Windows PowerShell 5.1. The guard stays and the name
+leaves the code: each of the twenty-five tools takes a mandatory
+`-ExpectedComputer`, appended last so no positional argument shifts, and
+compares the computer's name with it exactly as before; the messages
+interpolate it; the five pinning tests assert the guard and the parameter.
+No tool or test in the base names a computer. The add-on gained an
+operating document naming its three computers by role, the
+synchronization protocol, and which computer each of the twenty-five
+tools runs on; that is where the names live now, and every guarded tool's
+next real run must pass one.
+
+In the same commit, at the operator's request, the ESP32 sketch
+directory `HaseEndpoint` became `HaseESP32`, its sketch file and the
+template directory with it, across the ignore rules, the operating notes,
+the ESP32 guide, Example 2, four Arduino tools and one test; the firmware
+library's type names that share the prefix, the validation sketches and
+the ADRs are untouched. The untracked secrets file moved with the
+directory by a plain filesystem rename, unread, and stays ignored at its
+new path; the three computers carried the rename as renames. Deployment
+bundles and rollback references built before the rename carry the old
+sketch name and are not interchangeable with those built after.
+
+What 68I3 leaves: 68I3b, the five documents by role, with the hardware
+note saying no attached hardware; 68I3c, the two user-profile paths and
+the example addresses moving to the documentation ranges, with the
+estate's port number as the one residual example value.
+
 ## Deferred scope
 
 - Versioned package releases of the base. A submodule or path reference

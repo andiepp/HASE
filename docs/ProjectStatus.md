@@ -138,15 +138,24 @@ repository and installed from it, at 5,817 passing tests in the base and
   applications, 68H4c its closure, 68I1 the front door telling the truth,
   68I2a the editing seam (`81e9c1a`), 68I2b the add-on crossing over
   (`4677aa9` there), 68I2c the removal (`f29f032`), 68I2d the Python
-  workflows (`d99f4ce` and `09191d0` there, `fc11bc9` here). 68D1, 68H1,
-  68H2 and 68H4 were not in the original plan;
+  workflows (`d99f4ce` and `09191d0` there, `fc11bc9` here), 68I3a the
+  tools taking their computer as a parameter, with the ESP32 sketch
+  renamed to `HaseESP32` (`8cb811f`). 68D1, 68H1, 68H2 and 68H4 were not
+  in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68I3, the operating documents become generic, with the estate-specific
-ones moving to the add-on; then 68I4, a tagged release closes the ADR.
+68I3b, the five operating documents by role; 68I3c, the two user-profile
+paths and the example addresses; then 68I4, a tagged release closes the
+ADR.
+
+68I3a is complete: the twenty-five tools that refuse to run on the wrong
+computer take that computer as a mandatory parameter instead of naming
+it, and the add-on's operating document names the computers and which
+tool runs where. The ESP32 sketch directory became `HaseESP32` in the
+same commit.
 
 68I2 is complete in four passes: a provider-agnostic editing seam in the
 base, the add-on crossing onto it with its own records and edits, the

@@ -2674,9 +2674,15 @@ Increments:
     Eight modules bound to the KEL-103, three of them without naming it,
     with their tests and drivers, now form the add-on's `hase-lab`
     package; the base package names no instrument and becomes 0.7.0.
+34. 68I3a — The tools take their computer as a parameter — complete as
+    `8cb811f`. Twenty-five tools guard on `-ExpectedComputer` instead of
+    a named computer; the add-on's operating notes name the computers
+    and which tool runs where. The ESP32 sketch directory became
+    `HaseESP32` in the same commit.
 
-68I3 and 68I4 remain: the operating documents become generic, and a
-tagged release closes the ADR. Open around the add-on: its GPL-3 licence
+68I3b, 68I3c and 68I4 remain: the five operating documents by role, the
+user-profile paths and example addresses, and a tagged release closing
+the ADR. Open around the add-on: its GPL-3 licence
 against an MIT base is GitHub's form default rather than a decision; the
 `HASE Dev Host` shortcut keeps targeting the base repository's build by
 decision.
