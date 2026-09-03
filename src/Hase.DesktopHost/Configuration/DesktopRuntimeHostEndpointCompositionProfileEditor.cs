@@ -184,6 +184,84 @@ public sealed class DesktopRuntimeHostEndpointCompositionProfileEditor
     /// the typed views, so an endpoint supplied by a provider this library
     /// does not know survives the edit instead of being quietly dropped.
     /// </remarks>
+    /// <summary>
+    /// Adds an endpoint of any provider. The entry is inserted after the
+    /// last entry of its provider, or at the end when the provider has none;
+    /// the composition's own rules reject a duplicate endpoint identity
+    /// before anything is written.
+    /// </summary>
+    /// <remarks>
+    /// The seam an add-on's tooling edits the composition through. The
+    /// editor knows nothing about the provider or its settings; only that
+    /// provider does.
+    /// </remarks>
+    public Task AddEntryAsync(string profilePath, string backupPath,
+        DesktopRuntimeHostEndpointEntry entry,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return EditAsync(profilePath, backupPath, profile => Add(
+            profile,
+            entry), cancellationToken);
+    }
+
+    /// <summary>
+    /// Removes the endpoint of the given provider and identity. Absence is
+    /// reported and nothing is written.
+    /// </summary>
+    public Task RemoveEntryAsync(string profilePath, string backupPath,
+        string providerId, string expectedEndpointId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        return EditAsync(profilePath, backupPath, profile => Remove(
+            profile,
+            providerId,
+            expectedEndpointId,
+            AbsentMessage(providerId, expectedEndpointId)), cancellationToken);
+    }
+
+    /// <summary>
+    /// Replaces the endpoint of the given provider and identity with an entry
+    /// of the same provider and identity, in place. Absence is reported and
+    /// nothing is written; a replacement that would change the identity is
+    /// rejected, because that is a removal and an addition, not an edit.
+    /// </summary>
+    public Task ReplaceEntryAsync(string profilePath, string backupPath,
+        string providerId, string expectedEndpointId,
+        DesktopRuntimeHostEndpointEntry replacement,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEndpointId);
+        ArgumentNullException.ThrowIfNull(replacement);
+        if (!StringComparer.Ordinal.Equals(replacement.ProviderId, providerId)
+            || !StringComparer.Ordinal.Equals(
+                replacement.ExpectedEndpointId,
+                expectedEndpointId))
+        {
+            throw new ArgumentException(
+                "The replacement must keep the endpoint's provider and identity.",
+                nameof(replacement));
+        }
+
+        return EditAsync(profilePath, backupPath, profile =>
+        {
+            if (!profile.Endpoints.Any(endpoint =>
+                    Matches(endpoint, providerId, expectedEndpointId)))
+            {
+                throw new KeyNotFoundException(
+                    AbsentMessage(providerId, expectedEndpointId));
+            }
+
+            return Replace(profile, providerId, expectedEndpointId, replacement);
+        }, cancellationToken);
+    }
+
+    private static string AbsentMessage(string providerId, string expectedEndpointId) =>
+        $"Endpoint '{expectedEndpointId}' of provider '{providerId}' is not registered.";
+
     private static DesktopRuntimeHostEndpointCompositionProfile Add(
         DesktopRuntimeHostEndpointCompositionProfile profile,
         DesktopRuntimeHostEndpointEntry addition)
