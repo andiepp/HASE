@@ -3,9 +3,10 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H4 and 68I1 complete, the laboratory in its own repository and
-installed from it, at 5,863 passing tests in the base and 1,190 in the
-add-on, from starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
+through 68H4, 68I1 and 68I2 complete, the laboratory in its own
+repository and installed from it, at 5,817 passing tests in the base and
+1,208 in the add-on, from starting baseline
+`e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
   family, the KEL-103 electronic load, and the Arduino Uno Light endpoint
@@ -134,23 +135,25 @@ add-on, from starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
   `e7345c7` here), 68H3 its closure (`8a98060`), 68H4a publication from
   the containing repository (`3a41d05`), 68H4a2 an installation told what
   it should hold (`5fe00c7`), 68H4b the live installations take the Lab
-  applications, 68H4c its closure, 68I1 the front door telling the truth.
-  68D1, 68H1, 68H2 and 68H4 were not in the original plan;
+  applications, 68H4c its closure, 68I1 the front door telling the truth,
+  68I2a the editing seam (`81e9c1a`), 68I2b the add-on crossing over
+  (`4677aa9` there), 68I2c the removal (`f29f032`). 68D1, 68H1, 68H2 and
+  68H4 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68I2, the legacy typed projections of the two laboratory families leave
-the base library; then 68I3, the operating documents become generic, and
-68I4, a tagged release closes the ADR.
+68I3, the operating documents become generic, with the estate-specific
+ones moving to the add-on; then 68I4, a tagged release closes the ADR.
+Pending a decision: 68I2d, the Python package's KEL-103 workflows moving
+to the add-on.
 
-68I was planned as publication, the only irreversible step, and scoping
-found the base has been public since its creation, so 68I is declaring
-it in its intended form. 68I1 made the front door true: Example 5 and the
-KEL-103 characterization report moved to the add-on, the SCPI authoring
-guide was rewritten around what the base ships, and the README presents
-the two validated boards and the examples a reader can follow.
+68I2 is complete in three passes: a provider-agnostic editing seam in
+the base, the add-on crossing onto it with its own records and edits,
+and the removal of every typed projection of the two laboratory families
+from the base library. The library and the profile tool now name no
+instrument, and the source guard holds them to it.
 
 68G is complete: the base is built, tested and run. Its prediction held on
 the way through. The Runtime Host application did still hold the KEL-103

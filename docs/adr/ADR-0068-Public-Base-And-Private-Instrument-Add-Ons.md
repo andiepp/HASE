@@ -1,7 +1,7 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H4 and 68I1 complete; 68I2 to 68I4
-  remain
+- Status: Accepted; 68A through 68H4, 68I1 and 68I2 complete; 68I3 and
+  68I4 remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -889,6 +889,58 @@ through ADR-0049 rather than as code to read alongside. The README
 presents the two validated boards, the ladder and Example 6; the
 laboratory's history, ADR-0061 and ADR-0063 included, is untouched. No
 code changed; the previous suite result stands.
+
+#### Increment 68I2 — The legacy projections leave the base library
+
+Result: complete, in three passes, each proven against the other side
+before the next. The base library carried its two laboratory families as
+typed projections of the composition: two record types, two typed lists
+on the profile with the projections and entry builders behind them,
+three- and four-family constructors, five family methods on the editor
+including the KEL-103 definition migration, both kinds in the version 1
+reader and the kinds bridge, and one remark in the profile tool. Nothing
+at runtime needed them: every composition on the estate is on the
+provider-keyed format, and the add-on's providers read their endpoints
+through the generic entries. One thing did: the add-on's profile tool
+called three of the editor's family methods, so deleting them would have
+broken the add-on. That finding shaped the increment.
+
+68I2a, the seam, complete as `81e9c1a`; 5,874 passed, 0 failed, 0
+skipped across 28 test projects. The editor gained three public,
+provider-agnostic operations, add an entry of any provider, remove by
+provider and identity, replace by provider and identity in place, each
+wrapping the private core the family methods already used. Proven with
+provider ids the base has never heard of, on format-2 files. Additive;
+the add-on compiled unchanged.
+
+68I2b, the add-on crosses over, complete as `4677aa9` in the add-on;
+1,208 passed across 9 projects. Each family owns its reading of its
+composition settings, a record in its provider project read from and
+written to a composition entry, so the setting names live in one place
+per family. The KEL-103 provider project owns the family's edits on the
+seam, the definition migration among them; the profile tool's three
+operations call those; both providers read through their own records.
+The base's ten migration tests came along as the family's own. After
+this, nothing in the add-on named a base family member.
+
+68I2c, the removal, complete as `f29f032`; 5,817 passed, 0 failed, 0
+skipped across 28 test projects, cold build 0 errors and 63 warnings.
+Everything listed above left. Version 1 stays readable for the two
+shipped kinds and rejects any other kind with a message naming format
+version 2, the decision taken over dropping version 1 altogether. The
+library and the profile tool contain no instrument name, and the source
+guard widened from the application to both. Forty-three family tests
+left with the members they pinned; two arrived, the composition limit on
+entries of a foreign provider and the version 1 rejection. The add-on's
+pin advanced to each base commit as it landed, validated by a cold build
+and its 1,208 tests against the new pin; the advance to `f29f032` is the
+proof that the add-on builds without the removed members.
+
+What 68I2 leaves. The Python package carries the same disclosure in
+another language: two KEL-103 automation workflows, three physical
+validation modules and their PowerShell driver, exported from the
+package's root. They are proposed as 68I2d, moving to the add-on as its
+`python` directory, one language at a time; not yet decided.
 
 ## Deferred scope
 

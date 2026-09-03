@@ -2462,8 +2462,8 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H4 and 68I1 complete; 68I2 to 68I4
-remain
+**Status:** [Active] 68A through 68H4, 68I1 and 68I2 complete; 68I3 and
+68I4 remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2655,18 +2655,31 @@ Increments:
     moved to the add-on, the SCPI authoring guide was rewritten around
     what the base ships, and the README presents the two validated boards
     and the examples a reader can follow.
+30. 68I2a — A provider-agnostic editing seam — complete as `81e9c1a`.
+    The editor adds, removes and replaces an entry of any provider
+    without knowing the family; proven with provider ids the base has
+    never heard of.
+31. 68I2b — The add-on crosses onto the seam — complete as `4677aa9` in
+    the add-on. Each family owns its reading of its composition settings
+    and the KEL-103 family owns its edits, definition migration
+    included; the profile tool calls them; nothing in the add-on names a
+    base family member.
+32. 68I2c — The legacy projections leave the base library — complete as
+    `f29f032`. Typed records, lists, constructors and editor methods of
+    the two laboratory families removed; version 1 keeps the two shipped
+    kinds and rejects any other naming format 2; the source guard widens
+    to the library and the profile tool.
 
-68I2, 68I3 and 68I4 remain: the legacy typed projections leave the base
-library, the operating documents become generic, and a tagged release
-closes the ADR. Open around the add-on: its GPL-3 licence against an MIT
-base is GitHub's form default rather than a decision. The installed Lab
-applications have been started and observed, four endpoints published on
-AEPRAKETE and operated from LTAEP; the `HASE Dev Host` shortcut keeps
-targeting the base repository's build by decision.
+68I3 and 68I4 remain: the operating documents become generic, and a
+tagged release closes the ADR. 68I2d, the Python package's KEL-103
+workflows moving to the add-on, awaits a decision. Open around the
+add-on: its GPL-3 licence against an MIT base is GitHub's form default
+rather than a decision; the `HASE Dev Host` shortcut keeps targeting the
+base repository's build by decision.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 5,863 across 28 test projects in the base, with 1,190
+tests and stands at 5,817 across 28 test projects in the base, with 1,208
 across 9 in the add-on repository. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were
