@@ -1,6 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H complete; 68I remains
+- Status: Accepted; 68A through 68H4 complete; 68I remains
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -733,9 +733,10 @@ propagate. The second run gated each step on a measured count, and the
 clone-proof exists because a push and a working clean machine are
 different claims.
 
-What 68H leaves open, in the add-on. The submodule pin is one commit
-behind the base; advancing it is a small add-on commit the add-on's README
-documents, validated by building and testing against the new pin. The
+What 68H left open, in the add-on. The submodule pin was one commit
+behind the base; it has been advanced three times since, each a small
+add-on commit the add-on's README documents, validated by building and
+testing against the new pin, and it now equals the base's head. The
 add-on repository carries GPL-3, GitHub's form default, against an MIT
 base; a private repository makes it legally unremarkable, but it was a
 form choice rather than a decision. And an add-on application can be
@@ -751,11 +752,98 @@ Roadmap, and renumbers the installation increment proposed as 68H3 to
 
 ### Increment 68H4 — An add-on installation
 
-Not in the original plan; the gap 68H1 left. The guided installers create
-a base installation only. An add-on installation needs its own
-configuration and identity, and the first real update of a live
-installation with the record-reading update path has not yet run. Scoped
-after 68H, before 68I.
+Not in the original plan; the gap 68H1 left. As proposed, an add-on
+installation would need its own configuration and identity, and the first
+real update of a live installation with the record-reading update path
+had not yet run.
+
+Result: complete. The prediction was wrong in a useful way. The real
+installations on AEPRAKETE already had configuration, identity and a
+composition naming all four provider families; what they lacked was that
+their application was the base one, and three things that nobody had seen
+stood between them and the Lab one. Each became an increment.
+
+#### Increment 68H4a — Publication from the containing repository
+
+Result: complete as `3a41d05`; 5,857 passed, 0 failed, 0 skipped across 28
+test projects. 68H1a's resolver refused any project outside the base
+repository, and from inside the submodule every add-on project is outside
+it; its own proof had run while the add-on projects still lived in the
+base. The boundary is now the outermost repository that contains this one,
+found through Git: `rev-parse --show-superproject-working-tree` names the
+containing repository from inside the submodule and nothing from the base.
+A relative project is looked for in this repository first and the
+containing one second, and the record says which root it was found under.
+Proven from both roots on real records, and the record fed back through the
+updater's reader and the publisher's resolver from inside the submodule.
+
+#### Increment 68H4a2 — An installation can be told what it should hold
+
+Result: complete as `5fe00c7`; 5,863 passed, 0 failed, 0 skipped across 28
+test projects. Both real installations predated the record and both
+updaters took no parameters, so an update would have fallen back to the
+shipped project and republished the base into them. Worse, the updaters'
+contract, replace the application and preserve everything else, verified
+the shortcut against the installed executable before publishing and
+required that same executable and an unchanged shortcut afterwards; the
+first time an installation changes to an application of another name, that
+fails after the publisher has already succeeded, leaving the new
+application behind a shortcut pointing at a file that no longer exists.
+Both updaters take an optional `-ApplicationProject`, what this
+installation should hold from now on. The checks before publication run
+against what is installed now; the check after runs against what the
+publisher recorded; if the executable's name changed, the shortcut is
+re-pointed, target and icon only, and verified to have changed in nothing
+else. Proven on a synthetic installation with a genuine shortcut for the
+changed-name and unchanged-name paths.
+
+The add-on's pin advanced to each base commit as it landed, `e89e33a` to
+`3a41d05` and `a461612` to `5fe00c7`, each validated by a cold build and the
+add-on's 1,190 tests against the new pin, and the second proven with the
+submodule's own publishers producing the Lab host and Lab client into
+throwaway directories with records reading `superproject`.
+
+#### Increment 68H4b — The live installations take the Lab applications
+
+Result: complete, on AEPRAKETE, one installation at a time, each with an
+independent snapshot before and after. The Runtime Host first:
+`HASE\RuntimeHost` holds `Hase.DesktopHost.App.Lab.exe` with the eight
+instrument assemblies as add-on dependencies and a record reading
+`superproject`; the three configuration hashes and the identity hash are
+byte-identical before and after; the desktop shortcut is re-pointed with
+its argument unchanged; WebView2 custody preserved; the publisher's backup
+removed on success. `Secured` shares that application directory and so
+holds the Lab host too. Then the Client, the same way: `HASE\Client` holds
+`Hase.Client.Wpf.App.Lab.exe` with its two, the registry hash unchanged,
+the shortcut re-pointed. The Client needed one preparation: its desktop
+shortcut was named `HASE Dev Client.lnk` where the updater requires `HASE
+Client.lnk`, and was renamed, byte-equivalent in target, argument and
+working directory. Nothing else on the machine and nothing in any
+repository changed. These were the first two executions of the
+record-reading and told-once update paths on live installations, and both
+matched the synthetic exercise line for line.
+
+Each installation's `Application` directory now holds two executables,
+the Lab one and the base one. The base one is a published dependency, not
+a leftover: the Lab application references the base application project,
+both carry one publish timestamp, and the throwaway publish, which had no
+old installation to inherit from, holds the same pair. The record and the
+shortcut both name the Lab one.
+
+What stays deferred. A guided installer that creates an add-on
+installation from nothing, and RF-Lab operations in the composition tool
+alongside the KEL-103 ones, remain unbuilt, and unneeded while every
+installation on the estate already exists. What stays open: the installed
+Lab applications have not yet been started and observed publishing and
+operating, which is a physical step; the `HASE Dev Host` shortcut still
+targets the base repository's build, which since 68H2 is a base host; and
+the add-on's GPL-3 licence against an MIT base remains GitHub's form
+default rather than a decision.
+
+#### Increment 68H4c — Documentation closure
+
+Result: complete. Records 68H4a, 68H4a2 and 68H4b across this ADR, Project
+Status and the Roadmap, and closes 68H4.
 
 ### Increment 68I — Publication
 

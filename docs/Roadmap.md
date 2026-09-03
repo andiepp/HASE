@@ -2462,7 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H complete; 68I remains
+**Status:** [Active] 68A through 68H4 complete; 68I remains
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2625,17 +2625,38 @@ Increments:
     28 projects, cold build 63 warnings. The first construction run
     reported success while three of five steps had failed; the second
     gated every step on a measured count.
-24. 68H3 — Documentation closure for the add-on repository — complete.
+24. 68H3 — Documentation closure for the add-on repository — complete as
+    `8a98060`.
+25. 68H4a — Publication from the containing repository — complete as
+    `3a41d05`. The publishers' boundary is the outermost
+    repository containing the base, found through Git, so an add-on can
+    publish its own applications with the base tooling from inside a
+    submodule; proven from both roots on real records.
+26. 68H4a2 — An installation can be told what it should hold — complete
+    as `5fe00c7`. Both updaters take an optional project, verify what the
+    publisher recorded rather than what they assumed, and re-point the
+    shortcut when the executable changes name, because the old contract
+    would have republished the base and stranded the shortcut. The
+    add-on's pin advanced to each base commit as it landed.
+27. 68H4b — The live installations take the Lab applications — complete.
+    On AEPRAKETE, the Runtime Host and then the Client were updated from
+    the add-on with independent snapshots before and after: Lab
+    executables installed, records naming the add-on project,
+    configuration, identity and registry byte-identical, shortcuts
+    re-pointed. The Client's shortcut was renamed to the name the updater
+    requires. `Secured` shares the Runtime Host's application and holds
+    the Lab host too.
+28. 68H4c — Documentation closure — complete.
 
-68H4 and 68I remain: an add-on installation, the gap 68H1 left because the
-guided installers create base installations only, then publication as the
-only irreversible step. The add-on's submodule pin is one commit behind
-the base, and its GPL-3 licence against an MIT base is GitHub's form
-default rather than a decision.
+68I remains: publication, separately approved and the only irreversible
+step. Open around the add-on: its GPL-3 licence against an MIT base is
+GitHub's form default rather than a decision; the installed Lab
+applications have not yet been started and observed; and the `HASE Dev
+Host` shortcut still targets the base repository's build.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
-tests and stands at 5,853 across 28 test projects in the base, with 1,190
+tests and stands at 5,863 across 28 test projects in the base, with 1,190
 across 9 in the add-on repository. The physical work of
 the migration is done: every composition in the estate is on the open
 format, and the installed applications on AEPRAKETE and LABC were

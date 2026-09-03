@@ -3,9 +3,9 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H complete, the laboratory in its own repository, at 5,853
-passing tests in the base and 1,190 in the add-on, from starting baseline
-`e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
+through 68H4 complete, the laboratory in its own repository and installed
+from it, at 5,863 passing tests in the base and 1,190 in the add-on, from
+starting baseline `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
 
 - HASE is to be published without three parts of it: the RF-Lab MCNF
   family, the KEL-103 electronic load, and the Arduino Uno Light endpoint
@@ -105,6 +105,16 @@ passing tests in the base and 1,190 in the add-on, from starting baseline
   file is gone because with nothing to subtract the solution is the base,
   and the subtraction guard inverted into one that refuses any laboratory
   project reappearing here.
+- The live installations hold the Lab applications. On AEPRAKETE,
+  `HASE\RuntimeHost` and `HASE\Client` were updated from the add-on
+  repository, one at a time with independent snapshots before and after:
+  the Lab executables with the instrument assemblies as dependencies, a
+  record naming the add-on project, configuration, identity and registry
+  byte-identical, shortcuts re-pointed. Getting there took three findings
+  nobody had seen: the base tooling could not reach an add-on project from
+  inside a submodule, the updaters would have republished the base and
+  stranded the shortcut, and one shortcut carried the wrong name. Each
+  was fixed in the base and proven before the live step.
 - Increments: 68A the endpoint-provider registry (`3972e7b`), 68B the
   instruments behind it (`8a0bdb4`), 68C the composition profile opens
   (`6b4ffd8`), 68D1 the migration the physical step will run
@@ -121,20 +131,24 @@ passing tests in the base and 1,190 in the add-on, from starting baseline
   application that is installed (`ea6efcd`), 68H1c their closure
   (`fb0d88c`), 68H2 Uno Light leaves the base host (`b26ea55`), 68H2a its
   closure (`e7185f8`), 68H the add-on repository (`6b120cd` in HASE-Lab,
-  `e7345c7` here), 68H3 its closure. 68D1, 68H1, 68H2 and 68H4 were not in
+  `e7345c7` here), 68H3 its closure (`8a98060`), 68H4a publication from
+  the containing repository (`3a41d05`), 68H4a2 an installation told what
+  it should hold (`5fe00c7`), 68H4b the live installations take the Lab
+  applications, 68H4c its closure. 68D1, 68H1, 68H2 and 68H4 were not in
   the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68H4 an add-on installation, then 68I publication, which is separately
-approved and the only irreversible step.
+68I publication, which is separately approved and the only irreversible
+step.
 
-68H is complete: the laboratory lives in `andiepp/HASE-Lab` and the base
-contains none of it. 68H4 is the gap 68H1 left: an add-on application can
-be published and updated but not yet installed, because the guided
-installers create base installations only.
+68H4 is complete, and its prediction was wrong in a useful way: the real
+installations needed no new configuration or identity, only a tooling
+path that could reach the add-on and an update that could change an
+application's name without stranding it. A guided installer that creates
+an add-on installation from nothing stays deferred and unneeded.
 
 68G is complete: the base is built, tested and run. Its prediction held on
 the way through. The Runtime Host application did still hold the KEL-103
@@ -142,10 +156,11 @@ command block the Client library shed in 68E, and building the base
 solution is what surfaced it.
 
 Three matters remain open in the base outside that sequence, and three
-in the add-on: its submodule pin is one commit behind the base, it carries
-GPL-3 against an MIT base by GitHub's form default rather than by
-decision, and the first real update of a live installation with the
-record-reading update path has not yet run.
+around the add-on: it carries GPL-3 against an MIT base by GitHub's form
+default rather than by decision; the installed Lab applications have not
+yet been started and observed, which is a physical step; and the `HASE Dev
+Host` shortcut still targets the base repository's build, a base host
+since 68H2, where the Lab host now builds in the add-on.
 
 KEL-103 definition version 6 exists without being in service, and this now
 has a visible effect: until it is, the Runtime Host offers the modes, input
