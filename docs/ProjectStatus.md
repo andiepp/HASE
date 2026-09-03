@@ -137,8 +137,9 @@ repository and installed from it, at 5,817 passing tests in the base and
   it should hold (`5fe00c7`), 68H4b the live installations take the Lab
   applications, 68H4c its closure, 68I1 the front door telling the truth,
   68I2a the editing seam (`81e9c1a`), 68I2b the add-on crossing over
-  (`4677aa9` there), 68I2c the removal (`f29f032`). 68D1, 68H1, 68H2 and
-  68H4 were not in the original plan;
+  (`4677aa9` there), 68I2c the removal (`f29f032`), 68I2d the Python
+  workflows (`d99f4ce` and `09191d0` there, `fc11bc9` here). 68D1, 68H1,
+  68H2 and 68H4 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
@@ -146,14 +147,14 @@ repository and installed from it, at 5,817 passing tests in the base and
 
 68I3, the operating documents become generic, with the estate-specific
 ones moving to the add-on; then 68I4, a tagged release closes the ADR.
-Pending a decision: 68I2d, the Python package's KEL-103 workflows moving
-to the add-on.
 
-68I2 is complete in three passes: a provider-agnostic editing seam in
-the base, the add-on crossing onto it with its own records and edits,
-and the removal of every typed projection of the two laboratory families
-from the base library. The library and the profile tool now name no
-instrument, and the source guard holds them to it.
+68I2 is complete in four passes: a provider-agnostic editing seam in the
+base, the add-on crossing onto it with its own records and edits, the
+removal of every typed projection of the two laboratory families from
+the base library, and the laboratory's Python workflows and physical
+validations moving to the add-on's own package. Nothing in the base
+names an instrument it does not ship, in either language; the source
+guard holds the library and the profile tool to it.
 
 68G is complete: the base is built, tested and run. Its prediction held on
 the way through. The Runtime Host application did still hold the KEL-103

@@ -936,11 +936,27 @@ pin advanced to each base commit as it landed, validated by a cold build
 and its 1,208 tests against the new pin; the advance to `f29f032` is the
 proof that the add-on builds without the removed members.
 
-What 68I2 leaves. The Python package carries the same disclosure in
-another language: two KEL-103 automation workflows, three physical
-validation modules and their PowerShell driver, exported from the
-package's root. They are proposed as 68I2d, moving to the add-on as its
-`python` directory, one language at a time; not yet decided.
+68I2d, the Python package, complete in three commits: `d99f4ce` and
+`09191d0` in the add-on, `fc11bc9` in the base. Scoping had counted five
+instrument-named modules; scanning for the laboratory's instrument id
+rather than its name found eight, three of them bound to the KEL-103
+without naming it, the authoritative-property, cached-property and
+diagnostics validations. A second package, `hase-lab`, beside the base's
+and depending on it, took all eight with their four test files and seven
+drivers, one import changed where they import each other, and a
+laboratory launcher derived from the base's that offers the two confirmed
+workflows and nothing unconfirmed; its 47 tests pass against the base
+package's own development environment. Then the base package let them
+go: its launcher keeps its two read-only workflows and loses the
+confirmation switches, its README sends the reader to the laboratory's
+package, its remaining preconditions speak of the laboratory's
+instruments in their safe state, seven test fixtures use neutral ids, and
+the version becomes 0.7.0 because the wheel's content changed. 528 tests
+in the base package, from 569; the complete .NET suite unchanged at
+5,817. The installed automation environments on the estate hold the
+0.6.0 wheel and keep working; the laboratory's wheel is where the
+workflows come from at the next installation. What 68I2 leaves: nothing
+in the base names an instrument it does not ship, in either language.
 
 ## Deferred scope
 

@@ -2669,13 +2669,17 @@ Increments:
     the two laboratory families removed; version 1 keeps the two shipped
     kinds and rejects any other naming format 2; the source guard widens
     to the library and the profile tool.
+33. 68I2d — The laboratory's Python workflows leave the base package —
+    complete as `fc11bc9`, after `d99f4ce` and `09191d0` in the add-on.
+    Eight modules bound to the KEL-103, three of them without naming it,
+    with their tests and drivers, now form the add-on's `hase-lab`
+    package; the base package names no instrument and becomes 0.7.0.
 
 68I3 and 68I4 remain: the operating documents become generic, and a
-tagged release closes the ADR. 68I2d, the Python package's KEL-103
-workflows moving to the add-on, awaits a decision. Open around the
-add-on: its GPL-3 licence against an MIT base is GitHub's form default
-rather than a decision; the `HASE Dev Host` shortcut keeps targeting the
-base repository's build by decision.
+tagged release closes the ADR. Open around the add-on: its GPL-3 licence
+against an MIT base is GitHub's form default rather than a decision; the
+`HASE Dev Host` shortcut keeps targeting the base repository's build by
+decision.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release
