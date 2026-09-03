@@ -3,7 +3,7 @@
 ## Active architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H4, 68I1 and 68I2 complete, the laboratory in its own
+through 68H4 and 68I1 to 68I3 complete, the laboratory in its own
 repository and installed from it, at 5,817 passing tests in the base and
 1,208 in the add-on, from starting baseline
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
@@ -141,22 +141,22 @@ repository and installed from it, at 5,817 passing tests in the base and
   workflows (`d99f4ce` and `09191d0` there, `fc11bc9` here), 68I3a the
   tools taking their computer as a parameter, with the ESP32 sketch
   renamed to `HaseESP32` (`8cb811f`), 68I3b the operating documents by
-  role (`0db9d56`). 68D1, 68H1, 68H2 and 68H4 were not in the original
-  plan;
+  role (`0db9d56`), 68I3c identifiers and example addresses (`e6f8c09`).
+  68D1, 68H1, 68H2 and 68H4 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68I3c, the two user-profile paths and the example addresses; then 68I4,
-a tagged release closes the ADR.
+68I4, a tagged release closes the ADR.
 
-68I3a and 68I3b are complete: the twenty-five tools that refuse to run on
-the wrong computer take that computer as a mandatory parameter instead of
-naming it, the add-on's operating document names the computers and which
-tool runs where, and the five operating documents speak by role. No
-computer name remains in the base outside its history. The ESP32 sketch
-directory became `HaseESP32` with 68I3a.
+68I3 is complete in three passes: the twenty-five tools that refuse to
+run on the wrong computer take that computer as a mandatory parameter
+instead of naming it, the five operating documents speak by role, and
+the checked-in files carry no user-profile path or private-network
+address outside the ADRs and the test fixtures. The add-on's operating
+notes hold what the base no longer says. The ESP32 sketch directory
+became `HaseESP32` with 68I3a.
 
 68I2 is complete in four passes: a provider-agnostic editing seam in the
 base, the add-on crossing onto it with its own records and edits, the

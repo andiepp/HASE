@@ -1,7 +1,7 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H4, 68I1 and 68I2 complete; 68I3 and
-  68I4 remain
+- Status: Accepted; 68A through 68H4 and 68I1 to 68I3 complete; 68I4
+  remains
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -1012,9 +1012,26 @@ current-state text became 0.7.0; its history records keep 0.6.0. No
 computer name remains in the base outside the ADRs, Project Status and
 the Roadmap, which are history.
 
-What 68I3 leaves: 68I3c, the two user-profile paths and the example
-addresses moving to the documentation ranges, with the estate's port
-number as the one residual example value.
+68I3c, identifiers and example addresses, complete as `e6f8c09`; 528
+passed in the Python package, the complete .NET suite standing at 5,817.
+The Runtime Host's checked-in launch profile carried a user-profile path
+and a host address; it takes the documented development form with a
+placeholder path. The Protocol Explorer's launch profile, which the scan
+of sources found only now, takes a placeholder for its host address. The
+Python repair tool derives its three stale custody paths from a
+mandatory `-StaleUserRoot` instead of a literal user profile, and its
+test asserts the parameter and the path suffix. Eight example addresses
+in five documents moved to the documentation range, one value for the
+host and one for the second host; the port stays as an example value,
+the residual named at scoping. No user-profile path remains outside the
+ADRs, and no private-range address outside the ADRs and the test
+fixtures, which carry theirs as example data.
+
+68I3 is complete in three passes. The base describes its operation by
+role, its tools take their computer as a parameter, and its checked-in
+files carry no identifier of the operator or the estate; the add-on's
+operating notes hold what the base no longer says. What 68I3 leaves is
+nothing; the ADR's last increment is 68I4.
 
 ## Deferred scope
 
