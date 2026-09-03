@@ -83,11 +83,76 @@ public sealed class UpdateScriptInstalledApplicationTests
         string script = ReadScript(scriptFileName);
 
         Assert.Contains(
-            "-ApplicationProject $installedApplication.Project",
+            "-ApplicationProject $applicationProjectToPublish",
+            script);
+        Assert.Contains(
+            "$installedApplication.Project",
             script);
         Assert.DoesNotContain(
             "& $publisherPath -InstallationDirectory $installationDirectory\n",
             script.ReplaceLineEndings("\n"));
+    }
+
+    [Theory]
+    [MemberData(nameof(Updaters))]
+    public void Updater_CanBeToldWhatTheInstallationShouldHold(
+        string scriptFileName)
+    {
+        // An installation that predates the record, or that is changing to
+        // another application, is told once; the publisher records it and
+        // every later update reads the record.
+        string script = ReadScript(scriptFileName);
+
+        Assert.Contains("[string]$ApplicationProject", script);
+        Assert.Contains(
+            "$applicationProjectToPublish = if ([string]::IsNullOrWhiteSpace($ApplicationProject))",
+            script);
+    }
+
+    [Theory]
+    [MemberData(nameof(Updaters))]
+    public void Updater_VerifiesWhatWasRecordedNotWhatWasAssumed(
+        string scriptFileName)
+    {
+        // The checks before publication run against the installed
+        // application; the check after runs against what the publisher
+        // recorded, because the two differ the first time an installation
+        // changes to an application of another name.
+        string script = ReadScript(scriptFileName);
+
+        int published = script.IndexOf(
+            "-ApplicationProject $applicationProjectToPublish",
+            StringComparison.Ordinal);
+        int reread = script.IndexOf(
+            "$updatedApplication = Get-InstalledApplication",
+            StringComparison.Ordinal);
+        int verified = script.IndexOf(
+            "Test-Path -LiteralPath $updatedExecutableFilePath -PathType Leaf",
+            StringComparison.Ordinal);
+
+        Assert.True(published > 0);
+        Assert.True(reread > published);
+        Assert.True(verified > reread);
+    }
+
+    [Theory]
+    [MemberData(nameof(Updaters))]
+    public void Updater_RepointsTheShortcutOnlyWhenTheExecutableChangesName(
+        string scriptFileName)
+    {
+        // Custody is preserved; the one exception is a shortcut whose target
+        // no longer exists under that name, which is re-pointed and verified
+        // to have changed in nothing else.
+        string script = ReadScript(scriptFileName);
+
+        Assert.Contains("$shortcutRepointed = $false", script);
+        Assert.Contains("$shortcut.TargetPath = $updatedExecutableFilePath", script);
+        Assert.Contains("$shortcut.IconLocation = $updatedExecutableFilePath", script);
+        Assert.Contains("-Role \"re-pointed shortcut target\"", script);
+        Assert.Contains("-Role \"re-pointed shortcut working directory\"", script);
+        Assert.Contains("(-not $shortcutRepointed -and", script);
+        Assert.DoesNotContain("$shortcut.Arguments = ", script);
+        Assert.DoesNotContain("$shortcut.WorkingDirectory = ", script);
     }
 
     [Theory]

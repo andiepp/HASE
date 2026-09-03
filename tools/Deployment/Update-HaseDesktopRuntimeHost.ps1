@@ -1,5 +1,14 @@
 [CmdletBinding()]
-param()
+param(
+    # What this installation should hold from now on. Given once, on an
+    # installation that predates the installed-application record or that
+    # is changing to another application; the publisher records it, and
+    # every later update reads the record. Omitted, the update republishes
+    # whatever the installation holds, exactly as before.
+    [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [string]$ApplicationProject
+)
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
@@ -221,12 +230,61 @@ if ($applicationProfilePropertyNames -contains "mediaConfigurationFilePath") {
     $mediaConfigurationHash = Get-OptionalFileHash -Path $mediaConfigurationPath
 }
 
+
+# The application to publish is the one requested for this run, or else the
+# one the installation holds. The checks above ran against what is installed
+# now; what is installed after publication is read back from the record.
+$applicationProjectToPublish = if ([string]::IsNullOrWhiteSpace($ApplicationProject)) {
+    $installedApplication.Project
+} else {
+    $ApplicationProject
+}
+
 & $publisherPath `
     -InstallationDirectory $installationDirectory `
-    -ApplicationProject $installedApplication.Project
+    -ApplicationProject $applicationProjectToPublish
 
-if (-not (Test-Path -LiteralPath $executableFilePath -PathType Leaf)) {
+# What is installed now is what the publisher recorded, which may be an
+# application of a different name than the one the checks above verified.
+$updatedApplication = Get-InstalledApplication `
+    -InstallationDirectory $installationDirectory `
+    -DefaultExecutableName $executableName `
+    -DefaultProject $installedApplication.Project
+$updatedExecutableName = $updatedApplication.ExecutableName
+$updatedExecutableFilePath = Join-Path $applicationDirectory $updatedExecutableName
+
+if (-not (Test-Path -LiteralPath $updatedExecutableFilePath -PathType Leaf)) {
     throw "The updated Desktop Runtime Host executable was not found."
+}
+
+# A shortcut is custody and is preserved, unless the application it points
+# at no longer exists under that name, in which case it is re-pointed and
+# nothing else about it changes.
+$shortcutRepointed = $false
+if (-not [string]::Equals(
+        $updatedExecutableName,
+        $executableName,
+        [System.StringComparison]::OrdinalIgnoreCase)) {
+    $shortcut = $shell.CreateShortcut($shortcutPath)
+    $shortcut.TargetPath = $updatedExecutableFilePath
+    $shortcut.IconLocation = $updatedExecutableFilePath
+    $shortcut.Save()
+    $repointed = $shell.CreateShortcut($shortcutPath)
+    Assert-EqualPath `
+        -Actual $repointed.TargetPath `
+        -Expected $updatedExecutableFilePath `
+        -Role "re-pointed shortcut target"
+    Assert-EqualPath `
+        -Actual $repointed.WorkingDirectory `
+        -Expected $applicationDirectory `
+        -Role "re-pointed shortcut working directory"
+    if (-not [string]::Equals(
+            $repointed.Arguments,
+            $expectedArguments,
+            [System.StringComparison]::Ordinal)) {
+        throw "The re-pointed Runtime Host shortcut arguments changed."
+    }
+    $shortcutRepointed = $true
 }
 
 $webView2ExpectedAfter =
@@ -257,7 +315,8 @@ if ($null -ne $mediaConfigurationPath) {
 if ($applicationProfileHash -ne (Get-OptionalFileHash -Path $applicationProfilePath) -or
     $endpointCompositionHash -ne (Get-OptionalFileHash -Path $endpointCompositionPath) -or
     $privateNetworkConfigurationHash -ne (Get-OptionalFileHash -Path $privateNetworkConfigurationPath) -or
-    $shortcutHash -ne (Get-OptionalFileHash -Path $shortcutPath) -or
+    (-not $shortcutRepointed -and
+        $shortcutHash -ne (Get-OptionalFileHash -Path $shortcutPath)) -or
     $identityHash -ne (Get-OptionalFileHash -Path $identityFilePath) -or
     $authorizationPolicyChanged -or
     $mediaConfigurationChanged) {
@@ -266,9 +325,9 @@ if ($applicationProfileHash -ne (Get-OptionalFileHash -Path $applicationProfileP
 
 Write-Host "HASE Desktop Runtime Host update succeeded."
 Write-Host "Installation directory : $installationDirectory"
-Write-Host "Application             : updated"
+Write-Host "Application             : $(if ($updatedExecutableName -eq $executableName) { 'updated' } else { "replaced by $updatedExecutableName" })"
 Write-Host "Configuration profiles  : preserved"
 Write-Host "Private-network settings: preserved"
 Write-Host "Installation identity   : preserved"
-Write-Host "Desktop shortcut        : preserved"
+Write-Host "Desktop shortcut        : $(if ($shortcutRepointed) { "re-pointed to $updatedExecutableName" } else { 'preserved' })"
 Write-Host "WebView2 custody        : $(if ($legacyWebView2PresentBefore) { 'migrated' } elseif ($webView2PresentBefore) { 'preserved' } else { 'ready for initialization' })"
