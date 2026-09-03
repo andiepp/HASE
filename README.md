@@ -302,11 +302,18 @@ physically validated with:
 - Property reads and writes
 - Command execution
 - Correctly attributed Arduino and ESP32 push-button Events
-- Two Arduino Uno boards on one host, one of them exposing two sensor
-  instruments over CH340 USB serial
+- Two compact-serial boards on one host over USB serial
 
 See [Project Status](docs/ProjectStatus.md) for the maintained implementation
 status and [Roadmap](docs/Roadmap.md) for planned work.
+
+## Contributing
+
+Contributions are welcome within the shape this repository keeps: the base
+names no laboratory instrument, and instrument families live in add-on
+repositories that consume it. [CONTRIBUTING](CONTRIBUTING.md) says how work is
+done here and how a change is validated; [SECURITY](SECURITY.md) says how to
+report a vulnerability privately.
 
 ## License
 
