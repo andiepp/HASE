@@ -1,9 +1,9 @@
 # Project Status
 
-## Active architectural objective — ADR-0068
+## Completed architectural objective — ADR-0068
 
-**ADR-0068 — Public Base and Private Instrument Add-Ons — increments 68A
-through 68H4 and 68I1 to 68I3 complete, the laboratory in its own
+**ADR-0068 — Public Base and Private Instrument Add-Ons — complete, closed
+at Increment 68I4 and tagged `v0.1.0`, the laboratory in its own
 repository and installed from it, at 5,817 passing tests in the base and
 1,208 in the add-on, from starting baseline
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`**
@@ -141,14 +141,20 @@ repository and installed from it, at 5,817 passing tests in the base and
   workflows (`d99f4ce` and `09191d0` there, `fc11bc9` here), 68I3a the
   tools taking their computer as a parameter, with the ESP32 sketch
   renamed to `HaseESP32` (`8cb811f`), 68I3b the operating documents by
-  role (`0db9d56`), 68I3c identifiers and example addresses (`e6f8c09`).
-  68D1, 68H1, 68H2 and 68H4 were not in the original plan;
+  role (`0db9d56`), 68I3c identifiers and example addresses (`e6f8c09`),
+  68I4a contribution guidance and a security policy (`65599bf`), 68I4b
+  the tag `v0.1.0` on the closing commit, 68I4c its closure. 68D1, 68H1,
+  68H2 and 68H4 were not in the original plan;
   68C left nothing able to write the new shape, so the migration had to be
   built before there was a migration to run.
 
 ### Next
 
-68I4, a tagged release closes the ADR.
+No increment of ADR-0068 remains. The base is declared in its intended
+form and tagged `v0.1.0`; what stays open is the add-on's GPL-3 licence
+against an MIT base, GitHub's form default rather than a decision, and
+enabling private vulnerability reporting in the repository's settings,
+which the security policy relies on.
 
 68I3 is complete in three passes: the twenty-five tools that refuse to
 run on the wrong computer take that computer as a mandatory parameter

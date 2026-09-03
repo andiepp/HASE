@@ -2462,8 +2462,7 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H4 and 68I1 to 68I3 complete; 68I4
-remains
+**Status:** [Complete] Closed at Increment 68I4, tagged `v0.1.0`
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2687,11 +2686,18 @@ Increments:
     Two launch profiles take placeholders, the Python repair tool takes
     its stale user root as a parameter, and eight example addresses in
     five documents moved to the documentation range; 68I3 is complete.
+37. 68I4a — Contribution guidance and a security policy — complete as
+    `65599bf`. The front door completes: how work is done here, how a
+    vulnerability is reported, and the README linking both; GitHub's
+    community checklist from 42 to 71 percent, a code of conduct declined.
+38. 68I4b and 68I4c — The tag and the closure — complete. The annotated
+    tag `v0.1.0` is placed on the commit that closes the ADR; this
+    document, the ADR and Project Status mark it closed.
 
-68I4 remains: a tagged release closing the ADR. Open around the add-on:
-its GPL-3 licence against an MIT base is GitHub's form default rather
-than a decision; the `HASE Dev Host` shortcut keeps targeting the base
-repository's build by decision.
+ADR-0068 is complete. Open around the add-on: its GPL-3 licence against
+an MIT base is GitHub's form default rather than a decision; the
+`HASE Dev Host` shortcut keeps targeting the base repository's build by
+decision.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release

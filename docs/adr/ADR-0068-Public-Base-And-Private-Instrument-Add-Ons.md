@@ -1,7 +1,6 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H4 and 68I1 to 68I3 complete; 68I4
-  remains
+- Status: Closed; Increment 68I4 publication declared, tagged `v0.1.0`
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -1033,6 +1032,53 @@ files carry no identifier of the operator or the estate; the add-on's
 operating notes hold what the base no longer says. What 68I3 leaves is
 nothing; the ADR's last increment is 68I4.
 
+#### Increment 68I4 — Publication declared
+
+The declaration the reframed 68I promised, in three parts. Scoping found
+that no tag or release had ever existed, that the .NET projects carry no
+version property so a tag would be the base's only version marker, and
+that GitHub's community checklist stood at 42 percent: licence and
+README present, contributing guidance and a security policy absent.
+
+68I4a, the front door completes, complete as `65599bf`; documentation
+only. `CONTRIBUTING.md` says how this repository works rather than what
+a template says: Getting Started and Architecture first, an issue before
+a large change, one increment per pull request with its scope and
+validation stated, decisions as ADRs, documentation as part of a change,
+focused-then-complete validation with exact totals, the PowerShell rules
+and `-ExpectedComputer`, instrument families through the base's seams
+into add-ons, what must never enter the repository, and contributions
+under the MIT licence. `SECURITY.md` routes reports to GitHub's private
+vulnerability reporting, scopes the base and not the add-ons, names the
+supported versions, and says what the repository does not contain. The
+README links both, and its project-status list no longer describes a
+laboratory board in other words. GitHub's checklist moved to 71 percent;
+a code of conduct was declined by decision. Enabling private
+vulnerability reporting is the operator's action in the repository's
+settings.
+
+68I4b, the tag. The annotated tag `v0.1.0` is placed on the commit that
+closes this ADR and pushed with it, and a release is created from the
+tag by the operator with the notes drafted for it: what the base is,
+what it does not contain, where the laboratory went, and this ADR. The
+name is a decision: the first declared public form, versioned from here.
+
+68I4c, closure. This document, Project Status and the Roadmap mark the
+objective closed.
+
+Completed result: ADR-0068 closes with every planned increment complete,
+68A through 68I4, plus the four not in the original plan, 68D1, 68H1,
+68H2 and 68H4. The published base contains no instrument, no device
+definition and no laboratory firmware; the operator's laboratory lives in
+its own repository, consuming the base as a submodule, installed on the
+estate and observed operating; the base describes its operation by role,
+its tools take their computer as a parameter, and its checked-in files
+carry no identifier of the operator or the estate. The base stands at
+5,817 passing tests across 28 test projects and 528 in its Python
+package; the add-on at 1,208 across 9 and 47 in its Python package. What
+stays open is the add-on's: its GPL-3 licence against an MIT base is
+GitHub's form default rather than a decision.
+
 ## Deferred scope
 
 - Versioned package releases of the base. A submodule or path reference
@@ -1041,3 +1087,5 @@ nothing; the ADR's last increment is 68I4.
   a second private consumer ever appear.
 - Licence, contribution guidance and any published-repository hygiene,
   which belong to the publication increment rather than the split.
+  Addressed by 68I4a: the licence stood since ADR-0060, and the
+  contribution guidance and security policy arrived with the declaration.
