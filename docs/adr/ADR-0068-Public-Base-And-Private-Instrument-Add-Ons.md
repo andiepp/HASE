@@ -1,6 +1,7 @@
 # ADR-0068 — Public Base and Private Instrument Add-Ons
 
-- Status: Accepted; 68A through 68H4 complete; 68I remains
+- Status: Accepted; 68A through 68H4 and 68I1 complete; 68I2 to 68I4
+  remain
 - Date: 2026-09-01
 - Starting baseline: `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a`
 - Starting complete Release baseline: 6,955 passed, 0 failed, 0 skipped
@@ -847,7 +848,47 @@ Status and the Roadmap, and closes 68H4.
 
 ### Increment 68I — Publication
 
-Separately approved, and the only irreversible step.
+Separately approved. Planned as the only irreversible step, and scoping
+found that the step had already been taken: `andiepp/HASE` has been
+public since its creation on 2026-07-08, under the MIT licence and front
+door ADR-0060 delivered on 2026-08-22, and every commit of this
+objective, the ones that moved the laboratory out included, was pushed to
+it. Nothing about the tip can undo that, and nothing needed to: the
+history holds no credential material, no key body and no address of the
+estate, which was verified before anything else. Publication is therefore
+not an act but a state, and 68I is declaring the base in its intended
+form, what the deferred scope below calls licence, contribution guidance
+and published-repository hygiene. Four sub-increments, each a decision
+made before it became a task: the base's worked example is base-only
+(68I1); the legacy typed projections of the two laboratory families leave
+the base library (68I2); the operating documents become generic, with the
+estate-specific ones moving to the add-on (68I3); and a tagged release
+closes the ADR (68I4). Versioned packages and the Python package on PyPI
+stay deferred as before.
+
+#### Increment 68I1 — The front door tells the truth
+
+Result: complete. Two public documents had become unfollowable: Example 5
+told a reader to start the development host from the repository root and
+attach a KEL-103 the repository no longer contains, and the SCPI
+authoring guide used the KEL-103 projects as its worked reference, citing
+`src/Hase.Scpi.Kel103` and its two siblings six times. The README
+described the Uno Light endpoint under validated hardware and linked
+Example 5 and ADR-0063 from its documentation list, and Example 4 pointed
+onward to Example 5.
+
+Example 5 and the KEL-103 characterization report moved to the add-on's
+`docs`, verbatim under a note saying where they came from, their two links
+re-pointed through the submodule. The guide was rewritten around what the
+base ships: the text session and serial byte stream of `Hase.Scpi` and
+`Hase.Scpi.Serial`, and the seams an instrument family implements,
+`IDesktopRuntimeHostEndpointProvider` and the application's
+`CreateEndpointProviders` override. The KEL-103 remains its case study
+where a rule needs a concrete instance, cited as the record in ADR-0044
+through ADR-0049 rather than as code to read alongside. The README
+presents the two validated boards, the ladder and Example 6; the
+laboratory's history, ADR-0061 and ADR-0063 included, is untouched. No
+code changed; the previous suite result stands.
 
 ## Deferred scope
 

@@ -188,8 +188,6 @@ Simulation on one PC, a USB instrument, a Wi-Fi instrument, a secured
 remote client, and a multi-host laboratory — that is the complete HASE
 onboarding ladder. From here:
 
-- attach a real laboratory instrument with
-  [Example 5 — A laboratory instrument (KEL-103)](Example-5-KEL-103.md);
 - stream live video with
   [Example 6 — A webcam](Example-6-Webcam.md);
 

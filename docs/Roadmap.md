@@ -2462,7 +2462,8 @@ tests and stands at 6,955 across 34 test projects.
 
 ## Active objective — ADR-0068 Public Base and Private Instrument Add-Ons
 
-**Status:** [Active] 68A through 68H4 complete; 68I remains
+**Status:** [Active] 68A through 68H4 and 68I1 complete; 68I2 to 68I4
+remain
 
 ADR-0068 cuts HASE so that the published part is a framework someone can
 run and the unpublished part is the operator's own laboratory: the RF-Lab
@@ -2646,13 +2647,22 @@ Increments:
     re-pointed. The Client's shortcut was renamed to the name the updater
     requires. `Secured` shares the Runtime Host's application and holds
     the Lab host too.
-28. 68H4c — Documentation closure — complete.
+28. 68H4c — Documentation closure — complete as `d82e3d1`.
+29. 68I1 — The front door tells the truth — complete. Scoping 68I found
+    the base public since its creation, so publication is a state to
+    declare rather than a step to take, and 68I became four
+    sub-increments. Example 5 and the KEL-103 characterization report
+    moved to the add-on, the SCPI authoring guide was rewritten around
+    what the base ships, and the README presents the two validated boards
+    and the examples a reader can follow.
 
-68I remains: publication, separately approved and the only irreversible
-step. Open around the add-on: its GPL-3 licence against an MIT base is
-GitHub's form default rather than a decision; the installed Lab
-applications have not yet been started and observed; and the `HASE Dev
-Host` shortcut still targets the base repository's build.
+68I2, 68I3 and 68I4 remain: the legacy typed projections leave the base
+library, the operating documents become generic, and a tagged release
+closes the ADR. Open around the add-on: its GPL-3 licence against an MIT
+base is GitHub's form default rather than a decision. The installed Lab
+applications have been started and observed, four endpoints published on
+AEPRAKETE and operated from LTAEP; the `HASE Dev Host` shortcut keeps
+targeting the base repository's build by decision.
 
 ADR-0068 begins at exact commit
 `e1a5c9328a382b5b7cc01bd37437bc3dd479f50a` with 6,955 complete Release

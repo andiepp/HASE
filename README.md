@@ -80,26 +80,6 @@ The Compact Serial Protocol Version 1 validation endpoint exposes:
 - USB-serial discovery and authoritative endpoint verification
 - USB unplug, reset, and reconnect recovery
 
-### Arduino Uno with AS7331 and AS7343
-
-The Arduino Uno Light endpoint is a second Compact Serial Protocol Version 1
-board carrying two ams-OSRAM light sensors on its I2C bus, published as two
-instruments:
-
-- An AS7331 UV sensor
-  - UV-A, UV-B, and UV-C irradiance in µW/cm²
-  - A writable UV-A alarm threshold
-  - An immediate measurement Command and a threshold-crossing Event
-- An AS7343 14-channel spectral sensor
-  - F1, F2, FZ, F3, F4, F5, FY, FXL, F6, F7, F8, NIR, and two visible
-    channels in acquisition counts
-  - An immediate measurement Command
-- Per-sensor readiness Properties, so a partially wired board still attaches
-  and reports which sensor is unavailable
-
-The board uses a CH340 USB-serial adapter, which is supported since
-ADR-0064.
-
 These devices validate the architecture; they do not define its limits. HASE's
 runtime model supports other endpoint families and multi-instrument devices.
 
@@ -218,11 +198,8 @@ instrument. Example 3 is published:
 the network under mutual TLS through the guided setup wizard. Example 4 is
 published: [A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
 completes the ladder with the multi-host Client. Beyond the ladder,
-Example 5 is published:
-[A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
-attaches a real SCPI instrument on the development profile, and Example 6
-is published: [A webcam](docs/examples/Example-6-Webcam.md) streams live
-video from the secured host into the remote Client.
+Example 6 is published: [A webcam](docs/examples/Example-6-Webcam.md)
+streams live video from the secured host into the remote Client.
 
 ### Advanced guides
 
@@ -265,13 +242,11 @@ or environment-specific client configuration files.
 - [Example 2 — ESP32 in the local network](docs/examples/Example-2-ESP32.md)
 - [Example 3 — Client on a second PC](docs/examples/Example-3-Client-on-a-Second-PC.md)
 - [Example 4 — A second Runtime Host](docs/examples/Example-4-Second-Runtime-Host.md)
-- [Example 5 — A laboratory instrument (KEL-103)](docs/examples/Example-5-KEL-103.md)
 - [Example 6 — A webcam (live video)](docs/examples/Example-6-Webcam.md)
 - [Two-Computer Provisioning](docs/Provisioning-Two-Computers.md)
 - [ESP32 Endpoint Authoring Guide](docs/ESP32-Endpoint-Authoring-Guide.md)
 - [SCPI Instrument Authoring Guide](docs/SCPI-Instrument-Authoring-Guide.md)
 - [ADR-0054 — ESP32 Endpoint Library and Application Authoring Boundary](docs/adr/ADR-0054-ESP32-Endpoint-Library-and-Application-Authoring-Boundary.md)
-- [ADR-0063 — Arduino Uno Light Endpoint](docs/adr/ADR-0063-Arduino-Uno-Light-Endpoint.md)
 - [ADR-0064 — Serial Transfer Serialization](docs/adr/ADR-0064-Serial-Transfer-Serialization.md)
 - [ADR-0065 — Descriptor-Declared Property Presentation](docs/adr/ADR-0065-Descriptor-Declared-Property-Presentation.md)
 - [Northbound API Reference](docs/API%20reference/HASE-Northbound-API-Reference.md)

@@ -1,16 +1,20 @@
 # HASE SCPI Instrument Authoring Guide
 
-This guide explains how a new SCPI instrument is brought into HASE — the
+This guide explains how a SCPI instrument is brought into HASE — the
 layers to implement, the order to implement them in, and the discipline
 each layer obeys. It is the SCPI counterpart of the
-[ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md), and
-it uses the complete KORAD KEL-103 implementation (ADR-0044 through
-ADR-0049) as the worked reference: for every step, the repository contains
-a finished, physically validated example to read alongside.
+[ESP32 Endpoint Authoring Guide](ESP32-Endpoint-Authoring-Guide.md).
+
+This repository ships the SCPI protocol and no SCPI instrument. An
+instrument is authored in an add-on repository that consumes this one
+(ADR-0068). The rules below are the ones the first such instrument, the
+KORAD KEL-103, was built under and physically validated against; its
+record is ADR-0044 through ADR-0049. Where a rule needs a concrete
+instance, the KEL-103 is the case study, cited from that record rather
+than as code to read alongside.
 
 The audience is a C# developer at home in the repository. Adding an
-instrument is authoring, not configuration — using an already-supported
-instrument is [Example 5](examples/Example-5-KEL-103.md).
+instrument is authoring, not configuration.
 
 ## The boundary
 
@@ -32,44 +36,47 @@ device-specific below HASE's normalized model:
 
 ## The layers at a glance
 
-| Layer | Project | KEL-103 reference |
+| Layer | Where | What |
 | --- | --- | --- |
-| Transport-independent SCPI text session | `src/Hase.Scpi` | `ScpiTextSession`, framing and terminator types |
-| Serial byte stream | `src/Hase.Scpi.Serial` | `SerialScpiByteStream(Factory)` |
-| Instrument model: definitions, mappings, characterized values | `src/Hase.Scpi.Kel103` | definition and mapping classes per version |
-| Runtime adapter: normalized operations over the session | `src/Hase.Scpi.Kel103.Runtime` | `Kel103RuntimeEndpointAdapter`, observation and mutation-result types |
-| Hosting: attachment, supervision, health, diagnostics | `src/Hase.Scpi.Kel103.Hosting` | `Kel103SupervisedAttachmentFactory` and its collaborators |
-| Host application integration | `src/Hase.DesktopHost.App` | preflight, attachment composition, composition schema |
-| Characterization utilities | `src/HASE.ProtocolExplorer/Scenarios` | the eight `Kel103*CharacterizationScenario` classes |
+| Transport-independent SCPI text session | `src/Hase.Scpi`, this repository | `ScpiTextSession`, `ScpiTextFramingOptions`, command and response terminators, request formatting, response framing, diagnostics observation |
+| Serial byte stream | `src/Hase.Scpi.Serial`, this repository | `SerialScpiByteStream` and `SerialScpiByteStreamFactory` behind `IScpiByteStream` |
+| Instrument model: definitions, mappings, characterized values | the add-on | one project per instrument family |
+| Runtime adapter: normalized operations over the session | the add-on | typed observations and mutation results |
+| Hosting: attachment, supervision, health, diagnostics | the add-on | the family's `IDesktopRuntimeHostEndpointProvider` and its collaborators |
+| Application integration | the add-on's application | the `CreateEndpointProviders` override of the base `App` |
 
-A new instrument reuses the first two layers unchanged and adds its own
-versions of the rest.
+An instrument reuses the first two layers unchanged and adds its own
+versions of the rest. Separate projects per layer are a convention, not a
+requirement, but they keep the dependency direction visible: the model
+knows nothing of the session, the adapter knows nothing of hosting.
 
 ## Step 1 — Characterize, read-only, before any other code
 
 Nothing about an instrument's protocol is assumed; everything is
-established by bounded, read-only experiments against the physical device.
-The KEL-103 characterization scenarios in
-`src/HASE.ProtocolExplorer/Scenarios` are the models to copy:
+established by bounded, read-only experiments against the physical
+device. Write the characterization as a small program in the add-on, a
+console project or a test project with an explicit opt-in, composed from
+`ScpiTextSession` over `SerialScpiByteStreamFactory`:
 
 - Start with **identity**: one fixed `*IDN?` with an explicitly selected
   command terminator, bounded response collection, and recognition of the
-  product identity — nothing else
-  (`Kel103ReadOnlyCharacterizationScenario`).
+  product identity — nothing else.
 - Establish the serial framing empirically: baud, data bits, parity,
   command and response terminators, echo behavior. The KEL-103 turned out
   to be 115200 8N1, CR-terminated commands, LF-terminated responses, no
-  echo.
+  echo; assume none of that for another instrument.
 - Characterize every value the instrument will expose the same way:
   measurements, state, limits — each through fixed queries, each
-  read-only (`Kel103ReadOnly*CharacterizationScenario`).
+  read-only.
 - When a candidate query misbehaves, reject it after **one**
   transmission and record the rejection; the KEL-103's `:VOLTage? MIN`
   timed out once and was excluded, not retried.
 - Mutating characterization (setter grammar, mode selection) comes last,
   under explicit operator approval, with restoration to the original
-  state in the same run (`Kel103SetpointWriteCharacterizationScenario`,
-  `Kel103ModeSelectionCharacterizationScenario`).
+  state in the same run.
+
+Keep the characterization report with the instrument, in the add-on; it
+is the evidence every mapping string rests on.
 
 One hard-won implementation lesson lives in this layer: on Windows,
 `SerialPort.BaseStream.ReadAsync` may ignore cancellation while waiting
@@ -77,19 +84,18 @@ for a first byte. The session utilities race every read against an
 independent timer and dispose the owned port when the timer wins — do not
 rely on cancellation tokens as a serial timeout boundary.
 
-`ScpiTextSession` in `src/Hase.Scpi` gives you the serialized
-query/command pipeline, framing, desynchronization faulting, and
-diagnostics observation for free; your characterization and adapter code
-composes it with `SerialScpiByteStreamFactory` rather than touching
-`System.IO.Ports` directly.
+`ScpiTextSession` gives you the serialized query/command pipeline,
+framing, desynchronization faulting, and diagnostics observation for
+free; your characterization and adapter code composes it with
+`SerialScpiByteStreamFactory` rather than touching `System.IO.Ports`
+directly.
 
 ## Step 2 — The versioned instrument definition
 
 The definition declares what the instrument exposes as normalized
 Properties and Commands — identifiers, paths, display names, data
 descriptors, units — under one `DescriptorId` with an integer version.
-The rules, as practiced by `Kel103IdentityDefinition` through
-`Kel103ControlledInputDefinition` in `src/Hase.Scpi.Kel103`:
+The rules:
 
 - **Versions are immutable.** A published version is never edited; new
   capability is a new version.
@@ -102,94 +108,90 @@ The rules, as practiced by `Kel103IdentityDefinition` through
   into it explicitly through configuration.
 - Beside the definitions live the **mappings** — small classes tying each
   normalized Property or Command to its characterized query or setter
-  form (`Kel103MeasurementMapping`, `Kel103SetpointMapping`,
-  `Kel103ModeSelectionMapping`, …). Keep the exact characterized strings
-  here, in one place, with their units and invariant formats.
-- A small repository class
-  (`Kel103DefinitionRepository`) serves the exact versioned definitions
-  to the host.
+  form. Keep the exact characterized strings here, in one place, with
+  their units and invariant formats.
+- A small repository class serves the exact versioned definitions to the
+  host.
+- A Command that must not run by accident declares its presentation:
+  explicit confirmation, membership of a mode-selection group, an input
+  control. The Client renders what the definition declares (ADR-0068,
+  68E); nothing in the Client names the instrument.
 
 ## Step 3 — The runtime adapter
 
-`src/Hase.Scpi.Kel103.Runtime` turns session exchanges into normalized
-observations and mutation results. Its shape to mirror:
+The adapter turns session exchanges into normalized observations and
+mutation results. Its shape:
 
-- A **read-only session adapter** (`Kel103ReadOnlySessionAdapter`)
-  produces typed observations (`Kel103MeasurementObservation`,
-  `Kel103OperatingModeObservation`, …) and complete synchronization
-  snapshots — everything the host needs to publish and to resynchronize
-  after recovery.
-- The **endpoint adapter** (`Kel103RuntimeEndpointAdapter`) adds
-  mutations: transmit once, read back authoritatively, return a typed
-  result (`Kel103SetpointMutationResult`, …). Enforce the instrument's
+- A **read-only session adapter** produces typed observations and
+  complete synchronization snapshots — everything the host needs to
+  publish and to resynchronize after recovery.
+- The **endpoint adapter** adds mutations: transmit once, read back
+  authoritatively, return a typed result. Enforce the instrument's
   interlocks here — the KEL-103 refuses mode and setpoint changes unless
   the input is authoritatively OFF, verified immediately before the
   single transmission.
-- An interrupted mutation throws
-  `Kel103MutationOutcomeUncertainException`-style uncertainty instead of
-  retrying; the supervision layer faults the session and the replacement
-  session resynchronizes **read-only** — the mutation is never replayed.
+- An interrupted mutation throws an uncertain-outcome exception instead
+  of retrying; the supervision layer faults the session and the
+  replacement session resynchronizes **read-only** — the mutation is
+  never replayed.
 
 ## Step 4 — Hosting and supervision
 
-`src/Hase.Scpi.Kel103.Hosting` owns the lifecycle around the adapter:
+The hosting layer owns the lifecycle around the adapter:
 
-- `Kel103OperationalConnection(Factory)` — one owned serial session per
-  attachment, created fresh for every connection generation.
-- `Kel103PublishedAttachment(Factory)` — identity verification and
+- An **operational connection** and its factory — one owned serial
+  session per attachment, created fresh for every connection generation.
+- A **published attachment** and its factory — identity verification and
   complete initial synchronization **before** publication; the endpoint
   never appears half-synchronized.
-- `Kel103PublishedAttachmentSupervisor` and
-  `Kel103PublishedConnectionSlot` — replacement on fault, cache
-  preservation while disconnected, read-only resynchronization on
+- A **supervisor** and a **connection slot** — replacement on fault,
+  cache preservation while disconnected, read-only resynchronization on
   recovery.
-- `Kel103PassiveHealthMonitor` — the ADR-0047 pattern: a fixed read-only
+- A **passive health monitor** — the ADR-0047 pattern: a fixed read-only
   identity probe, five seconds after the previous completed probe, only
   while `Ready`, through the same serialized gate as everything else; a
   failed probe faults the endpoint into ordinary recovery.
-- `Kel103EndpointAttachmentPropertyOperations` /
-  `...CommandOperations` — the bridge to the normalized attachment
-  operation ports.
-- `Kel103ScpiDiagnosticObserver` — sanitized Operational, Protocol, and
-  Bytes diagnostics for every exchange, within the established levels.
+- **Property and Command operations** — the bridge to the normalized
+  attachment operation ports.
+- A **diagnostic observer** implementing `IScpiDiagnosticObserver` —
+  sanitized Operational, Protocol, and Bytes diagnostics for every
+  exchange, within the established levels.
 
-## Step 5 — Host application integration
+## Step 5 — Application integration
 
-This is the part that is **KEL-103-specific today**, and a new instrument
-extends it in place — there is no plugin mechanism, by current design.
-The seams, all in `src/Hase.DesktopHost.App` and
-`src/Hase.DesktopHost`:
+The base application composes what it ships and nothing else; an add-on
+application derives from it and contributes its families. There is no
+runtime discovery, by decision (ADR-0068). The seams:
 
-- `Hosting/DesktopRuntimeHostKel103DefinitionPreflight.cs` accepts
-  exactly the four attachable KEL-103 definition references. A new
-  instrument adds its own preflight (or a generalized one) validating its
-  definition references.
-- `ProductionPrivateNetworkRuntimeHostBackend` composes the KEL-103
-  attachment service into the runtime attachment host
-  (`DesktopRuntimeHostKel103AttachmentService` in
-  `Hosting/DesktopRuntimeHostKel103AttachmentInventoryAdapter.cs` and
-  `DesktopRuntimeHostKel103AttachmentFactory` in
-  `Hosting/DesktopRuntimeHostKel103AttachmentSet.cs`). A new instrument
-  family adds its own attachment-service composition alongside.
-- `Hase.DesktopHost/Configuration/DesktopRuntimeHostEndpointCompositionProfileFile.cs`
-  parses the composition `kind` values (`Kel103Serial` today). A new
-  family adds its `kind` with its required fields, keeping the strict
-  unknown-field rejection.
+- Implement `IDesktopRuntimeHostEndpointProvider` from
+  `src/Hase.DesktopHost/Hosting`: `ProviderId` names the family,
+  `Supports` claims the composition entries that are yours,
+  `CreateAttachmentService` composes the family's attachment service into
+  the runtime, and `ResolveAttachmentsAsync` turns the composition into
+  the attachments to supervise.
+- In the add-on's application, derive from the base `App` and override
+  `CreateEndpointProviders` to return a
+  `DesktopRuntimeHostEndpointProviderRegistry` holding the base providers
+  and yours. The base host publishes without your family and the add-on
+  host publishes with it, from the same composition profile format.
+- A Client panel for the family is optional and is the add-on's too
+  (ADR-0067). Without one, the Client renders the instrument from its
+  descriptor, which is the case every instrument must serve first.
 
-Expect these changes to ripple into the corresponding focused test
-projects; that is intended, not incidental.
+Expect these changes to ripple into the add-on's focused test projects;
+that is intended, not incidental. The base carries tests that fail if an
+instrument name enters its application or its solution; an add-on that
+needs something from the base asks for a seam, not for a name.
 
 ## Testing expectations
 
 The repository's standard applies: every layer carries focused tests
-beside it — `Hase.Scpi.Tests`, `Hase.Scpi.Kel103.Tests`,
-`Hase.Scpi.Kel103.Runtime.Tests`, `Hase.Scpi.Kel103.Hosting.Tests` mirror
-the KEL-103 layers with hundreds of tests. For a new instrument, cover at
-minimum: framing and parsing against characterized byte sequences,
-mapping correctness, interlock enforcement, uncertain-outcome behavior,
-no-replay across simulated recovery, and the health-probe lifecycle. The
-complete suite must stay green; physical validation against the real
-instrument is a separate, explicitly approved step.
+beside it. For a new instrument, cover at minimum: framing and parsing
+against characterized byte sequences, mapping correctness, interlock
+enforcement, uncertain-outcome behavior, no-replay across simulated
+recovery, and the health-probe lifecycle. The add-on's complete suite
+must stay green against the base commit it pins; physical validation
+against the real instrument is a separate, explicitly approved step.
 
 ## Authoring checklist
 
@@ -208,9 +210,9 @@ instrument is a separate, explicitly approved step.
       synchronization; recovery resynchronizes read-only.
 - [ ] Passive health probing through the same serialized gate.
 - [ ] Diagnostics sanitized at every level.
-- [ ] Host preflight, attachment composition, and composition `kind`
-      extended, with their focused tests.
-- [ ] No SCPI console, no secrets, no machine-specific values in the
+- [ ] Endpoint provider implemented and composed into the add-on
+      application, with its focused tests.
+- [ ] No SCPI console, no secrets, no machine-specific values in any
       repository.
 
 ## Where this leads
