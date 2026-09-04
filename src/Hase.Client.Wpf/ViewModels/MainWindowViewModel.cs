@@ -1573,7 +1573,30 @@ public sealed class MainWindowViewModel
                 endpoint.DisplayName,
                 CreateInstrumentOperations(
                     endpoint.Key,
-                    instrumentId)));
+                    instrumentId))
+            {
+                // A panel that presents a whole endpoint, rather than the one
+                // instrument whose declaration opened it, reaches the others
+                // here. Each carries operations bounded to itself, so the
+                // panel gains no access the workspace does not already have.
+                Instruments =
+                    endpoint.Instruments
+                        .Select(
+                            instrument =>
+                                new ClientPanelInstrument(
+                                    instrument.InstrumentId,
+                                    instrument.Name,
+                                    instrument.Kind,
+                                    instrument.Properties
+                                        .Select(
+                                            property =>
+                                                property.PropertyId)
+                                        .ToArray(),
+                                    CreateInstrumentOperations(
+                                        endpoint.Key,
+                                        instrument.InstrumentId)))
+                        .ToArray()
+            });
     }
 
     /// <summary>

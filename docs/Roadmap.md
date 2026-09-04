@@ -2710,3 +2710,23 @@ KEL-103 definition version 6 exists but is not yet in service, which since
 68G4a has a visible effect: until it is, the Runtime Host offers the
 KEL-103 modes, input controls and SHORT activation as ordinary command
 entries rather than as dedicated controls.
+
+
+## ADR-0067 Increment 67R — a panel may present a whole endpoint
+
+The panel contract handed a panel operations bound to one instrument
+while the Open Panel button sits on the endpoint. That is the same thing
+for an endpoint publishing one instrument, and both panels ADR-0067 built
+were of that kind, but it left a panel for an endpoint publishing two
+able to reach only one half of the device.
+
+The panel context now also carries every instrument of the attachment,
+each with operations bounded to itself, and resolves one by a Property it
+publishes rather than by an instrument identifier, which belongs to a
+single endpoint instance. Existing panels are unaffected: the list is
+empty when a workspace supplies none, and a panel that ignores it behaves
+as before.
+
+The seam is the Client's; the instrument that needed it is a private one
+and is not in this repository. The base stands at 5,821 complete Release
+tests across 27 test assemblies, cold build 0 errors and 63 warnings.

@@ -203,6 +203,94 @@ public sealed class ClientInstrumentPanelTests
             () => operations.WriteAsync("target-frequency", null!));
     }
 
+    [Fact]
+    public void Context_WithoutInstruments_ShouldPublishAnEmptyList()
+    {
+        ClientInstrumentPanelContext context = CreateContext();
+
+        Assert.Empty(context.Instruments);
+        Assert.Null(context.FindInstrumentPublishing("uva-irradiance"));
+    }
+
+    [Fact]
+    public void Context_ShouldResolveTheInstrumentPublishingAProperty()
+    {
+        ClientPanelInstrument uv = CreatePanelInstrument(
+            "arduino-uno-light-uv-01",
+            "AS7331 UV Sensor",
+            ["uva-irradiance", "uvb-irradiance"]);
+        ClientPanelInstrument spectral = CreatePanelInstrument(
+            "arduino-uno-light-spectral-01",
+            "AS7343 Spectral Sensor",
+            ["spectral-f1", "spectral-f2"]);
+
+        ClientInstrumentPanelContext context = CreateContext() with
+        {
+            Instruments = [uv, spectral]
+        };
+
+        Assert.Same(uv, context.FindInstrumentPublishing("uva-irradiance"));
+        Assert.Same(spectral, context.FindInstrumentPublishing("spectral-f2"));
+        Assert.Null(context.FindInstrumentPublishing("spectral-f9"));
+    }
+
+    [Fact]
+    public void Context_ShouldRejectAnEmptyPropertyIdentifier()
+    {
+        ClientInstrumentPanelContext context = CreateContext();
+
+        Assert.Throws<ArgumentException>(
+            () => context.FindInstrumentPublishing("  "));
+    }
+
+    [Fact]
+    public void Context_ShouldMatchPropertyIdentifiersExactly()
+    {
+        ClientInstrumentPanelContext context = CreateContext() with
+        {
+            Instruments =
+            [
+                CreatePanelInstrument(
+                    "arduino-uno-light-uv-01",
+                    "AS7331 UV Sensor",
+                    ["uva-irradiance"])
+            ]
+        };
+
+        Assert.Null(context.FindInstrumentPublishing("UVA-Irradiance"));
+    }
+
+    private static ClientInstrumentPanelContext CreateContext() =>
+        new(
+            PanelId,
+            "arduino-uno-light-01",
+            "arduino-uno-light-uv-01",
+            "Arduino Uno Light Endpoint",
+            CreateOperations("arduino-uno-light-uv-01"));
+
+    private static ClientPanelInstrument CreatePanelInstrument(
+        string instrumentId,
+        string displayName,
+        IReadOnlyList<string> propertyIds) =>
+        new(
+            instrumentId,
+            displayName,
+            "sensor",
+            propertyIds,
+            CreateOperations(instrumentId));
+
+    private static RuntimeHostInstrumentOperations CreateOperations(
+        string instrumentId) =>
+        new(
+            new RemoteEndpointAttachmentKey(
+                new EndpointId("arduino-uno-light-01"),
+                new RemoteEndpointAttachmentGeneration(
+                    Guid.Parse("3f9c1a2b-4d5e-4f60-8a71-9b2c3d4e5f60"))),
+            new InstrumentId(instrumentId),
+            (_, _) => throw new InvalidOperationException("unreachable"),
+            (_, _, _) => throw new InvalidOperationException("unreachable"),
+            (_, _) => throw new InvalidOperationException("unreachable"));
+
     private static RemoteObservationState CreateState(
         string? panelId,
         RemoteEndpointConnectionState connectionState =

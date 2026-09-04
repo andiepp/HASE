@@ -64,7 +64,7 @@ Notes:
 
 - The complete suite takes approximately 100 seconds across 28 test projects.
   Running it unprompted is authorized.
-- Expected result: 5,817 passed, 0 failed, 0 skipped. Report exact totals.
+- Expected result: 5,821 passed, 0 failed, 0 skipped. Report exact totals.
 - 63 warnings is the accepted baseline for a successful complete build. Report
   the count and any drift from it. Warnings appear only on a cold build.
 - No test carries a `Skip` or hardware `Trait`. The complete suite is

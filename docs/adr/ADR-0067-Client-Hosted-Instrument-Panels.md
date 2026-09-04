@@ -1,6 +1,6 @@
 # ADR-0067 — Client-Hosted Instrument Panels
 
-- Status: Closed; Increment 67Q the output responds, measured
+- Status: Closed; Increment 67R a panel may present a whole endpoint
 - Date: 2026-08-31
 - Starting baseline: `62d5e880dfc17fbc034cfa05e3d3cb3b0bc1fb96`
 - Starting complete Release baseline: 6,828 passed, 0 failed, 0 skipped
@@ -512,6 +512,33 @@ been measured.
 A pattern worth naming for whoever reads this next: three times in this
 objective a physical claim was recorded before it was measured, and each
 time the correction cost more than the measurement would have.
+
+### Increment 67R — A panel may present a whole endpoint
+
+The contract handed a panel operations bound to one instrument, and the
+Open Panel button sits on the endpoint. For an endpoint publishing one
+instrument those are the same thing, and both panels this objective built
+were of that kind. An endpoint publishing two is not: a panel opened for
+it could reach one half of the device and not the other.
+
+The context now also carries every instrument of the attachment, each
+with operations bounded to itself, and offers to resolve one by a
+Property it publishes. A panel spanning an endpoint therefore names what
+it needs — the instrument publishing this reading — rather than an
+instrument identifier, which belongs to one endpoint instance and would
+not survive a second endpoint of the same kind.
+
+Nothing is granted that the workspace did not already have: the
+operations are the same bounded operations, built the same way, for
+instruments of the same attachment. A panel that ignores the list behaves
+exactly as before, and the list is empty when a workspace supplies none.
+
+This increment is recorded here rather than under the objective that
+needed it, because the seam is the Client's and the instrument that
+needed it is not in this repository.
+
+Result: complete; 5,821 passed, 0 failed, 0 skipped across 27 test
+projects; the 63-warning cold-build baseline held. No physical effect.
 
 ## Defects found while validating
 
