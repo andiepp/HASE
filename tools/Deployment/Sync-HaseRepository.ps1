@@ -5,7 +5,8 @@
 .DESCRIPTION
     Run this on each computer that carries a HASE working tree, one at a
     time, from inside the repository. It fetches origin/main and
-    fast-forwards to it.
+    fast-forwards to it. In a repository with submodules it then checks
+    each submodule out at the commit the fast-forward recorded.
 
     It refuses rather than repairs. A working tree that is not clean, a
     branch other than main, and a branch that has diverged from origin all
@@ -98,6 +99,17 @@ if ($LASTEXITCODE -ne 0) {
 & git merge --ff-only origin/main
 if ($LASTEXITCODE -ne 0) {
     throw "Fast-forwarding to origin/main failed; the branch has diverged."
+}
+
+# The fast-forward moves a submodule's recorded commit but not its working
+# tree, which would then read as a change. The clean check above already
+# refused a submodule carrying changes of its own, and the update is not
+# forced, so it only moves a clean submodule to the commit now recorded.
+if (Test-Path -LiteralPath (Join-Path $repositoryRoot ".gitmodules")) {
+    & git submodule update --init
+    if ($LASTEXITCODE -ne 0) {
+        throw "Checking out the submodules at their recorded commits failed."
+    }
 }
 
 $headAfter = & git rev-parse HEAD
