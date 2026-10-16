@@ -5,8 +5,16 @@
 **ADR-0083 — Re-issuing an Expired Python Credential — active since
 2026-10-16 from `d312f31`; 83A complete (the re-issue preparation,
 publisher and recovery, `reissue-expired` and `reissue-recover`), 83B
-complete (the start, verify and recover scripts), 83C next. 5,848
+complete (the start, verify and recover scripts), 83C complete (the
+Desktop's credential re-issued for 90 days, until 2027-01-14, and
+proved by a Python read through the installed host), 83D complete
+(the Laptop's copy replaced and proved the same way), 83E next. 5,848
 passed, 0 failed, 0 skipped; cold build 0 errors, 63 warnings.**
+
+- The re-issue's retained old files on the Desktop and the Laptop's
+  `.expired-8455c7aa` pair remain until an approved cleanup.
+- Beside the objective: the Laptop/MiniPC pair's credential expires on
+  2026-11-10 and is due for its planned cross-computer rotation.
 
 - An expired Python credential is brought back by a framework operation,
   `reissue-expired`, instead of a hand-edited enrollment registry: a new

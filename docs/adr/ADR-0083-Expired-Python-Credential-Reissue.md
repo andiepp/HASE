@@ -1,6 +1,6 @@
 # ADR-0083 — Re-issuing an Expired Python Credential
 
-- Status: Active; Increments 83A and 83B complete, 83C next
+- Status: Active; Increments 83A to 83D complete, 83E next
 - Date: 2026-10-16
 - Starting baseline: base `d312f31`; the laboratory add-on at `c72451a`
   (ADR numbers are shared with the add-on, whose last is ADR-0082)
@@ -214,10 +214,50 @@ enrollment registry and the Desktop's Python credential files; the
 journal and backups are kept until a later cleanup approval, and
 `reissue-recover` is the recovery boundary.
 
+Result 83C: complete on 2026-10-16, on the Desktop at base `f99a694`,
+the installed host and every client stopped. The operator ran the
+preflight first (`-PreflightOnly`): the credential `8455c7aa...` of
+`hase-python-automation`, valid 2026-08-08 to 2026-09-07, Expired,
+enrolled, six grants, the signing root covering 90 days, no journal,
+the repository level; ready. Windows PowerShell had to be called by its
+full path, `powershell` not being on that console's path. With the
+operator's approval the re-issue ran: transaction `7a036313...`,
+disposition Reissued, the old files retained; the verifier found the
+expired credential gone, `a840fe7c...` installed and enrolled, valid
+until 2027-01-14. With the installed Runtime Host started, the
+Desktop's Python automation (0.4.0, the Health workflow) authenticated
+and read the snapshot: one endpoint Ready, one instrument with 114
+properties and 35 commands. It had answered `rpc-unauthenticated` since
+the credential expired.
+
 ### Increment 83D — The second computer
 
 The Laptop receives the new material, as 83A's check decides, and reads
 through Python.
+
+Result 83D: complete on 2026-10-16. A read-only check on the Laptop
+found two Python profiles: `Security`, holding a copy of the expired
+`8455c7aa...`, the credential of this ADR; and `MiniPcSecurity`,
+`5fb98b67...` of the Laptop/MiniPC pair, valid until 2026-11-10 and
+outside this ADR. The new material went across in the operator's
+custody on a removable drive: on the Desktop the installed certificate
+and key were copied with a manifest of their credential ID and hashes;
+on the Laptop the transfer was checked against the manifest and the
+expected IDs, the expired pair kept as `.expired-8455c7aa`, the new
+bytes written into the existing files (their ACLs unchanged, the
+profile untouched), the result checked against the manifest, and the
+transfer copy removed. The Laptop's Python automation (0.6.0, Health)
+then read the installed host: one endpoint Ready, 114 properties, 35
+commands.
+
+Two things the step showed. The Laptop's console ran a pasted block line
+by line, so a guard that threw (a backup already present, made by a
+first attempt moments before) did not stop the lines after it; a
+read-only classification found the state consistent (the new pair
+installed, the expired pair in the backups, the transfer gone), and
+every later block was wrapped in `& { }`. And a first Health read timed
+out because the installed host had been closed after the Desktop's
+read, not because of the credential.
 
 ### Increment 83E — Documentation closure
 

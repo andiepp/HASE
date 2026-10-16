@@ -2746,6 +2746,6 @@ of the expired one in a single transition without overlap, and
 
 1. 83A — The verb, the transition, its recovery — complete 2026-10-16.
 2. 83B — The operator script — complete 2026-10-16.
-3. 83C — The Runtime Host's computer.
-4. 83D — The second computer.
+3. 83C — The Runtime Host's computer — complete 2026-10-16.
+4. 83D — The second computer — complete 2026-10-16.
 5. 83E — Documentation closure.
