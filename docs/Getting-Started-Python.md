@@ -483,7 +483,13 @@ addresses, or raw server diagnostics:
   to (a VPN address requires the VPN up on both ends).
 - `RuntimeHostClientError` — an operation failed
   (`rpc-permission-denied` means your principal lacks the grant;
-  `rpc-unavailable` means the connection was lost).
+  `rpc-unavailable` means the connection was lost;
+  `rpc-unauthenticated` means the host did not accept the credential,
+  most often because it has expired). On the computer of a colocated
+  host, `python\hase-client\tools\Start-HasePythonCredentialReissue.ps1
+  -ExpectedComputer <name> -PreflightOnly` reports the credential's
+  dates and state without changing anything; an expired one is
+  re-issued by the same script without `-PreflightOnly` (ADR-0083).
 - `RuntimeHostMutationError` — a write or Command failed, with the
   classification explained above.
 

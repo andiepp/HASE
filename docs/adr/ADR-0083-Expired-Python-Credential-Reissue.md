@@ -1,6 +1,6 @@
 # ADR-0083 — Re-issuing an Expired Python Credential
 
-- Status: Active; Increments 83A to 83D complete, 83E next
+- Status: Closed; Increment 83E documentation closure
 - Date: 2026-10-16
 - Starting baseline: base `d312f31`; the laboratory add-on at `c72451a`
   (ADR numbers are shared with the add-on, whose last is ADR-0082)
@@ -264,6 +264,39 @@ read, not because of the credential.
 ADR closed; the base's Roadmap, ProjectStatus and the credential
 provisioning guide; the base committed to its public repository and the
 laboratory add-on's submodule moved to it.
+
+Result 83E: the objective closed on 2026-10-16 at `f38b7af`. An expired
+Python credential is now brought back by a framework operation: the
+operator verbs `reissue-expired` and `reissue-recover`, one journaled
+transition without overlap that replaces the expired credential with a
+new one for the same principal and leaves the grants alone, and three
+scripts that preflight, perform, verify and recover it on a colocated
+Runtime Host. The laboratory's `hase-python-automation` credential was
+re-issued for 90 days, until 2027-01-14, on the Desktop, and the
+Laptop's copy replaced; Python reads the installed host from both
+computers again. The complete Release suite is 5,848 passed, 0 failed,
+0 skipped across 28 test assemblies, from 5,821; the cold build held 0
+errors and 63 warnings. The Python guide names `rpc-unauthenticated`
+and the preflight that tells an expired credential.
+
+What the work showed: an expired credential needs no overlap, so the
+emergency transition ADR-0053 designed fits it exactly; a refusal code
+shared by several causes (`rotation-source-revision-mismatch`) hid the
+real one, so the expired case now has its own; operator consoles may
+lack `powershell` on their path and may run a pasted block line by
+line, so handovers call Windows PowerShell by its full path and wrap
+each block in `& { }`.
+
+The retained expired files were removed at the operator's approval the
+same day: on the Desktop by `Recover-HasePythonCredentialReissue.ps1`
+(the committed re-issue's four `.backup-7a036313...` files and its
+journal; afterwards the verifier passed with the journal absent, and a
+read-only check found no retained or staged file and `a840fe7c...` the
+only enrollment of the principal), on the Laptop by hand after checking
+that the `.expired-8455c7aa` pair held the expired credential.
+
+Left open beside the objective: the Laptop/MiniPC pair's credential,
+due for its planned rotation before 2026-11-10.
 
 ## Deferred scope
 

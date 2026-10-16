@@ -1,15 +1,17 @@
 # Project Status
 
-## Active architectural objective — ADR-0083
+## Completed architectural objective — ADR-0083
 
-**ADR-0083 — Re-issuing an Expired Python Credential — active since
-2026-10-16 from `d312f31`; 83A complete (the re-issue preparation,
-publisher and recovery, `reissue-expired` and `reissue-recover`), 83B
-complete (the start, verify and recover scripts), 83C complete (the
-Desktop's credential re-issued for 90 days, until 2027-01-14, and
-proved by a Python read through the installed host), 83D complete
-(the Laptop's copy replaced and proved the same way), 83E next. 5,848
-passed, 0 failed, 0 skipped; cold build 0 errors, 63 warnings.**
+**ADR-0083 — Re-issuing an Expired Python Credential — complete, closed
+at Increment 83E on 2026-10-16 at `f38b7af`, from `d312f31`: 5,848
+passed, 0 failed, 0 skipped across 28 test assemblies, from 5,821; cold
+build 0 errors, 63 warnings throughout.**
+
+- `reissue-expired` and `reissue-recover` in the credential-provisioning
+  operator; `Start-`, `Test-` and `Recover-HasePythonCredentialReissue.ps1`
+  in `python/hase-client/tools`.
+- The laboratory's Python credential re-issued until 2027-01-14 on the
+  Desktop and the Laptop, proved by Python reads from both.
 
 - The re-issue's retained old files on the Desktop and the Laptop's
   `.expired-8455c7aa` pair remain until an approved cleanup.

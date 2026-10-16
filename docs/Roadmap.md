@@ -2731,9 +2731,10 @@ The seam is the Client's; the instrument that needed it is a private one
 and is not in this repository. The base stands at 5,821 complete Release
 tests across 27 test assemblies, cold build 0 errors and 63 warnings.
 
-## Active objective — ADR-0083 Re-issuing an Expired Python Credential
+## Completed objective — ADR-0083 Re-issuing an Expired Python Credential
 
-**Status:** [Active] Opened 2026-10-16 from `d312f31`.
+**Status:** [Completed] Closed at Increment 83E, 2026-10-16, at
+`f38b7af`. Opened 2026-10-16 from `d312f31`.
 
 ADR-0053's planned rotation refuses a credential that has already
 expired, and first provisioning refuses a principal that is still
@@ -2748,4 +2749,4 @@ of the expired one in a single transition without overlap, and
 2. 83B — The operator script — complete 2026-10-16.
 3. 83C — The Runtime Host's computer — complete 2026-10-16.
 4. 83D — The second computer — complete 2026-10-16.
-5. 83E — Documentation closure.
+5. 83E — Documentation closure — complete 2026-10-16.
