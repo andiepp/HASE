@@ -132,6 +132,48 @@ public sealed class PythonCredentialProvisioningOperatorTests
         AssertInputsWithheld(args, output.ToString());
     }
 
+    [Fact]
+    public async Task RunAsync_ReissueExpired_DelegatesExactLifecycleInputs()
+    {
+        string[] args = ["reissue-expired", .. RotationBeginArguments()[1..]];
+        var operations = new StubOperations();
+        var output = new StringWriter();
+
+        int code = await PythonCredentialProvisioningOperator.RunAsync(
+            args, output, TextWriter.Null, operations, CancellationToken.None);
+
+        Assert.Equal(0, code);
+        Assert.Null(operations.RotationBeginCommand);
+        Assert.NotNull(operations.ReissueCommand);
+        Assert.Equal("hase-laptop-python-minipc",
+            operations.ReissueCommand.PrincipalId);
+        Assert.Equal(5, operations.ReissueCommand.ExpectedGrants.Count);
+        Assert.Equal(TimeSpan.FromDays(90), operations.ReissueCommand.Validity);
+        Assert.Equal("x509-sha256:" + new string('1', 64),
+            operations.ReissueCommand.ExpectedCurrentCredentialId);
+        Assert.Contains("Disposition          : Reissued", output.ToString());
+        Assert.Contains("Rollback retained    : True", output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
+    [Fact]
+    public async Task RunAsync_ReissueRecover_DelegatesAndWithholds()
+    {
+        string[] args = RotationPublicationArguments("reissue-recover");
+        var operations = new StubOperations();
+        var output = new StringWriter();
+
+        int code = await PythonCredentialProvisioningOperator.RunAsync(
+            args, output, TextWriter.Null, operations, CancellationToken.None);
+
+        Assert.Equal(0, code);
+        Assert.NotNull(operations.ReissueRecoveryCommand);
+        Assert.Null(operations.RotationPublicationCommand);
+        Assert.Contains("Disposition          : CommittedCleanup",
+            output.ToString());
+        AssertInputsWithheld(args, output.ToString());
+    }
+
     [Theory]
     [InlineData("rotate-finalize", "Finalized")]
     [InlineData("rotate-recover", "RolledBack")]
@@ -333,6 +375,10 @@ public sealed class PythonCredentialProvisioningOperatorTests
         RotationPublicationArguments("rotate-finalize")
             .Select(value => value == new string('f', 64)
                 ? new string('F', 64) : value).ToArray(),
+        new[] { "reissue-expired" }.Concat(RotationBeginArguments()[1..])
+            .Select(value => value == "90" ? "91" : value).ToArray(),
+        RotationPublicationArguments("reissue-recover")
+            .Append("--validity-days").Append("90").ToArray(),
     };
 
     private static string[] ProvisionArguments(bool allowReplacement)
@@ -448,6 +494,9 @@ public sealed class PythonCredentialProvisioningOperatorTests
         public RotationBeginCommand? RotationBeginCommand { get; private set; }
         public RotationPublicationCommand? RotationPublicationCommand
             { get; private set; }
+        public RotationBeginCommand? ReissueCommand { get; private set; }
+        public RotationPublicationCommand? ReissueRecoveryCommand
+            { get; private set; }
         public Exception? ProvisionException { get; init; }
         public OperatorProvisioningResult ProvisioningResult { get; init; } =
             new("python-provisioning-plan-sha256:" + new string('1', 64),
@@ -513,6 +562,24 @@ public sealed class PythonCredentialProvisioningOperatorTests
             RotationPublicationCommand = command;
             return new("0123456789abcdef0123456789abcdef",
                 "RolledBack", false);
+        }
+
+        public Task<PythonCredentialRotationPublicationResult>
+            ReissueExpiredAsync(
+                RotationBeginCommand command,
+                CancellationToken cancellationToken)
+        {
+            ReissueCommand = command;
+            return Task.FromResult(new PythonCredentialRotationPublicationResult(
+                "0123456789abcdef0123456789abcdef", "Reissued", true));
+        }
+
+        public PythonCredentialRotationPublicationResult RecoverReissue(
+            RotationPublicationCommand command)
+        {
+            ReissueRecoveryCommand = command;
+            return new("0123456789abcdef0123456789abcdef",
+                "CommittedCleanup", false);
         }
 
         public Task<PythonPropertyWriteAuthorizationResult>

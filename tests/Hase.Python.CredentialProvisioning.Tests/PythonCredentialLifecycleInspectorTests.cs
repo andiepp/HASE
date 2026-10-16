@@ -10,6 +10,8 @@ public sealed class PythonCredentialLifecycleInspectorTests : IDisposable
 {
     private static readonly DateTimeOffset Now =
         new(2026, 8, 11, 18, 0, 0, TimeSpan.Zero);
+    // ten days after a 30-day credential issued at Now has expired
+    private static readonly DateTimeOffset Later = Now + TimeSpan.FromDays(40);
     private readonly string directory = Path.Combine(
         Path.GetTempPath(), $"hase-python-lifecycle-{Guid.NewGuid():N}");
 
@@ -125,6 +127,209 @@ public sealed class PythonCredentialLifecycleInspectorTests : IDisposable
                     RotationRequest(fixture, inspected), replacement, Now));
 
         Assert.Equal("rotation-source-revision-mismatch", exception.Code);
+    }
+
+    [Fact]
+    public async Task RotationPreparation_ExpiredSource_IsRefusedAsExpired()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+
+        PythonCredentialRotationPreparationException exception =
+            await Assert.ThrowsAsync<PythonCredentialRotationPreparationException>(
+                () => new PythonCredentialRotationPreparer().PrepareAsync(
+                    RotationRequest(fixture, inspected), replacement, Later));
+
+        Assert.Equal(PythonCredentialLifecycleState.Expired, inspected.State);
+        Assert.Equal("rotation-source-expired", exception.Code);
+    }
+
+    [Fact]
+    public async Task ReissuePreparation_ValidSource_IsRefused()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(60));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAsync(fixture);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Now, TimeSpan.FromDays(90));
+
+        PythonCredentialRotationPreparationException exception =
+            await Assert.ThrowsAsync<PythonCredentialRotationPreparationException>(
+                () => new PythonCredentialRotationPreparer().PrepareReissueAsync(
+                    RotationRequest(fixture, inspected), replacement, Now));
+
+        Assert.Equal("reissue-source-not-expired", exception.Code);
+    }
+
+    [Fact]
+    public async Task ReissuePreparation_ChangedSourceRevision_Rejects()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+        File.AppendAllText(fixture.Request.AuthorizationPolicyPath, " ");
+
+        PythonCredentialRotationPreparationException exception =
+            await Assert.ThrowsAsync<PythonCredentialRotationPreparationException>(
+                () => new PythonCredentialRotationPreparer().PrepareReissueAsync(
+                    RotationRequest(fixture, inspected), replacement, Later));
+
+        Assert.Equal("reissue-source-revision-mismatch", exception.Code);
+    }
+
+    [Fact]
+    public async Task Reissue_ExpiredSource_ReplacesItInOneTransition_ThenCleansUp()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+        var orchestrator = new PythonCredentialRotationOrchestrator();
+        PythonCredentialRotationPublicationRequest publication =
+            PublicationRequest(fixture, inspected);
+        string profile = HashFile(fixture.Request.ProfilePath);
+
+        PythonCredentialRotationPublicationResult reissued =
+            await orchestrator.ReissueAsync(
+                RotationRequest(fixture, inspected), publication,
+                replacement, Later);
+
+        Assert.Equal("Reissued", reissued.Disposition);
+        Assert.True(reissued.RollbackRetained);
+        Assert.Equal(replacement.CertificatePem.ToArray(),
+            File.ReadAllBytes(fixture.CertificatePath));
+        Assert.Equal(replacement.PrivateKeyPem.ToArray(),
+            File.ReadAllBytes(fixture.PrivateKeyPath));
+        Assert.Equal(profile, HashFile(fixture.Request.ProfilePath));
+        AssertEnrollment(File.ReadAllBytes(fixture.Request.EnrollmentPath),
+            fixture.Material.CredentialId, expected: false);
+        AssertEnrollment(File.ReadAllBytes(fixture.Request.EnrollmentPath),
+            replacement.CredentialId, expected: true);
+        Assert.Equal(inspected.AuthorizationPolicySha256,
+            HashFile(fixture.Request.AuthorizationPolicyPath));
+        Assert.Equal(4, Directory.EnumerateFiles(directory)
+            .Count(path => path.Contains(".backup-", StringComparison.Ordinal)));
+        Assert.True(File.Exists(Path.Combine(directory,
+            "python-credential-reissue.transaction.json")));
+        PythonCredentialLifecycleInspectionResult after =
+            await InspectAtAsync(fixture, Later);
+        Assert.Equal(replacement.CredentialId, after.CredentialId);
+        Assert.Equal(PythonCredentialLifecycleState.Active, after.State);
+
+        PythonCredentialRotationPublicationResult cleaned =
+            orchestrator.RecoverReissue(publication);
+
+        Assert.Equal("CommittedCleanup", cleaned.Disposition);
+        Assert.Equal(replacement.CertificatePem.ToArray(),
+            File.ReadAllBytes(fixture.CertificatePath));
+        AssertNoReissueArtifacts();
+    }
+
+    [Fact]
+    public async Task Reissue_WhileAJournalRemains_IsRefused()
+    {
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+        using PythonCredentialRotationCandidates candidates =
+            await new PythonCredentialRotationPreparer().PrepareReissueAsync(
+                RotationRequest(fixture, inspected), replacement, Later);
+        File.WriteAllText(Path.Combine(directory,
+            "python-credential-reissue.transaction.json"), "{}");
+
+        PythonCredentialRotationPublicationException exception =
+            await Assert.ThrowsAsync<PythonCredentialRotationPublicationException>(
+                () => new PythonCredentialReissuePublisher().BeginAsync(
+                    PublicationRequest(fixture, inspected), candidates));
+
+        Assert.Equal("reissue-recovery-required", exception.Code);
+        Assert.Equal(inspected.ClientCertificateSha256,
+            HashFile(fixture.CertificatePath));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    public async Task Reissue_InjectedFailure_RestoresExactSources(
+        int failureStepValue)
+    {
+        var failureStep = (PythonCredentialReissuePublicationStep)failureStepValue;
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+        using PythonCredentialRotationCandidates candidates =
+            await new PythonCredentialRotationPreparer().PrepareReissueAsync(
+                RotationRequest(fixture, inspected), replacement, Later);
+
+        PythonCredentialRotationPublicationException exception =
+            await Assert.ThrowsAsync<PythonCredentialRotationPublicationException>(
+                () => new PythonCredentialReissuePublisher(step =>
+                {
+                    if (step == failureStep) throw new InvalidOperationException();
+                }).BeginAsync(PublicationRequest(fixture, inspected), candidates));
+
+        Assert.Equal("reissue-publication-failed", exception.Code);
+        AssertExactSources(fixture, inspected);
+        AssertNoReissueArtifacts();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    public async Task ReissueRecover_AfterAnInterruption_RestoresExactSources(
+        int interruptionStepValue)
+    {
+        var interruption =
+            (PythonCredentialReissuePublicationStep)interruptionStepValue;
+        using Fixture fixture = CreateFixture(TimeSpan.FromDays(30));
+        PythonCredentialLifecycleInspectionResult inspected =
+            await InspectAtAsync(fixture, Later);
+        using PythonClientCredentialMaterial replacement =
+            PythonClientCredentialFactory.Create(
+                fixture.Root, Later, TimeSpan.FromDays(90));
+        using PythonCredentialRotationCandidates candidates =
+            await new PythonCredentialRotationPreparer().PrepareReissueAsync(
+                RotationRequest(fixture, inspected), replacement, Later);
+        PythonCredentialRotationPublicationRequest publication =
+            PublicationRequest(fixture, inspected);
+
+        // an exception the publisher does not handle stands for the process
+        // ending: the journal and the files are left as they were
+        await Assert.ThrowsAsync<NotSupportedException>(
+            () => new PythonCredentialReissuePublisher(step =>
+            {
+                if (step == interruption) throw new NotSupportedException();
+            }).BeginAsync(publication, candidates));
+        Assert.True(File.Exists(Path.Combine(directory,
+            "python-credential-reissue.transaction.json")));
+
+        PythonCredentialRotationPublicationResult recovered =
+            new PythonCredentialReissuePublisher().Recover(publication);
+
+        Assert.Equal("RolledBack", recovered.Disposition);
+        AssertExactSources(fixture, inspected);
+        AssertNoReissueArtifacts();
     }
 
     [Fact]
@@ -441,6 +646,34 @@ public sealed class PythonCredentialLifecycleInspectorTests : IDisposable
         Fixture fixture) =>
         new PythonCredentialLifecycleInspector().InspectAsync(
             fixture.Request, Now);
+
+    private static Task<PythonCredentialLifecycleInspectionResult> InspectAtAsync(
+        Fixture fixture, DateTimeOffset at) =>
+        new PythonCredentialLifecycleInspector().InspectAsync(
+            fixture.Request, at);
+
+    private static void AssertExactSources(
+        Fixture fixture,
+        PythonCredentialLifecycleInspectionResult inspected)
+    {
+        Assert.Equal(inspected.ClientCertificateSha256,
+            HashFile(fixture.CertificatePath));
+        Assert.Equal(inspected.ClientPrivateKeySha256,
+            HashFile(fixture.PrivateKeyPath));
+        Assert.Equal(inspected.ProfileSha256,
+            HashFile(fixture.Request.ProfilePath));
+        Assert.Equal(inspected.EnrollmentSha256,
+            HashFile(fixture.Request.EnrollmentPath));
+        Assert.Equal(inspected.AuthorizationPolicySha256,
+            HashFile(fixture.Request.AuthorizationPolicyPath));
+    }
+
+    private void AssertNoReissueArtifacts() =>
+        Assert.DoesNotContain(Directory.EnumerateFiles(directory), path =>
+            Path.GetFileName(path).Contains("reissue.transaction",
+                StringComparison.Ordinal)
+            || path.Contains(".stage-", StringComparison.Ordinal)
+            || path.Contains(".backup-", StringComparison.Ordinal));
 
     private static PythonCredentialRotationPreparationRequest RotationRequest(
         Fixture fixture,

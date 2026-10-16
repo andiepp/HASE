@@ -1,6 +1,6 @@
 # ADR-0083 — Re-issuing an Expired Python Credential
 
-- Status: Active; Increment 83A next
+- Status: Active; Increment 83A complete, 83B next
 - Date: 2026-10-16
 - Starting baseline: base `d312f31`; the laboratory add-on at `c72451a`
   (ADR numbers are shared with the add-on, whose last is ADR-0082)
@@ -128,6 +128,36 @@ journal phase and every injected failure. A read-only check of the
 laboratory's credential custody (IDs, dates, which computers hold which
 credential), with nothing printed beyond IDs and dates. Physical
 effects: none.
+
+Result 83A: complete on 2026-10-16. `PythonCredentialRotationPreparer`
+gains `PrepareReissueAsync`: the same locks as planned rotation, then
+the source must inspect Expired (`reissue-source-not-expired`), its
+failures prefixed `reissue-`; planned rotation now refuses an expired
+source as `rotation-source-expired`. `PythonCredentialReissuePublisher`
+publishes the replacement certificate, key, the unchanged profile and
+the final enrollment under `python-credential-reissue.transaction.json`
+(phases created, staged, published-1 to 4, committed), proves the
+expired credential gone, the replacement enrolled and the policy
+unchanged, and keeps the exact old files as `.backup-<id>`; it refuses
+to begin beside a re-issue or rotation journal. `Recover` rolls an
+interrupted re-issue back to the exact sources, or removes the retained
+files of a committed one. The orchestrator composes both; the operator
+has `reissue-expired` (the arguments of `rotate-begin`) and
+`reissue-recover` (those of `rotate-recover`). Eighteen tests: the
+refusals, a complete re-issue and its cleanup, a remaining journal,
+every injected failure, and recovery after an interruption at three
+phases. Focused 256 passed; complete Release suite 5,839 passed, 0
+failed, 0 skipped across 28 test assemblies, from 5,821; cold build 0
+errors, 63 warnings.
+
+The custody check, read-only on the Desktop, printing IDs and dates
+only: the installed Runtime Host's enrollment registry holds
+`hase-python-automation` as `x509-sha256:8455c7aa...` beside the
+Laptop validation client; the Desktop's Python certificate is that
+credential, valid from 2026-08-08 to 2026-09-07; the principal holds six
+grants; the signing root, in the operator's certificate store with its
+key, is valid until 2028-07-26 and covers 90 days. The Laptop's copy is
+checked in 83D.
 
 ### Increment 83B — The operator script
 

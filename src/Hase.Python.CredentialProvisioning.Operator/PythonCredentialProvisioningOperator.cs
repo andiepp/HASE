@@ -146,6 +146,32 @@ internal static class PythonCredentialProvisioningOperator
                     output.WriteLine("Sensitive values     : Withheld");
                     return 0;
                 }
+                case "reissue-expired":
+                {
+                    RotationBeginCommand command = ParseRotationBegin(args[1..]);
+                    PythonCredentialRotationPublicationResult result =
+                        await operations.ReissueExpiredAsync(command,
+                            cancellationToken).ConfigureAwait(false);
+                    output.WriteLine("Operation            : Re-issue expired credential");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine($"Transaction ID       : {result.TransactionId}");
+                    output.WriteLine($"Disposition          : {result.Disposition}");
+                    output.WriteLine($"Rollback retained    : {result.RollbackRetained}");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
+                case "reissue-recover":
+                {
+                    RotationPublicationCommand command =
+                        ParseRotationPublication(args[1..]);
+                    PythonCredentialRotationPublicationResult result =
+                        operations.RecoverReissue(command);
+                    output.WriteLine("Operation            : Recover credential re-issue");
+                    output.WriteLine("Outcome              : Succeeded");
+                    output.WriteLine($"Disposition          : {result.Disposition}");
+                    output.WriteLine("Sensitive values     : Withheld");
+                    return 0;
+                }
                 case "rotate-cross-computer-begin":
                 {
                     CrossRotationBeginCommand command =
@@ -656,6 +682,8 @@ internal static class PythonCredentialProvisioningOperator
         error.WriteLine("  provision-laptop-minipc --signing-root-thumbprint <value> --trust-policy-id <value> --source-profile <absolute-path> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --validity-days <1-90>");
         error.WriteLine("  recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path>");
         error.WriteLine("  rotate-begin --signing-root-thumbprint <value> --validity-days <1-90> --principal-id <value> --trust-policy-id <value> --expected-grants <comma-separated> --expected-current-credential-id <value> --expected-trusted-server-certificate-sha256 <value> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
+        error.WriteLine("  reissue-expired --signing-root-thumbprint <value> --validity-days <1-90> --principal-id <value> --trust-policy-id <value> --expected-grants <comma-separated> --expected-current-credential-id <value> --expected-trusted-server-certificate-sha256 <value> --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
+        error.WriteLine("  reissue-recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
         error.WriteLine("  rotate-cross-computer-begin --rotation-request <absolute-path> --profile-template <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --provisioning-directory <absolute-path> --transfer-archive <absolute-path> --signing-root-thumbprint <value> --trust-policy-id <value> --validity-days <1-90> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
         error.WriteLine("  rotate-finalize|rotate-recover --provisioning-directory <absolute-path> --certificate <absolute-path> --private-key <absolute-path> --profile <absolute-path> --enrollment <absolute-path> --authorization-policy <absolute-path> --expected-certificate-sha256 <value> --expected-private-key-sha256 <value> --expected-profile-sha256 <value> --expected-enrollment-sha256 <value> --expected-authorization-policy-sha256 <value>");
         error.WriteLine("  authorize-property-write --authorization-policy <absolute-path> --expected-authorization-policy-sha256 <value> --application-profile <absolute-path> --expected-application-profile-sha256 <value> --policy-rollback <absolute-path> --profile-rollback <absolute-path>");
@@ -773,6 +801,41 @@ internal sealed class SystemPythonCredentialProvisioningOperations
             preparation, CreatePublicationRequest(command.Publication),
             replacement, utcNow, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<PythonCredentialRotationPublicationResult>
+        ReissueExpiredAsync(
+            RotationBeginCommand command,
+            CancellationToken cancellationToken)
+    {
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException();
+        DateTimeOffset utcNow = NormalizeCertificateTimestamp(
+            DateTimeOffset.UtcNow);
+        using PythonClientCredentialMaterial replacement = CreateMaterial(
+            command.SigningRootThumbprint, utcNow, command.Validity);
+        var inspection = new PythonCredentialLifecycleInspectionRequest(
+            command.Publication.ProfilePath,
+            command.Publication.EnrollmentPath,
+            command.Publication.AuthorizationPolicyPath,
+            command.PrincipalId,
+            command.TrustPolicyId,
+            command.ExpectedGrants);
+        var preparation = new PythonCredentialRotationPreparationRequest(
+            inspection,
+            command.ExpectedCurrentCredentialId,
+            command.Publication.ProfileSha256,
+            command.Publication.EnrollmentSha256,
+            command.Publication.AuthorizationPolicySha256,
+            command.ExpectedTrustedServerCertificateSha256);
+        return await new PythonCredentialRotationOrchestrator().ReissueAsync(
+            preparation, CreatePublicationRequest(command.Publication),
+            replacement, utcNow, cancellationToken).ConfigureAwait(false);
+    }
+
+    public PythonCredentialRotationPublicationResult RecoverReissue(
+        RotationPublicationCommand command) =>
+        new PythonCredentialRotationOrchestrator().RecoverReissue(
+            CreatePublicationRequest(command));
 
     public PythonCredentialRotationPublicationResult FinalizeRotation(
         RotationPublicationCommand command) =>
@@ -912,6 +975,10 @@ internal interface IPythonCredentialProvisioningOperations
     PythonCredentialRotationPublicationResult FinalizeRotation(
         RotationPublicationCommand command);
     PythonCredentialRotationPublicationResult RecoverRotation(
+        RotationPublicationCommand command);
+    Task<PythonCredentialRotationPublicationResult> ReissueExpiredAsync(
+        RotationBeginCommand command, CancellationToken cancellationToken);
+    PythonCredentialRotationPublicationResult RecoverReissue(
         RotationPublicationCommand command);
 
     Task<PythonPropertyWriteAuthorizationResult> AuthorizePropertyWriteAsync(

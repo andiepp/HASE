@@ -9,18 +9,47 @@ namespace Hase.Python.CredentialProvisioning;
 
 /// <summary>
 /// Prepares planned-rotation candidates in memory after re-inspecting the
-/// complete selected deployment state. It publishes no file.
+/// complete selected deployment state. It publishes no file. The same
+/// candidates serve the re-issue of an expired credential (ADR-0083), which
+/// publishes only the final enrollment.
 /// </summary>
 public sealed class PythonCredentialRotationPreparer
 {
-    public async Task<PythonCredentialRotationCandidates> PrepareAsync(
+    /// <summary>
+    /// Planned rotation: the source must still be valid; an expired one is
+    /// refused with <c>rotation-source-expired</c>.
+    /// </summary>
+    public Task<PythonCredentialRotationCandidates> PrepareAsync(
         PythonCredentialRotationPreparationRequest request,
         PythonClientCredentialMaterial replacement,
         DateTimeOffset utcNow,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        PrepareCoreAsync(request, replacement, utcNow, reissue: false,
+            cancellationToken);
+
+    /// <summary>
+    /// Re-issue: the source must have expired; any other state is refused
+    /// with <c>reissue-source-not-expired</c>. Every other lock of planned
+    /// rotation holds.
+    /// </summary>
+    public Task<PythonCredentialRotationCandidates> PrepareReissueAsync(
+        PythonCredentialRotationPreparationRequest request,
+        PythonClientCredentialMaterial replacement,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken = default) =>
+        PrepareCoreAsync(request, replacement, utcNow, reissue: true,
+            cancellationToken);
+
+    private static async Task<PythonCredentialRotationCandidates> PrepareCoreAsync(
+        PythonCredentialRotationPreparationRequest request,
+        PythonClientCredentialMaterial replacement,
+        DateTimeOffset utcNow,
+        bool reissue,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(replacement);
+        string operation = reissue ? "reissue" : "rotation";
 
         byte[]? certificate = null;
         byte[]? privateKey = null;
@@ -39,15 +68,26 @@ public sealed class PythonCredentialRotationPreparer
                 await new PythonCredentialLifecycleInspector().InspectAsync(
                     request.Inspection, utcNow, cancellationToken)
                     .ConfigureAwait(false);
-            if (inspected.State is PythonCredentialLifecycleState.Expired
-                    or PythonCredentialLifecycleState.NotYetValid
-                || inspected.CredentialId != request.ExpectedCurrentCredentialId
+            if (inspected.CredentialId != request.ExpectedCurrentCredentialId
                 || inspected.ProfileSha256 != request.ExpectedProfileSha256
                 || inspected.EnrollmentSha256 != request.ExpectedEnrollmentSha256
                 || inspected.AuthorizationPolicySha256
                     != request.ExpectedAuthorizationPolicySha256
                 || inspected.TrustedServerCertificateSha256
                     != request.ExpectedTrustedServerCertificateSha256)
+            {
+                Fail(operation + "-source-revision-mismatch");
+            }
+            if (reissue)
+            {
+                if (inspected.State != PythonCredentialLifecycleState.Expired)
+                    Fail("reissue-source-not-expired");
+            }
+            else if (inspected.State == PythonCredentialLifecycleState.Expired)
+            {
+                Fail("rotation-source-expired");
+            }
+            else if (inspected.State == PythonCredentialLifecycleState.NotYetValid)
             {
                 Fail("rotation-source-revision-mismatch");
             }
@@ -77,7 +117,7 @@ public sealed class PythonCredentialRotationPreparer
                 || !Sha256(policy).Equals(inspected.AuthorizationPolicySha256,
                     StringComparison.Ordinal))
             {
-                Fail("rotation-source-revision-mismatch");
+                Fail(operation + "-source-revision-mismatch");
             }
 
             (overlap, final) = CreateEnrollmentCandidates(
@@ -109,7 +149,7 @@ public sealed class PythonCredentialRotationPreparer
         catch (PythonCredentialLifecycleInspectionException exception)
         {
             throw new PythonCredentialRotationPreparationException(
-                "rotation-" + exception.Code);
+                operation + "-" + exception.Code);
         }
         catch (Exception exception) when (exception is IOException
             or UnauthorizedAccessException
@@ -121,7 +161,7 @@ public sealed class PythonCredentialRotationPreparer
             or FormatException)
         {
             throw new PythonCredentialRotationPreparationException(
-                "rotation-input-invalid");
+                operation + "-input-invalid");
         }
         finally
         {

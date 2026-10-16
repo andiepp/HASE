@@ -2744,7 +2744,7 @@ mints a new credential for the same principal and enrolls it in place
 of the expired one in a single transition without overlap, and
 `reissue-recover` completes or rolls back an interrupted one.
 
-1. 83A — The verb, the transition, its recovery.
+1. 83A — The verb, the transition, its recovery — complete 2026-10-16.
 2. 83B — The operator script.
 3. 83C — The Runtime Host's computer.
 4. 83D — The second computer.
