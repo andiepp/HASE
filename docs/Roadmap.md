@@ -2730,3 +2730,22 @@ as before.
 The seam is the Client's; the instrument that needed it is a private one
 and is not in this repository. The base stands at 5,821 complete Release
 tests across 27 test assemblies, cold build 0 errors and 63 warnings.
+
+## Active objective — ADR-0083 Re-issuing an Expired Python Credential
+
+**Status:** [Active] Opened 2026-10-16 from `d312f31`.
+
+ADR-0053's planned rotation refuses a credential that has already
+expired, and first provisioning refuses a principal that is still
+enrolled, so an expired Python credential could only be brought back by
+editing the enrollment registry by hand. ADR-0083 adds the emergency
+replacement ADR-0053 designed, for the expired case: `reissue-expired`
+mints a new credential for the same principal and enrolls it in place
+of the expired one in a single transition without overlap, and
+`reissue-recover` completes or rolls back an interrupted one.
+
+1. 83A — The verb, the transition, its recovery.
+2. 83B — The operator script.
+3. 83C — The Runtime Host's computer.
+4. 83D — The second computer.
+5. 83E — Documentation closure.

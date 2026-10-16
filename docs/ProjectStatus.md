@@ -1,5 +1,16 @@
 # Project Status
 
+## Active architectural objective — ADR-0083
+
+**ADR-0083 — Re-issuing an Expired Python Credential — active since
+2026-10-16 from `d312f31`; 83A next. Baseline 5,821 passed, 0 failed, 0
+skipped; cold build 0 errors, 63 warnings.**
+
+- An expired Python credential is brought back by a framework operation,
+  `reissue-expired`, instead of a hand-edited enrollment registry: a new
+  credential for the same principal replaces the expired one in one
+  transition without overlap; grants stay with the principal.
+
 ## Completed architectural objective — ADR-0068
 
 **ADR-0068 — Public Base and Private Instrument Add-Ons — complete, closed
