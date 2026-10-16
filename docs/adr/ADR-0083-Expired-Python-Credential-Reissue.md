@@ -1,6 +1,6 @@
 # ADR-0083 — Re-issuing an Expired Python Credential
 
-- Status: Active; Increment 83A complete, 83B next
+- Status: Active; Increments 83A and 83B complete, 83C next
 - Date: 2026-10-16
 - Starting baseline: base `d312f31`; the laboratory add-on at `c72451a`
   (ADR numbers are shared with the add-on, whose last is ADR-0082)
@@ -163,6 +163,46 @@ checked in 83D.
 
 The colocated re-issue script and its verifier, with tests against a
 temporary installation. Physical effects: none.
+
+Result 83B: complete on 2026-10-16. Three scripts in
+`python/hase-client/tools`:
+
+- `Start-HasePythonCredentialReissue.ps1 -ExpectedComputer <name>` reads
+  the installed Runtime Host's configuration (the authorization policy,
+  and through the private-network configuration the enrollment
+  registry) and the Python profile (certificate, key, trusted server
+  certificate), and reports the credential's shortened ID, dates and
+  state, its enrollment, the principal's grants, the signing root
+  (found by the certificate's issuer, with its key) and whether it
+  covers the validity, any re-issue or rotation journal, whether the
+  HASE host and client processes are stopped and whether the repository
+  is level with `origin/main`. With `-PreflightOnly` it changes nothing
+  and exits 0 only when all of that allows a re-issue. Without it, it
+  requires the same, hashes every file, runs `reissue-expired` and the
+  verifier.
+- `Test-HasePythonCredentialReissue.ps1`, read-only: the installed
+  credential valid and enrolled for the principal; with the journal
+  present also the committed phase, the expired credential gone, the
+  policy unchanged, every target its candidate and every retained file
+  its original.
+- `Recover-HasePythonCredentialReissue.ps1 -ExpectedComputer <name>`:
+  `reissue-recover` with the paths and original hashes the journal
+  records, the processes stopped; it rolls an interrupted re-issue back
+  or removes the retained files of a committed one.
+
+The process check matches the laboratory's application names too
+(`Hase.DesktopHost.App*`, `Hase.Client.Wpf.App*`). The scripts print
+IDs, dates and states only. Nine tests: Windows PowerShell parses all
+three; the preflight of an expired and of a valid temporary
+installation reports them, refuses, and changes no file; the verifier
+accepts a committed re-issue made by the orchestrator, and refuses a
+changed policy and an expired installation; the guards and the
+recovery's journal-derived hashes are checked in the scripts' text. The
+recovery script itself runs the operator and is exercised in 83C only
+if needed. Complete Release suite 5,848 passed, 0 failed, 0 skipped
+across 28 test assemblies; the Python suite was not run on this
+checkout, which has no virtual environment, and no Python test lists
+the tools.
 
 ### Increment 83C — The Runtime Host's computer
 

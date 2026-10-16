@@ -5,8 +5,8 @@
 **ADR-0083 — Re-issuing an Expired Python Credential — active since
 2026-10-16 from `d312f31`; 83A complete (the re-issue preparation,
 publisher and recovery, `reissue-expired` and `reissue-recover`), 83B
-next. 5,839 passed, 0 failed, 0 skipped; cold build 0 errors, 63
-warnings.**
+complete (the start, verify and recover scripts), 83C next. 5,848
+passed, 0 failed, 0 skipped; cold build 0 errors, 63 warnings.**
 
 - An expired Python credential is brought back by a framework operation,
   `reissue-expired`, instead of a hand-edited enrollment registry: a new
