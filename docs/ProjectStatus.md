@@ -1,5 +1,31 @@
 # Project Status
 
+## Completed architectural objective — ADR-0086
+
+**ADR-0086 — Renewing the Private-Network Validation Certificates —
+complete, closed at Increment 86E on 2026-11-01 at `beb337b`, from
+`7e30098`: 5,873 passed, 0 failed, 0 skipped across 28 test assemblies;
+cold build 0 errors, 63 warnings.**
+
+- `Start-`, `Test-`, `Install-` and
+  `Restore-HasePrivateNetworkValidationRenewal.ps1` in
+  `tools/PrivateNetwork`: an expired server certificate and Laptop client
+  certificate renewed under the existing root, with journal, backups and
+  rollback.
+- The laboratory's installed Runtime Host renewed until 2027-01-30: Ready
+  again, read by Python from the Desktop and the Laptop, and the Laptop's
+  installed Lab Client connected.
+
+- The renewal's backups, staged files and transfer PKCS#12, and the
+  transfer copy on the removable drive, remain until an approved cleanup.
+- Beside the objective: the Laptop/MiniPC pair's server certificate
+  expired on 2026-10-31 and the Laptop client certificate it accepts on
+  2026-10-24; the example deployment's certificates expire on 2026-11-21.
+
+- A private-network deployment whose 90-day certificates expire is
+  renewed by a tool rather than re-provisioned: the root, the other
+  principals' enrollments, their grants and the Python credential stay.
+
 ## Completed architectural objective — ADR-0083
 
 **ADR-0083 — Re-issuing an Expired Python Credential — complete, closed

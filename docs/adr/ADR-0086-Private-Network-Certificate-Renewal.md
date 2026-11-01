@@ -1,6 +1,6 @@
 # ADR-0086 — Renewing the Private-Network Validation Certificates
 
-- Status: Active; option A with 90 days decided on 2026-11-01
+- Status: Closed; Increment 86E documentation closure
 - Date: 2026-11-01
 - Starting baseline: base `7e30098`; the laboratory add-on at `ba977b8`
   (ADR numbers are shared with the add-on, whose last is ADR-0085)
@@ -196,7 +196,7 @@ running process, foreign pin, root not covering, existing journal);
 an injected failure rolls back; recovery restores the originals.
 Physical effects: none.
 
-Result 86A: applied on 2026-11-01 on `7e30098`. Five scripts in
+Result 86A: complete on 2026-11-01, `beb337b`, from `7e30098`. Five scripts in
 `tools/PrivateNetwork`: the shared `HasePrivateNetworkRenewal.Common.ps1`
 and `Start-`, `Test-`, `Install-` and
 `Restore-HasePrivateNetworkValidationRenewal.ps1`; the provisioning
@@ -227,6 +227,11 @@ assemblies; cold build 0 errors, 63 warnings.
 The base checkouts of the Desktop and the Laptop level with the 86A
 commit. Physical effects: none.
 
+Result 86B: complete on 2026-11-01. The Desktop's base checkout was
+fast-forwarded to `7e30098` before 86A and stood at `beb337b` after the
+push; the Laptop's, at `8133f34`, was synchronized to `beb337b` with
+`Sync-HaseRepository.ps1`, clean.
+
 ### Increment 86C — The Desktop
 
 Preflight, then, separately approved, the renewal with the host
@@ -234,14 +239,58 @@ stopped; the verifier; the installed host started and observed Ready
 with its endpoints; a Python Health read on the Desktop. The Laptop set
 goes to the operator's removable drive.
 
+Result 86C: complete on 2026-11-01. The preflight, run read-only, was
+ready: the server certificate Expired (2026-07-26 to 2026-10-24), the
+root valid to 2028-07-26, trusted, its key accessible; two enrollments,
+the Laptop client enrolled once; both Desktop configurations, the
+Laptop template and the Python pin naming the expired certificate. A
+first attempt passed the two configuration paths through
+`powershell -File`, which hands `a,b` to the script as one string; it
+stopped at the path check before reading anything, and a classification
+found nothing created. The operator then ran the renewal through
+`-Command` and chose the transfer password: transaction `d994f9d2...`,
+both certificates valid from 2026-11-01 to 2027-01-30, four targets
+published with their backups, the verifier accepting; an independent
+run of the verifier agreed, and the Python enrollment and certificate
+were found unchanged. The installed Runtime Host, started from its
+shortcut, showed Ready with its endpoints; the Desktop's Python
+automation (0.4.0, Health) read it: two endpoints, both Ready, two
+instruments, 65 properties, 24 commands. The Laptop set went to the
+operator's removable drive with hashes compared; the copy block first
+refused because an empty card-reader slot counted as a second removable
+drive, and counts only volumes with media since.
+
 ### Increment 86D — The Laptop
 
 The import and the pin replacement, separately approved; the installed
 Lab Client connects to the installed host; a Python Health read from the
 Laptop. The transferred PKCS#12 is removed from the drive.
 
+Result 86D: complete on 2026-11-01. On the Laptop the transfer's hashes
+matched the Desktop's; `Install-HasePrivateNetworkValidationClient.ps1`
+imported the new client credential and server certificate; the
+installation preflight was ready, and the installation (transaction
+`6400cb27...`) pointed the installed Lab Client's configuration at the
+new certificates and replaced the Python profile's pin, keeping both
+originals, verified. The Laptop's Python automation (0.6.0, Health) read
+the installed host: two endpoints Ready, 65 properties, 24 commands. The
+operator observed the installed Lab Client connect to the Desktop's
+installed host. The Laptop's configuration for the MiniPC still names
+the expired client certificate, which stays in its store; that pair's
+renewal is outside this ADR.
+
 ### Increment 86E — Closure
 
 The ADR, Project Status and Roadmap; the add-on's operating notes and
 submodule pointer. The removal of the retained backups, staged files and
 transfer PKCS#12 is a separate approval.
+
+Result 86E: the objective closed on 2026-11-01 at `beb337b`. Retained
+until an approved cleanup (`Restore-HasePrivateNetworkValidationRenewal.ps1
+-Mode Cleanup` on each computer): the four backups and the staged
+candidates on the Desktop, the two on the Laptop, the transfer PKCS#12
+in the Desktop's output directory, and the transfer copy on the
+removable drive, which the cleanup does not reach. The expired
+certificates stay in the stores. The next renewal is due before
+2027-01-30; the example deployment's certificates expire on 2026-11-21.
+The ADR-0084 discrepancy recorded in the context remains unresolved.

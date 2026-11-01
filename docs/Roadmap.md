@@ -2750,3 +2750,24 @@ of the expired one in a single transition without overlap, and
 3. 83C — The Runtime Host's computer — complete 2026-10-16.
 4. 83D — The second computer — complete 2026-10-16.
 5. 83E — Documentation closure — complete 2026-10-16.
+
+## Completed objective — ADR-0086 Renewing the Private-Network Validation Certificates
+
+**Status:** [Completed] Closed at Increment 86E, 2026-11-01, at
+`beb337b`. Opened 2026-11-01 from `7e30098`.
+
+ADR-0032's provisioning gives the server and the Laptop client
+certificates 90 days and offers no renewal, so an installed Runtime Host
+faults at start once its server certificate expires, and its Laptop
+client is refused once the client certificate does. ADR-0086 renews both
+under the existing root: a Desktop tool issues them, replaces the
+configurations, the client's enrollment and the server certificate's
+pins in one journalled transition with backups and rollback, and writes
+the Laptop's set; a Laptop tool points the client configuration and the
+pins at the imported certificates.
+
+1. 86A — The tools — complete 2026-11-01.
+2. 86B — Synchronization — complete 2026-11-01.
+3. 86C — The Desktop — complete 2026-11-01.
+4. 86D — The Laptop — complete 2026-11-01.
+5. 86E — Documentation closure — complete 2026-11-01.
