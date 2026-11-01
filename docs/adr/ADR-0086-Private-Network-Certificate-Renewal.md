@@ -285,12 +285,15 @@ The ADR, Project Status and Roadmap; the add-on's operating notes and
 submodule pointer. The removal of the retained backups, staged files and
 transfer PKCS#12 is a separate approval.
 
-Result 86E: the objective closed on 2026-11-01 at `beb337b`. Retained
-until an approved cleanup (`Restore-HasePrivateNetworkValidationRenewal.ps1
--Mode Cleanup` on each computer): the four backups and the staged
-candidates on the Desktop, the two on the Laptop, the transfer PKCS#12
-in the Desktop's output directory, and the transfer copy on the
-removable drive, which the cleanup does not reach. The expired
-certificates stay in the stores. The next renewal is due before
-2027-01-30; the example deployment's certificates expire on 2026-11-21.
-The ADR-0084 discrepancy recorded in the context remains unresolved.
+Result 86E: the objective closed on 2026-11-01 at `beb337b`. The same
+day, approved by the operator, `Restore-HasePrivateNetworkValidationRenewal.ps1
+-Mode Cleanup` removed the retained files from both journals: on the
+Desktop the four backups, the four staged candidates and the transfer
+PKCS#12, the verifier still accepting the renewal; on the Laptop the
+two backups and two staged candidates; the transfer copy on the
+removable drive was deleted by the Laptop's cleanup block after its
+contents were checked. The journals and the Laptop set's public files
+remain, and the expired certificates stay in the stores. The next
+renewal is due before 2027-01-30; the example deployment's certificates
+expire on 2026-11-21. The ADR-0084 discrepancy recorded in the context
+remains unresolved.

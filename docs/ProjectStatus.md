@@ -16,8 +16,8 @@ cold build 0 errors, 63 warnings.**
   again, read by Python from the Desktop and the Laptop, and the Laptop's
   installed Lab Client connected.
 
-- The renewal's backups, staged files and transfer PKCS#12, and the
-  transfer copy on the removable drive, remain until an approved cleanup.
+- The renewal's backups, staged files and transfer copies were removed
+  on 2026-11-01 by an approved cleanup; the journals remain.
 - Beside the objective: the Laptop/MiniPC pair's server certificate
   expired on 2026-10-31 and the Laptop client certificate it accepts on
   2026-10-24; the example deployment's certificates expire on 2026-11-21.
