@@ -177,6 +177,47 @@ Expected safe output identifies:
 - zero published endpoints;
 - successful authenticated snapshot completion.
 
+## Renewal
+
+The server and client certificates are valid for 90 days, the root for
+two years. ADR-0086 renews both certificates under the existing root;
+the root, the enrollments of other principals, their grants and the
+address stay.
+
+On the desktop, with the runtime host and the clients stopped:
+
+```powershell
+& "<repository>\tools\PrivateNetwork\Start-HasePrivateNetworkValidationRenewal.ps1" `
+    -ExpectedComputer <desktop-computer-name> `
+    -DesktopConfigurationPath "<every desktop-private-network.json naming the certificate>" `
+    -LaptopConfigurationPath "<external-protected-directory>\laptop-private-network.json" `
+    -PinnedServerCertificatePath "<every file pinning the server certificate>" `
+    -OutputDirectory "<new-external-protected-directory>" `
+    -PreflightOnly
+```
+
+Without `-PreflightOnly` it renews, prompts for the transfer password,
+and writes the laptop set to the output directory's `Laptop` folder.
+
+On the laptop, with the client stopped, after
+`Install-HasePrivateNetworkValidationClient.ps1` imported that set:
+
+```powershell
+& "<repository>\tools\PrivateNetwork\Install-HasePrivateNetworkValidationRenewal.ps1" `
+    -ExpectedComputer <laptop-computer-name> `
+    -BundleDirectory "<transferred-laptop-set>" `
+    -ClientConfigurationPath "<the client's laptop-private-network.json>" `
+    -PinnedServerCertificatePath "<every file pinning the server certificate>" `
+    -CustodyDirectory "<new-external-protected-directory>" `
+    -PreflightOnly
+```
+
+Both keep every replaced file as a backup under a journal.
+`Test-HasePrivateNetworkValidationRenewal.ps1` verifies the desktop
+read-only; `Restore-HasePrivateNetworkValidationRenewal.ps1 -Mode
+Rollback` restores the originals from a journal, and `-Mode Cleanup`
+removes the backups and the transfer PKCS#12 once the renewal is proven.
+
 ## Failure behavior
 
 Provisioning and startup fail closed when:
