@@ -45,6 +45,13 @@ internal sealed class McnfDiagnosticExchange
             direction,
             bytes));
 
+    public void ObserveSkippedText(ReadOnlySpan<byte> bytes) =>
+        Publish(new McnfDiagnosticTextSkipped(
+            ExchangeId,
+            timeProvider.GetUtcNow(),
+            ExchangeKind,
+            bytes));
+
     public void Complete() =>
         Publish(new McnfDiagnosticExchangeCompleted(
             ExchangeId,

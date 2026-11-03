@@ -136,34 +136,67 @@ public sealed class McnfSession : IMcnfSession
                 .WaitAsync(operationCancellation.Token)
                 .ConfigureAwait(false);
 
+            // the connectivity answer (0x21) is printable, so only framed
+            // responses skip leading text
+            List<byte>? skippedText =
+                options.SkipsLeadingText
+                && exchangeKind == McnfDiagnosticExchangeKind.Exchange
+                    ? []
+                    : null;
             var receivedByteCount = 0;
-            while (receivedByteCount < responseBuffer.Length)
+            try
             {
-                var readByteCount = await stream
-                    .ReadAsync(
-                        responseBuffer.AsMemory(receivedByteCount),
-                        operationCancellation.Token)
-                    .AsTask()
-                    .WaitAsync(operationCancellation.Token)
-                    .ConfigureAwait(false);
-
-                if (readByteCount == 0)
+                while (receivedByteCount < responseBuffer.Length)
                 {
-                    throw new EndOfStreamException(
-                        "The MCNF byte stream ended before the complete response was received.");
-                }
+                    var readByteCount = await stream
+                        .ReadAsync(
+                            responseBuffer.AsMemory(receivedByteCount),
+                            operationCancellation.Token)
+                        .AsTask()
+                        .WaitAsync(operationCancellation.Token)
+                        .ConfigureAwait(false);
 
-                if (readByteCount < 0
-                    || readByteCount > responseBuffer.Length - receivedByteCount)
-                {
-                    throw new InvalidDataException(
-                        "The MCNF byte stream returned an invalid read byte count.");
-                }
+                    if (readByteCount == 0)
+                    {
+                        throw new EndOfStreamException(
+                            "The MCNF byte stream ended before the complete response was received.");
+                    }
 
-                diagnosticExchange?.ObserveBytes(
-                    McnfDiagnosticDirection.Receive,
-                    responseBuffer.AsSpan(receivedByteCount, readByteCount));
-                receivedByteCount += readByteCount;
+                    if (readByteCount < 0
+                        || readByteCount > responseBuffer.Length - receivedByteCount)
+                    {
+                        throw new InvalidDataException(
+                            "The MCNF byte stream returned an invalid read byte count.");
+                    }
+
+                    if (skippedText is not null && receivedByteCount == 0)
+                    {
+                        // reads never exceed what the response still lacks, so
+                        // the text is moved out and the rest read again
+                        Span<byte> read = responseBuffer.AsSpan(0, readByteCount);
+                        var textByteCount = LeadingTextLength(read, skippedText.Count > 0);
+                        skippedText.AddRange(read[..textByteCount]);
+                        if (textByteCount == readByteCount)
+                        {
+                            continue;
+                        }
+
+                        read[textByteCount..].CopyTo(read);
+                        readByteCount -= textByteCount;
+                        ObserveSkippedText(diagnosticExchange, skippedText);
+                    }
+
+                    diagnosticExchange?.ObserveBytes(
+                        McnfDiagnosticDirection.Receive,
+                        responseBuffer.AsSpan(receivedByteCount, readByteCount));
+                    receivedByteCount += readByteCount;
+                }
+            }
+            catch
+            {
+                // text before a failure is reported before the failure
+                ObserveSkippedText(diagnosticExchange, skippedText);
+                throw;
             }
 
             diagnosticExchange?.Complete();
@@ -282,6 +315,43 @@ public sealed class McnfSession : IMcnfSession
             exchangeGate.Release();
             lifetimeCancellation.Dispose();
         }
+    }
+
+    /// <summary>
+    /// The number of leading bytes that are printable text: 0x20-0x7E, and
+    /// line ends once text has begun.
+    /// </summary>
+    private static int LeadingTextLength(ReadOnlySpan<byte> bytes, bool textBegun)
+    {
+        var length = 0;
+        foreach (byte value in bytes)
+        {
+            if (value is >= 0x20 and <= 0x7E)
+            {
+                textBegun = true;
+            }
+            else if (!textBegun || value is not (0x0D or 0x0A))
+            {
+                break;
+            }
+
+            length++;
+        }
+
+        return length;
+    }
+
+    private static void ObserveSkippedText(
+        McnfDiagnosticExchange? diagnosticExchange,
+        List<byte>? skippedText)
+    {
+        if (skippedText is not { Count: > 0 })
+        {
+            return;
+        }
+
+        diagnosticExchange?.ObserveSkippedText(skippedText.ToArray());
+        skippedText.Clear();
     }
 
     private McnfExchangeException CreateUncertainFailure(

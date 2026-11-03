@@ -218,6 +218,136 @@ public sealed class McnfSessionTests
         Assert.True(failed.ExecutionMayHaveOccurred);
     }
 
+    private static readonly McnfFramingOptions SkippingOptions = new(
+        TimeSpan.FromSeconds(5),
+        nodeBufferSize: 128,
+        skipsLeadingText: true);
+
+    // as the RF-Lab firmware prints it before answering AM and FM
+    private static readonly byte[] DebugText =
+        "highByte((uint16_t)Step_Rate)=1\r\nFM wave saved to RAM...\r\n"u8.ToArray();
+
+    private static McnfRequestFrame AcknowledgedRequest() =>
+        McnfRequestFrame.Create(0xA5, 0x12, [], responseLength: 2);
+
+    [Fact]
+    public void FramingOptions_DoNotSkipLeadingTextByDefault()
+    {
+        Assert.False(Options.SkipsLeadingText);
+        Assert.True(SkippingOptions.SkipsLeadingText);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_WithoutSkipping_TakesLeadingTextForTheResponse()
+    {
+        var stream = new ScriptedMcnfByteStream(
+            DebugText,
+            McnfResponseFrameTests.BuildSuccessResponse());
+        await using var session = new McnfSession(stream, Options);
+
+        McnfResponseFrame response = await session.ExchangeAsync(AcknowledgedRequest());
+
+        Assert.Equal((byte)'h', response.ErrorCode);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_SkipsLeadingTextAndStaysInStep()
+    {
+        var stream = new ScriptedMcnfByteStream(
+            [.. DebugText, .. McnfResponseFrameTests.BuildSuccessResponse()],
+            McnfResponseFrameTests.BuildSuccessResponse(0x02, 0x9A));
+        await using var session = new McnfSession(stream, SkippingOptions);
+
+        McnfResponseFrame acknowledged = await session.ExchangeAsync(AcknowledgedRequest());
+        McnfResponseFrame next = await session.ExchangeAsync(SensorRequest());
+
+        Assert.True(acknowledged.IsSuccess);
+        Assert.True(next.IsSuccess);
+        Assert.Equal(new byte[] { 0x02, 0x9A }, next.Payload.ToArray());
+        Assert.Equal(McnfSessionState.Open, session.State);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_KeepsPrintableBytesInsideTheResponse()
+    {
+        var stream = new ScriptedMcnfByteStream(
+            "debug\r\n"u8.ToArray(),
+            McnfResponseFrameTests.BuildSuccessResponse(0x41, 0x0A));
+        await using var session = new McnfSession(stream, SkippingOptions);
+
+        McnfResponseFrame response = await session.ExchangeAsync(SensorRequest());
+
+        Assert.Equal(new byte[] { 0x41, 0x0A }, response.Payload.ToArray());
+    }
+
+    [Theory]
+    [InlineData(0x0A)]
+    [InlineData(0x0D)]
+    public async Task ExchangeAsync_RecognizesLineEndErrorCodesWithoutText(byte errorCode)
+    {
+        var stream = new ScriptedMcnfByteStream(new byte[] { errorCode, 0x00 });
+        await using var session = new McnfSession(stream, SkippingOptions);
+
+        McnfResponseFrame response = await session.ExchangeAsync(AcknowledgedRequest());
+
+        Assert.Equal(errorCode, response.ErrorCode);
+    }
+
+    [Fact]
+    public async Task ConnectivityTest_DoesNotSkipItsPrintableAnswer()
+    {
+        var stream = new ScriptedMcnfByteStream(new byte[] { 0x21 });
+        await using var session = new McnfSession(stream, SkippingOptions);
+
+        await session.ConnectivityTestAsync();
+
+        Assert.Equal(McnfSessionState.Open, session.State);
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_PublishesSkippedTextApartFromTheResponse()
+    {
+        var observer = new RecordingDiagnosticObserver();
+        byte[] response = McnfResponseFrameTests.BuildSuccessResponse();
+        var stream = new ScriptedMcnfByteStream([.. DebugText, .. response]);
+        await using var session = new McnfSession(stream, SkippingOptions, observer);
+
+        await session.ExchangeAsync(AcknowledgedRequest());
+
+        var text = Assert.Single(observer.Events.OfType<McnfDiagnosticTextSkipped>());
+        Assert.Equal(DebugText, text.ToArray());
+        Assert.Equal(
+            response,
+            observer.Events
+                .OfType<McnfDiagnosticBytesObserved>()
+                .Where(observed => observed.Direction == McnfDiagnosticDirection.Receive)
+                .SelectMany(observed => observed.Bytes)
+                .ToArray());
+        Assert.True(
+            observer.Events.IndexOf(text)
+            < observer.Events.FindIndex(diagnosticEvent =>
+                diagnosticEvent is McnfDiagnosticBytesObserved
+                {
+                    Direction: McnfDiagnosticDirection.Receive
+                }));
+    }
+
+    [Fact]
+    public async Task ExchangeAsync_PublishesSkippedTextBeforeAFailure()
+    {
+        var observer = new RecordingDiagnosticObserver();
+        var stream = new ScriptedMcnfByteStream(DebugText);
+        await using var session = new McnfSession(stream, SkippingOptions, observer);
+
+        var failure = await Assert.ThrowsAsync<McnfExchangeException>(
+            () => session.ExchangeAsync(AcknowledgedRequest()));
+
+        Assert.IsType<EndOfStreamException>(failure.InnerException);
+        var text = Assert.IsType<McnfDiagnosticTextSkipped>(observer.Events[^2]);
+        Assert.Equal(DebugText, text.ToArray());
+        Assert.IsType<McnfDiagnosticExchangeFailed>(observer.Events[^1]);
+    }
+
     private sealed class RecordingDiagnosticObserver : IMcnfDiagnosticObserver
     {
         public List<McnfDiagnosticEvent> Events { get; } = [];

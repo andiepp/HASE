@@ -212,6 +212,21 @@ compositions carry the endpoint, and one running host owns COM12 at a
 time; the other reports it unavailable. ADR-0066 is closed at 6,828 tests
 across 33 test projects.
 
+### Increment 66F — Leading text before a framed answer
+
+Some node firmware prints debug text on the host port before it answers;
+the session then read the text as the answer and lost step with every
+later exchange. `McnfFramingOptions` gains `SkipsLeadingText`, off by
+default: the session skips printable bytes (0x20 to 0x7E, and CR and LF
+once text has begun) before the first byte of a framed answer, whose error
+byte is never printable, and reads no further than the answer still
+lacks. The connectivity test never skips. Skipped text reaches the
+diagnostic observer as `McnfDiagnosticTextSkipped`, before the answer's
+bytes or the failure. A family opts in through its framing options; the
+laboratory's objective is recorded in its own ADR-0091.
+
+Result: `Hase.Mcnf.Tests` 62 passed, from 53. Physical effect: none.
+
 ## Deferred scope
 
 - An MCNF byte interpreter for the host Diagnostics window.

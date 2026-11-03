@@ -104,6 +104,32 @@ public sealed class McnfDiagnosticBytesObserved : McnfDiagnosticEvent
     public byte[] ToArray() => bytes.ToArray();
 }
 
+/// <summary>
+/// Printable text the node sent before its framed response, skipped because
+/// the session's framing options skip leading text. It is not part of the
+/// response bytes.
+/// </summary>
+public sealed class McnfDiagnosticTextSkipped : McnfDiagnosticEvent
+{
+    private readonly ReadOnlyCollection<byte> bytes;
+
+    public McnfDiagnosticTextSkipped(
+        Guid exchangeId,
+        DateTimeOffset timestampUtc,
+        McnfDiagnosticExchangeKind exchangeKind,
+        ReadOnlySpan<byte> bytes)
+        : base(exchangeId, timestampUtc, exchangeKind)
+    {
+        this.bytes = Array.AsReadOnly(bytes.ToArray());
+    }
+
+    public int ByteCount => bytes.Count;
+
+    public IReadOnlyList<byte> Bytes => bytes;
+
+    public byte[] ToArray() => bytes.ToArray();
+}
+
 public sealed class McnfDiagnosticExchangeCompleted : McnfDiagnosticEvent
 {
     public McnfDiagnosticExchangeCompleted(
